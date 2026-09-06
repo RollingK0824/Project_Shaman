@@ -2,14 +2,22 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 
 Write-Host "=========================================================" -ForegroundColor Cyan
-Write-Host "        Unity Smart Merge (UnityYAMLMerge) Git 설정       " -ForegroundColor Cyan
+Write-Host "       Unity Git 환경 설정 (SmartMerge & Git LFS)        " -ForegroundColor Cyan
 Write-Host "=========================================================" -ForegroundColor Cyan
 Write-Host ""
 
-# 1. Git 설치 확인
+# 1. Git 설치 확인 및 Git LFS 활성화
 try {
     $gitVersion = git --version
     Write-Host "[✓] Git 확인됨: $gitVersion" -ForegroundColor Green
+    
+    # Git LFS 설치 및 훅 등록
+    git lfs install
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "[✓] Git LFS 활성화 완료 (git lfs install)" -ForegroundColor Green
+    } else {
+        Write-Host "[!] Git LFS 설치 상태를 확인해주세요." -ForegroundColor Yellow
+    }
 } catch {
     Write-Host "[X] Git이 설치되어 있지 않거나 환경 변수 PATH에 등록되지 않았습니다." -ForegroundColor Red
     exit 1
@@ -197,8 +205,9 @@ $globalGitConfigFile = Join-Path $userProfile ".gitconfig"
 
 Write-Host ""
 Write-Host "=========================================================" -ForegroundColor Green
-Write-Host "         ★ Git Config 설정이 완료되었습니다! ★            " -ForegroundColor Green
+Write-Host "      ★ Git 환경 설정이 완료되었습니다! ★              " -ForegroundColor Green
 Write-Host "=========================================================" -ForegroundColor Green
+Write-Host "• Git LFS: 활성화 완료 (git lfs install)" -ForegroundColor Cyan
 Write-Host "• 적용된 UnityYAMLMerge: $escapedPath" -ForegroundColor Cyan
 Write-Host "• Global 설정 파일: $globalGitConfigFile" -ForegroundColor Cyan
 Write-Host "• Local 설정 파일: $gitRoot\.git\config" -ForegroundColor Cyan
