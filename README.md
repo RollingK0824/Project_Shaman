@@ -4,23 +4,24 @@
 
 ---
 
-## 🛠️ 개발 환경 및 도구
+## 개발 환경 및 도구
 
 - **Engine** : Unity 6 (`6000.3.23f1`)
 - **Render Pipeline** : URP (Universal Render Pipeline)
-- **IDE** : Visual Studio 2022 / Rider / VS Code
+- **IDE** : Visual Studio 2026
 - **Version Control** : Git / GitHub (Fork / GitHub Desktop)
-- **CI / Pipeline** : GitHub Actions (Game-CI 자동 컴파일 & 빌드 검증)
-- **Git 확장 & 협업 도구** : 
+- **CI / Pipeline** : GitHub Actions (Game-CI 자동 컴파일 및 빌드 검증)
+- **Git 확장 및 협업 도구** : 
   - **Git LFS** (대용량 그래픽/사운드 바이너리 관리)
   - **Unity SmartMerge (UnityYAMLMerge)** (씬, 프리팹 충돌 자동 병합)
 
-> 💡 **팀원 최초 참여 시 필수 세팅 (원클릭 자동 설정):**
-> 저장소를 Clone 또는 Pull 받은 후, **`Tools/GitSetup/setup_git.bat`** 파일을 더블 클릭하여 **Git LFS 활성화 및 스마트 머지 등록**을 1초 만에 완료해 주세요.
+**팀원 최초 필수 세팅 (원클릭 환경 구성):**
+> 저장소를 Clone 또는 Pull 받은 후, **`Tools/GitSetup/setup_git.bat`** 파일을 더블 클릭하여 실행합니다.  
+> (Git LFS 활성화 및 Unity SmartMerge 등록이 자동으로 완료됩니다.)
 
 ---
 
-## 📁 디렉토리 구조 규칙
+## 디렉토리 구조 규칙
 
 외부 에셋과의 혼선을 줄이고 에셋 충돌을 방지하기 위해 우리 팀이 제작하는 모든 리소스와 코드는 `Assets/Project/` 폴더 내부에서만 관리합니다.
 
@@ -48,7 +49,7 @@ Assets/
 
 ---
 
-## 📋 코딩 컨벤션 (Coding Convention)
+## 코딩 컨벤션 (Coding Convention)
 
 유니티 공식 C# 스타일을 기반으로 한 우리 팀의 최소한의 규칙입니다.
 
@@ -70,14 +71,14 @@ Assets/
 - 상태를 직관적으로 알 수 있도록 `is`, `has`, `can` 등의 접두사를 사용합니다.
   - 예: `isDead`, `hasKey`, `canJump`, `isInitialized`
 
-### 3. 코드 스타일 & 주의사항
+### 3. 코드 스타일 및 주의사항
 - 중괄호(`{ }`)는 생략하지 않고 항상 줄바꿈하여 가독성을 높입니다.
 - 스크립트 파일명을 바꿀 때는 **반드시 유니티 에디터 내부**에서 변경합니다. (메타 파일 깨짐 방지)
 - 주석은 왜(Why) 이렇게 작성했는지를 중심으로 간결하게 작성합니다.
 
 ---
 
-## 🚀 커밋 컨벤션 (Commit Convention)
+## 커밋 컨벤션 (Commit Convention)
 
 우리 팀은 커밋 메시지의 일관성을 위해 아래 규칙을 준수합니다.
 
@@ -108,13 +109,13 @@ Assets/
 
 ---
 
-## ⚠️ 협업 골든 룰 (Golden Rules)
+## 협업 골든 룰 (Golden Rules)
 
-1. **`main` 브랜치 직접 Push 금지**:
-   - 모든 작업은 `main`에서 파생된 **`feature/기능이름`** 브랜치에서 진행합니다.
-   - 작업 완료 후 GitHub에서 **`feature/* ➡️ main` Pull Request(PR)**를 생성하여 팀원 리뷰 및 CI 빌드 통과 후 머지합니다.
+1. **`dev` / `main` 브랜치 직접 Push 금지**:
+   - 모든 작업은 `dev` 브랜치에서 파생된 **`feature/기능이름`** 브랜치에서 진행합니다.
+   - 작업 완료 후 GitHub에서 **`feature/* -> dev` Pull Request(PR)**를 생성하여 팀원 리뷰 및 CI 빌드 통과 후 머지합니다.
 2. **작업 시작 전 Pull 필수**:
-   - 작업을 시작하기 전 무조건 `main` 브랜치에서 **Fetch 및 Pull**을 받아 최신 상태로 동기화한 뒤 내 작업 브랜치를 생성하거나 이동합니다.
-3. **1인 1씬(Scene) & 프리팹(Prefab) 작업 원칙**:
+   - 작업을 시작하기 전 무조건 `dev` 브랜치에서 **Fetch 및 Pull**을 받아 최신 상태로 동기화한 뒤 내 작업 브랜치를 생성하거나 이동합니다.
+3. **1인 1씬(Scene) 및 프리팹(Prefab) 작업 원칙**:
    - 씬 파일 충돌을 최소화하기 위해 씬 직접 수정보다는 **프리팹(Prefab)** 단위로 작업하여 머지합니다.
    - 씬 작업이 필요할 경우 담당자별 테스트 씬을 분리하여 작업합니다.
