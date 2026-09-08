@@ -113,6 +113,7 @@ Assets/
 
 1. **`dev` / `main` 브랜치 직접 Push 금지**:
    - 모든 작업은 `dev` 브랜치에서 파생된 **`feature/기능이름`** 브랜치에서 진행합니다.
+   > 예시 : **feature/PlayerMove**, **refactor/AI** 등
    - 작업 완료 후 GitHub에서 **`feature/* -> dev` Pull Request(PR)**를 생성하여 팀원 리뷰 및 CI 빌드 통과 후 머지합니다.
 2. **작업 시작 전 Pull 필수**:
    - 작업을 시작하기 전 무조건 `dev` 브랜치에서 **Fetch 및 Pull**을 받아 최신 상태로 동기화한 뒤 내 작업 브랜치를 생성하거나 이동합니다.
