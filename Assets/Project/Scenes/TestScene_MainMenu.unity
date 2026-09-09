@@ -500,6 +500,18 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 4383657278774399179, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 404468754}
+    - target: {fileID: 4383657278774399179, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: CreateRoom
+      objectReference: {fileID: 0}
+    - target: {fileID: 4383657278774399179, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: CreateRoomUI, Project.Runtime
+      objectReference: {fileID: 0}
     - target: {fileID: 4436347538177126779, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
@@ -983,16 +995,16 @@ MonoBehaviour:
   headlessStartMode: 0
   editorAutoStart: 0
   sendRate: 60
-  offlineScene: 
-  onlineScene: 
+  offlineScene: Assets/Project/Scenes/TestScene_MainMenu.unity
+  onlineScene: Assets/Project/Scenes/TestScene_Lobby.unity
   offlineSceneLoadDelay: 0
-  transport: {fileID: 0}
+  transport: {fileID: 1665083146}
   networkAddress: localhost
   maxConnections: 100
   disconnectInactiveConnections: 0
   disconnectInactiveTimeout: 60
   authenticator: {fileID: 0}
-  playerPrefab: {fileID: 0}
+  playerPrefab: {fileID: 2664645560712947803, guid: e9a462478d6f24f49b0211ef5a0db7e6, type: 3}
   autoCreatePlayer: 1
   playerSpawnMethod: 0
   spawnPrefabs: []
@@ -1013,9 +1025,9 @@ MonoBehaviour:
   timeInterpolationGui: 0
   showRoomGUI: 1
   minPlayers: 1
-  roomPlayerPrefab: {fileID: 0}
-  RoomScene: 
-  GameplayScene: 
+  roomPlayerPrefab: {fileID: 1563068543002930424, guid: fa0266d5fbafb8b4ca0b75fc4512d517, type: 3}
+  RoomScene: Assets/Project/Scenes/TestScene_Lobby.unity
+  GameplayScene: Assets/Project/Scenes/TestScene_Gameplay.unity
   _allPlayersReady: 0
   clientIndex: 0
 --- !u!4 &1665083148
