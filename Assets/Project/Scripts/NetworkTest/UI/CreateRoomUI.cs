@@ -1,3 +1,4 @@
+using Mirror;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -118,10 +119,11 @@ public class CreateRoomUI : MonoBehaviour
 
     public void CreateRoom()
     {
-        var manager = RoomManager.singleton;
+        var manager = RoomManager.singleton as NetworkRoomManager;
 
         // 방 설정 작업 처리
-        //
+        manager.maxConnections = roomData.maxPlayerCount;
+        manager.minPlayers = roomData.maxPlayerCount;
 
         manager.StartHost();
     }

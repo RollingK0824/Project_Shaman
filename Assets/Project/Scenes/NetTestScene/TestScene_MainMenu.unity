@@ -376,6 +376,34 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
+      value: 
+      objectReference: {fileID: 1017367410}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_CallState
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: OnClickEnterGameRoomButton
+      objectReference: {fileID: 0}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: OnlineUI, Project.Runtime
+      objectReference: {fileID: 0}
+    - target: {fileID: 2904040643087459394, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
+      value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
     - target: {fileID: 2973210173951485804, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
       propertyPath: m_Name
       value: Canvas
@@ -995,8 +1023,8 @@ MonoBehaviour:
   headlessStartMode: 0
   editorAutoStart: 0
   sendRate: 60
-  offlineScene: Assets/Project/Scenes/TestScene_MainMenu.unity
-  onlineScene: Assets/Project/Scenes/TestScene_Lobby.unity
+  offlineScene: Assets/Project/Scenes/NetTestScene/TestScene_MainMenu.unity
+  onlineScene: Assets/Project/Scenes/NetTestScene/TestScene_Lobby.unity
   offlineSceneLoadDelay: 0
   transport: {fileID: 1665083146}
   networkAddress: localhost
@@ -1026,8 +1054,8 @@ MonoBehaviour:
   showRoomGUI: 1
   minPlayers: 1
   roomPlayerPrefab: {fileID: 1563068543002930424, guid: fa0266d5fbafb8b4ca0b75fc4512d517, type: 3}
-  RoomScene: Assets/Project/Scenes/TestScene_Lobby.unity
-  GameplayScene: Assets/Project/Scenes/TestScene_Gameplay.unity
+  RoomScene: Assets/Project/Scenes/NetTestScene/TestScene_Lobby.unity
+  GameplayScene: Assets/Project/Scenes/NetTestScene/TestScene_Gameplay.unity
   _allPlayersReady: 0
   clientIndex: 0
 --- !u!4 &1665083148

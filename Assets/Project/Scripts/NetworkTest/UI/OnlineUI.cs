@@ -16,12 +16,22 @@ public class OnlineUI : MonoBehaviour
     {
         if (_nicknameInputField.text != "")
         {
+            //PlayerPrefs.SetString("nickname", _nicknameInputField.text);
+            UserData.Nickname = _nicknameInputField.text;
             _createRoomUI.SetActive(true);
             gameObject.SetActive(false);
+            
         }
         else
         {
             //_nicknameInputField.GetComponent<Animator>().SetTrigger("On");
         }
+    }
+
+    public void OnClickEnterGameRoomButton()
+    {
+        UserData.Nickname = _nicknameInputField.text;
+        var manager = RoomManager.singleton;
+        manager.StartClient();
     }
 }
