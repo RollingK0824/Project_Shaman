@@ -31,7 +31,8 @@ public class OnlineUI : MonoBehaviour
     public void OnClickEnterGameRoomButton()
     {
         UserData.Nickname = _nicknameInputField.text;
-        var manager = RoomManager.singleton;
+        var manager = RoomManager.singleton as RoomManager;
+        manager.BeginJoinAttempt();      
         manager.StartClient();
     }
 }

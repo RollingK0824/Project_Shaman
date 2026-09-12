@@ -3,7 +3,7 @@ using Mirror;
 public class RoomPlayer : NetworkRoomPlayer
 {
     [SyncVar] public string nickname;
-
+    [SyncVar] public int roomMaxPlayers;
     public override void OnGUI()
     {
         
@@ -30,6 +30,21 @@ public class RoomPlayer : NetworkRoomPlayer
     void CmdSetNickname(string name)
     {
         nickname = name;
+    }
+
+    [ClientRpc]
+    public void RpcShowNotEnoughPlayers()
+    {
+        // UI 켜기
+        var lobbyUI = Object.FindFirstObjectByType<LobbyUI>();
+        lobbyUI?.ShowNotification();
+    }
+
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+        var rm = NetworkManager.singleton as NetworkRoomManager;
+        roomMaxPlayers = rm.maxConnections;
     }
 }
 

@@ -1,8 +1,27 @@
-using UnityEngine;
 using Mirror;
+using System.Linq;
+using UnityEngine;
 
 public class RoomManager : NetworkRoomManager
 {
+    private bool _isAttemptingJoin;
+    public void BeginJoinAttempt() => _isAttemptingJoin = true;
+
+    public override void OnRoomClientEnter()
+    {
+        base.OnRoomClientEnter();
+        _isAttemptingJoin = false; // 정상적으로 로비에 들어옴
+    }
+    public override void OnRoomClientDisconnect()
+    {
+        base.OnRoomClientDisconnect();
+        if (_isAttemptingJoin)
+        {
+            _isAttemptingJoin = false;
+            // 방에 접속 불가 UI호출
+        }
+    }
+
     public override void OnGUI()
     {
         
@@ -12,6 +31,15 @@ public class RoomManager : NetworkRoomManager
     // "정확히 몇명이어야 시작" 같은 조건을 추가하고 싶을 때만 override를 사용하자
     public override void OnRoomServerPlayersReady()
     {
+        if (roomSlots.Count < minPlayers)
+        {
+            if (roomSlots.Count > 0)
+            {
+                (roomSlots.ElementAtOrDefault(0) as RoomPlayer)?.RpcShowNotEnoughPlayers();             
+            }
+            return;
+        }
+
         base.OnRoomServerPlayersReady();
     }
 

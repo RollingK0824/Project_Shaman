@@ -1,3 +1,4 @@
+using Mirror;
 using TMPro;
 using UnityEngine;
 
@@ -17,7 +18,15 @@ public class LobbyPlayerRowUI : MonoBehaviour
         }
         if (_readyText != null)
         {
-            _readyText.text = isReady ? "<color=#00FF00>V</color>" : "<color=#FF0000>X</color>";
+            if (NetworkServer.active)
+            {
+                _readyText.text = "H";
+            }
+            else
+            {
+                _readyText.text = isReady ? "<color=#00FF00>V</color>" : "<color=#FF0000>X</color>";
+            }
+            
         }
     }
 }
