@@ -10,7 +10,7 @@ public class LobbyPlayerRowUI : MonoBehaviour
     [SerializeField]
     private TMP_Text _readyText;
 
-    public void SetPlayerInfo(string nickname, bool isReady)
+    public void SetPlayerInfo(string nickname, bool isReady, bool isHost)
     {
         if (_nameText != null)
         {
@@ -18,15 +18,7 @@ public class LobbyPlayerRowUI : MonoBehaviour
         }
         if (_readyText != null)
         {
-            if (NetworkServer.active)
-            {
-                _readyText.text = "H";
-            }
-            else
-            {
-                _readyText.text = isReady ? "<color=#00FF00>V</color>" : "<color=#FF0000>X</color>";
-            }
-            
+            _readyText.text = isHost ? "H" : (isReady ? "<color=#00FF00>V</color>" : "<color=#FF0000>X</color>");
         }
     }
 }

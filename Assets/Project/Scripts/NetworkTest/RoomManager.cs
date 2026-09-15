@@ -15,10 +15,14 @@ public class RoomManager : NetworkRoomManager
     public override void OnRoomClientDisconnect()
     {
         base.OnRoomClientDisconnect();
+        Debug.Log($"[RoomManager] OnRoomClientDisconnect 호출됨, isAttemptingJoin={_isAttemptingJoin}");
         if (_isAttemptingJoin)
         {
             _isAttemptingJoin = false;
             // 방에 접속 불가 UI호출
+            var onlineUI = Object.FindFirstObjectByType<OnlineUI>(FindObjectsInactive.Include);
+            Debug.Log($"[RoomManager] onlineUI 찾음? {onlineUI != null}");
+            onlineUI?.ShowJoinFailed();
         }
     }
 

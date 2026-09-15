@@ -27,6 +27,7 @@ public class LobbyUI : MonoBehaviour
     void Start()
     {
         _leaveConfirmPanel.SetActive(false);
+        _notEnoughPlayerCount.SetActive(false);
     }
     // Update is called once per frame
     void Update()
@@ -65,7 +66,7 @@ public class LobbyUI : MonoBehaviour
             var row = Instantiate(_playerRowPrefab, _playerListParent);
             row.transform.localScale = Vector3.one;
 
-            row.GetComponent<LobbyPlayerRowUI>().SetPlayerInfo(string.IsNullOrEmpty(rp.nickname) ? "Connecting..." : rp.nickname, rp.readyToBegin);
+            row.GetComponent<LobbyPlayerRowUI>().SetPlayerInfo(string.IsNullOrEmpty(rp.nickname) ? "Connecting..." : rp.nickname, rp.readyToBegin, rp.index == 0);
 
         }
 
