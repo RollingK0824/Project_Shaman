@@ -533,6 +533,7 @@ GameObject:
   - component: {fileID: 1665083148}
   - component: {fileID: 1665083147}
   - component: {fileID: 1665083146}
+  - component: {fileID: 1665083149}
   m_Layer: 0
   m_Name: RoomManager
   m_TagString: Untagged
@@ -589,7 +590,7 @@ MonoBehaviour:
   offlineScene: Assets/Project/Scenes/NetTestScene/TestScene_MainMenu.unity
   onlineScene: Assets/Project/Scenes/NetTestScene/TestScene_Lobby.unity
   offlineSceneLoadDelay: 0
-  transport: {fileID: 1665083146}
+  transport: {fileID: 1665083149}
   networkAddress: localhost
   maxConnections: 100
   disconnectInactiveConnections: 0
@@ -636,6 +637,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1665083149
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1665083145}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 513bbb057d473954490cd96c7f4f9ccd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Steam.SteamTransport
 --- !u!1 &2034652486
 GameObject:
   m_ObjectHideFlags: 0
