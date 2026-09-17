@@ -12,6 +12,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private float _gravity = -20f;
     [SerializeField] private float _groundedForce = -2f;
 
+    [Header("Animation")]
+    [SerializeField] private Animator _animator;
+
     public bool CanMove { get; set; } = true;
     public bool CanSprint { get; set; } = true;
 
@@ -19,6 +22,13 @@ public class PlayerController : MonoBehaviour
     private PlayerInputReader _inputReader;
 
     private float _verticalVelocity;
+
+    // Starter Assets Animator parameter
+    private static readonly int SpeedHash =
+        Animator.StringToHash("Speed");
+
+    private static readonly int MotionSpeedHash =
+        Animator.StringToHash("MotionSpeed");
 
     private void Awake()
     {
@@ -46,11 +56,13 @@ public class PlayerController : MonoBehaviour
             moveDirection.Normalize();
         }
 
+        bool isMoving = moveInput.sqrMagnitude > 0.01f;
+
         bool isSprinting =
             CanMove &&
             CanSprint &&
             _inputReader.SprintHeld &&
-            moveInput.sqrMagnitude > 0f;
+            isMoving;
 
         float moveSpeed = isSprinting
             ? _sprintSpeed
@@ -72,6 +84,40 @@ public class PlayerController : MonoBehaviour
 
         _characterController.Move(
             velocity * Time.deltaTime
+        );
+
+        UpdateAnimation(isMoving, isSprinting, moveInput);
+    }
+
+    private void UpdateAnimation(
+        bool isMoving,
+        bool isSprinting,
+        Vector2 moveInput)
+    {
+        if (_animator == null)
+        {
+            return;
+        }
+
+        float animationSpeed = 0f;
+
+        if (isMoving)
+        {
+            animationSpeed = isSprinting
+                ? _sprintSpeed
+                : _walkSpeed;
+        }
+
+        _animator.SetFloat(
+            SpeedHash,
+            animationSpeed,
+            0.1f,
+            Time.deltaTime
+        );
+
+        _animator.SetFloat(
+            MotionSpeedHash,
+            moveInput.magnitude
         );
     }
 }

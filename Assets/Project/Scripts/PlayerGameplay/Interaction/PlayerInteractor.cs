@@ -13,13 +13,24 @@ public class PlayerInteractor : MonoBehaviour
 
     public IInteractable CurrentTarget { get; private set; }
 
+    public bool CanInteract { get; set; } = true;
+
     public event Action<IInteractable> TargetChanged;
 
     private PlayerInputReader _inputReader;
+    private PlayerInspectController _inspectController;
+    private PlayerObservationController _observationController;
 
     private void Awake()
     {
-        _inputReader = GetComponent<PlayerInputReader>();
+        _inputReader =
+            GetComponent<PlayerInputReader>();
+
+        _inspectController =
+            GetComponent<PlayerInspectController>();
+
+        _observationController =
+            GetComponent<PlayerObservationController>();
     }
 
     private void OnEnable()
@@ -42,14 +53,27 @@ public class PlayerInteractor : MonoBehaviour
 
     private void UpdateTarget()
     {
-        IInteractable newTarget = FindInteractable();
+        if (!CanInteract)
+        {
+            SetCurrentTarget(null);
+            return;
+        }
 
+        IInteractable newTarget =
+            FindInteractable();
+
+        SetCurrentTarget(newTarget);
+    }
+
+    private void SetCurrentTarget(IInteractable newTarget)
+    {
         if (ReferenceEquals(CurrentTarget, newTarget))
         {
             return;
         }
 
         CurrentTarget = newTarget;
+
         TargetChanged?.Invoke(CurrentTarget);
     }
 
@@ -75,14 +99,41 @@ public class PlayerInteractor : MonoBehaviour
             return null;
         }
 
-        return hit.collider.GetComponentInParent<IInteractable>();
+        return hit.collider
+            .GetComponentInParent<IInteractable>();
     }
 
     private void TryInteract()
     {
+        // 오브젝트 상세 조사 중이라면
+        // F를 다시 눌러 조사 종료
+        if (_inspectController != null &&
+            _inspectController.IsInspecting)
+        {
+            _inspectController.EndInspection();
+            return;
+        }
+
+        // NPC 집중 관찰 중이라면
+        // F를 다시 눌러 관찰 종료
+        if (_observationController != null &&
+            _observationController.IsObserving)
+        {
+            _observationController.EndObservation();
+            return;
+        }
+
+        if (!CanInteract)
+        {
+            return;
+        }
+
         if (CurrentTarget == null)
         {
-            Debug.Log("[Interaction] 상호작용 가능한 대상이 없습니다.");
+            Debug.Log(
+                "[Interaction] 상호작용 가능한 대상이 없습니다."
+            );
+
             return;
         }
 
@@ -108,7 +159,8 @@ public class PlayerInteractor : MonoBehaviour
 
         Gizmos.DrawRay(
             _playerCamera.transform.position,
-            _playerCamera.transform.forward * _interactionDistance
+            _playerCamera.transform.forward *
+            _interactionDistance
         );
     }
 }

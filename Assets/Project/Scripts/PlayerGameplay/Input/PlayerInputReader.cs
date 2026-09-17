@@ -9,6 +9,7 @@ public class PlayerInputReader : MonoBehaviour
     public bool SprintHeld { get; private set; }
 
     public event Action InteractPressed;
+    public event Action CancelPressed;
     public event Action NotebookPressed;
     public event Action UseItemStarted;
     public event Action UseItemCanceled;
@@ -26,6 +27,7 @@ public class PlayerInputReader : MonoBehaviour
         _input.Player.Enable();
 
         _input.Player.Interact.performed += OnInteract;
+        _input.Player.Cancel.performed += OnCancel;
         _input.Player.Notebook.performed += OnNotebook;
 
         _input.Player.UseItem.started += OnUseItemStarted;
@@ -54,6 +56,7 @@ public class PlayerInputReader : MonoBehaviour
         }
 
         _input.Player.Interact.performed -= OnInteract;
+        _input.Player.Cancel.performed -= OnCancel;
         _input.Player.Notebook.performed -= OnNotebook;
 
         _input.Player.UseItem.started -= OnUseItemStarted;
@@ -81,6 +84,11 @@ public class PlayerInputReader : MonoBehaviour
     private void OnInteract(InputAction.CallbackContext context)
     {
         InteractPressed?.Invoke();
+    }
+
+    private void OnCancel(InputAction.CallbackContext context)
+    {
+        CancelPressed?.Invoke();
     }
 
     private void OnNotebook(InputAction.CallbackContext context)
