@@ -1,0 +1,42 @@
+name: Discord PR Notification
+
+on:
+  pull_request:
+    types: [opened, reopened]
+    branches: [ dev, main ]
+
+jobs:
+  notify-discord:
+    name: Notify Discord on PR
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord Notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL secret is not configured."
+            exit 0
+          fi
+
+          PR_TITLE=$(jq -r .pull_request.title $GITHUB_EVENT_PATH)
+          PR_URL=$(jq -r .pull_request.html_url $GITHUB_EVENT_PATH)
+          PR_USER=$(jq -r .pull_request.user.login $GITHUB_EVENT_PATH)
+          BASE_BRANCH=$(jq -r .pull_request.base.ref $GITHUB_EVENT_PATH)
+          HEAD_BRANCH=$(jq -r .pull_request.head.ref $GITHUB_EVENT_PATH)
+
+          PAYLOAD=$(cat <<EOF
+          {
+            "username": "GitHub PR Notification",
+            "embeds": [
+              {
+                "title": "PR이 생성되었습니다.",
+                "description": "**${PR_TITLE}**\n\n**Target Branch**: \`${BASE_BRANCH}\` (From \`${HEAD_BRANCH}\`)\n**작성자**: ${PR_USER}\n[PR 상세보기](${PR_URL})",
+                "color": 3447003
+              }
+            ]
+          }
+          EOF
+          )
+
+          curl -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$DISCORD_WEBHOOK"
