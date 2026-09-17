@@ -1,50 +1,31 @@
-using System.Collections;
+using System;
+using Mirror;
 using UnityEngine;
 
 public enum TimeOfDay
 {
-    Morning,
-    Noon,
+    Day,
     Night
 }
 
 public class TimeManager : SceneSingleton<TimeManager>
 {
-    public int Day { get; private set; }
-    public TimeOfDay CurrentTimeOfDay { get; private set; }
+    public const float DAY_DURATION = 480f;
+    public const float NIGHT_DURATION = 120f;
+    public const float CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
-    private int _time = 0;
+    public double CycleStartTime {  get; private set; }
+    public int DayCount{ get; private set; }
+    public TimeOfDay TimePhase { get; private set; }
 
-    public void Start()
+    public event Action OnDayStart;
+    public event Action OnNightStart;
+    public event Action<int> OnNewDay;
+
+    public void SetCycleStart(double startTime) => CycleStartTime = startTime;
+
+    private void Update()
     {
-        Day = 1;
-        CurrentTimeOfDay = TimeOfDay.Morning;
-
-        StartCoroutine(UpdateTime());
-    }
-
-    private IEnumerator UpdateTime()
-    {
-        while (!GameManager.Instance.isGameover)
-        {
-            ++_time;
-            if (_time == 60)
-            {
-                _time = 0;
-                ++Day;
-
-                CurrentTimeOfDay = TimeOfDay.Morning;
-            }
-            else if (_time == 48)
-            {
-                CurrentTimeOfDay = TimeOfDay.Night;
-            }
-            else if (_time == 24)
-            {
-                CurrentTimeOfDay = TimeOfDay.Noon;
-            }
-
-            yield return new WaitForSeconds(1f);
-        }
+        double elapsed = NetworkTime
     }
 }
