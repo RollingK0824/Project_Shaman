@@ -224,14 +224,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
-    - target: {fileID: 2020625812040796093, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
-      propertyPath: m_IsActive
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 2102543925048620715, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 2114069253505512055, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -254,7 +246,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 2973210173951485804, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
       propertyPath: m_Name
-      value: Canvas
+      value: Canvas_MainMenu
       objectReference: {fileID: 0}
     - target: {fileID: 3849238247194710520, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
       propertyPath: m_Pivot.x
@@ -376,10 +368,6 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 7350376823197689797, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
-      propertyPath: _joinFailedPanel
-      value: 
-      objectReference: {fileID: 404468744}
     - target: {fileID: 7946867451366490653, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0
@@ -425,11 +413,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
---- !u!1 &404468744 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3062877947198829521, guid: 54a501146cc701c4090f43bea7d0bc0e, type: 3}
-  m_PrefabInstance: {fileID: 404468743}
-  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1016002298
 GameObject:
   m_ObjectHideFlags: 0
@@ -590,7 +573,7 @@ MonoBehaviour:
   offlineScene: Assets/Project/Scenes/NetTestScene/TestScene_MainMenu.unity
   onlineScene: Assets/Project/Scenes/NetTestScene/TestScene_Lobby.unity
   offlineSceneLoadDelay: 0
-  transport: {fileID: 1665083149}
+  transport: {fileID: 1665083146}
   networkAddress: localhost
   maxConnections: 100
   disconnectInactiveConnections: 0
