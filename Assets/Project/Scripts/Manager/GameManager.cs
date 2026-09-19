@@ -1,6 +1,4 @@
-using System.Xml.Serialization;
-using UnityEngine;
-using UnityEngine.Events;
+using System;
 
 public enum GameState
 {
@@ -11,64 +9,76 @@ public enum GameState
 
 public class GameManager : SceneSingleton<GameManager>
 {
-    public int CurrentNpcTotal { get; private set; }
-    public bool isGameover { get; private set; }
-    public UnityAction OnLose;
-    public UnityAction OnWin;
+    public int NpcTotal { get; private set; }
+    public int NpcCount { get; private set; }
+    public int GhostCount { get; private set; }
+    public bool IsGameOver { get; private set; }
+    public GameState CurrentGameState { get; private set; }
 
-    private GameState _currentGameState = GameState.Ongoing;
-    [SerializeField] private int NpcTotal;
-    private int _ghostTotal;
+    public event Action OnLose;
+    public event Action OnWin;
 
-    public void Start()
+    public void Init(int totalNpcs, int totalGhosts)
     {
-        isGameover = false;
-        CurrentNpcTotal = NpcTotal;
+        IsGameOver = false;
+        NpcTotal = totalNpcs;
+        NpcCount = totalNpcs;
+        GhostCount = totalGhosts;
+        CurrentGameState = GameState.Ongoing;
     }
 
-    public void ReportGhostTotal(int total)
+    public void SetNpcCount(int count)
     {
-        _ghostTotal = total;
-    }
+        NpcCount = count;
 
-    public void UpdateNpcCount()
-    {
-        if (_currentGameState == GameState.Ongoing)
+        if ((NpcCount <= NpcTotal / 2) && (CurrentGameState == GameState.Ongoing))
         {
-            --CurrentNpcTotal;
-            if (CurrentNpcTotal == NpcTotal / 2)
-            {
-                _currentGameState = GameState.Lose;
-                OnGameStateChanged();
-            }
+            SetGameState(GameState.Lose);
         }
     }
 
-    public void UpdateGhostCount()
+    public void SetGhostCount(int count)
     {
-        if (_currentGameState == GameState.Ongoing)
+        GhostCount = count;
+
+        if ((GhostCount <= 0) && (CurrentGameState == GameState.Ongoing))
         {
-            --_ghostTotal;
-            if (_ghostTotal == 0)
-            {
-                _currentGameState = GameState.Win;
-                OnGameStateChanged();
-            }
+            SetGameState(GameState.Win);
         }
+    }
+
+    public void SetGameState(GameState newState)
+    {
+        if (CurrentGameState == newState)
+        {
+            return;
+        }
+        CurrentGameState = newState;
+        OnGameStateChanged();
+    }
+
+    public void DecrementNpcCount()
+    {
+        SetNpcCount(NpcCount - 1);
+    }
+
+    public void DecrementGhostCount()
+    {
+        SetGhostCount(GhostCount - 1);
     }
 
     private void OnGameStateChanged()
     {
-        switch (_currentGameState)
+        IsGameOver = (CurrentGameState != GameState.Ongoing);
+
+        switch (CurrentGameState)
         { 
             case (GameState.Win):
-                OnWin.Invoke();
+                OnWin?.Invoke();
                 break;
             case (GameState.Lose):
-                OnLose.Invoke();
+                OnLose?.Invoke();
                 break;
         }
-
-        isGameover = true;
     }
 }
