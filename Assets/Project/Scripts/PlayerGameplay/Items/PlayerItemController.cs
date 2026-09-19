@@ -8,10 +8,19 @@ public class PlayerItemController : MonoBehaviour
     [SerializeField] private Transform _itemHoldPoint;
 
     public int SelectedSlotIndex { get; private set; } = -1;
+
     public ItemData EquippedItemData { get; private set; }
+
+    public bool HasEquippedItem =>
+        _equippedItem != null;
+
+    public bool CanUseItems { get; set; } = true;
 
     private PlayerInputReader _inputReader;
     private PlayerInventory _inventory;
+
+    private PlayerInspectController _inspectController;
+    private PlayerObservationController _observationController;
 
     private GameObject _equippedObject;
     private ItemBase _equippedItem;
@@ -23,13 +32,23 @@ public class PlayerItemController : MonoBehaviour
 
         _inventory =
             GetComponent<PlayerInventory>();
+
+        _inspectController =
+            GetComponent<PlayerInspectController>();
+
+        _observationController =
+            GetComponent<PlayerObservationController>();
     }
 
     private void OnEnable()
     {
         _inputReader.SlotSelected += SelectSlot;
-        _inputReader.UseItemStarted += UseItemStarted;
-        _inputReader.UseItemCanceled += UseItemCanceled;
+
+        _inputReader.UseItemStarted +=
+            UseItemStarted;
+
+        _inputReader.UseItemCanceled +=
+            UseItemCanceled;
     }
 
     private void OnDisable()
@@ -40,29 +59,39 @@ public class PlayerItemController : MonoBehaviour
         }
 
         _inputReader.SlotSelected -= SelectSlot;
-        _inputReader.UseItemStarted -= UseItemStarted;
-        _inputReader.UseItemCanceled -= UseItemCanceled;
+
+        _inputReader.UseItemStarted -=
+            UseItemStarted;
+
+        _inputReader.UseItemCanceled -=
+            UseItemCanceled;
     }
 
     private void SelectSlot(int slotIndex)
     {
-        if (slotIndex < 0 ||
-            slotIndex >= 6)
+        if (!CanUseItems)
         {
             return;
         }
 
-        ItemData itemData =
-            _inventory.GetQuickSlotItem(slotIndex);
+        if (slotIndex < 0 ||
+            slotIndex >= _inventory.QuickSlotCount)
+        {
+            return;
+        }
 
         SelectedSlotIndex = slotIndex;
+
+        ItemData itemData =
+            _inventory.GetQuickSlotItem(slotIndex);
 
         if (itemData == null)
         {
             UnequipCurrentItem();
 
             Debug.Log(
-                $"[Item] 슬롯 {slotIndex + 1}: 비어 있음"
+                $"[Item] 슬롯 {slotIndex + 1}: " +
+                "비어 있음"
             );
 
             return;
@@ -78,12 +107,45 @@ public class PlayerItemController : MonoBehaviour
 
     private void EquipItem(ItemData itemData)
     {
+        if (!CanUseItems)
+        {
+            return;
+        }
+
+        if (itemData == null)
+        {
+            return;
+        }
+
+        if (ReferenceEquals(
+                EquippedItemData,
+                itemData) &&
+            _equippedItem != null)
+        {
+            return;
+        }
+
         UnequipCurrentItem();
 
-        if (itemData == null ||
-            itemData.HeldPrefab == null ||
-            _itemHoldPoint == null)
+        if (_itemHoldPoint == null)
         {
+            Debug.LogWarning(
+                "[Item] ItemHoldPoint가 " +
+                "지정되지 않았습니다.",
+                gameObject
+            );
+
+            return;
+        }
+
+        if (itemData.HeldPrefab == null)
+        {
+            Debug.LogWarning(
+                $"[Item] {itemData.DisplayName}의 " +
+                "Held Prefab이 없습니다.",
+                itemData
+            );
+
             return;
         }
 
@@ -99,9 +161,6 @@ public class PlayerItemController : MonoBehaviour
         _equippedObject.transform.localRotation =
             Quaternion.identity;
 
-        _equippedObject.transform.localScale =
-            Vector3.one;
-
         _equippedItem =
             _equippedObject.GetComponent<ItemBase>();
 
@@ -109,28 +168,42 @@ public class PlayerItemController : MonoBehaviour
         {
             Debug.LogWarning(
                 $"[Item] {itemData.DisplayName}의 " +
-                "Held Prefab에 ItemBase가 없습니다.",
+                "Held Prefab에 ItemBase 계열 " +
+                "컴포넌트가 없습니다.",
                 _equippedObject
             );
 
             Destroy(_equippedObject);
 
             _equippedObject = null;
-            EquippedItemData = null;
 
             return;
         }
 
-        EquippedItemData = itemData;
+        EquippedItemData =
+            itemData;
 
         _equippedItem.Initialize(
             itemData,
             gameObject
         );
+
+        _equippedItem.OnEquipped();
+
+        Debug.Log(
+            $"[Item] 장착: " +
+            $"{itemData.DisplayName}",
+            _equippedObject
+        );
     }
 
-    private void UnequipCurrentItem()
+    public void UnequipCurrentItem()
     {
+        if (_equippedItem != null)
+        {
+            _equippedItem.OnUnequipped();
+        }
+
         if (_equippedObject != null)
         {
             Destroy(_equippedObject);
@@ -143,7 +216,7 @@ public class PlayerItemController : MonoBehaviour
 
     private void UseItemStarted()
     {
-        if (_equippedItem == null)
+        if (!CanUseItem())
         {
             return;
         }
@@ -153,11 +226,43 @@ public class PlayerItemController : MonoBehaviour
 
     private void UseItemCanceled()
     {
+        if (!CanUseItems)
+        {
+            return;
+        }
+
         if (_equippedItem == null)
         {
             return;
         }
 
         _equippedItem.OnUseCanceled();
+    }
+
+    private bool CanUseItem()
+    {
+        if (!CanUseItems)
+        {
+            return false;
+        }
+
+        if (_equippedItem == null)
+        {
+            return false;
+        }
+
+        if (_inspectController != null &&
+            _inspectController.IsInspecting)
+        {
+            return false;
+        }
+
+        if (_observationController != null &&
+            _observationController.IsObserving)
+        {
+            return false;
+        }
+
+        return true;
     }
 }

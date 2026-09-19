@@ -6,15 +6,14 @@ public class PlayerInventory : MonoBehaviour
 {
     private const int QUICK_SLOT_COUNT = 6;
 
-    [Header("Inventory")]
-    [SerializeField] private int _inventoryCapacity = 12;
-
     private readonly List<ItemData> _items =
         new List<ItemData>();
 
     private ItemData[] _quickSlots;
 
     public IReadOnlyList<ItemData> Items => _items;
+
+    public int QuickSlotCount => QUICK_SLOT_COUNT;
 
     public event Action<ItemData> ItemAdded;
     public event Action<int, ItemData> QuickSlotChanged;
@@ -32,23 +31,12 @@ public class PlayerInventory : MonoBehaviour
             return false;
         }
 
-        if (_items.Count >= _inventoryCapacity)
-        {
-            Debug.Log(
-                "[Inventory] 인벤토리가 가득 찼습니다."
-            );
-
-            return false;
-        }
-
         _items.Add(itemData);
 
         ItemAdded?.Invoke(itemData);
 
         Debug.Log(
-            $"[Inventory] 획득: " +
-            $"{itemData.DisplayName} " +
-            $"({_items.Count}/{_inventoryCapacity})"
+            $"[Inventory] 획득: {itemData.DisplayName}"
         );
 
         TryAssignFirstEmptyQuickSlot(itemData);
@@ -58,8 +46,7 @@ public class PlayerInventory : MonoBehaviour
 
     public ItemData GetQuickSlotItem(int slotIndex)
     {
-        if (slotIndex < 0 ||
-            slotIndex >= QUICK_SLOT_COUNT)
+        if (!IsValidQuickSlotIndex(slotIndex))
         {
             return null;
         }
@@ -71,8 +58,7 @@ public class PlayerInventory : MonoBehaviour
         int slotIndex,
         ItemData itemData)
     {
-        if (slotIndex < 0 ||
-            slotIndex >= QUICK_SLOT_COUNT)
+        if (!IsValidQuickSlotIndex(slotIndex))
         {
             return false;
         }
@@ -80,6 +66,12 @@ public class PlayerInventory : MonoBehaviour
         if (itemData != null &&
             !_items.Contains(itemData))
         {
+            Debug.LogWarning(
+                $"[Inventory] 보유하지 않은 아이템은 " +
+                $"슬롯에 등록할 수 없습니다: " +
+                $"{itemData.DisplayName}"
+            );
+
             return false;
         }
 
@@ -91,6 +83,16 @@ public class PlayerInventory : MonoBehaviour
         );
 
         return true;
+    }
+
+    public bool Contains(ItemData itemData)
+    {
+        if (itemData == null)
+        {
+            return false;
+        }
+
+        return _items.Contains(itemData);
     }
 
     private void TryAssignFirstEmptyQuickSlot(
@@ -123,7 +125,15 @@ public class PlayerInventory : MonoBehaviour
 
         Debug.Log(
             $"[Inventory] {itemData.DisplayName} 획득. " +
-            "비어 있는 퀵슬롯은 없습니다."
+            "현재 비어 있는 퀵슬롯은 없습니다."
         );
+    }
+
+    private bool IsValidQuickSlotIndex(
+        int slotIndex)
+    {
+        return
+            slotIndex >= 0 &&
+            slotIndex < QUICK_SLOT_COUNT;
     }
 }

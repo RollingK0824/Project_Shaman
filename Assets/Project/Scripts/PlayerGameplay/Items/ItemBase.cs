@@ -18,4 +18,12 @@ public abstract class ItemBase : MonoBehaviour
     public virtual void OnUseCanceled()
     {
     }
+
+    public virtual void OnEquipped()
+    {
+    }
+
+    public virtual void OnUnequipped()
+    {
+    }
 }

@@ -6,6 +6,10 @@ public class WorldItem : MonoBehaviour, IInteractable
     [Header("Item")]
     [SerializeField] private ItemData _itemData;
 
+    private bool _isCollected;
+
+    public ItemData ItemData => _itemData;
+
     public string InteractionPrompt
     {
         get
@@ -21,18 +25,34 @@ public class WorldItem : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
-        return
-            _itemData != null &&
-            interactor.GetComponent<PlayerInventory>() != null;
+        if (_isCollected)
+        {
+            return false;
+        }
+
+        if (_itemData == null)
+        {
+            return false;
+        }
+
+        PlayerInventory inventory =
+            interactor.GetComponent<PlayerInventory>();
+
+        return inventory != null;
     }
 
     public void Interact(GameObject interactor)
     {
+        if (_isCollected ||
+            _itemData == null)
+        {
+            return;
+        }
+
         PlayerInventory inventory =
             interactor.GetComponent<PlayerInventory>();
 
-        if (inventory == null ||
-            _itemData == null)
+        if (inventory == null)
         {
             return;
         }
@@ -45,15 +65,14 @@ public class WorldItem : MonoBehaviour, IInteractable
             return;
         }
 
+        _isCollected = true;
+
         Debug.Log(
             $"[WorldItem] 획득 완료: " +
             $"{_itemData.DisplayName}",
             gameObject
         );
 
-        // 프로토타입에서는 비활성화.
-        // 이후 PoolManager가 연결되면
-        // Pool 반환 방식으로 교체 가능.
         gameObject.SetActive(false);
     }
 }
