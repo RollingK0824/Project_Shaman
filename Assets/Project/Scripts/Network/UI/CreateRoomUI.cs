@@ -20,7 +20,7 @@ public class CreateRoomUI : MonoBehaviour
     {
 
 
-        roomData = new CreateGameRoomData() { ghostCount = 4, maxPlayerCount = 10 };
+        roomData = new CreateGameRoomData() { ghostCount = 4, maxPlayerCount = 4 };
         //UpdateCrewImage();
     }
 
@@ -119,11 +119,13 @@ public class CreateRoomUI : MonoBehaviour
 
     public void CreateRoom()
     {
-        var manager = RoomManager.singleton as NetworkRoomManager;
+        var manager = RoomManager.singleton as RoomManager;
 
         // 방 설정 작업 처리
         manager.maxConnections = roomData.maxPlayerCount;
         manager.minPlayers = roomData.maxPlayerCount;
+
+        manager.SetGhostCount(roomData.ghostCount);
 
         manager.StartHost();
     }

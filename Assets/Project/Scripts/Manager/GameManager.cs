@@ -1,3 +1,4 @@
+using Steamworks;
 using System;
 
 public enum GameState
@@ -80,5 +81,17 @@ public class GameManager : SceneSingleton<GameManager>
                 OnLose?.Invoke();
                 break;
         }
+    }
+
+
+    public void ApplyNetworkState(int npcTotal, int npcCount, int ghostCount, GameState state)
+    {
+        NpcTotal = npcTotal;
+        NpcCount = npcCount;
+        GhostCount = ghostCount;
+
+        IsGameOver = state != GameState.Ongoing;
+
+        SetGameState(state);
     }
 }
