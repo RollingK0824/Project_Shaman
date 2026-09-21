@@ -9,24 +9,24 @@ public class NetGM : NetworkBehaviour
         GameManager.Instance.OnWin -= () => RpcAnnounceResult(false);
     }
 
-    [Server] public void ServerReportNpcDied() => GameManager.Instance.UpdateNpcCount();
-    [Server] public void ServerReportGhostExorcised() => GameManager.Instance.UpdateGhostCount();
+    //[Server] public void ServerReportNpcDied() => GameManager.Instance.UpdateNpcCount();
+    //[Server] public void ServerReportGhostExorcised() => GameManager.Instance.UpdateGhostCount();
 
     [ClientRpc]
     private void RpcAnnounceResult(bool win)
     {
-        if (isServer)
-        {
-            return;
-        }
-
-        if (win)
-        {
-            GameManager.Instance.OnWin?.Invoke();
-        }
-        else
-        {
-            GameManager.Instance.OnLose?.Invoke();
-        }
+        //if (isServer)
+        //{
+        //    return;
+        //}
+        //
+        //if (win)
+        //{
+        //    GameManager.Instance.OnWin?.Invoke();
+        //}
+        //else
+        //{
+        //    GameManager.Instance.OnLose?.Invoke();
+        //}
     }
 }

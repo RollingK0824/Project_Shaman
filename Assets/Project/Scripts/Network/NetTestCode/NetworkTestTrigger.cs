@@ -33,10 +33,10 @@ public class NetworkTestTrigger : MonoBehaviour
     {
         if (!NetworkServer.active) return; // 호스트(서버)에서만 테스트 입력 허용
 
-        if (Input.GetKeyDown(KeyCode.Alpha9))
-            _gameNetwork.ServerReportGhostExorcised();
-
-        if (Input.GetKeyDown(KeyCode.Alpha0))
-            _gameNetwork.ServerReportNpcDied();
+        //if (Input.GetKeyDown(KeyCode.Alpha9))
+        //    _gameNetwork.ServerReportGhostExorcised();
+        //
+        //if (Input.GetKeyDown(KeyCode.Alpha0))
+        //    _gameNetwork.ServerReportNpcDied();
     }
 }
