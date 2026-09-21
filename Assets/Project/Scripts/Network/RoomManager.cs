@@ -1,9 +1,17 @@
 using Mirror;
+using Mirror.BouncyCastle.Asn1.Mozilla;
 using System.Linq;
 using UnityEngine;
 
 public class RoomManager : NetworkRoomManager
 {
+    public int SelectedGhostCount { get; private set; }
+
+    public void SetGhostCount(int ghostCount)
+    {
+        SelectedGhostCount = ghostCount;
+    }
+
     private bool _isAttemptingJoin;
     public void BeginJoinAttempt() => _isAttemptingJoin = true;
 
