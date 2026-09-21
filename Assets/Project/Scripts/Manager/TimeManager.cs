@@ -10,8 +10,8 @@ public enum TimeOfDay
 
 public class TimeManager : SceneSingleton<TimeManager>
 {
-    public const float DAY_DURATION = 480f;
-    public const float NIGHT_DURATION = 120f;
+    public const float DAY_DURATION = 40f;
+    public const float NIGHT_DURATION = 20f;
     public const float CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
     public double CycleStartTime {  get; private set; }
