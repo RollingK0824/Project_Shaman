@@ -39,7 +39,8 @@ public class PlayerController : NetworkBehaviour
 
     private void Update()
     {
-        if (!isLocalPlayer)
+        // 네트워크 플레이 중일 때만 Local Player 여부를 검사
+        if (NetworkClient.active && !isLocalPlayer)
         {
             return;
         }
