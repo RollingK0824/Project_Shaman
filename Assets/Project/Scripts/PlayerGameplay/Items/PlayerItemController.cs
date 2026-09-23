@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerInventory))]
@@ -19,8 +19,7 @@ public class PlayerItemController : MonoBehaviour
     private PlayerInputReader _inputReader;
     private PlayerInventory _inventory;
 
-    private PlayerInspectController _inspectController;
-    private PlayerObservationController _observationController;
+    private PlayerViewModeController _viewModeController;
 
     private GameObject _equippedObject;
     private ItemBase _equippedItem;
@@ -33,11 +32,8 @@ public class PlayerItemController : MonoBehaviour
         _inventory =
             GetComponent<PlayerInventory>();
 
-        _inspectController =
-            GetComponent<PlayerInspectController>();
-
-        _observationController =
-            GetComponent<PlayerObservationController>();
+        _viewModeController =
+            GetComponent<PlayerViewModeController>();
     }
 
     private void OnEnable()
@@ -251,14 +247,8 @@ public class PlayerItemController : MonoBehaviour
             return false;
         }
 
-        if (_inspectController != null &&
-            _inspectController.IsInspecting)
-        {
-            return false;
-        }
-
-        if (_observationController != null &&
-            _observationController.IsObserving)
+        if (_viewModeController != null &&
+            _viewModeController.IsBusy)
         {
             return false;
         }

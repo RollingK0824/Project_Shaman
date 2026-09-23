@@ -1,8 +1,9 @@
 ﻿using UnityEngine;
+using Mirror;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInputReader))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float _walkSpeed = 4f;
@@ -38,6 +39,12 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        // 네트워크 플레이 중일 때만 Local Player 여부를 검사
+        if (NetworkClient.active && !isLocalPlayer)
+        {
+            return;
+        }
+
         HandleMovement();
     }
 

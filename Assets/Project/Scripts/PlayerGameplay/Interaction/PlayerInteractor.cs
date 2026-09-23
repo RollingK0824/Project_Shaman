@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 [RequireComponent(typeof(PlayerInputReader))]
@@ -12,25 +12,17 @@ public class PlayerInteractor : MonoBehaviour
     [SerializeField] private LayerMask _interactionMask = ~0;
 
     public IInteractable CurrentTarget { get; private set; }
-
     public bool CanInteract { get; set; } = true;
 
     public event Action<IInteractable> TargetChanged;
 
     private PlayerInputReader _inputReader;
-    private PlayerInspectController _inspectController;
-    private PlayerObservationController _observationController;
+    private PlayerViewModeController _viewModeController;
 
     private void Awake()
     {
-        _inputReader =
-            GetComponent<PlayerInputReader>();
-
-        _inspectController =
-            GetComponent<PlayerInspectController>();
-
-        _observationController =
-            GetComponent<PlayerObservationController>();
+        _inputReader = GetComponent<PlayerInputReader>();
+        _viewModeController = GetComponent<PlayerViewModeController>();
     }
 
     private void OnEnable()
@@ -59,10 +51,7 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        IInteractable newTarget =
-            FindInteractable();
-
-        SetCurrentTarget(newTarget);
+        SetCurrentTarget(FindInteractable());
     }
 
     private void SetCurrentTarget(IInteractable newTarget)
@@ -73,7 +62,6 @@ public class PlayerInteractor : MonoBehaviour
         }
 
         CurrentTarget = newTarget;
-
         TargetChanged?.Invoke(CurrentTarget);
     }
 
@@ -99,27 +87,14 @@ public class PlayerInteractor : MonoBehaviour
             return null;
         }
 
-        return hit.collider
-            .GetComponentInParent<IInteractable>();
+        return hit.collider.GetComponentInParent<IInteractable>();
     }
 
     private void TryInteract()
     {
-        // 오브젝트 상세 조사 중이라면
-        // F를 다시 눌러 조사 종료
-        if (_inspectController != null &&
-            _inspectController.IsInspecting)
+        if (_viewModeController != null && _viewModeController.IsBusy)
         {
-            _inspectController.EndInspection();
-            return;
-        }
-
-        // NPC 집중 관찰 중이라면
-        // F를 다시 눌러 관찰 종료
-        if (_observationController != null &&
-            _observationController.IsObserving)
-        {
-            _observationController.EndObservation();
+            _viewModeController.EndCurrentMode();
             return;
         }
 
@@ -130,20 +105,11 @@ public class PlayerInteractor : MonoBehaviour
 
         if (CurrentTarget == null)
         {
-            Debug.Log(
-                "[Interaction] 상호작용 가능한 대상이 없습니다."
-            );
-
             return;
         }
 
         if (!CurrentTarget.CanInteract(gameObject))
         {
-            Debug.Log(
-                $"[Interaction] 현재 상호작용할 수 없습니다: " +
-                $"{CurrentTarget.InteractionPrompt}"
-            );
-
             return;
         }
 
@@ -159,8 +125,7 @@ public class PlayerInteractor : MonoBehaviour
 
         Gizmos.DrawRay(
             _playerCamera.transform.position,
-            _playerCamera.transform.forward *
-            _interactionDistance
+            _playerCamera.transform.forward * _interactionDistance
         );
     }
 }

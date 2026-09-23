@@ -1,47 +1,48 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
-[RequireComponent(typeof(StressEventSource))]
 public class StressEventTrigger : MonoBehaviour
 {
+    [Header("Stress Event")]
+    [SerializeField] private StressCause _cause = StressCause.Unknown;
+    [SerializeField] private float _stressAmount = 20f;
+
     [Header("Trigger")]
     [SerializeField] private bool _oncePerEntry = true;
 
-    private StressEventSource _stressEventSource;
     private bool _hasTriggered;
-
-    private void Awake()
-    {
-        _stressEventSource =
-            GetComponent<StressEventSource>();
-    }
 
     private void Reset()
     {
-        Collider triggerCollider =
-            GetComponent<Collider>();
-
+        Collider triggerCollider = GetComponent<Collider>();
         triggerCollider.isTrigger = true;
+    }
+
+    private void OnValidate()
+    {
+        if (_stressAmount < 0f)
+        {
+            _stressAmount = 0f;
+        }
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (_oncePerEntry &&
-            _hasTriggered)
+        if (_oncePerEntry && _hasTriggered)
         {
             return;
         }
 
-        IStressReceiver receiver =
-            other.GetComponentInParent<IStressReceiver>();
-
+        IStressReceiver receiver = other.GetComponentInParent<IStressReceiver>();
         if (receiver == null)
         {
             return;
         }
 
-        _stressEventSource.ApplyTo(
-            other.gameObject
+        receiver.ReceiveStress(
+            _stressAmount,
+            _cause,
+            gameObject
         );
 
         _hasTriggered = true;
@@ -49,15 +50,13 @@ public class StressEventTrigger : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        IStressReceiver receiver =
-            other.GetComponentInParent<IStressReceiver>();
-
-        if (receiver == null)
+        if (!_oncePerEntry)
         {
             return;
         }
 
-        if (_oncePerEntry)
+        IStressReceiver receiver = other.GetComponentInParent<IStressReceiver>();
+        if (receiver != null)
         {
             _hasTriggered = false;
         }
