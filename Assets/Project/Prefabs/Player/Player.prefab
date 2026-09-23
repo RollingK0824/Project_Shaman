@@ -140,17 +140,11 @@ GameObject:
   - component: {fileID: 3460925602991543131}
   - component: {fileID: 1017351574171301123}
   - component: {fileID: 6614405682725163397}
-  - component: {fileID: 258091725276398162}
-  - component: {fileID: 571491349454476699}
   - component: {fileID: 1740961789767872771}
-  - component: {fileID: 7169122601901923196}
-  - component: {fileID: 356531332784583343}
   - component: {fileID: 4333551808427327467}
   - component: {fileID: 5536704524385173201}
-  - component: {fileID: 14905456944657189}
   - component: {fileID: 6653462774425998409}
   - component: {fileID: 7800875382980882402}
-  - component: {fileID: 703763627253766183}
   - component: {fileID: 2636148921308861758}
   - component: {fileID: 6646170040135342783}
   - component: {fileID: 3581112368407717730}
@@ -227,6 +221,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4bcebfdb28c7ee24dba3cead3bb54bbb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::PlayerController
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
   _walkSpeed: 4
   _sprintSpeed: 6
   _gravity: -20
@@ -265,36 +262,6 @@ MonoBehaviour:
   _interactionMask:
     serializedVersion: 2
     m_Bits: 4294967295
---- !u!114 &258091725276398162
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3407663728714859469}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0a827797e36ffd444a61d31be6244863, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::PlayerInspectController
-  _inspectAnchor: {fileID: 2614255864624061673}
-  _rotationSensitivity: 0.2
---- !u!114 &571491349454476699
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3407663728714859469}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e1028cdfca5a3414a87e899c3af05223, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::PlayerObservationController
-  _playerCamera: {fileID: 4560346124410267089}
-  _focusFov: 35
-  _rotationSpeed: 12
-  _fovSpeed: 8
 --- !u!114 &1740961789767872771
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -309,34 +276,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::PlayerStressController
   _currentStress: 0
   _maxStress: 100
---- !u!114 &7169122601901923196
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3407663728714859469}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1288ad05911fd9f4fb0bd1664458a031, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::PlayerStressFeedback
-  _playerCamera: {fileID: 4560346124410267089}
-  _maxShakeAmount: 0.025
-  _shakeSpeed: 14
---- !u!114 &356531332784583343
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3407663728714859469}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e05fbf405f5d9fd4581519e22210d870, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::StressDebugTester
-  _changeAmount: 10
 --- !u!114 &4333551808427327467
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -362,18 +301,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::PlayerItemController
   _itemHoldPoint: {fileID: 4585386622319706783}
---- !u!114 &14905456944657189
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3407663728714859469}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 7c5894f18c505f042a81e0007a6c2b45, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::PlayerInventory
 --- !u!114 &6653462774425998409
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -401,29 +328,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ea21fd6d7df59c1498e20af8d74fcbf3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::InteractionPromptHUD
+  _playerInteractor: {fileID: 0}
   _showUnavailableStatus: 1
   _fontSize: 24
   _verticalPosition: 0.62
   _height: 40
---- !u!114 &703763627253766183
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3407663728714859469}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b1a21b2324da08248978e953ae0f85b0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::PlayerHitFeedback
-  _hitFeedbackPivot: {fileID: 72937477681046979}
-  _hitVolume: {fileID: 0}
-  _shakeDuration: 0.2
-  _shakeAmount: 0.04
-  _shakeRotationAmount: 1.5
-  _shakeSpeed: 30
-  _volumeFadeSpeed: 6
 --- !u!114 &2636148921308861758
 MonoBehaviour:
   m_ObjectHideFlags: 0
