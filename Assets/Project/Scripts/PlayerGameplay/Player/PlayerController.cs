@@ -1,8 +1,9 @@
 ﻿using UnityEngine;
+using Mirror;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInputReader))]
-public class PlayerController : MonoBehaviour
+public class PlayerController : NetworkBehaviour
 {
     [Header("Movement")]
     [SerializeField] private float _walkSpeed = 4f;
@@ -38,6 +39,11 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        if (!isLocalPlayer)
+        {
+            return;
+        }
+
         HandleMovement();
     }
 
