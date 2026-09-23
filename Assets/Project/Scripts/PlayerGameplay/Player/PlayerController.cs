@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Mirror;
 
 [RequireComponent(typeof(CharacterController))]
 [RequireComponent(typeof(PlayerInputReader))]
