@@ -130,13 +130,29 @@ namespace ProjectShaman.Steam
 
         public override void ServerSend(int connectionId, ArraySegment<byte> segment, int channelId = Channels.Reliable)
         {
-            if (!_serverConnections.TryGetValue(connectionId, out var conn)) return;
+            if (!_serverConnections.TryGetValue(connectionId, out var conn))
+            {
+                return;
+            }
             SendInternal(conn, segment, channelId);
         }
 
         public override void ServerDisconnect(int connectionId)
         {
-            // TODO: CloseConnection + 딕셔너리 제거
+            if (!_serverConnections.TryGetValue(connectionId, out var conn))
+            {
+                return;
+            }
+
+            // 목록에서 제거
+            _serverConnections.Remove(connectionId);
+
+            // linger = true : 아직 보내지 못한 Reliable 메시지를 전송한 뒤 닫음
+            SteamNetworkingSockets.CloseConnection(conn, 0, "server disconnect", true);
+            Debug.Log($"[SteamTransport] ServerDisconnect connId = {connectionId}");
+
+            // 서버가 직접 끊은 경우에도 Mirror에 알려야 연결 정리가 진행됨
+            OnServerDisconnected?.Invoke(connectionId);
         }
 
         public override string ServerGetClientAddress(int connectionId)

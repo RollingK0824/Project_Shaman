@@ -135,14 +135,14 @@ public class LobbyUI : MonoBehaviour
         }
         else
         {
-            NetworkManager.singleton.StopClient();
+            ((RoomManager)NetworkManager.singleton).LeaveSession();
         }
     }
     // 호스트가 방 나가기를 할때의 UI에서 확인버튼 클릭시
     public void OnConfirmLeave()
     {
         _leaveConfirmPanel.SetActive(false);
-        NetworkManager.singleton.StopHost();
+        ((RoomManager)NetworkManager.singleton).LeaveSession();
     }
 
     // 호스트가 방 나가기를 할때의 UI에서 취소버튼 클릭시

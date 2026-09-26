@@ -5,6 +5,12 @@ using System.Linq;
 using UnityEngine;
 using kcp2k;
 
+public enum DisconnectNotice
+{
+    None,
+    HostLost,
+}
+
 public class RoomManager : NetworkRoomManager
 {
     [Header("Transport")]
@@ -13,6 +19,9 @@ public class RoomManager : NetworkRoomManager
 
     [SerializeField] private bool _useKcpInEditor = true;
 
+    public static DisconnectNotice PendingNotice { get; private set;  }
+
+
     public bool IsUsingSteam => transport is SteamTransport;
 
     public int SelectedGhostCount { get; private set; }
@@ -20,8 +29,20 @@ public class RoomManager : NetworkRoomManager
     private bool _isAttemptingJoin;
     public void BeginJoinAttempt() => _isAttemptingJoin = true;
 
-    // [클라] 접속 시도가 로비 입장 전에 끊겼을 때 발생
+    // 접속 시도가 로비 입장 전에 끊겼을 때 발생
     public static event Action JoinFailed;
+
+    // 게임 도중 참가자가 나갈 때, 그 플레이어 오브젝트가 파괴되기 직전에 발생
+    public static event Action <GameObject> ServerGamePlayerLeaving;
+
+    // 서버 종료 중인지. 종료할 때는 모든 연결이 한꺼번에 끊기므로 이탈로 보지 않음
+    private bool _isServerStopping;
+
+    // 사용자가 직접 나가기를 눌렀는지. 이 경우에는 끊김 안내를 띄우지 않음
+    private bool _isLeavingVoluntarily;
+
+
+
 
     public override void Awake()
     {
@@ -43,6 +64,25 @@ public class RoomManager : NetworkRoomManager
         Debug.Log($"[RoomManager] Transport: {transport.GetType().Name}");
     }
 
+    public override void OnStartServer()
+    {
+        _isServerStopping = false;
+        base.OnStartServer();
+    }
+
+    public override void OnStartClient()
+    {
+        _isLeavingVoluntarily = false;
+        base.OnStartClient();
+    }
+
+    public override void OnStopServer()
+    {
+        _isServerStopping = true;
+        base.OnStopServer();
+    }
+
+
     public void SetGhostCount(int ghostCount)
     {
         SelectedGhostCount = ghostCount;
@@ -55,6 +95,28 @@ public class RoomManager : NetworkRoomManager
         base.OnRoomClientEnter();
         _isAttemptingJoin = false; // 정상적으로 로비에 들어옴
     }
+    public override void OnRoomServerDisconnect(NetworkConnectionToClient conn)
+    {
+        base.OnRoomServerDisconnect(conn);
+
+        if (_isServerStopping || conn is LocalConnectionToClient)
+        {
+            return;
+        }
+
+        if (!Mirror.Utils.IsSceneActive(GameplayScene))
+        {
+            return;
+        }
+
+        if (conn.identity == null)
+        {
+            return;
+        }
+
+        Debug.Log($"[RoomManager] 게임 중 이탈: connId = {conn.connectionId}");
+        ServerGamePlayerLeaving?.Invoke(conn.identity.gameObject);
+    }
     public override void OnRoomClientDisconnect()
     {
         base.OnRoomClientDisconnect();
@@ -63,18 +125,13 @@ public class RoomManager : NetworkRoomManager
         {
             _isAttemptingJoin = false;
             JoinFailed?.Invoke();
+            return;
         }
 
-
-        //Debug.Log($"[RoomManager] OnRoomClientDisconnect 호출됨, isAttemptingJoin={_isAttemptingJoin}");
-        //if (_isAttemptingJoin)
-        //{
-        //    _isAttemptingJoin = false;
-        //    // 방에 접속 불가 UI호출
-        //    var onlineUI = Object.FindFirstObjectByType<OnlineUI>(FindObjectsInactive.Include);
-        //    Debug.Log($"[RoomManager] onlineUI 찾음? {onlineUI != null}");
-        //    onlineUI?.ShowJoinFailed();
-        //}
+        if (!_isLeavingVoluntarily && !NetworkServer.active)
+        {
+            PendingNotice = DisconnectNotice.HostLost;
+        }
     }
 
     public override void OnGUI()
@@ -120,5 +177,22 @@ public class RoomManager : NetworkRoomManager
         }
 
         return gamePlayerObj;
+    }
+
+
+    public static DisconnectNotice ConsumeNotice()
+    {
+        DisconnectNotice notice = PendingNotice;
+        PendingNotice = DisconnectNotice.None;
+        return notice;
+    }
+
+    public void LeaveSession()
+    {
+        _isLeavingVoluntarily = true;
+
+        if (NetworkServer.active && NetworkClient.isConnected) StopHost();
+        else if (NetworkClient.active) StopClient();
+        else if (NetworkServer.active) StopServer();
     }
 }
