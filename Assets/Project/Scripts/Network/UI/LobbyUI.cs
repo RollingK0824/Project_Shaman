@@ -29,6 +29,18 @@ public class LobbyUI : MonoBehaviour
         _leaveConfirmPanel.SetActive(false);
         _notEnoughPlayerCount.SetActive(false);
     }
+
+    private void OnEnable()
+    {
+        RoomPlayer.NotEnoughPlayers += ShowNotification;
+    }
+
+    private void OnDisable()
+    {
+        RoomPlayer.NotEnoughPlayers -= ShowNotification;
+    }
+
+
     // Update is called once per frame
     void Update()
     {

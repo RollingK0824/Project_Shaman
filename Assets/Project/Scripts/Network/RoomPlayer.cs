@@ -1,9 +1,13 @@
 using UnityEngine;
 using Mirror;
+using System;
 public class RoomPlayer : NetworkRoomPlayer
 {
     [SyncVar] public string nickname;
     [SyncVar] public int roomMaxPlayers;
+
+    public static event Action NotEnoughPlayers;
+
     public override void OnGUI()
     {
         
@@ -35,9 +39,7 @@ public class RoomPlayer : NetworkRoomPlayer
     [ClientRpc]
     public void RpcShowNotEnoughPlayers()
     {
-        // UI 켜기
-        var lobbyUI = Object.FindFirstObjectByType<LobbyUI>();
-        lobbyUI?.ShowNotification();
+        NotEnoughPlayers?.Invoke();
     }
 
     public override void OnStartServer()

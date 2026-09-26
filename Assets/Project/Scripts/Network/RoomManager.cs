@@ -1,19 +1,54 @@
 using Mirror;
-using Mirror.BouncyCastle.Asn1.Mozilla;
+using ProjectShaman.Steam;
+using System;
 using System.Linq;
 using UnityEngine;
+using kcp2k;
 
 public class RoomManager : NetworkRoomManager
 {
+    [Header("Transport")]
+    [SerializeField] private SteamTransport _steamTransport;
+    [SerializeField] private KcpTransport _kcpTransport;
+
+    [SerializeField] private bool _useKcpInEditor = true;
+
+    public bool IsUsingSteam => transport is SteamTransport;
+
     public int SelectedGhostCount { get; private set; }
+
+    private bool _isAttemptingJoin;
+    public void BeginJoinAttempt() => _isAttemptingJoin = true;
+
+    // [클라] 접속 시도가 로비 입장 전에 끊겼을 때 발생
+    public static event Action JoinFailed;
+
+    public override void Awake()
+    {
+        // base.Awake() 안에서 Transport.active = transport 로 확정되므로 그 전에 선택.
+        bool useKcp = Application.isEditor && _useKcpInEditor;
+        Transport selected = useKcp ? _kcpTransport : _steamTransport;
+
+        if (selected != null)
+        {
+            transport = selected;
+        }
+        else
+        {
+            Debug.LogError($"[RoomManager] {(useKcp ? "KcpTransport" : "SteamTransport")}가 인스펙터에 연결되지 않았습니다. 기존 transport를 사용합니다.");
+        }
+
+        base.Awake();
+
+        Debug.Log($"[RoomManager] Transport: {transport.GetType().Name}");
+    }
 
     public void SetGhostCount(int ghostCount)
     {
         SelectedGhostCount = ghostCount;
     }
 
-    private bool _isAttemptingJoin;
-    public void BeginJoinAttempt() => _isAttemptingJoin = true;
+
 
     public override void OnRoomClientEnter()
     {
@@ -23,15 +58,23 @@ public class RoomManager : NetworkRoomManager
     public override void OnRoomClientDisconnect()
     {
         base.OnRoomClientDisconnect();
-        Debug.Log($"[RoomManager] OnRoomClientDisconnect 호출됨, isAttemptingJoin={_isAttemptingJoin}");
+
         if (_isAttemptingJoin)
         {
             _isAttemptingJoin = false;
-            // 방에 접속 불가 UI호출
-            var onlineUI = Object.FindFirstObjectByType<OnlineUI>(FindObjectsInactive.Include);
-            Debug.Log($"[RoomManager] onlineUI 찾음? {onlineUI != null}");
-            onlineUI?.ShowJoinFailed();
+            JoinFailed?.Invoke();
         }
+
+
+        //Debug.Log($"[RoomManager] OnRoomClientDisconnect 호출됨, isAttemptingJoin={_isAttemptingJoin}");
+        //if (_isAttemptingJoin)
+        //{
+        //    _isAttemptingJoin = false;
+        //    // 방에 접속 불가 UI호출
+        //    var onlineUI = Object.FindFirstObjectByType<OnlineUI>(FindObjectsInactive.Include);
+        //    Debug.Log($"[RoomManager] onlineUI 찾음? {onlineUI != null}");
+        //    onlineUI?.ShowJoinFailed();
+        //}
     }
 
     public override void OnGUI()
