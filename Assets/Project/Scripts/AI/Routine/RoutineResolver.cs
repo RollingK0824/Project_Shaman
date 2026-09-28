@@ -1,6 +1,7 @@
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
+using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Routine
@@ -45,7 +46,26 @@ namespace ProjectShaman.AI.Routine
             };
 
             ApplyCorruption(profile, ref resolved);
+            ReserveStation(profile, place, ref resolved);
             return true;
+        }
+
+        private void ReserveStation(VillagerProfile profile, PlaceArea place, ref ResolvedRoutine resolved)
+        {
+            if (resolved.Category != RoutineCategory.Work || place.Stations.Count == 0)
+            {
+                return;
+            }
+
+            if (place.TryReserveStation(profile.VillagerId, resolved.ActionId, out WorkStation station))
+            {
+                resolved.Station = station;
+                resolved.TargetPosition = station.StandPosition;
+            }
+            else
+            {
+                AILog.Warn(AILog.WORK, $"{profile.VillagerId} no free station in {place.PlaceId}, working at random point");
+            }
         }
 
         private void ApplyCorruption(VillagerProfile profile, ref ResolvedRoutine resolved)

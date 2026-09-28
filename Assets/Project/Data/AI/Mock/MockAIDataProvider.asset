@@ -34,12 +34,6 @@ MonoBehaviour:
       SocialClasses: 
       AgeGroups: 
   _jobs:
-  - JobId: Farmer
-    DisplayName: "\uB18D\uBD80"
-    Condition:
-      Genders: 
-      SocialClasses: 
-      AgeGroups: 
   - JobId: Woodcutter
     DisplayName: "\uB098\uBB34\uAFBC"
     Condition:
@@ -86,9 +80,9 @@ MonoBehaviour:
       AgeGroups: 
     PlaceId: Woodpile
     ToolId: 
-    ActionId: 
+    ActionId: Chop
     IsCoop: 0
-    MaxPeople: 1
+    MaxPeople: 2
   - RoutineId: Stacking
     DisplayName: "\uC7A5\uC791 \uC313\uAE30"
     Category: 1
@@ -100,7 +94,7 @@ MonoBehaviour:
       AgeGroups: 
     PlaceId: Woodpile
     ToolId: 
-    ActionId: 
+    ActionId: Stack
     IsCoop: 0
     MaxPeople: 2
   - RoutineId: TavernRest

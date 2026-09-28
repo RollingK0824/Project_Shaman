@@ -27,6 +27,7 @@ namespace ProjectShaman.AI.Core
             if (_factory != null)
             {
                 _factory.OnVillagersCreated += HandleVillagersCreated;
+                _factory.OnVillagersCleared += HandleVillagersCleared;
             }
         }
 
@@ -35,13 +36,39 @@ namespace ProjectShaman.AI.Core
             if (_factory != null)
             {
                 _factory.OnVillagersCreated -= HandleVillagersCreated;
+                _factory.OnVillagersCleared -= HandleVillagersCleared;
             }
 
+            UnsubscribeTime();
+        }
+
+        private void UnsubscribeTime()
+        {
             if (_timeSource != null)
             {
                 _timeSource.OnNewDay -= HandleNewDay;
                 _timeSource.OnNightStart -= HandleNightStart;
             }
+        }
+
+        private void HandleVillagersCleared()
+        {
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                ReleaseStation(villager);
+            }
+
+            _isRunning = false;
+            UnsubscribeTime();
+
+            if (_timeSource != null)
+            {
+                _timeSource.StopClock();
+            }
+
+            AILog.Log(AILog.MANAGER, $"Stopped and cleared {_villagers.Count} villagers");
+            _villagers.Clear();
+            _resolver = null;
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -64,6 +91,7 @@ namespace ProjectShaman.AI.Core
 
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, time={_timeSource.SourceName}");
 
+            UnsubscribeTime();
             _timeSource.OnNewDay += HandleNewDay;
             _timeSource.OnNightStart += HandleNightStart;
             _isRunning = true;
@@ -80,10 +108,12 @@ namespace ProjectShaman.AI.Core
 
             foreach (VillagerRuntime villager in _villagers)
             {
-                villager.ResetForNewDay(CalculateHomeReturnTime(villager, dayCount));
-                villager.Core.ClearRoutine();
+                villager.ResetForNewDay(RollDailyStartOffset(villager, dayCount), CalculateHomeReturnTime(villager, dayCount));
+                villager.Core.SetDailyStartOffset(villager.StartOffsetSeconds);
+                ReleaseStation(villager);
+                villager.Core.ClearRoutine(villager.NextSerial(), "new day");
                 villager.Core.SetMustGoHome(false);
-                AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} offset={villager.Profile.StartOffsetSeconds:F1}s homeReturn={villager.HomeReturnTime:F1}s");
+                AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} offset={villager.StartOffsetSeconds:F1}s homeReturn={villager.HomeReturnTime:F1}s");
             }
         }
 
@@ -112,6 +142,11 @@ namespace ProjectShaman.AI.Core
 
             foreach (VillagerRuntime villager in _villagers)
             {
+                if (villager.Core == null)
+                {
+                    continue;
+                }
+
                 TickVillager(villager, now);
             }
         }
@@ -130,7 +165,7 @@ namespace ProjectShaman.AI.Core
             }
 
             float slotDuration = _timeSource.SlotDuration;
-            float localTime = now - villager.Profile.StartOffsetSeconds;
+            float localTime = now - villager.StartOffsetSeconds;
 
             if (localTime < 0f)
             {
@@ -145,15 +180,18 @@ namespace ProjectShaman.AI.Core
 
             villager.LastSlot = slot;
 
-            float startTime = villager.Profile.StartOffsetSeconds + slot * slotDuration;
+            float startTime = villager.StartOffsetSeconds + slot * slotDuration;
             float endTime = Mathf.Min(startTime + slotDuration, villager.HomeReturnTime);
             float remaining = endTime - now;
 
-            if (remaining < _behaviourConfig.MinRemainingSecondsToRun)
+            float minRemaining = _behaviourConfig.MinRemainingRatio * slotDuration;
+            if (remaining < minRemaining)
             {
-                AILog.Log(AILog.MANAGER, villager.Id, $"Slot {slot} skipped (remaining {remaining:F1}s < {_behaviourConfig.MinRemainingSecondsToRun}s)");
+                SkipRoutine(villager, $"slot {slot} remaining {remaining:F1}s < {minRemaining:F1}s");
                 return;
             }
+
+            ReleaseStation(villager);
 
             int serial = villager.NextSerial();
             if (_resolver.TryResolve(villager.Profile, _timeSource.DayCount, slot, serial, startTime, endTime, out ResolvedRoutine resolved))
@@ -162,15 +200,47 @@ namespace ProjectShaman.AI.Core
                 villager.Core.ApplyRoutine(resolved);
                 RecordMemory(villager, resolved);
             }
+            else
+            {
+                SkipRoutine(villager, $"slot {slot} resolve failed");
+            }
+        }
+
+        private void SkipRoutine(VillagerRuntime villager, string reason)
+        {
+            ReleaseStation(villager);
+            villager.Current = default;
+            villager.Core.ClearRoutine(villager.NextSerial(), $"skipped: {reason}");
+            AILog.Log(AILog.MANAGER, villager.Id, $"Routine skipped ({reason})");
+        }
+
+        private void ReleaseStation(VillagerRuntime villager)
+        {
+            ResolvedRoutine current = villager.Current;
+            if (current.Station != null)
+            {
+                current.Station.Release(villager.Id);
+                current.Station = null;
+                villager.Current = current;
+            }
         }
 
         private void OrderGoHome(VillagerRuntime villager)
         {
             villager.IsHomeOrdered = true;
+            ReleaseStation(villager);
             float distance = Vector3.Distance(villager.Core.transform.position, villager.Profile.HomePosition);
             AILog.Log(AILog.STUB, villager.Id, $"ToolTidy zone skipped (distance={distance:F1}m)");
             AILog.Log(AILog.MANAGER, villager.Id, $"GoHome ordered at {_timeSource.PhaseElapsed:F1}s");
             villager.Core.SetMustGoHome(true);
+        }
+
+        private float RollDailyStartOffset(VillagerRuntime villager, int dayCount)
+        {
+            int seed = unchecked(_factory.Seed * 486187739 + villager.Profile.Index * 16777619 + dayCount * 31);
+            System.Random random = new System.Random(seed);
+            float maxOffset = _behaviourConfig.MaxStartOffsetRatio * _timeSource.SlotDuration;
+            return (float)(random.NextDouble() * maxOffset);
         }
 
         private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount)
@@ -199,15 +269,17 @@ namespace ProjectShaman.AI.Core
 
             public AI_Core Core { get; }
             public VillagerProfile Profile => Core.Profile;
-            public string Id => Core.LogId;
+            public string Id { get; }
             public int LastSlot { get; set; } = -1;
             public bool IsHomeOrdered { get; set; }
             public float HomeReturnTime { get; private set; }
+            public float StartOffsetSeconds { get; private set; }
             public ResolvedRoutine Current { get; set; }
 
             public VillagerRuntime(AI_Core core)
             {
                 Core = core;
+                Id = core.LogId;
             }
 
             public int NextSerial()
@@ -216,8 +288,9 @@ namespace ProjectShaman.AI.Core
                 return _serial;
             }
 
-            public void ResetForNewDay(float homeReturnTime)
+            public void ResetForNewDay(float startOffsetSeconds, float homeReturnTime)
             {
+                StartOffsetSeconds = startOffsetSeconds;
                 LastSlot = -1;
                 IsHomeOrdered = false;
                 HomeReturnTime = homeReturnTime;

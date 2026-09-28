@@ -16,5 +16,6 @@ namespace ProjectShaman.AI.Interfaces
         event System.Action OnNightStart;
 
         void StartClock();
+        void StopClock();
     }
 }
