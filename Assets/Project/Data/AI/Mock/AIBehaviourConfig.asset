@@ -14,8 +14,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Data.AIBehaviourConfig
   _cycleDays: 3
   _minRestPerDay: 1
-  _maxStartOffsetSeconds: 40
-  _minRemainingSecondsToRun: 20
-  _homeReturnMarginSeconds: 10
-  _toolTidySecondsEstimate: 5
+  _maxStartOffsetRatio: 0.2
+  _minRemainingRatio: 0.17
+  _homeReturnMarginSeconds: 1
+  _toolTidySecondsEstimate: 1
   _walkSpeedEstimate: 3.5
+  _toolSightRadius: 8
+  _toolSightInterval: 1
+  _toolPickupDistance: 1.5
+  _toolSightingsPerType: 2
+  _toolSearchTimeRatio: 0.8
+  _tidyRelaxedMaxDistance: 15
+  _tidyRushedMaxDistance: 35

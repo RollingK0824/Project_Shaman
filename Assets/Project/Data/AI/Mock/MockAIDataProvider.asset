@@ -40,6 +40,12 @@ MonoBehaviour:
       Genders: 
       SocialClasses: 
       AgeGroups: 
+  - JobId: Farmer
+    DisplayName: "\uB18D\uBD80"
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
   _routines:
   - RoutineId: Farming
     DisplayName: "\uBC2D \uAC08\uAE30"
@@ -51,7 +57,7 @@ MonoBehaviour:
       SocialClasses: 
       AgeGroups: 
     PlaceId: Field
-    ToolId: 
+    ToolId: Hoe
     ActionId: 
     IsCoop: 0
     MaxPeople: 2
@@ -79,7 +85,7 @@ MonoBehaviour:
       SocialClasses: 
       AgeGroups: 
     PlaceId: Woodpile
-    ToolId: 
+    ToolId: Axe
     ActionId: Chop
     IsCoop: 0
     MaxPeople: 2

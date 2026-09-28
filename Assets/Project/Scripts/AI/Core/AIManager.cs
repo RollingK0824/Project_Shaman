@@ -1,9 +1,11 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Data;
+using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
+using ProjectShaman.AI.Work;
 
 namespace ProjectShaman.AI.Core
 {
@@ -12,6 +14,8 @@ namespace ProjectShaman.AI.Core
         [SerializeField] private AIFactory _factory;
         [SerializeField] private MonoBehaviour _timeSourceBehaviour;
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
+
+        private const float STATION_RETRY_INTERVAL = 0.5f;
 
         private readonly List<VillagerRuntime> _villagers = new List<VillagerRuntime>();
         private ITimeSource _timeSource;
@@ -56,6 +60,11 @@ namespace ProjectShaman.AI.Core
             foreach (VillagerRuntime villager in _villagers)
             {
                 ReleaseStation(villager);
+
+                if (villager.Core != null)
+                {
+                    villager.Core.OnRoutineFailed -= villager.RoutineFailedHandler;
+                }
             }
 
             _isRunning = false;
@@ -80,12 +89,22 @@ namespace ProjectShaman.AI.Core
             }
 
             _resolver = new RoutineResolver(new System.Random(_factory.Seed + 1));
+            AIRuntimeContext context = new AIRuntimeContext(_behaviourConfig, GetGameClock, BuildToolUsePlaces());
 
             foreach (AI_Core core in cores)
             {
                 if (core != null && core.Profile != null)
                 {
-                    _villagers.Add(new VillagerRuntime(core));
+                    VillagerRuntime villager = new VillagerRuntime(core);
+                    villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
+                    core.OnRoutineFailed += villager.RoutineFailedHandler;
+
+                    foreach (IAIConfigurable configurable in core.GetComponents<IAIConfigurable>())
+                    {
+                        configurable.Configure(context);
+                    }
+
+                    _villagers.Add(villager);
                 }
             }
 
@@ -100,6 +119,42 @@ namespace ProjectShaman.AI.Core
             {
                 _timeSource.StartClock();
             }
+        }
+
+        private float GetGameClock()
+        {
+            return _timeSource != null ? _timeSource.PhaseElapsed : Time.time;
+        }
+
+        private Dictionary<string, List<string>> BuildToolUsePlaces()
+        {
+            Dictionary<string, List<string>> result = new Dictionary<string, List<string>>();
+
+            if (_factory.DataProvider == null)
+            {
+                return result;
+            }
+
+            foreach (RoutineEntry routine in _factory.DataProvider.Routines)
+            {
+                if (routine == null || string.IsNullOrEmpty(routine.ToolId) || string.IsNullOrEmpty(routine.PlaceId))
+                {
+                    continue;
+                }
+
+                if (!result.TryGetValue(routine.ToolId, out List<string> places))
+                {
+                    places = new List<string>();
+                    result[routine.ToolId] = places;
+                }
+
+                if (!places.Contains(routine.PlaceId))
+                {
+                    places.Add(routine.PlaceId);
+                }
+            }
+
+            return result;
         }
 
         private void HandleNewDay(int dayCount)
@@ -148,6 +203,7 @@ namespace ProjectShaman.AI.Core
                 }
 
                 TickVillager(villager, now);
+                TryAssignWaitingStation(villager);
             }
         }
 
@@ -191,11 +247,16 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            ReleaseStation(villager);
+            WorkStation previousStation = villager.Current.Station;
 
             int serial = villager.NextSerial();
-            if (_resolver.TryResolve(villager.Profile, _timeSource.DayCount, slot, serial, startTime, endTime, out ResolvedRoutine resolved))
+            if (_resolver.TryResolve(villager.Profile, _timeSource.DayCount, slot, serial, startTime, endTime, previousStation, out ResolvedRoutine resolved))
             {
+                if (previousStation != null && previousStation != resolved.Station)
+                {
+                    previousStation.Release(villager.Id);
+                }
+
                 villager.Current = resolved;
                 villager.Core.ApplyRoutine(resolved);
                 RecordMemory(villager, resolved);
@@ -204,6 +265,31 @@ namespace ProjectShaman.AI.Core
             {
                 SkipRoutine(villager, $"slot {slot} resolve failed");
             }
+        }
+
+        private void TryAssignWaitingStation(VillagerRuntime villager)
+        {
+            ResolvedRoutine current = villager.Current;
+            if (!current.IsWaitingForStation || villager.IsHomeOrdered || current.Source == null || Time.time < villager.NextStationRetryTime)
+            {
+                return;
+            }
+
+            villager.NextStationRetryTime = Time.time + STATION_RETRY_INTERVAL;
+
+            if (!PlaceRegistry.TryGet(current.Source.PlaceId, out PlaceArea place) || !place.TryReserveStation(villager.Id, current.ActionId, out WorkStation station))
+            {
+                return;
+            }
+
+            current.Station = station;
+            current.TargetPosition = station.StandPosition;
+            current.IsWaitingForStation = false;
+            current.Serial = villager.NextSerial();
+            villager.Current = current;
+
+            AILog.Log(AILog.WORK, villager.Id, $"Station {station.StationId} freed, moving to it");
+            villager.Core.ApplyRoutine(current);
         }
 
         private void SkipRoutine(VillagerRuntime villager, string reason)
@@ -230,7 +316,14 @@ namespace ProjectShaman.AI.Core
             villager.IsHomeOrdered = true;
             ReleaseStation(villager);
             float distance = Vector3.Distance(villager.Core.transform.position, villager.Profile.HomePosition);
-            AILog.Log(AILog.STUB, villager.Id, $"ToolTidy zone skipped (distance={distance:F1}m)");
+            ToolTidyZone zone = ToolTidyPolicy.DecideZone(distance, _behaviourConfig);
+
+            if (villager.ToolHandler != null)
+            {
+                villager.ToolHandler.SetTidyZone(zone);
+            }
+
+            AILog.Log(AILog.MANAGER, villager.Id, $"Tidy zone {zone} (distance to home {distance:F1}m)");
             AILog.Log(AILog.MANAGER, villager.Id, $"GoHome ordered at {_timeSource.PhaseElapsed:F1}s");
             villager.Core.SetMustGoHome(true);
         }
@@ -268,18 +361,22 @@ namespace ProjectShaman.AI.Core
             private int _serial;
 
             public AI_Core Core { get; }
+            public AI_ToolHandler ToolHandler { get; }
+            public System.Action<string> RoutineFailedHandler { get; set; }
             public VillagerProfile Profile => Core.Profile;
             public string Id { get; }
             public int LastSlot { get; set; } = -1;
             public bool IsHomeOrdered { get; set; }
             public float HomeReturnTime { get; private set; }
             public float StartOffsetSeconds { get; private set; }
+            public float NextStationRetryTime { get; set; }
             public ResolvedRoutine Current { get; set; }
 
             public VillagerRuntime(AI_Core core)
             {
                 Core = core;
                 Id = core.LogId;
+                ToolHandler = core.GetComponent<AI_ToolHandler>();
             }
 
             public int NextSerial()

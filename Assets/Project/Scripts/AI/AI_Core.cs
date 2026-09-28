@@ -35,6 +35,11 @@ namespace ProjectShaman.AI
 
         public event Action<AIState, AIState> OnStateChanged;
         public event Action<VillagerPublicInfo> OnPublicInfoApplied;
+        public event Action<ResolvedRoutine> OnRoutineApplied;
+        public event Action<string> OnRoutineFailed;
+        public event Action<string> OnRoutineCleared;
+
+        public bool IsSimulating => btAgent != null && btAgent.enabled;
 
         void Awake()
         {
@@ -121,6 +126,7 @@ namespace ProjectShaman.AI
             SetBlackboardVariable(BB_ROUTINE_CATEGORY, resolved.Category);
             SetBlackboardVariable(BB_ROUTINE_SERIAL, resolved.Serial);
             _routineDebug.SetCurrent(resolved);
+            OnRoutineApplied?.Invoke(resolved);
             AILog.Log(AILog.CORE, LogId, $"Blackboard routine {resolved}");
         }
 
@@ -132,6 +138,13 @@ namespace ProjectShaman.AI
             _routineDebug.ClearCurrent();
             _routineDebug.Serial = serial;
             AILog.Log(AILog.CORE, LogId, $"Blackboard routine cleared #{serial} ({reason})");
+            OnRoutineCleared?.Invoke(reason);
+        }
+
+        public void FailCurrentRoutine(string reason)
+        {
+            AILog.Log(AILog.CORE, LogId, $"Routine failed ({reason})");
+            OnRoutineFailed?.Invoke(reason);
         }
 
         public void SetDailyStartOffset(float offsetSeconds)

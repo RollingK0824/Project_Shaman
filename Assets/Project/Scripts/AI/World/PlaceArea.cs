@@ -8,7 +8,8 @@ namespace ProjectShaman.AI.World
     public class PlaceArea : MonoBehaviour
     {
         private const float NAVMESH_SAMPLE_DISTANCE = 3f;
-        private const int RANDOM_POINT_ATTEMPTS = 8;
+        private const int RANDOM_POINT_ATTEMPTS = 12;
+        private const float STATION_CLEARANCE = 1.5f;
 
         [SerializeField] private string _placeId;
         [SerializeField] private string _displayName;
@@ -33,6 +34,7 @@ namespace ProjectShaman.AI.World
                 if (_stations == null)
                 {
                     _stations = GetComponentsInChildren<WorkStation>();
+                    WarnDuplicateStationIds();
                 }
 
                 return _stations;
@@ -40,6 +42,19 @@ namespace ProjectShaman.AI.World
         }
 
         public int Capacity => Stations.Count > 0 ? Stations.Count : Mathf.Max(1, _maxPeople);
+
+        public bool OwnsStation(WorkStation station)
+        {
+            foreach (WorkStation owned in Stations)
+            {
+                if (owned == station)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
 
         public bool TryReserveStation(string occupantId, string actionId, out WorkStation reserved)
         {
@@ -75,13 +90,95 @@ namespace ProjectShaman.AI.World
             for (int i = 0; i < RANDOM_POINT_ATTEMPTS; i++)
             {
                 Vector3 candidate = Center + GetRandomOffset(random);
-                if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas))
+                if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) && IsClearOfStations(hit.position))
                 {
                     return hit.position;
                 }
             }
 
             return Center;
+        }
+
+        public Vector3 GetWaitingPoint()
+        {
+            Vector3 best = Center;
+            float bestClearance = -1f;
+
+            for (int i = 0; i < 8; i++)
+            {
+                float angle = i * Mathf.PI * 0.25f;
+                Vector3 direction = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle));
+                Vector3 edge = Center + GetEdgeOffset(direction);
+
+                if (!NavMesh.SamplePosition(edge, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas))
+                {
+                    continue;
+                }
+
+                float clearance = GetStationClearance(hit.position);
+                if (clearance > bestClearance)
+                {
+                    bestClearance = clearance;
+                    best = hit.position;
+                }
+            }
+
+            return best;
+        }
+
+        private Vector3 GetEdgeOffset(Vector3 direction)
+        {
+            if (_shape == PlaceShape.Sphere)
+            {
+                return direction * _radius;
+            }
+
+            Vector3 half = _boxSize * 0.5f;
+            float scale = Mathf.Min(
+                Mathf.Abs(direction.x) > 0.001f ? half.x / Mathf.Abs(direction.x) : float.MaxValue,
+                Mathf.Abs(direction.z) > 0.001f ? half.z / Mathf.Abs(direction.z) : float.MaxValue);
+            return transform.rotation * (direction * scale);
+        }
+
+        private float GetStationClearance(Vector3 position)
+        {
+            float min = float.MaxValue;
+
+            foreach (WorkStation station in Stations)
+            {
+                if (station != null)
+                {
+                    min = Mathf.Min(min, Vector3.Distance(position, station.StandPosition));
+                }
+            }
+
+            return min;
+        }
+
+        private bool IsClearOfStations(Vector3 position)
+        {
+            foreach (WorkStation station in Stations)
+            {
+                if (station != null && Vector3.Distance(position, station.StandPosition) < STATION_CLEARANCE)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private void WarnDuplicateStationIds()
+        {
+            HashSet<string> ids = new HashSet<string>();
+
+            foreach (WorkStation station in _stations)
+            {
+                if (station != null && !ids.Add(station.StationId))
+                {
+                    ProjectShaman.AI.Core.AILog.Warn(ProjectShaman.AI.Core.AILog.PLACE, $"{_placeId} has duplicate StationId '{station.StationId}' ({station.name})");
+                }
+            }
         }
 
         public bool Contains(Vector3 position)
