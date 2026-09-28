@@ -29,6 +29,8 @@ namespace ProjectShaman.AI
         public VillagerProfile Profile => _profile;
         public VillagerPublicInfo PublicInfo => _publicInfo;
         public bool IsInitialized => _profile != null;
+        public ResolvedRoutine CurrentRoutine { get; private set; }
+        public bool HasRoutine => CurrentRoutine.Source != null;
         public string LogId => _publicInfo != null ? _publicInfo.VillagerId : name;
 
         public event Action<AIState, AIState> OnStateChanged;
@@ -50,7 +52,7 @@ namespace ProjectShaman.AI
             _profile = profile;
             _publicInfo = profile.PublicInfo;
 
-            _routineDebug.SetSchedule(profile.Schedule, profile.StartOffsetSeconds);
+            _routineDebug.SetSchedule(profile.Schedule);
             AILog.Log(AILog.CORE, LogId, $"Initialize {_publicInfo}");
             OnPublicInfoApplied?.Invoke(_publicInfo);
         }
@@ -114,6 +116,7 @@ namespace ProjectShaman.AI
 
         public void ApplyRoutine(ResolvedRoutine resolved)
         {
+            CurrentRoutine = resolved;
             SetBlackboardVariable(BB_WORK_POSITION, resolved.TargetPosition);
             SetBlackboardVariable(BB_ROUTINE_CATEGORY, resolved.Category);
             SetBlackboardVariable(BB_ROUTINE_SERIAL, resolved.Serial);
@@ -121,11 +124,19 @@ namespace ProjectShaman.AI
             AILog.Log(AILog.CORE, LogId, $"Blackboard routine {resolved}");
         }
 
-        public void ClearRoutine()
+        public void ClearRoutine(int serial, string reason)
         {
+            CurrentRoutine = default;
             SetBlackboardVariable(BB_ROUTINE_CATEGORY, RoutineCategory.None);
+            SetBlackboardVariable(BB_ROUTINE_SERIAL, serial);
             _routineDebug.ClearCurrent();
-            AILog.Log(AILog.CORE, LogId, "Blackboard routine cleared (None)");
+            _routineDebug.Serial = serial;
+            AILog.Log(AILog.CORE, LogId, $"Blackboard routine cleared #{serial} ({reason})");
+        }
+
+        public void SetDailyStartOffset(float offsetSeconds)
+        {
+            _routineDebug.StartOffsetSeconds = offsetSeconds;
         }
 
         public void SetMustGoHome(bool mustGoHome)

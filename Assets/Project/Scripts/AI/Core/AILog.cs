@@ -14,6 +14,7 @@ namespace ProjectShaman.AI.Core
         public const string MANAGER = "Manager";
         public const string ROUTINE = "Routine";
         public const string PLACE = "Place";
+        public const string WORK = "Work";
 
         public static bool IsEnabled = true;
 

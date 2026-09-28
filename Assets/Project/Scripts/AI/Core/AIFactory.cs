@@ -6,6 +6,7 @@ using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Mock;
 using ProjectShaman.AI.Routine;
+using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Core
 {
@@ -36,6 +37,7 @@ namespace ProjectShaman.AI.Core
         public int Seed { get; private set; }
 
         public event System.Action<IReadOnlyList<AI_Core>> OnVillagersCreated;
+        public event System.Action OnVillagersCleared;
 
         public void CreateVillagers(ISpawnHandler spawnHandler)
         {
@@ -78,12 +80,11 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
             AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
 
-            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _timeSource.SlotsPerDay, _behaviourConfig.MinRestPerDay, _random);
+            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _timeSource.SlotsPerDay, _behaviourConfig.MinRestPerDay, _random, GetPlaceCapacity);
 
             List<VillagerProfile> profiles = GenerateProfiles();
 
             AssignHouses(profiles);
-            AssignStartOffsets(profiles);
             AssignGhosts(profiles);
 
             foreach (VillagerProfile profile in profiles)
@@ -109,6 +110,33 @@ namespace ProjectShaman.AI.Core
             }
 
             OnVillagersCreated?.Invoke(_spawnedVillagers);
+        }
+
+        public void ResetFactory()
+        {
+            if (!_hasCreated)
+            {
+                return;
+            }
+
+            AILog.Log(AILog.FACTORY, $"Reset (cleared {_spawnedVillagers.Count} villagers)");
+            OnVillagersCleared?.Invoke();
+
+            _spawnedVillagers.Clear();
+            _usedNames.Clear();
+            _scheduleBuilder = null;
+            _hasCreated = false;
+        }
+
+        private int GetPlaceCapacity(string placeId)
+        {
+            if (PlaceRegistry.TryGet(placeId, out PlaceArea place))
+            {
+                return place.Capacity;
+            }
+
+            AILog.Warn(AILog.ROUTINE, $"Place '{placeId}' not registered, routines using it are excluded");
+            return 0;
         }
 
         private List<VillagerProfile> GenerateProfiles()
@@ -219,15 +247,6 @@ namespace ProjectShaman.AI.Core
             }
 
             AILog.Log(AILog.STUB, $"AssignHouses using test home points ({profiles.Count})");
-        }
-
-        private void AssignStartOffsets(List<VillagerProfile> profiles)
-        {
-            foreach (VillagerProfile profile in profiles)
-            {
-                profile.StartOffsetSeconds = (float)(_random.NextDouble() * _behaviourConfig.MaxStartOffsetSeconds);
-                AILog.Log(AILog.FACTORY, profile.VillagerId, $"Start offset {profile.StartOffsetSeconds:F1}s");
-            }
         }
 
         private void AssignGhosts(List<VillagerProfile> profiles)

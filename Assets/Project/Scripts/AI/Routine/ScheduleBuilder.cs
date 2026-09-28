@@ -12,10 +12,12 @@ namespace ProjectShaman.AI.Routine
         private readonly int _slotsPerDay;
         private readonly int _minRestPerDay;
         private readonly System.Random _random;
+        private readonly System.Func<string, int> _placeCapacityProvider;
         private readonly Dictionary<string, int> _occupancy = new Dictionary<string, int>();
 
-        public ScheduleBuilder(IReadOnlyList<RoutineEntry> routines, int cycleDays, int slotsPerDay, int minRestPerDay, System.Random random)
+        public ScheduleBuilder(IReadOnlyList<RoutineEntry> routines, int cycleDays, int slotsPerDay, int minRestPerDay, System.Random random, System.Func<string, int> placeCapacityProvider)
         {
+            _placeCapacityProvider = placeCapacityProvider;
             _routines = routines;
             _cycleDays = cycleDays;
             _slotsPerDay = slotsPerDay;
@@ -52,19 +54,31 @@ namespace ProjectShaman.AI.Routine
 
                 for (int slot = 0; slot < _slotsPerDay; slot++)
                 {
-                    List<RoutineEntry> pool = restSlots.Contains(slot) ? rests : works;
-                    RoutineEntry picked = PickAvailable(pool, day, slot);
+                    bool isRestSlot = restSlots.Contains(slot);
+                    RoutineEntry picked = PickAvailable(isRestSlot ? rests : works, day, slot);
+
+                    if (picked == null && !isRestSlot)
+                    {
+                        picked = PickAvailable(rests, day, slot);
+                        if (picked != null)
+                        {
+                            AILog.Log(AILog.ROUTINE, info.VillagerId, $"D{day} S{slot} work full, fallback to rest {picked.RoutineId}");
+                        }
+                    }
 
                     if (picked == null)
                     {
-                        AILog.Log(AILog.ROUTINE, info.VillagerId, $"D{day} S{slot} no routine under MaxPeople");
+                        AILog.Warn(AILog.ROUTINE, $"{info.VillagerId} D{day} S{slot} no work or rest routine with free capacity");
                         ReleaseAll(reservedKeys);
                         return false;
                     }
 
-                    string key = MakeKey(day, slot, picked.RoutineId);
-                    Reserve(key);
-                    reservedKeys.Add(key);
+                    string routineKey = MakeKey(day, slot, picked.RoutineId);
+                    string placeKey = MakePlaceKey(day, slot, picked.PlaceId);
+                    Reserve(routineKey);
+                    Reserve(placeKey);
+                    reservedKeys.Add(routineKey);
+                    reservedKeys.Add(placeKey);
                     result.Set(day, slot, picked);
                 }
             }
@@ -112,14 +126,28 @@ namespace ProjectShaman.AI.Routine
 
             foreach (RoutineEntry routine in pool)
             {
-                int limit = System.Math.Max(1, routine.MaxPeople);
-                if (GetOccupancy(MakeKey(day, slot, routine.RoutineId)) < limit)
+                int routineLimit = System.Math.Max(1, routine.MaxPeople);
+                int placeLimit = GetPlaceCapacity(routine.PlaceId);
+                bool hasRoutineRoom = GetOccupancy(MakeKey(day, slot, routine.RoutineId)) < routineLimit;
+                bool hasPlaceRoom = GetOccupancy(MakePlaceKey(day, slot, routine.PlaceId)) < placeLimit;
+
+                if (hasRoutineRoom && hasPlaceRoom)
                 {
                     available.Add(routine);
                 }
             }
 
             return available.Count > 0 ? available[_random.Next(available.Count)] : null;
+        }
+
+        private int GetPlaceCapacity(string placeId)
+        {
+            return _placeCapacityProvider != null ? _placeCapacityProvider(placeId) : int.MaxValue;
+        }
+
+        private static string MakePlaceKey(int day, int slot, string placeId)
+        {
+            return $"P:{day}:{slot}:{placeId}";
         }
 
         private static string MakeKey(int day, int slot, string routineId)

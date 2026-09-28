@@ -27,6 +27,13 @@ namespace ProjectShaman.Network.AI
             _factory.CreateVillagers(this);
         }
 
+        public override void OnStopServer()
+        {
+            AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
+            _factory.ResetFactory();
+            base.OnStopServer();
+        }
+
         public override void OnStartClient()
         {
             base.OnStartClient();

@@ -56,6 +56,18 @@ namespace ProjectShaman.AI.Mock
             OnNewDay?.Invoke(_dayCount);
         }
 
+        public void StopClock()
+        {
+            if (!_isRunning)
+            {
+                return;
+            }
+
+            _isRunning = false;
+            _currentSlot = -1;
+            AILog.Log(AILog.TIME_TO_AI, $"{SourceName} stopped at Day {_dayCount}");
+        }
+
         private void Update()
         {
             if (!_isRunning)

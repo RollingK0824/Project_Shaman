@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Defines;
@@ -22,6 +23,42 @@ namespace ProjectShaman.AI.World
         public PlaceType Type => _placeType;
         public int MaxPeople => _maxPeople;
         public Vector3 Center => transform.position;
+
+        private WorkStation[] _stations;
+
+        public IReadOnlyList<WorkStation> Stations
+        {
+            get
+            {
+                if (_stations == null)
+                {
+                    _stations = GetComponentsInChildren<WorkStation>();
+                }
+
+                return _stations;
+            }
+        }
+
+        public int Capacity => Stations.Count > 0 ? Stations.Count : Mathf.Max(1, _maxPeople);
+
+        public bool TryReserveStation(string occupantId, string actionId, out WorkStation reserved)
+        {
+            reserved = FindAvailable(actionId, true) ?? FindAvailable(actionId, false);
+            return reserved != null && reserved.TryReserve(occupantId);
+        }
+
+        private WorkStation FindAvailable(string actionId, bool requireAccept)
+        {
+            foreach (WorkStation station in Stations)
+            {
+                if (station != null && station.IsAvailable && (!requireAccept || station.Accepts(actionId)))
+                {
+                    return station;
+                }
+            }
+
+            return null;
+        }
 
         private void OnEnable()
         {

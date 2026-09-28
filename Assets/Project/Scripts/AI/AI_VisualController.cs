@@ -16,7 +16,7 @@ namespace ProjectShaman.AI
         {
             core = GetComponent<AI_Core>();
             movement = GetComponent<AI_Movement>();
-            animator = GetComponent<Animator>();
+            animator = GetComponentInChildren<Animator>();
 
             core.OnStateChanged += HandleStateChanged;
         }
@@ -34,6 +34,34 @@ namespace ProjectShaman.AI
             if (animator != null)
             {
                 animator.SetInteger("State", (int)newState);
+            }
+        }
+
+        public Animator Animator => animator;
+
+        public bool HasParameter(string parameterName)
+        {
+            if (animator == null || animator.runtimeAnimatorController == null)
+            {
+                return false;
+            }
+
+            foreach (AnimatorControllerParameter parameter in animator.parameters)
+            {
+                if (parameter.name == parameterName)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public void SetIntegerIfExists(string parameterName, int value)
+        {
+            if (HasParameter(parameterName))
+            {
+                animator.SetInteger(parameterName, value);
             }
         }
 

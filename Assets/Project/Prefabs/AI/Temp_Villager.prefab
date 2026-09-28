@@ -14,10 +14,11 @@ GameObject:
   - component: {fileID: 4103788942951358850}
   - component: {fileID: 6487400086068308612}
   - component: {fileID: 690458709990008456}
-  - component: {fileID: 4099844393692412883}
+  - component: {fileID: 7251462781353255367}
   - component: {fileID: 3592007867672851338}
   - component: {fileID: 4858117569355254957}
-  - component: {fileID: 7251462781353255367}
+  - component: {fileID: 4099844393692412883}
+  - component: {fileID: 6136421671149660983}
   - component: {fileID: 5725079976282233024}
   - component: {fileID: 3396515200370580590}
   m_Layer: 0
@@ -37,7 +38,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 5, y: 5, z: 5}
+  m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8283714067382855114}
@@ -161,6 +162,45 @@ MonoBehaviour:
   syncInterval: 0
   clientAuthority: 0
   animator: {fileID: 2600132633459376048}
+--- !u!114 &7251462781353255367
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4c5037464e8092941979b2b370455f54, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_AICore
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &3592007867672851338
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5e042b7ab498e35458bcc67b615b6454, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Movement
+--- !u!114 &4858117569355254957
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e43c1824d4dacc9448a757f49d6d5683, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_VisualController
 --- !u!114 &4099844393692412883
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -196,7 +236,8 @@ MonoBehaviour:
     EndTime: 0
     IsCorrupted: 0
     MustGoHome: 0
---- !u!114 &3592007867672851338
+    StationId: 
+--- !u!114 &6136421671149660983
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -205,36 +246,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 4322653122997329672}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e042b7ab498e35458bcc67b615b6454, type: 3}
+  m_Script: {fileID: 11500000, guid: f7d09bb6c438d314bbff894282b15e97, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Movement
---- !u!114 &4858117569355254957
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4322653122997329672}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e43c1824d4dacc9448a757f49d6d5683, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_VisualController
---- !u!114 &7251462781353255367
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4322653122997329672}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 4c5037464e8092941979b2b370455f54, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_AICore
-  syncDirection: 0
-  syncMode: 0
-  syncInterval: 0
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Work.AI_WorkPerformer
+  _useAnimationEvent: 0
+  _hitIntervalSeconds: 2
+  _turnSpeedDegrees: 360
+  _actionBindings: []
+  _isWorking: 0
+  _currentActionId: 
+  _currentStationId: 
+  _hitCount: 0
 --- !u!195 &5725079976282233024
 NavMeshAgent:
   m_ObjectHideFlags: 0
@@ -362,7 +384,11 @@ PrefabInstance:
     - target: {fileID: 5866666021909216657, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
       propertyPath: m_Controller
       value: 
-      objectReference: {fileID: 9100000, guid: 40db3173a05ae3242b1c182a09b0a183, type: 2}
+      objectReference: {fileID: 9100000, guid: 4169c60d9aebd4647ba66d80c570c2d9, type: 2}
+    - target: {fileID: 5866666021909216657, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
+      propertyPath: m_CullingMode
+      value: 0
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []

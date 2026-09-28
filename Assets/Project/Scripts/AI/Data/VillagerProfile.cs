@@ -28,7 +28,6 @@ namespace ProjectShaman.AI.Data
 
         public int HouseIndex = -1;
         public Vector3 HomePosition;
-        public float StartOffsetSeconds;
         public VillagerSchedule Schedule;
 
         public string VillagerId => PublicInfo.VillagerId;

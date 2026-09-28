@@ -25,11 +25,11 @@ namespace ProjectShaman.AI.Routine
         public float EndTime;
         public bool IsCorrupted;
         public bool MustGoHome;
+        public string StationId;
 
-        public void SetSchedule(VillagerSchedule schedule, float startOffsetSeconds)
+        public void SetSchedule(VillagerSchedule schedule)
         {
             Schedule.Clear();
-            StartOffsetSeconds = startOffsetSeconds;
 
             if (schedule == null)
             {
@@ -63,6 +63,7 @@ namespace ProjectShaman.AI.Routine
             StartTime = resolved.StartTime;
             EndTime = resolved.EndTime;
             IsCorrupted = resolved.IsCorrupted;
+            StationId = resolved.Station != null ? resolved.Station.StationId : string.Empty;
         }
 
         public void ClearCurrent()
@@ -73,6 +74,7 @@ namespace ProjectShaman.AI.Routine
             PlaceId = string.Empty;
             Category = RoutineCategory.None;
             IsCorrupted = false;
+            StationId = string.Empty;
         }
     }
 }
