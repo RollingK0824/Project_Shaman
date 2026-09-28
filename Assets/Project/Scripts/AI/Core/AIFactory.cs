@@ -5,6 +5,7 @@ using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Mock;
+using ProjectShaman.AI.Routine;
 
 namespace ProjectShaman.AI.Core
 {
@@ -14,16 +15,19 @@ namespace ProjectShaman.AI.Core
 
         [SerializeField] private GameObject _villagerPrefab;
         [SerializeField] private ScriptableObject _dataProviderAsset;
+        [SerializeField] private AIBehaviourConfig _behaviourConfig;
+        [SerializeField] private MonoBehaviour _timeSourceBehaviour;
         [SerializeField] private int _villagerCount = 1;
         [SerializeField] private bool _useFixedSeed = true;
         [SerializeField] private int _randomSeed = 1234;
         [SerializeField] private Transform _spawnRoot;
         [SerializeField] private Transform[] _testHomePoints;
-        [SerializeField] private Transform[] _testWorkPoints;
 
         private readonly List<AI_Core> _spawnedVillagers = new List<AI_Core>();
         private readonly HashSet<string> _usedNames = new HashSet<string>();
         private IAIDataProvider _dataProvider;
+        private ITimeSource _timeSource;
+        private ScheduleBuilder _scheduleBuilder;
         private System.Random _random;
         private bool _hasCreated;
 
@@ -60,17 +64,25 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
+            _timeSource = _timeSourceBehaviour as ITimeSource;
+            if (_timeSource == null || _behaviourConfig == null)
+            {
+                AILog.Error(AILog.FACTORY, "Time source or behaviour config missing");
+                return;
+            }
+
             _hasCreated = true;
             Seed = _useFixedSeed ? _randomSeed : Environment.TickCount;
             _random = new System.Random(Seed);
 
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
-            AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count})");
+            AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
+
+            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _timeSource.SlotsPerDay, _behaviourConfig.MinRestPerDay, _random);
 
             List<VillagerProfile> profiles = GenerateProfiles();
 
             AssignHouses(profiles);
-            AssignInitialWorkPositions(profiles);
             AssignStartOffsets(profiles);
             AssignGhosts(profiles);
 
@@ -91,6 +103,11 @@ namespace ProjectShaman.AI.Core
             }
 
             AILog.Log(AILog.FACTORY, $"Spawn end (spawned={_spawnedVillagers.Count})");
+            if (OnVillagersCreated == null)
+            {
+                AILog.Warn(AILog.FACTORY, "No listener for OnVillagersCreated (AIManager missing?), routines will not run");
+            }
+
             OnVillagersCreated?.Invoke(_spawnedVillagers);
         }
 
@@ -102,7 +119,7 @@ namespace ProjectShaman.AI.Core
             {
                 VillagerProfile profile = new VillagerProfile(i);
 
-                if (!TryRollVillager(profile.PublicInfo))
+                if (!TryRollVillager(profile))
                 {
                     AILog.Error(AILog.FACTORY, $"{profile.VillagerId} failed to roll valid combination after {MAX_ROLL_ATTEMPTS} attempts, skipped");
                     continue;
@@ -111,14 +128,17 @@ namespace ProjectShaman.AI.Core
                 profile.PublicInfo.DisplayName = PickName(profile.PublicInfo);
 
                 AILog.Log(AILog.FACTORY, profile.VillagerId, $"Profile generated {profile.PublicInfo}");
+                AILog.Log(AILog.ROUTINE, profile.VillagerId, $"Schedule {profile.Schedule}");
                 profiles.Add(profile);
             }
 
             return profiles;
         }
 
-        private bool TryRollVillager(VillagerPublicInfo info)
+        private bool TryRollVillager(VillagerProfile profile)
         {
+            VillagerPublicInfo info = profile.PublicInfo;
+
             for (int attempt = 1; attempt <= MAX_ROLL_ATTEMPTS; attempt++)
             {
                 info.Gender = RollEnum<VillagerGender>();
@@ -134,7 +154,13 @@ namespace ProjectShaman.AI.Core
 
                 info.JobId = job.JobId;
 
-                ValidateRoutines(info);
+                if (!_scheduleBuilder.TryBuild(info, out VillagerSchedule schedule))
+                {
+                    AILog.Log(AILog.FACTORY, info.VillagerId, $"Reroll #{attempt}: schedule build failed for {info.JobId}");
+                    continue;
+                }
+
+                profile.Schedule = schedule;
                 return true;
             }
 
@@ -154,11 +180,6 @@ namespace ProjectShaman.AI.Core
             }
 
             return candidates.Count > 0 ? candidates[_random.Next(candidates.Count)] : null;
-        }
-
-        private void ValidateRoutines(VillagerPublicInfo info)
-        {
-            AILog.Log(AILog.STUB, info.VillagerId, "ValidateRoutines skipped (routine branch)");
         }
 
         private string PickName(VillagerPublicInfo info)
@@ -200,19 +221,13 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.STUB, $"AssignHouses using test home points ({profiles.Count})");
         }
 
-        private void AssignInitialWorkPositions(List<VillagerProfile> profiles)
+        private void AssignStartOffsets(List<VillagerProfile> profiles)
         {
             foreach (VillagerProfile profile in profiles)
             {
-                profile.InitialWorkPosition = GetTestPoint(_testWorkPoints, profile.Index);
+                profile.StartOffsetSeconds = (float)(_random.NextDouble() * _behaviourConfig.MaxStartOffsetSeconds);
+                AILog.Log(AILog.FACTORY, profile.VillagerId, $"Start offset {profile.StartOffsetSeconds:F1}s");
             }
-
-            AILog.Log(AILog.STUB, $"AssignInitialWorkPositions using test work points ({profiles.Count})");
-        }
-
-        private void AssignStartOffsets(List<VillagerProfile> profiles)
-        {
-            AILog.Log(AILog.STUB, $"AssignStartOffsets skipped ({profiles.Count})");
         }
 
         private void AssignGhosts(List<VillagerProfile> profiles)
@@ -272,6 +287,12 @@ namespace ProjectShaman.AI.Core
             {
                 Debug.LogWarning($"[AI][{AILog.FACTORY}] {_dataProviderAsset.name} does not implement IAIDataProvider");
                 _dataProviderAsset = null;
+            }
+
+            if (_timeSourceBehaviour != null && !(_timeSourceBehaviour is ITimeSource))
+            {
+                Debug.LogWarning($"[AI][{AILog.FACTORY}] {_timeSourceBehaviour.name} does not implement ITimeSource");
+                _timeSourceBehaviour = null;
             }
 
             if (_villagerCount < 0)

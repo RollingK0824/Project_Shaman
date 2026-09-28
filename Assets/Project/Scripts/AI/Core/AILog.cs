@@ -10,6 +10,10 @@ namespace ProjectShaman.AI.Core
         public const string FACTORY_TO_NET = "Factory→Net";
         public const string NET = "Net";
         public const string STUB = "Stub";
+        public const string TIME_TO_AI = "Time→AI";
+        public const string MANAGER = "Manager";
+        public const string ROUTINE = "Routine";
+        public const string PLACE = "Place";
 
         public static bool IsEnabled = true;
 

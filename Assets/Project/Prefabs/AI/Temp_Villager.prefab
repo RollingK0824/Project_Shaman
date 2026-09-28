@@ -37,7 +37,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 5, y: 5, z: 5}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 8283714067382855114}
@@ -174,6 +174,28 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Core
   currentState: 0
+  _publicInfo:
+    VillagerId: 
+    DisplayName: 
+    JobId: 
+    Gender: 0
+    SocialClass: 0
+    AgeGroup: 0
+  _routineDebug:
+    Schedule: []
+    StartOffsetSeconds: 0
+    DayCount: 0
+    Slot: -1
+    Serial: 0
+    RoutineId: 
+    DisplayName: 
+    Category: 0
+    PlaceId: 
+    TargetPosition: {x: 0, y: 0, z: 0}
+    StartTime: 0
+    EndTime: 0
+    IsCorrupted: 0
+    MustGoHome: 0
 --- !u!114 &3592007867672851338
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -325,6 +347,18 @@ PrefabInstance:
       propertyPath: m_Name
       value: Armature
       objectReference: {fileID: 0}
+    - target: {fileID: 4885301371922852569, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 43805ec7bae32c847a77843a4c6c6a1a, type: 2}
+    - target: {fileID: 4885301371922852569, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 43805ec7bae32c847a77843a4c6c6a1a, type: 2}
+    - target: {fileID: 4885301371922852569, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
+      propertyPath: 'm_Materials.Array.data[2]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 43805ec7bae32c847a77843a4c6c6a1a, type: 2}
     - target: {fileID: 5866666021909216657, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
       propertyPath: m_Controller
       value: 

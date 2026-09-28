@@ -4,6 +4,7 @@ using Unity.Behavior;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Routine;
 
 namespace ProjectShaman.AI
 {
@@ -13,12 +14,16 @@ namespace ProjectShaman.AI
         public const string BB_CURRENT_STATE = "CurrentState";
         public const string BB_HOME_POSITION = "HomePosition";
         public const string BB_WORK_POSITION = "WorkPosition";
+        public const string BB_MUST_GO_HOME = "MustGoHome";
+        public const string BB_ROUTINE_SERIAL = "RoutineSerial";
+        public const string BB_ROUTINE_CATEGORY = "RoutineCategory";
 
         [SerializeField] private AIState currentState = AIState.Idle;
 
         private BehaviorGraphAgent btAgent;
         private VillagerProfile _profile;
         [SerializeField] private VillagerPublicInfo _publicInfo;
+        [SerializeField] private RoutineDebugView _routineDebug = new RoutineDebugView();
 
         public AIState CurrentState => currentState;
         public VillagerProfile Profile => _profile;
@@ -45,6 +50,7 @@ namespace ProjectShaman.AI
             _profile = profile;
             _publicInfo = profile.PublicInfo;
 
+            _routineDebug.SetSchedule(profile.Schedule, profile.StartOffsetSeconds);
             AILog.Log(AILog.CORE, LogId, $"Initialize {_publicInfo}");
             OnPublicInfoApplied?.Invoke(_publicInfo);
         }
@@ -101,8 +107,32 @@ namespace ProjectShaman.AI
             }
 
             SetBlackboardVariable(BB_HOME_POSITION, _profile.HomePosition);
-            SetBlackboardVariable(BB_WORK_POSITION, _profile.InitialWorkPosition);
-            AILog.Log(AILog.CORE, LogId, $"Blackboard injected Home={_profile.HomePosition} Work={_profile.InitialWorkPosition}");
+            SetBlackboardVariable(BB_MUST_GO_HOME, false);
+            SetBlackboardVariable(BB_ROUTINE_CATEGORY, RoutineCategory.None);
+            AILog.Log(AILog.CORE, LogId, $"Blackboard injected Home={_profile.HomePosition}");
+        }
+
+        public void ApplyRoutine(ResolvedRoutine resolved)
+        {
+            SetBlackboardVariable(BB_WORK_POSITION, resolved.TargetPosition);
+            SetBlackboardVariable(BB_ROUTINE_CATEGORY, resolved.Category);
+            SetBlackboardVariable(BB_ROUTINE_SERIAL, resolved.Serial);
+            _routineDebug.SetCurrent(resolved);
+            AILog.Log(AILog.CORE, LogId, $"Blackboard routine {resolved}");
+        }
+
+        public void ClearRoutine()
+        {
+            SetBlackboardVariable(BB_ROUTINE_CATEGORY, RoutineCategory.None);
+            _routineDebug.ClearCurrent();
+            AILog.Log(AILog.CORE, LogId, "Blackboard routine cleared (None)");
+        }
+
+        public void SetMustGoHome(bool mustGoHome)
+        {
+            SetBlackboardVariable(BB_MUST_GO_HOME, mustGoHome);
+            _routineDebug.MustGoHome = mustGoHome;
+            AILog.Log(AILog.CORE, LogId, $"Blackboard MustGoHome={mustGoHome}");
         }
 
         public void SetBlackboardVariable<T>(string variableName, T value)

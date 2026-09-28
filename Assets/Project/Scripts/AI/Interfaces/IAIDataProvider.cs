@@ -8,5 +8,6 @@ namespace ProjectShaman.AI.Interfaces
         string SourceName { get; }
         IReadOnlyList<NameEntry> Names { get; }
         IReadOnlyList<JobEntry> Jobs { get; }
+        IReadOnlyList<RoutineEntry> Routines { get; }
     }
 }
