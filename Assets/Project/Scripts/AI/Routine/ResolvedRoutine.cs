@@ -17,7 +17,9 @@ namespace ProjectShaman.AI.Routine
         public float EndTime;
         public bool IsCorrupted;
         public WorkStation Station;
+        public bool IsWaitingForStation;
         public string ActionId => Source != null ? Source.ActionId : string.Empty;
+        public string ToolTypeId => Source != null ? Source.ToolId : string.Empty;
 
         public override string ToString()
         {

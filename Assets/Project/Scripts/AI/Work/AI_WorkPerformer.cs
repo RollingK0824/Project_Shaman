@@ -53,6 +53,15 @@ namespace ProjectShaman.AI.Work
                 return false;
             }
 
+            if (routine.IsWaitingForStation)
+            {
+                _isWorking = false;
+                _currentStationId = "(waiting)";
+                _core.SetState(AIState.Idle);
+                AILog.Log(AILog.WORK, _core.LogId, $"Waiting for a free station for '{routine.ActionId}'");
+                return true;
+            }
+
             _isWorking = true;
             _station = routine.Station;
             _currentActionId = routine.ActionId;

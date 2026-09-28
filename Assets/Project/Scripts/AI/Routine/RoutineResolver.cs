@@ -15,7 +15,7 @@ namespace ProjectShaman.AI.Routine
             _random = random;
         }
 
-        public bool TryResolve(VillagerProfile profile, int dayCount, int slot, int serial, float startTime, float endTime, out ResolvedRoutine resolved)
+        public bool TryResolve(VillagerProfile profile, int dayCount, int slot, int serial, float startTime, float endTime, WorkStation preferredStation, out ResolvedRoutine resolved)
         {
             resolved = default;
 
@@ -46,14 +46,22 @@ namespace ProjectShaman.AI.Routine
             };
 
             ApplyCorruption(profile, ref resolved);
-            ReserveStation(profile, place, ref resolved);
+            ReserveStation(profile, place, preferredStation, ref resolved);
             return true;
         }
 
-        private void ReserveStation(VillagerProfile profile, PlaceArea place, ref ResolvedRoutine resolved)
+        private void ReserveStation(VillagerProfile profile, PlaceArea place, WorkStation preferredStation, ref ResolvedRoutine resolved)
         {
             if (resolved.Category != RoutineCategory.Work || place.Stations.Count == 0)
             {
+                return;
+            }
+
+            if (preferredStation != null && place.OwnsStation(preferredStation) && preferredStation.OccupantId == profile.VillagerId)
+            {
+                resolved.Station = preferredStation;
+                resolved.TargetPosition = preferredStation.StandPosition;
+                AILog.Log(AILog.WORK, profile.VillagerId, $"Station {preferredStation.StationId} kept for next routine");
                 return;
             }
 
@@ -64,7 +72,9 @@ namespace ProjectShaman.AI.Routine
             }
             else
             {
-                AILog.Warn(AILog.WORK, $"{profile.VillagerId} no free station in {place.PlaceId}, working at random point");
+                resolved.IsWaitingForStation = true;
+                resolved.TargetPosition = place.GetWaitingPoint();
+                AILog.Log(AILog.WORK, profile.VillagerId, $"No free station in {place.PlaceId} yet, waiting at {resolved.TargetPosition}");
             }
         }
 

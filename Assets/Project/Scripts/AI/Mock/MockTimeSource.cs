@@ -81,7 +81,8 @@ namespace ProjectShaman.AI.Mock
         private void Advance(float deltaSeconds)
         {
             _phaseElapsed += deltaSeconds;
-            _currentSlot = _isNight ? -1 : Mathf.Min(Mathf.FloorToInt(_phaseElapsed / _slotDuration), _slotsPerDay - 1);
+            int slotIndex = Mathf.FloorToInt(_phaseElapsed / _slotDuration);
+            _currentSlot = _isNight || slotIndex >= _slotsPerDay ? -1 : slotIndex;
 
             if (!_isNight && _phaseElapsed >= DayDuration)
             {

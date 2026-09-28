@@ -15,6 +15,8 @@ namespace ProjectShaman.AI.Core
         public const string ROUTINE = "Routine";
         public const string PLACE = "Place";
         public const string WORK = "Work";
+        public const string TOOL = "Tool";
+        public const string EVENT = "Event";
 
         public static bool IsEnabled = true;
 

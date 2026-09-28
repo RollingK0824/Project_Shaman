@@ -33,6 +33,7 @@ namespace ProjectShaman.AI.Core
         private bool _hasCreated;
 
         public GameObject VillagerPrefab => _villagerPrefab;
+        public IAIDataProvider DataProvider => _dataProvider;
         public IReadOnlyList<AI_Core> SpawnedVillagers => _spawnedVillagers;
         public int Seed { get; private set; }
 
