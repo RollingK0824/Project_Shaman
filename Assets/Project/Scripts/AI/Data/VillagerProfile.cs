@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Routine;
 
 namespace ProjectShaman.AI.Data
 {
@@ -27,8 +28,8 @@ namespace ProjectShaman.AI.Data
 
         public int HouseIndex = -1;
         public Vector3 HomePosition;
-        public Vector3 InitialWorkPosition;
         public float StartOffsetSeconds;
+        public VillagerSchedule Schedule;
 
         public string VillagerId => PublicInfo.VillagerId;
 

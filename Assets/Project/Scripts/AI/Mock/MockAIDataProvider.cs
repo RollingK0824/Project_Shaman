@@ -10,9 +10,11 @@ namespace ProjectShaman.AI.Mock
     {
         [SerializeField] private List<NameEntry> _names = new List<NameEntry>();
         [SerializeField] private List<JobEntry> _jobs = new List<JobEntry>();
+        [SerializeField] private List<RoutineEntry> _routines = new List<RoutineEntry>();
 
         public string SourceName => $"Mock({name})";
         public IReadOnlyList<NameEntry> Names => _names;
         public IReadOnlyList<JobEntry> Jobs => _jobs;
+        public IReadOnlyList<RoutineEntry> Routines => _routines;
     }
 }
