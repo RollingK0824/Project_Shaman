@@ -37,6 +37,11 @@ namespace ProjectShaman.Network.AI
 
             WritePublicInfoToSyncVars();
 
+            if (aiCore != null)
+            {
+                aiCore.OnSymptomTriggered += HandleSymptomTriggered;
+            }
+
             if (aiMovement != null) aiMovement.SetAgentActive(true);
             if (aiCore != null) aiCore.SetBehaviorGraphActive(true);
             if (visualController != null) visualController.UpdateAnimatorLocally = true;
@@ -63,6 +68,22 @@ namespace ProjectShaman.Network.AI
                     gameObject.name = $"Villager_{_syncVillagerId}";
                 }
             }
+        }
+
+        public override void OnStopServer()
+        {
+            if (aiCore != null)
+            {
+                aiCore.OnSymptomTriggered -= HandleSymptomTriggered;
+            }
+
+            base.OnStopServer();
+        }
+
+        [Server]
+        private void HandleSymptomTriggered(SymptomType symptom)
+        {
+            RpcTriggerEffect($"Symptom{symptom}");
         }
 
         [Server]

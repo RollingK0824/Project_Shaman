@@ -24,6 +24,9 @@ namespace ProjectShaman.AI.Routine
         public float StartTime;
         public float EndTime;
         public bool IsCorrupted;
+        public CorruptionAxis CorruptionAxis;
+        public string CorruptionDetail;
+        public float StartDelaySeconds;
         public bool MustGoHome;
         public string StationId;
 
@@ -63,6 +66,9 @@ namespace ProjectShaman.AI.Routine
             StartTime = resolved.StartTime;
             EndTime = resolved.EndTime;
             IsCorrupted = resolved.IsCorrupted;
+            CorruptionAxis = resolved.CorruptionAxis;
+            CorruptionDetail = resolved.CorruptionDetail;
+            StartDelaySeconds = resolved.StartDelaySeconds;
             StationId = resolved.Station != null ? resolved.Station.StationId : string.Empty;
         }
 
@@ -74,6 +80,9 @@ namespace ProjectShaman.AI.Routine
             PlaceId = string.Empty;
             Category = RoutineCategory.None;
             IsCorrupted = false;
+            CorruptionAxis = CorruptionAxis.None;
+            CorruptionDetail = string.Empty;
+            StartDelaySeconds = 0f;
             StationId = string.Empty;
         }
     }

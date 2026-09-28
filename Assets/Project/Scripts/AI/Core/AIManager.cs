@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
@@ -88,7 +89,7 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            _resolver = new RoutineResolver(new System.Random(_factory.Seed + 1));
+            _resolver = new RoutineResolver(new System.Random(_factory.Seed + 1), _behaviourConfig);
             AIRuntimeContext context = new AIRuntimeContext(_behaviourConfig, GetGameClock, BuildToolUsePlaces());
 
             foreach (AI_Core core in cores)
@@ -168,6 +169,7 @@ namespace ProjectShaman.AI.Core
                 ReleaseStation(villager);
                 villager.Core.ClearRoutine(villager.NextSerial(), "new day");
                 villager.Core.SetMustGoHome(false);
+                PlanCorruption(villager, dayCount);
                 AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} offset={villager.StartOffsetSeconds:F1}s homeReturn={villager.HomeReturnTime:F1}s");
             }
         }
@@ -204,6 +206,7 @@ namespace ProjectShaman.AI.Core
 
                 TickVillager(villager, now);
                 TryAssignWaitingStation(villager);
+                TickSymptoms(villager, now);
             }
         }
 
@@ -264,6 +267,49 @@ namespace ProjectShaman.AI.Core
             else
             {
                 SkipRoutine(villager, $"slot {slot} resolve failed");
+            }
+        }
+
+        private void PlanCorruption(VillagerRuntime villager, int dayCount)
+        {
+            AI_Possession possession = villager.Profile.Possession;
+            if (possession == null)
+            {
+                return;
+            }
+
+            possession.ApplyMorningYin(_behaviourConfig.MinimumYin);
+            CorruptionPlan plan = CorruptionPlanner.Build(possession, villager.Profile.Schedule, dayCount, _timeSource.SlotsPerDay, _behaviourConfig);
+            possession.SetPlan(plan);
+            AILog.Log(AILog.GHOST, villager.Id, $"Corruption plan Day{dayCount}: yin={plan.MorningYin:F0}, corrupted slots={plan.CorruptedSlotCount}, symptoms={plan.Symptoms.Count}");
+        }
+
+        private void TickSymptoms(VillagerRuntime villager, float now)
+        {
+            AI_Possession possession = villager.Profile.Possession;
+            ResolvedRoutine current = villager.Current;
+
+            if (possession == null || possession.TodayPlan == null || villager.IsHomeOrdered || current.Category != RoutineCategory.Rest)
+            {
+                return;
+            }
+
+            float length = Mathf.Max(1f, current.EndTime - current.StartTime);
+            float fraction = (now - current.StartTime) / length;
+            List<PlannedSymptom> symptoms = possession.TodayPlan.Symptoms;
+
+            for (int i = 0; i < symptoms.Count; i++)
+            {
+                PlannedSymptom symptom = symptoms[i];
+                if (symptom.HasFired || symptom.Slot != current.Slot || fraction < symptom.SlotFraction)
+                {
+                    continue;
+                }
+
+                symptom.HasFired = true;
+                symptoms[i] = symptom;
+                villager.Core.TriggerSymptom(symptom.Type);
+                possession.RefreshDebug();
             }
         }
 

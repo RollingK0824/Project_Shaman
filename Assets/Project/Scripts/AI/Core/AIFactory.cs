@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Mock;
 using ProjectShaman.AI.Routine;
@@ -19,6 +20,7 @@ namespace ProjectShaman.AI.Core
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
         [SerializeField] private MonoBehaviour _timeSourceBehaviour;
         [SerializeField] private int _villagerCount = 1;
+        [SerializeField] private int _ghostCount = 1;
         [SerializeField] private bool _useFixedSeed = true;
         [SerializeField] private int _randomSeed = 1234;
         [SerializeField] private Transform _spawnRoot;
@@ -96,6 +98,7 @@ namespace ProjectShaman.AI.Core
                     continue;
                 }
 
+                AttachPossession(core, profile);
                 core.Initialize(profile);
 
                 AILog.Log(AILog.FACTORY_TO_NET, profile.VillagerId, $"Spawn request via {spawnHandler.HandlerName}");
@@ -252,7 +255,33 @@ namespace ProjectShaman.AI.Core
 
         private void AssignGhosts(List<VillagerProfile> profiles)
         {
-            AILog.Log(AILog.STUB, $"AssignGhosts skipped ({profiles.Count})");
+            List<VillagerProfile> pool = new List<VillagerProfile>(profiles);
+            int count = Mathf.Min(_ghostCount, pool.Count);
+
+            for (int i = 0; i < count; i++)
+            {
+                int index = _random.Next(pool.Count);
+                VillagerProfile host = pool[index];
+                pool.RemoveAt(index);
+
+                host.IsPossessed = true;
+                host.GhostId = $"GHOST_{i:00}";
+                AILog.Log(AILog.GHOST, host.VillagerId, $"Assigned as host of {host.GhostId}");
+            }
+
+            AILog.Log(AILog.FACTORY, $"AssignGhosts {count}/{profiles.Count}");
+        }
+
+        private void AttachPossession(AI_Core core, VillagerProfile profile)
+        {
+            if (!profile.IsPossessed)
+            {
+                return;
+            }
+
+            AI_Possession possession = core.gameObject.AddComponent<AI_Possession>();
+            possession.Initialize(profile.GhostId, _random.Next(), _behaviourConfig.InitialYin);
+            profile.Possession = possession;
         }
 
         private Vector3 GetTestPoint(Transform[] points, int index)

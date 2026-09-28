@@ -29,6 +29,9 @@ namespace ProjectShaman.AI.Data
         public int HouseIndex = -1;
         public Vector3 HomePosition;
         public VillagerSchedule Schedule;
+        public bool IsPossessed;
+        public string GhostId;
+        public ProjectShaman.AI.Ghost.AI_Possession Possession;
 
         public string VillagerId => PublicInfo.VillagerId;
 

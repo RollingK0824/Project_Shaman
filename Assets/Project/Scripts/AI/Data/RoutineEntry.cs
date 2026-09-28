@@ -18,6 +18,10 @@ namespace ProjectShaman.AI.Data
         public bool IsCoop;
         public int MaxPeople = 1;
 
+        public List<string> WrongToolIds = new List<string>();
+        public List<string> WrongActionIds = new List<string>();
+        public List<string> WrongPlaceIds = new List<string>();
+
         public bool IsLoadableFor(VillagerPublicInfo info)
         {
             bool isJobAllowed = Category == RoutineCategory.Rest || JobIds == null || JobIds.Count == 0 || JobIds.Contains(info.JobId);

@@ -18,13 +18,19 @@ namespace ProjectShaman.AI.Routine
         public bool IsCorrupted;
         public WorkStation Station;
         public bool IsWaitingForStation;
-        public string ActionId => Source != null ? Source.ActionId : string.Empty;
-        public string ToolTypeId => Source != null ? Source.ToolId : string.Empty;
+        public CorruptionAxis CorruptionAxis;
+        public string CorruptionDetail;
+        public string ActionOverride;
+        public string ToolTypeOverride;
+        public float StartDelaySeconds;
+
+        public string ActionId => ActionOverride ?? (Source != null ? Source.ActionId : string.Empty);
+        public string ToolTypeId => ToolTypeOverride ?? (Source != null ? Source.ToolId : string.Empty);
 
         public override string ToString()
         {
             string id = Source != null ? Source.RoutineId : "-";
-            return $"Day{DayCount} S{Slot} #{Serial} {id}({Category}) → {TargetPosition} [{StartTime:F0}s~{EndTime:F0}s]{(Station != null ? $" station={Station.StationId}" : string.Empty)}{(IsCorrupted ? " CORRUPTED" : string.Empty)}";
+            return $"Day{DayCount} S{Slot} #{Serial} {id}({Category}) → {TargetPosition} [{StartTime:F0}s~{EndTime:F0}s]{(Station != null ? $" station={Station.StationId}" : string.Empty)}{(IsCorrupted ? $" CORRUPTED[{CorruptionAxis}:{CorruptionDetail}]" : string.Empty)}";
         }
     }
 }
