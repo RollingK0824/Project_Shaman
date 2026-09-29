@@ -2266,6 +2266,7 @@ GameObject:
   - component: {fileID: 1923637827}
   - component: {fileID: 1923637824}
   - component: {fileID: 1923637828}
+  - component: {fileID: 1923637829}
   m_Layer: 0
   m_Name: AIFactory
   m_TagString: Untagged
@@ -2382,6 +2383,25 @@ MonoBehaviour:
   _factory: {fileID: 1923637824}
   _timeSourceBehaviour: {fileID: 1923637827}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
+--- !u!114 &1923637829
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1923637822}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 552001eba6fdb63428e2bc8ebe263aa4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Ghost.NightHuntDirector
+  _factory: {fileID: 1923637824}
+  _manager: {fileID: 1923637828}
+  _timeSourceBehaviour: {fileID: 1923637827}
+  _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
+  _ghostEntityPrefab: {fileID: 4322653122997329672, guid: 2b6dc148a0e35cd40a3f6871359fe2fb, type: 3}
+  _huntTokenGhostId: 
+  _activeEntityCount: 0
 --- !u!1 &2013974468
 GameObject:
   m_ObjectHideFlags: 0
@@ -2641,6 +2661,7 @@ MonoBehaviour:
   playerSpawnMethod: 0
   spawnPrefabs:
   - {fileID: 4322653122997329672, guid: b4150d8afbce64c468b5846e3c3db753, type: 3}
+  - {fileID: 4322653122997329672, guid: 2b6dc148a0e35cd40a3f6871359fe2fb, type: 3}
   exceptionsDisconnect: 1
   snapshotSettings:
     bufferTimeMultiplier: 2

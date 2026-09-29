@@ -24,7 +24,22 @@ namespace ProjectShaman.AI.Mock
                 core.SetBehaviorGraphActive(true);
             }
 
+            ProjectShaman.AI.Ghost.AI_GhostEntity ghost = instance.GetComponent<ProjectShaman.AI.Ghost.AI_GhostEntity>();
+            if (ghost != null)
+            {
+                ghost.SetSimulationActive(true);
+            }
+
             AILog.Log(AILog.FACTORY, $"Local spawn (no network), Agent/BT enabled: {instance.name}");
+        }
+
+        public void Despawn(GameObject instance)
+        {
+            if (instance != null)
+            {
+                AILog.Log(AILog.FACTORY, $"Local despawn: {instance.name}");
+                Object.Destroy(instance);
+            }
         }
     }
 }

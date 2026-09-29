@@ -313,6 +313,27 @@ namespace ProjectShaman.AI.Core
             }
         }
 
+        public void RemoveVillager(AI_Core core, string reason)
+        {
+            VillagerRuntime villager = _villagers.Find(v => v.Core == core);
+            if (villager == null)
+            {
+                return;
+            }
+
+            ReleaseStation(villager);
+            core.OnRoutineFailed -= villager.RoutineFailedHandler;
+            _villagers.Remove(villager);
+
+            AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
+            AIEvents.RaiseVillagerDied(villager.Id, reason);
+
+            if (_factory.SpawnHandler != null)
+            {
+                _factory.SpawnHandler.Despawn(core.gameObject);
+            }
+        }
+
         private void TryAssignWaitingStation(VillagerRuntime villager)
         {
             ResolvedRoutine current = villager.Current;

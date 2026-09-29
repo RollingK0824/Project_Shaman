@@ -36,6 +36,7 @@ namespace ProjectShaman.AI.Core
 
         public GameObject VillagerPrefab => _villagerPrefab;
         public IAIDataProvider DataProvider => _dataProvider;
+        public ISpawnHandler SpawnHandler { get; private set; }
         public IReadOnlyList<AI_Core> SpawnedVillagers => _spawnedVillagers;
         public int Seed { get; private set; }
 
@@ -77,6 +78,7 @@ namespace ProjectShaman.AI.Core
             }
 
             _hasCreated = true;
+            SpawnHandler = spawnHandler;
             Seed = _useFixedSeed ? _randomSeed : Environment.TickCount;
             _random = new System.Random(Seed);
 

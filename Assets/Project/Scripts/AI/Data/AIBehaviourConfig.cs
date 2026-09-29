@@ -37,6 +37,14 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(0f, 1f)] private float _emptyHandToolChance = 0.25f;
         [SerializeField] private float _toolCorruptionSearchRadius = 25f;
 
+        [Header("Night Hunt")]
+        [SerializeField] private float _huntCost = 20f;
+        [SerializeField] private float _huntRadiusMin = 10f;
+        [SerializeField] private float _huntRadiusMax = 60f;
+        [SerializeField] private float _ghostSpawnDelaySeconds = 3f;
+        [SerializeField] private float _ghostKillDistance = 1.2f;
+        [SerializeField] private int _ghostKillsPerHunt = 1;
+
         public int CycleDays => _cycleDays;
         public int MinRestPerDay => _minRestPerDay;
         public float MaxStartOffsetRatio => _maxStartOffsetRatio;
@@ -64,5 +72,11 @@ namespace ProjectShaman.AI.Data
         public float EmptyHandToolYinThreshold => _emptyHandToolYinThreshold;
         public float EmptyHandToolChance => _emptyHandToolChance;
         public float ToolCorruptionSearchRadius => _toolCorruptionSearchRadius;
+        public float HuntCost => _huntCost;
+        public float HuntRadiusMin => _huntRadiusMin;
+        public float HuntRadiusMax => _huntRadiusMax;
+        public float GhostSpawnDelaySeconds => _ghostSpawnDelaySeconds;
+        public float GhostKillDistance => _ghostKillDistance;
+        public int GhostKillsPerHunt => _ghostKillsPerHunt;
     }
 }
