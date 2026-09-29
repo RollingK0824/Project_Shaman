@@ -1,0 +1,47 @@
+using System;
+using UnityEngine;
+using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Routine;
+
+namespace ProjectShaman.AI.Data
+{
+    [Serializable]
+    public class VillagerPublicInfo
+    {
+        public string VillagerId;
+        public string DisplayName;
+        public string JobId;
+        public VillagerGender Gender;
+        public VillagerSocialClass SocialClass;
+        public VillagerAgeGroup AgeGroup;
+
+        public override string ToString()
+        {
+            return $"{VillagerId} {DisplayName}/{JobId}/{Gender}/{SocialClass}/{AgeGroup}";
+        }
+    }
+
+    public class VillagerProfile
+    {
+        public int Index { get; }
+        public VillagerPublicInfo PublicInfo { get; }
+
+        public int HouseIndex = -1;
+        public Vector3 HomePosition;
+        public VillagerSchedule Schedule;
+        public bool IsPossessed;
+        public string GhostId;
+        public ProjectShaman.AI.Ghost.AI_Possession Possession;
+
+        public string VillagerId => PublicInfo.VillagerId;
+
+        public VillagerProfile(int index)
+        {
+            Index = index;
+            PublicInfo = new VillagerPublicInfo
+            {
+                VillagerId = $"NPC_{index:00}"
+            };
+        }
+    }
+}
