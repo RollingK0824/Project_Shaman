@@ -10,6 +10,12 @@ public class WorldItem : MonoBehaviour, IInteractable
 
     public ItemData ItemData => _itemData;
 
+    private void OnEnable()
+    {
+        // 풀에서 재사용할 때 이전 획득 상태를 남기지 않습니다.
+        _isCollected = false;
+    }
+
     public string InteractionPrompt
     {
         get
@@ -25,6 +31,9 @@ public class WorldItem : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
+        // 비활성 컴포넌트도 인터페이스 검색으로 발견될 수 있습니다.
+        if (!isActiveAndEnabled) return false;
+
         if (_isCollected)
         {
             return false;
@@ -43,6 +52,8 @@ public class WorldItem : MonoBehaviour, IInteractable
 
     public void Interact(GameObject interactor)
     {
+        if (!isActiveAndEnabled) return;
+
         if (_isCollected ||
             _itemData == null)
         {

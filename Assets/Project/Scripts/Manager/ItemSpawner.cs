@@ -18,6 +18,11 @@ public class ItemSpawner : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float raycastHeightOffset = 5f;
     [SerializeField] private float maxRaycastDistance = 15f;
+
+    // 네트워크 어댑터가 구독합니다. 아이템과 위치는 요청을 받은 서버에서 결정합니다.
+    public event Action SpawnRequested;
+
+    public int ItemCount => itemPool == null ? 0 : itemPool.Count;
     private void Awake()
     {
         if (areaCollider == null)
@@ -33,9 +38,17 @@ public class ItemSpawner : MonoBehaviour
             Debug.LogWarning($"[RandomItemSpawner] No items in pool on {gameObject.name}");
             return;
         }
-        int selectedItemIndex = GetRandomItemIndex();
-        Vector3 spawnPosition = GetRandomPositionInBounds();
-        Debug.Log($"[RandomItemSpawner] Requesting Networker approval for item index {selectedItemIndex} at {spawnPosition}");
+        SpawnRequested?.Invoke();
+    }
+
+    public GameObject GetItemPrefab(int itemIndex)
+    {
+        return itemIndex >= 0 && itemIndex < ItemCount ? itemPool[itemIndex].itemPrefab : null;
+    }
+
+    public void ReturnItem(int itemIndex, GameObject instance)
+    {
+        ObjectPoolManager.Instance.Release(GetItemPrefab(itemIndex), instance);
     }
 
     public GameObject PlaceItem(int itemIndex, Vector3 position)
@@ -62,7 +75,7 @@ public class ItemSpawner : MonoBehaviour
         float randomZ = UnityEngine.Random.Range(bounds.min.z, bounds.max.z);
         float startY = bounds.max.y + raycastHeightOffset;
         Vector3 rayStart = new Vector3(randomX, startY, randomZ);
-        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, maxRaycastDistance, groundLayer))
+        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, maxRaycastDistance, groundLayer, QueryTriggerInteraction.Ignore))
         {
             return hit.point;
         }

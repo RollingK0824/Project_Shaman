@@ -155,7 +155,7 @@ public class RoomManager : NetworkRoomManager
         base.OnRoomServerPlayersReady();
     }
 
-    // 로비 -> 게임 전환 시 실제 GamePlayer 스폰하는 지점
+    // 로비 -> 게임 전환 시 NetPlayer를 생성하고 스폰 전에 닉네임을 설정합니다.
     public override GameObject OnRoomServerCreateGamePlayer(NetworkConnectionToClient conn, GameObject roomPlayer)
     {
         // 1. 스폰 위치 가져오기 (NetworkStartPosition이 없으면 Vector3.zero 사용)
@@ -163,17 +163,20 @@ public class RoomManager : NetworkRoomManager
         Vector3 spawnPos = startPos != null ? startPos.position : Vector3.zero;
         Quaternion spawnRot = startPos != null ? startPos.rotation : Quaternion.identity;
 
-        // 2. GamePlayer 생성
+        // 2. 게임 플레이어 생성
         GameObject gamePlayerObj = Instantiate(playerPrefab, spawnPos, spawnRot);
 
-        // 3. 컴포넌트 가져오기 (gameObject가 아니라 gamePlayerObj에서 가져와야 함!)
+        // 3. 로비의 닉네임을 게임 플레이어의 공개 상태로 전달
         var roomPlayerComp = roomPlayer.GetComponent<RoomPlayer>();
-        var gamePlayerComp = gamePlayerObj.GetComponent<GamePlayer>();
+        var status = gamePlayerObj.GetComponent<NetPlayerStatus>();
 
-        // 4. 데이터 복사 (Null 안전성 확인)
-        if (roomPlayerComp != null && gamePlayerComp != null)
+        if (roomPlayerComp != null && status != null)
         {
-            gamePlayerComp.playerName = roomPlayerComp.nickname;
+            status.ServerInitialize(roomPlayerComp.nickname);
+        }
+        else
+        {
+            Debug.LogError("[RoomManager] 플레이어 프리팹에 NetPlayerStatus가 없거나 RoomPlayer를 찾지 못했습니다.");
         }
 
         return gamePlayerObj;
