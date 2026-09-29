@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerController))]
@@ -28,21 +28,12 @@ public class PlayerViewModeController : MonoBehaviour
     private PlayerInteractor _playerInteractor;
     private PlayerHealth _playerHealth;
 
+    // Inspect
     private InspectInteractable _inspectTarget;
-    private Transform _inspectTransform;
     private GameObject _inspectPreviewObject;
-    private bool _usingPreviewObject;
+    private Transform _inspectTransform;
 
-    private Transform _originalParent;
-    private Vector3 _originalLocalPosition;
-    private Quaternion _originalLocalRotation;
-    private Vector3 _originalLocalScale;
-    private Collider[] _targetColliders;
-    private bool[] _colliderStates;
-    private Rigidbody _targetRigidbody;
-    private bool _originalIsKinematic;
-    private bool _originalUseGravity;
-
+    // Observation
     private NPCObservationInteractable _observationTarget;
     private Transform _focusPoint;
     private Quaternion _originalCameraLocalRotation;
@@ -78,43 +69,49 @@ public class PlayerViewModeController : MonoBehaviour
         EndCurrentMode();
     }
 
+    // =========================================================
+    // Inspect
+    // =========================================================
+
     public void BeginInspection(InspectInteractable target)
     {
-        if (IsBusy || target == null || _inspectAnchor == null)
+        if (IsBusy ||
+            target == null ||
+            _inspectAnchor == null)
         {
+            return;
+        }
+
+        if (target.InspectPreviewPrefab == null)
+        {
+            Debug.LogWarning(
+                $"[Inspect] {target.name}에 Inspect Preview Prefab이 지정되지 않았습니다.",
+                target.gameObject
+            );
+
             return;
         }
 
         _inspectTarget = target;
 
-        if (target.InspectPreviewPrefab != null)
-        {
-            _inspectPreviewObject = Instantiate(
-                target.InspectPreviewPrefab,
-                _inspectAnchor
-            );
+        // 실제 월드 오브젝트는 건드리지 않고
+        // 플레이어 카메라 앞에 로컬 프리뷰만 생성한다.
+        _inspectPreviewObject = Instantiate(
+            target.InspectPreviewPrefab,
+            _inspectAnchor
+        );
 
-            _inspectTransform = _inspectPreviewObject.transform;
-            _usingPreviewObject = true;
-        }
-        else
-        {
-            // 프로토타입 호환용 fallback.
-            // 멀티플레이에서는 InspectPreviewPrefab 사용을 권장한다.
-            _inspectTransform = target.transform;
-            _usingPreviewObject = false;
+        _inspectTransform = _inspectPreviewObject.transform;
 
-            SaveOriginalTransform();
-            SaveAndDisablePhysics();
-            _inspectTransform.SetParent(_inspectAnchor, false);
-        }
-
+        DisablePreviewPhysics();
         ApplyInspectPose(target);
+
         SetGameplayControl(false);
+
         IsInspecting = true;
 
         Debug.Log(
-            $"[Inspect] 상세 조사 시작: {target.gameObject.name}",
+            $"[Inspect] 로컬 프리뷰 조사 시작: {target.gameObject.name}",
             target.gameObject
         );
     }
@@ -126,17 +123,9 @@ public class PlayerViewModeController : MonoBehaviour
             return;
         }
 
-        if (_usingPreviewObject)
+        if (_inspectPreviewObject != null)
         {
-            if (_inspectPreviewObject != null)
-            {
-                Destroy(_inspectPreviewObject);
-            }
-        }
-        else
-        {
-            RestoreOriginalTransform();
-            RestorePhysics();
+            Destroy(_inspectPreviewObject);
         }
 
         if (_inspectTarget != null)
@@ -148,22 +137,99 @@ public class PlayerViewModeController : MonoBehaviour
         }
 
         _inspectTarget = null;
-        _inspectTransform = null;
         _inspectPreviewObject = null;
-        _usingPreviewObject = false;
+        _inspectTransform = null;
+
         IsInspecting = false;
 
         RestoreGameplayControlIfAlive();
     }
 
+    private void ApplyInspectPose(InspectInteractable target)
+    {
+        if (_inspectTransform == null)
+        {
+            return;
+        }
+
+        _inspectTransform.localPosition =
+            target.InspectLocalPosition;
+
+        _inspectTransform.localRotation =
+            Quaternion.Euler(target.InspectLocalRotation);
+
+        _inspectTransform.localScale =
+            target.InspectLocalScale;
+    }
+
+    private void DisablePreviewPhysics()
+    {
+        if (_inspectPreviewObject == null)
+        {
+            return;
+        }
+
+        Collider[] colliders =
+            _inspectPreviewObject.GetComponentsInChildren<Collider>(true);
+
+        foreach (Collider targetCollider in colliders)
+        {
+            targetCollider.enabled = false;
+        }
+
+        Rigidbody[] rigidbodies =
+            _inspectPreviewObject.GetComponentsInChildren<Rigidbody>(true);
+
+        foreach (Rigidbody targetRigidbody in rigidbodies)
+        {
+            targetRigidbody.isKinematic = true;
+            targetRigidbody.useGravity = false;
+        }
+    }
+
+    private void RotateInspectTarget()
+    {
+        if (_inspectTransform == null)
+        {
+            return;
+        }
+
+        Vector2 lookInput = _inputReader.LookInput;
+
+        float yaw =
+            -lookInput.x * _inspectRotationSensitivity;
+
+        float pitch =
+            lookInput.y * _inspectRotationSensitivity;
+
+        _inspectTransform.Rotate(
+            Vector3.up,
+            yaw,
+            Space.World
+        );
+
+        _inspectTransform.Rotate(
+            Vector3.right,
+            pitch,
+            Space.Self
+        );
+    }
+
+    // =========================================================
+    // Observation
+    // =========================================================
+
     public void BeginObservation(NPCObservationInteractable target)
     {
-        if (IsBusy || target == null || _playerCamera == null)
+        if (IsBusy ||
+            target == null ||
+            _playerCamera == null)
         {
             return;
         }
 
         Transform focusPoint = target.FocusPoint;
+
         if (focusPoint == null)
         {
             return;
@@ -171,10 +237,15 @@ public class PlayerViewModeController : MonoBehaviour
 
         _observationTarget = target;
         _focusPoint = focusPoint;
-        _originalCameraLocalRotation = _playerCamera.transform.localRotation;
-        _originalFov = _playerCamera.fieldOfView;
+
+        _originalCameraLocalRotation =
+            _playerCamera.transform.localRotation;
+
+        _originalFov =
+            _playerCamera.fieldOfView;
 
         SetGameplayControl(false);
+
         IsObserving = true;
 
         Debug.Log(
@@ -192,8 +263,11 @@ public class PlayerViewModeController : MonoBehaviour
 
         if (_playerCamera != null)
         {
-            _playerCamera.transform.localRotation = _originalCameraLocalRotation;
-            _playerCamera.fieldOfView = _originalFov;
+            _playerCamera.transform.localRotation =
+                _originalCameraLocalRotation;
+
+            _playerCamera.fieldOfView =
+                _originalFov;
         }
 
         if (_observationTarget != null)
@@ -206,10 +280,55 @@ public class PlayerViewModeController : MonoBehaviour
 
         _observationTarget = null;
         _focusPoint = null;
+
         IsObserving = false;
 
         RestoreGameplayControlIfAlive();
     }
+
+    private void UpdateObservationFocus()
+    {
+        if (_observationTarget == null ||
+            _focusPoint == null ||
+            _playerCamera == null)
+        {
+            EndObservation();
+            return;
+        }
+
+        Vector3 direction =
+            _focusPoint.position -
+            _playerCamera.transform.position;
+
+        if (direction.sqrMagnitude <= 0.001f)
+        {
+            return;
+        }
+
+        Quaternion targetRotation =
+            Quaternion.LookRotation(
+                direction.normalized,
+                Vector3.up
+            );
+
+        _playerCamera.transform.rotation =
+            Quaternion.Slerp(
+                _playerCamera.transform.rotation,
+                targetRotation,
+                _focusRotationSpeed * Time.deltaTime
+            );
+
+        _playerCamera.fieldOfView =
+            Mathf.Lerp(
+                _playerCamera.fieldOfView,
+                _focusFov,
+                _focusFovSpeed * Time.deltaTime
+            );
+    }
+
+    // =========================================================
+    // Common
+    // =========================================================
 
     public void EndCurrentMode()
     {
@@ -234,137 +353,12 @@ public class PlayerViewModeController : MonoBehaviour
 
     private void RestoreGameplayControlIfAlive()
     {
-        if (_playerHealth != null && _playerHealth.IsDead)
+        if (_playerHealth != null &&
+            _playerHealth.IsDead)
         {
             return;
         }
 
         SetGameplayControl(true);
-    }
-
-    private void ApplyInspectPose(InspectInteractable target)
-    {
-        if (_inspectTransform == null)
-        {
-            return;
-        }
-
-        _inspectTransform.localPosition = target.InspectLocalPosition;
-        _inspectTransform.localRotation = Quaternion.Euler(target.InspectLocalRotation);
-        _inspectTransform.localScale = target.InspectLocalScale;
-    }
-
-    private void RotateInspectTarget()
-    {
-        Vector2 lookInput = _inputReader.LookInput;
-
-        float yaw = -lookInput.x * _inspectRotationSensitivity;
-        float pitch = lookInput.y * _inspectRotationSensitivity;
-
-        _inspectTransform.Rotate(Vector3.up, yaw, Space.World);
-        _inspectTransform.Rotate(Vector3.right, pitch, Space.Self);
-    }
-
-    private void UpdateObservationFocus()
-    {
-        if (_observationTarget == null ||
-            _focusPoint == null ||
-            _playerCamera == null)
-        {
-            EndObservation();
-            return;
-        }
-
-        Vector3 direction = _focusPoint.position - _playerCamera.transform.position;
-        if (direction.sqrMagnitude <= 0.001f)
-        {
-            return;
-        }
-
-        Quaternion targetRotation = Quaternion.LookRotation(
-            direction.normalized,
-            Vector3.up
-        );
-
-        _playerCamera.transform.rotation = Quaternion.Slerp(
-            _playerCamera.transform.rotation,
-            targetRotation,
-            _focusRotationSpeed * Time.deltaTime
-        );
-
-        _playerCamera.fieldOfView = Mathf.Lerp(
-            _playerCamera.fieldOfView,
-            _focusFov,
-            _focusFovSpeed * Time.deltaTime
-        );
-    }
-
-    private void SaveOriginalTransform()
-    {
-        _originalParent = _inspectTransform.parent;
-        _originalLocalPosition = _inspectTransform.localPosition;
-        _originalLocalRotation = _inspectTransform.localRotation;
-        _originalLocalScale = _inspectTransform.localScale;
-    }
-
-    private void RestoreOriginalTransform()
-    {
-        if (_inspectTransform == null)
-        {
-            return;
-        }
-
-        _inspectTransform.SetParent(_originalParent, false);
-        _inspectTransform.localPosition = _originalLocalPosition;
-        _inspectTransform.localRotation = _originalLocalRotation;
-        _inspectTransform.localScale = _originalLocalScale;
-    }
-
-    private void SaveAndDisablePhysics()
-    {
-        _targetColliders = _inspectTransform.GetComponentsInChildren<Collider>(true);
-        _colliderStates = new bool[_targetColliders.Length];
-
-        for (int i = 0; i < _targetColliders.Length; i++)
-        {
-            _colliderStates[i] = _targetColliders[i].enabled;
-            _targetColliders[i].enabled = false;
-        }
-
-        _targetRigidbody = _inspectTransform.GetComponent<Rigidbody>();
-        if (_targetRigidbody == null)
-        {
-            return;
-        }
-
-        _originalIsKinematic = _targetRigidbody.isKinematic;
-        _originalUseGravity = _targetRigidbody.useGravity;
-        _targetRigidbody.isKinematic = true;
-        _targetRigidbody.useGravity = false;
-    }
-
-    private void RestorePhysics()
-    {
-        if (_targetColliders != null && _colliderStates != null)
-        {
-            int count = Mathf.Min(_targetColliders.Length, _colliderStates.Length);
-            for (int i = 0; i < count; i++)
-            {
-                if (_targetColliders[i] != null)
-                {
-                    _targetColliders[i].enabled = _colliderStates[i];
-                }
-            }
-        }
-
-        if (_targetRigidbody != null)
-        {
-            _targetRigidbody.isKinematic = _originalIsKinematic;
-            _targetRigidbody.useGravity = _originalUseGravity;
-        }
-
-        _targetColliders = null;
-        _colliderStates = null;
-        _targetRigidbody = null;
     }
 }
