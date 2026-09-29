@@ -24,11 +24,26 @@ namespace ProjectShaman.Network.AI
 
             AILog.Log(AILog.NET, "Server started → AIFactory.CreateVillagers");
             ValidateSpawnPrefabRegistration();
+            AIEvents.OnVillagerDied += HandleVillagerDied;
             _factory.CreateVillagers(this);
+        }
+
+        private void HandleVillagerDied(string villagerId, string reason)
+        {
+            NetGM gameManager = FindFirstObjectByType<NetGM>();
+            if (gameManager == null)
+            {
+                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
+                return;
+            }
+
+            gameManager.ServerReportNpcDied();
+            AILog.Log(AILog.NET, villagerId, "Death reported to NetGM");
         }
 
         public override void OnStopServer()
         {
+            AIEvents.OnVillagerDied -= HandleVillagerDied;
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
             base.OnStopServer();
@@ -51,6 +66,18 @@ namespace ProjectShaman.Network.AI
 
             NetworkServer.Spawn(instance);
             AILog.Log(AILog.NET, $"NetworkServer.Spawn done: {instance.name}");
+        }
+
+        [Server]
+        public void Despawn(GameObject instance)
+        {
+            if (instance == null || !NetworkServer.active)
+            {
+                return;
+            }
+
+            AILog.Log(AILog.NET, $"NetworkServer.Destroy: {instance.name}");
+            NetworkServer.Destroy(instance);
         }
 
         private void ValidateSpawnPrefabRegistration()

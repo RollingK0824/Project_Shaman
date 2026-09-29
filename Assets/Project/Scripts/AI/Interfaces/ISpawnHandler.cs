@@ -7,5 +7,6 @@ namespace ProjectShaman.AI.Interfaces
         string HandlerName { get; }
         bool CanSpawn { get; }
         void Spawn(GameObject instance);
+        void Despawn(GameObject instance);
     }
 }
