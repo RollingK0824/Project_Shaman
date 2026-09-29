@@ -22,6 +22,21 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _tidyRelaxedMaxDistance = 15f;
         [SerializeField] private float _tidyRushedMaxDistance = 35f;
 
+        [Header("Ghost / Corruption")]
+        [SerializeField] private float _initialYin = 30f;
+        [SerializeField] private float _yinForMaxFrequency = 100f;
+        [SerializeField] private float _minimumYin = 20f;
+        [SerializeField, Range(0f, 1f)] private float _corruptionChanceAtZeroYin = 0.2f;
+        [SerializeField, Range(0f, 1f)] private float _corruptionChanceAtMaxYin = 0.8f;
+        [SerializeField, Range(0f, 1f)] private float _lastSlotChanceMultiplier = 0.5f;
+        [SerializeField] private int _minCorruptionsPerDay = 1;
+        [SerializeField, Range(0f, 1f)] private float _timeDelayMinRatio = 0.15f;
+        [SerializeField, Range(0f, 1f)] private float _timeDelayMaxRatio = 0.25f;
+        [SerializeField] private int _maxSymptomsPerRestSlot = 3;
+        [SerializeField] private float _emptyHandToolYinThreshold = 80f;
+        [SerializeField, Range(0f, 1f)] private float _emptyHandToolChance = 0.25f;
+        [SerializeField] private float _toolCorruptionSearchRadius = 25f;
+
         public int CycleDays => _cycleDays;
         public int MinRestPerDay => _minRestPerDay;
         public float MaxStartOffsetRatio => _maxStartOffsetRatio;
@@ -36,5 +51,18 @@ namespace ProjectShaman.AI.Data
         public float ToolSearchTimeRatio => _toolSearchTimeRatio;
         public float TidyRelaxedMaxDistance => _tidyRelaxedMaxDistance;
         public float TidyRushedMaxDistance => _tidyRushedMaxDistance;
+        public float InitialYin => _initialYin;
+        public float YinForMaxFrequency => _yinForMaxFrequency;
+        public float MinimumYin => _minimumYin;
+        public float CorruptionChanceAtZeroYin => _corruptionChanceAtZeroYin;
+        public float CorruptionChanceAtMaxYin => _corruptionChanceAtMaxYin;
+        public float LastSlotChanceMultiplier => _lastSlotChanceMultiplier;
+        public int MinCorruptionsPerDay => _minCorruptionsPerDay;
+        public float TimeDelayMinRatio => _timeDelayMinRatio;
+        public float TimeDelayMaxRatio => _timeDelayMaxRatio;
+        public int MaxSymptomsPerRestSlot => _maxSymptomsPerRestSlot;
+        public float EmptyHandToolYinThreshold => _emptyHandToolYinThreshold;
+        public float EmptyHandToolChance => _emptyHandToolChance;
+        public float ToolCorruptionSearchRadius => _toolCorruptionSearchRadius;
     }
 }

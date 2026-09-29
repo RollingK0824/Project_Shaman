@@ -38,6 +38,7 @@ namespace ProjectShaman.AI
         public event Action<ResolvedRoutine> OnRoutineApplied;
         public event Action<string> OnRoutineFailed;
         public event Action<string> OnRoutineCleared;
+        public event Action<SymptomType> OnSymptomTriggered;
 
         public bool IsSimulating => btAgent != null && btAgent.enabled;
 
@@ -139,6 +140,12 @@ namespace ProjectShaman.AI
             _routineDebug.Serial = serial;
             AILog.Log(AILog.CORE, LogId, $"Blackboard routine cleared #{serial} ({reason})");
             OnRoutineCleared?.Invoke(reason);
+        }
+
+        public void TriggerSymptom(SymptomType symptom)
+        {
+            AILog.Log(AILog.GHOST, LogId, $"Symptom {symptom}");
+            OnSymptomTriggered?.Invoke(symptom);
         }
 
         public void FailCurrentRoutine(string reason)

@@ -67,7 +67,7 @@ namespace ProjectShaman.AI
 
         public void TriggerActionEffect(string triggerName)
         {
-            if (animator != null)
+            if (HasParameter(triggerName))
             {
                 animator.SetTrigger(triggerName);
             }

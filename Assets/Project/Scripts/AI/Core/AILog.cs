@@ -19,6 +19,7 @@ namespace ProjectShaman.AI.Core
         public const string WORK = "Work";
         public const string TOOL = "Tool";
         public const string EVENT = "Event";
+        public const string GHOST = "Ghost";
 
         public static bool IsEnabled = true;
         public static bool IsFileLogEnabled = true;
