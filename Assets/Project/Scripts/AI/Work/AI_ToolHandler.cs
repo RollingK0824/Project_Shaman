@@ -25,7 +25,7 @@ namespace ProjectShaman.AI.Work
         [SerializeField] private bool _isMovingToStorage;
 
         private ToolItem _heldTool;
-        private ToolAcquisition _acquisition;
+        private ToolSearchSession _search;
 
         public AI_Core Core { get; private set; }
         public AI_Memory Memory { get; private set; }
@@ -34,6 +34,7 @@ namespace ProjectShaman.AI.Work
         public NavMeshAgent Agent { get; private set; }
         public AIRuntimeContext Context { get; private set; }
 
+        public ToolSearchSession Search => _search;
         public ToolItem HeldTool => _heldTool;
         public bool IsHolding => _heldTool != null;
         public string VillagerId => Core.LogId;
@@ -47,7 +48,7 @@ namespace ProjectShaman.AI.Work
             Perception = GetComponent<AI_Perception>();
             Movable = GetComponent<INetworkMovable>();
             Agent = GetComponent<NavMeshAgent>();
-            _acquisition = new ToolAcquisition(this);
+            _search = new ToolSearchSession(this);
 
             Core.OnRoutineApplied += HandleRoutineApplied;
             Core.OnRoutineCleared += HandleRoutineCleared;
@@ -61,9 +62,9 @@ namespace ProjectShaman.AI.Work
                 Core.OnRoutineCleared -= HandleRoutineCleared;
             }
 
-            if (_acquisition != null)
+            if (_search != null)
             {
-                _acquisition.Cancel();
+                _search.Cancel();
             }
 
             if (_heldTool != null)
@@ -108,31 +109,6 @@ namespace ProjectShaman.AI.Work
             _heldToolId = string.Empty;
             tool.Drop(VillagerId, position, reason);
             Memory.RecordToolSighting(tool);
-        }
-
-        public ToolTaskStatus BeginAcquire()
-        {
-            if (Context == null)
-            {
-                return ToolTaskStatus.Failure;
-            }
-
-            ToolTaskStatus status = _acquisition.Begin(Core.CurrentRoutine);
-            RefreshAcquireDebug();
-            return status;
-        }
-
-        public ToolTaskStatus TickAcquire()
-        {
-            ToolTaskStatus status = _acquisition.Tick();
-            RefreshAcquireDebug();
-            return status;
-        }
-
-        public void CancelAcquire()
-        {
-            _acquisition.Cancel();
-            RefreshAcquireDebug();
         }
 
         public void SetTidyZone(ToolTidyZone zone)
@@ -196,6 +172,8 @@ namespace ProjectShaman.AI.Work
 
         private void HandleRoutineApplied(ResolvedRoutine routine)
         {
+            _search.Cancel();
+
             if (!IsHolding)
             {
                 return;
@@ -212,7 +190,7 @@ namespace ProjectShaman.AI.Work
 
         private void HandleRoutineCleared(string reason)
         {
-            _acquisition.Cancel();
+            _search.Cancel();
 
             if (IsHolding)
             {
@@ -220,11 +198,11 @@ namespace ProjectShaman.AI.Work
             }
         }
 
-        private void RefreshAcquireDebug()
+        public void RefreshSearchDebug()
         {
-            _acquireState = _acquisition.CurrentState.ToString();
-            _requiredToolType = _acquisition.RequiredToolType;
-            _candidateProgress = $"{Mathf.Max(0, _acquisition.CandidateIndex + 1)}/{_acquisition.CandidateCount}";
+            _acquireState = _search.IsActive ? "Searching" : "Idle";
+            _requiredToolType = _search.RequiredToolType;
+            _candidateProgress = $"{Mathf.Max(0, _search.CandidateIndex + 1)}/{_search.CandidateCount}";
         }
     }
 }
