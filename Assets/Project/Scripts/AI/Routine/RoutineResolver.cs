@@ -193,7 +193,7 @@ namespace ProjectShaman.AI.Routine
                 return true;
             }
 
-            if (possession.Yin >= _config.EmptyHandToolYinThreshold)
+            if (possession.Yin >= _config.EmptyHandToolYinThreshold && random.NextDouble() < _config.EmptyHandToolChance)
             {
                 resolved.ToolTypeOverride = string.Empty;
                 resolved.CorruptionDetail = $"tool {routine.ToolId} → pulled from thin air";

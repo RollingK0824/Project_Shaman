@@ -61,6 +61,11 @@ MonoBehaviour:
     ActionId: 
     IsCoop: 0
     MaxPeople: 2
+    WrongToolIds:
+    - Axe
+    WrongActionIds: []
+    WrongPlaceIds:
+    - Woodpile
   - RoutineId: Weeding
     DisplayName: "\uAE40\uB9E4\uAE30"
     Category: 1
@@ -75,6 +80,10 @@ MonoBehaviour:
     ActionId: 
     IsCoop: 0
     MaxPeople: 2
+    WrongToolIds: []
+    WrongActionIds: []
+    WrongPlaceIds:
+    - WoodPile
   - RoutineId: Chopping
     DisplayName: "\uC7A5\uC791 \uD328\uAE30"
     Category: 1
@@ -89,6 +98,12 @@ MonoBehaviour:
     ActionId: Chop
     IsCoop: 0
     MaxPeople: 2
+    WrongToolIds:
+    - Hoe
+    WrongActionIds:
+    - Stack
+    WrongPlaceIds:
+    - Field
   - RoutineId: Stacking
     DisplayName: "\uC7A5\uC791 \uC313\uAE30"
     Category: 1
@@ -103,6 +118,11 @@ MonoBehaviour:
     ActionId: Stack
     IsCoop: 0
     MaxPeople: 2
+    WrongToolIds: []
+    WrongActionIds:
+    - Chop
+    WrongPlaceIds:
+    - Tavern
   - RoutineId: TavernRest
     DisplayName: "\uC8FC\uB9C9\uC5D0\uC11C \uC26C\uAE30"
     Category: 2
@@ -116,3 +136,6 @@ MonoBehaviour:
     ActionId: 
     IsCoop: 0
     MaxPeople: 5
+    WrongToolIds: []
+    WrongActionIds: []
+    WrongPlaceIds: []

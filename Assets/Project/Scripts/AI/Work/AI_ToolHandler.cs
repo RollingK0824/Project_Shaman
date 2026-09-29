@@ -14,6 +14,8 @@ namespace ProjectShaman.AI.Work
     [RequireComponent(typeof(AI_Memory), typeof(AI_Perception))]
     public class AI_ToolHandler : MonoBehaviour, IAIConfigurable
     {
+        private const float DROP_SIDE_OFFSET = 0.7f;
+
         [SerializeField] private Transform _handSocket;
 
         [Header("Runtime")]
@@ -107,7 +109,7 @@ namespace ProjectShaman.AI.Work
             ToolItem tool = _heldTool;
             _heldTool = null;
             _heldToolId = string.Empty;
-            tool.Drop(VillagerId, position, reason);
+            tool.Drop(VillagerId, position + transform.right * DROP_SIDE_OFFSET, reason);
             Memory.RecordToolSighting(tool);
         }
 

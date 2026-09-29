@@ -17,6 +17,7 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
     {
         [SerializeReference] public BlackboardVariable<GameObject> Agent;
         [SerializeReference] public BlackboardVariable<Vector3> TargetPosition;
+        [SerializeReference] public BlackboardVariable<float> ArriveDistance = new BlackboardVariable<float>(0f);
 
         private INetworkMovable movable;
 
@@ -35,12 +36,25 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
         {
             if (movable == null) return Status.Failure;
 
-            if (movable.HasReachedDestination)
+            if (movable.HasReachedDestination || IsWithinArriveDistance())
             {
                 return Status.Success;
             }
 
             return Status.Running;
+        }
+
+        private bool IsWithinArriveDistance()
+        {
+            float arrive = ArriveDistance != null ? ArriveDistance.Value : 0f;
+            if (arrive <= 0f)
+            {
+                return false;
+            }
+
+            Vector3 offset = Agent.Value.transform.position - TargetPosition.Value;
+            offset.y = 0f;
+            return offset.sqrMagnitude <= arrive * arrive;
         }
 
         protected override void OnEnd()
