@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using UnityEngine;
 
 namespace ProjectShaman.AI.Core
@@ -20,6 +22,42 @@ namespace ProjectShaman.AI.Core
         public const string GHOST = "Ghost";
 
         public static bool IsEnabled = true;
+        public static bool IsFileLogEnabled = true;
+
+        private static string _filePath;
+        private static bool _isFileReady;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetFileLog()
+        {
+            _isFileReady = false;
+        }
+
+        private static void WriteFile(string level, string line)
+        {
+            if (!IsFileLogEnabled)
+            {
+                return;
+            }
+
+            try
+            {
+                if (!_isFileReady)
+                {
+                    string logsDirectory = Path.Combine(Path.GetDirectoryName(Application.dataPath) ?? ".", "Logs");
+                    Directory.CreateDirectory(logsDirectory);
+                    _filePath = Path.Combine(logsDirectory, "AI_Session.log");
+                    File.WriteAllText(_filePath, $"=== AI session {DateTime.Now:yyyy-MM-dd HH:mm:ss} ==={Environment.NewLine}");
+                    _isFileReady = true;
+                }
+
+                File.AppendAllText(_filePath, $"{Time.time,8:F2} {level} {line}{Environment.NewLine}");
+            }
+            catch (Exception)
+            {
+                IsFileLogEnabled = false;
+            }
+        }
 
         public static void Log(string boundary, string message)
         {
@@ -28,7 +66,9 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            Debug.Log($"[AI][{boundary}] {message}");
+            string line = $"[AI][{boundary}] {message}";
+            Debug.Log(line);
+            WriteFile("I", line);
         }
 
         public static void Log(string boundary, string villagerId, string message)
@@ -38,17 +78,23 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            Debug.Log($"[AI][{boundary}][{villagerId}] {message}");
+            string line = $"[AI][{boundary}][{villagerId}] {message}";
+            Debug.Log(line);
+            WriteFile("I", line);
         }
 
         public static void Warn(string boundary, string message)
         {
-            Debug.LogWarning($"[AI][{boundary}] {message}");
+            string line = $"[AI][{boundary}] {message}";
+            Debug.LogWarning(line);
+            WriteFile("W", line);
         }
 
         public static void Error(string boundary, string message)
         {
-            Debug.LogError($"[AI][{boundary}] {message}");
+            string line = $"[AI][{boundary}] {message}";
+            Debug.LogError(line);
+            WriteFile("E", line);
         }
     }
 }
