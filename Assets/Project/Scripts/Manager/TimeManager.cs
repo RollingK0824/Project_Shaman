@@ -14,6 +14,7 @@ public class TimeManager : SceneSingleton<TimeManager>
     public const float NIGHT_DURATION = 20f;
     public const float CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
+    public double Elapsed {  get; private set; }
     public double CycleStartTime {  get; private set; }
     public int DayCount{ get; private set; }
     public TimeOfDay CurrentTimePhase { get; private set; }
@@ -41,15 +42,15 @@ public class TimeManager : SceneSingleton<TimeManager>
         }
 
 
-        double elapsed = NetworkTime.time - CycleStartTime;
-        if (elapsed < 0)
+        Elapsed = NetworkTime.time - CycleStartTime;
+        if (Elapsed < 0)
         {
             return;
         }
 
-        double intoCycle = elapsed % CYCLE_DURATION;
+        double intoCycle = Elapsed % CYCLE_DURATION;
         var newPhase = intoCycle < DAY_DURATION ? TimeOfDay.Day : TimeOfDay.Night;
-        int newDay = (int)(elapsed / CYCLE_DURATION) + 1;
+        int newDay = (int)(Elapsed / CYCLE_DURATION) + 1;
 
         // 날짜를 먼저 갱신 (OnDayStart 구독자가 DayCount를 읽을 때 새 날짜가 보이도록)
         if (newDay != DayCount)

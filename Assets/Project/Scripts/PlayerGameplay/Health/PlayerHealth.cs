@@ -100,7 +100,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
         if (_currentHealth <= 0f)
         {
-            Die(source);
+            ApplyDeath(source);
         }
     }
 
@@ -154,8 +154,27 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
         if (_currentHealth <= 0f)
         {
-            Die(null);
+            ApplyDeath(null);
         }
+    }
+
+    public void ApplyHealth(float current, GameObject source = null)
+    {
+        float prevHealth = _currentHealth;
+
+        _currentHealth = Mathf.Clamp(current, 0f, _maxHealth);
+
+        if (Mathf.Approximately(prevHealth, _currentHealth))
+        {
+            return;
+        }
+
+        if (_currentHealth < prevHealth)
+        {
+            Damaged?.Invoke(prevHealth - _currentHealth, source);
+        }
+
+        HealthChanged?.Invoke(_currentHealth, _maxHealth);
     }
 
     private void InitializeHealth()
@@ -171,7 +190,8 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         IsDead = false;
     }
 
-    private void Die(GameObject source)
+    //private void Die(GameObject source)
+    public void ApplyDeath(GameObject source = null)
     {
         if (IsDead)
         {

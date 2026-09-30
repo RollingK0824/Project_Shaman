@@ -32,27 +32,51 @@ public class NetPlayerStatus : NetworkBehaviour
     {
         base.OnStartServer();
         _isDead = _health.IsDead;
-        _health.Died += HandleDiedOnServer;
+        PlayerEvents.DeathConfiremed += HandleDeathConfirmed;
         PlayerRoster.Register(this);
     }
 
     public override void OnStopServer()
     {
-        _health.Died -= HandleDiedOnServer;
+        PlayerEvents.DeathConfiremed -= HandleDeathConfirmed;
         PlayerRoster.Unregister(this);
         base.OnStopServer();
     }
 
-    private void HandleDiedOnServer(GameObject source)
+    public override void OnStartClient()
     {
-        if (_isDead) return;
+        base.OnStartClient();
+
+        if (_isDead)
+        {
+            _health.ApplyDeath();
+        }
+    }
+
+    // [서버] 판정기가 확정한 사망을 공개 상태로 전파
+    private void HandleDeathConfirmed(PlayerHealth target, GameObject source)
+    {
+        if (target != _health)
+        {
+            return;
+        }
+        if (_isDead)
+        {
+            return;
+        }
 
         _isDead = true;
         PlayerRoster.NotifyChanged();
     }
 
+    // [모든 클라, 호스트] 서버가 확정한 사망을 이 복사본에 적용
     private void OnIsDeadChanged(bool oldValue, bool newValue)
     {
+        if (newValue)
+        {
+            _health.ApplyDeath();
+        }
+
         DeadChanged?.Invoke(newValue);
     }
 }
