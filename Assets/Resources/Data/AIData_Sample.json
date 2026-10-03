@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "names": [
+    { "name": "김첨지", "condition": { "genders": ["Male"], "socialClasses": [], "ageGroups": ["Adult", "Elder"] } },
+    { "name": "박서방", "condition": { "genders": ["Male"], "socialClasses": ["Sangmin"], "ageGroups": ["Adult"] } },
+    { "name": "순이", "condition": { "genders": ["Female"], "socialClasses": [], "ageGroups": [] } },
+    { "name": "옥분이", "condition": { "genders": ["Female"], "socialClasses": ["Sangmin", "Cheonmin"], "ageGroups": [] } }
+  ],
+  "jobs": [
+    { "jobId": "Farmer", "displayName": "농부", "condition": { "genders": [], "socialClasses": ["Sangmin", "Cheonmin"], "ageGroups": [] } },
+    { "jobId": "Woodcutter", "displayName": "나무꾼", "condition": { "genders": ["Male"], "socialClasses": [], "ageGroups": ["Adult"] } }
+  ],
+  "routines": [
+    {
+      "routineId": "Farming",
+      "displayName": "밭 갈기",
+      "category": "Work",
+      "jobIds": ["Farmer"],
+      "condition": { "genders": [], "socialClasses": [], "ageGroups": ["Adult", "Elder"] },
+      "placeId": "Field",
+      "toolId": "Hoe",
+      "actionId": "",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": ["Axe"],
+      "wrongActionIds": [],
+      "wrongPlaceIds": ["Woodpile"]
+    },
+    {
+      "routineId": "Weeding",
+      "displayName": "김매기",
+      "category": "Work",
+      "jobIds": ["Farmer"],
+      "condition": { "genders": [], "socialClasses": [], "ageGroups": [] },
+      "placeId": "Field",
+      "toolId": "",
+      "actionId": "",
+      "isCoop": true,
+      "maxPeople": 4,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": ["Woodpile"]
+    },
+    {
+      "routineId": "Chopping",
+      "displayName": "장작 패기",
+      "category": "Work",
+      "jobIds": ["Woodcutter"],
+      "condition": { "genders": [], "socialClasses": [], "ageGroups": [] },
+      "placeId": "Woodpile",
+      "toolId": "Axe",
+      "actionId": "Chop",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": ["Hoe"],
+      "wrongActionIds": ["Stack"],
+      "wrongPlaceIds": ["Field"]
+    },
+    {
+      "routineId": "Stacking",
+      "displayName": "장작 쌓기",
+      "category": "Work",
+      "jobIds": ["Woodcutter"],
+      "condition": { "genders": [], "socialClasses": [], "ageGroups": [] },
+      "placeId": "Woodpile",
+      "toolId": "",
+      "actionId": "Stack",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": ["Chop"],
+      "wrongPlaceIds": ["Tavern"]
+    },
+    {
+      "routineId": "TavernRest",
+      "displayName": "주막에서 쉬기",
+      "category": "Rest",
+      "jobIds": [],
+      "condition": { "genders": [], "socialClasses": ["Sangmin", "Cheonmin"], "ageGroups": ["Adult", "Elder"] },
+      "placeId": "Tavern",
+      "toolId": "",
+      "actionId": "",
+      "isCoop": true,
+      "maxPeople": 5,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    }
+  ]
+}
