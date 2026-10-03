@@ -1,9 +1,6 @@
 using UnityEngine;
 using Mirror;
-using Mirror.BouncyCastle.Bcpg.OpenPgp;
-using Steamworks;
-using UnityEngine.EventSystems;
-using Unity.Collections.LowLevel.Unsafe;
+using System.Collections;
 
 /* *GameManager 동기화할 데이트들
 * NpcTotal : 초기 NPC 수 동기화
@@ -30,6 +27,18 @@ public class NetGM : NetworkBehaviour
 
     [Header("초기 개체 수")]
     [SerializeField, Min(1)] private int _initialNpcCount = 20;
+
+    [Header("게임 종료")]
+    [SerializeField, Min(0f)] private float _returnToLobbyDelay = 5f;
+
+    [SyncVar] private double _returnToLobbyTime;
+
+    public double ReturnToLobbyTime => _returnToLobbyTime;
+
+    private GameManager _serverGameManager;
+
+    // [서버] 이번 프레임에 참가자, 생존자가 바뀌었는지 LateUpdate에서 한번만 검사
+    private bool _rosterDirty;
 
     // 게임 준비가 끝난 시점에 서버에서 호출
     [Server]
@@ -110,6 +119,12 @@ public class NetGM : NetworkBehaviour
     {
         base.OnStartServer();
 
+        PlayerRoster.Changed += HandleRosterChanged;
+
+        _serverGameManager = GameManager.Instance;
+        _serverGameManager.OnWin += HandleGameOverOnServer;
+        _serverGameManager.OnLose += HandleGameOverOnServer;
+
         var roomManager = NetworkManager.singleton as RoomManager;
 
         if (roomManager == null)
@@ -119,8 +134,20 @@ public class NetGM : NetworkBehaviour
         }
 
 
-
         ServerInitialize(_initialNpcCount, roomManager.SelectedGhostCount);
+    }
+
+    public override void OnStopServer()
+    {
+        PlayerRoster.Changed -= HandleRosterChanged;
+
+        if (_serverGameManager != null)
+        {
+            _serverGameManager.OnWin -= HandleGameOverOnServer;
+            _serverGameManager.OnLose -= HandleGameOverOnServer;
+        }
+
+        base.OnStopServer();
     }
 
     public override void OnStartClient()
@@ -129,6 +156,34 @@ public class NetGM : NetworkBehaviour
 
         ApplySnapshot(_snapshot);
     }
+
+    private void LateUpdate()
+    {
+        if (!_rosterDirty)
+        {
+            return;
+        }
+
+        _rosterDirty = false;
+        ServerCheckAllPlayersDead();
+    }
+
+    [Server]
+    private void ServerCheckAllPlayersDead()
+    {
+        if (!_snapshot.initialized) return;
+
+        var gm = GameManager.Instance;
+        if (gm.IsGameOver) return;
+
+        if (PlayerRoster.Players.Count == 0) return;
+        if (PlayerRoster.AliveCount > 0) return;
+
+        Debug.Log("[NetGM] 생존 플레이어 0명 -> 패배");
+        gm.SetGameState(GameState.Lose);
+        ServerPublishState();
+    }
+
 
     private void OnGMStatusChanged(GameStateSnapshot oldValue, GameStateSnapshot newValue)
     {
@@ -149,4 +204,34 @@ public class NetGM : NetworkBehaviour
             snapshot.state);
     }
 
+
+    private void HandleRosterChanged()
+    {
+        _rosterDirty = true;
+    }
+
+
+    [Server]
+    private void HandleGameOverOnServer()
+    {
+        if (_returnToLobbyTime > 0) return;
+
+        _returnToLobbyTime = NetworkTime.time + _returnToLobbyDelay;
+
+        Debug.Log($"[NetGM] 게임 종료: {GameManager.Instance.CurrentGameState} -> {_returnToLobbyDelay:0}초 후 로비 복귀");
+
+        StartCoroutine(ReturnToLobbyAfterDelay());
+    }
+
+    private IEnumerator ReturnToLobbyAfterDelay()
+    {
+        yield return new WaitForSeconds(_returnToLobbyDelay);
+
+        if (!NetworkServer.active) yield break;
+
+        if (NetworkManager.singleton is RoomManager roomManager)
+        {
+            roomManager.ServerChangeScene(roomManager.RoomScene);
+        }
+    }
 }

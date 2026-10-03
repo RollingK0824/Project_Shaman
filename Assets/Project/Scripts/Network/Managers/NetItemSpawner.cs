@@ -11,6 +11,8 @@ public sealed class NetItemSpawner : MonoBehaviour
     private ItemSpawner _spawner;
     private readonly Dictionary<GameObject, int> _spawnedItems = new Dictionary<GameObject, int>();
 
+    private static readonly List<NetItemSpawner> _activeSpawners = new List<NetItemSpawner>();
+
     public int SpawnedCount => _spawnedItems.Count;
 
     private void Awake()
@@ -21,11 +23,13 @@ public sealed class NetItemSpawner : MonoBehaviour
     private void OnEnable()
     {
         _spawner.SpawnRequested += HandleSpawnRequested;
+        _activeSpawners.Add(this);
     }
 
     private void OnDisable()
     {
         _spawner.SpawnRequested -= HandleSpawnRequested;
+        _activeSpawners.Remove(this);
     }
 
     private void HandleSpawnRequested()
@@ -87,6 +91,18 @@ public sealed class NetItemSpawner : MonoBehaviour
         _spawner.ReturnItem(itemIndex, item);
         Debug.Log($"[NetItemSpawner] 회수: count={SpawnedCount}", this);
         return true;
+    }
+
+
+    // 해당 아이템을 스폰한 스포너를 찾아서 회수.. 따로 Spawner가 없다면 false로 반환
+    public static bool ServerDespawnFromAny(GameObject item)
+    {
+        foreach(NetItemSpawner spawner in _activeSpawners)
+        {
+            if (spawner.ServerDespawn(item)) return true;
+        }
+
+        return false;
     }
 
     public void ServerDespawnAll()

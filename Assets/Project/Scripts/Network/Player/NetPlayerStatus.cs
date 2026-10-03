@@ -32,13 +32,13 @@ public class NetPlayerStatus : NetworkBehaviour
     {
         base.OnStartServer();
         _isDead = _health.IsDead;
-        PlayerEvents.DeathConfiremed += HandleDeathConfirmed;
+        PlayerEvents.DeathConfirmed += HandleDeathConfirmed;
         PlayerRoster.Register(this);
     }
 
     public override void OnStopServer()
     {
-        PlayerEvents.DeathConfiremed -= HandleDeathConfirmed;
+        PlayerEvents.DeathConfirmed -= HandleDeathConfirmed;
         PlayerRoster.Unregister(this);
         base.OnStopServer();
     }
