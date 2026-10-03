@@ -12,7 +12,7 @@ namespace ProjectShaman.AI.BehaviorTree.Conditions
         category: "Conditions/AI Tool",
         story: "[Agent] has required tool",
         id: "8630d1abdaf14f00a40622328f1e6053")]
-    public partial class HasRequiredToolCondition : Condition
+    public partial class HasRequiredToolCondition : Unity.Behavior.Condition
     {
         [SerializeReference] public BlackboardVariable<GameObject> Agent;
 

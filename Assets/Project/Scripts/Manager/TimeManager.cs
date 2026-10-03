@@ -15,6 +15,7 @@ public class TimeManager : SceneSingleton<TimeManager>
     public const float CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
     public double CycleStartTime {  get; private set; }
+    public double Seconds { get; private set; }
     public int DayCount{ get; private set; }
     public TimeOfDay CurrentTimePhase { get; private set; }
 
@@ -26,15 +27,15 @@ public class TimeManager : SceneSingleton<TimeManager>
 
     private void Update()
     {
-        double elapsed = NetworkTime.time - CycleStartTime;
-        if (elapsed < 0)
+        Seconds = NetworkTime.time - CycleStartTime;
+        if (Seconds < 0)
         {
             return;
         }
 
-        double intoCycle = elapsed % CYCLE_DURATION;
+        double intoCycle = Seconds % CYCLE_DURATION;
         var newPhase = intoCycle < DAY_DURATION ? TimeOfDay.Day : TimeOfDay.Night;
-        int newDay = (int)(elapsed / CYCLE_DURATION) + 1;
+        int newDay = (int)(Seconds / CYCLE_DURATION) + 1;
 
         if (newPhase != CurrentTimePhase)
         {

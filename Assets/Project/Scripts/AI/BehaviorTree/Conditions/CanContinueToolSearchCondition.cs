@@ -12,7 +12,7 @@ namespace ProjectShaman.AI.BehaviorTree.Conditions
         category: "Conditions/AI Tool",
         story: "[Agent] can continue tool search",
         id: "a913a19a506244dc889572cc059c0102")]
-    public partial class CanContinueToolSearchCondition : Condition
+    public partial class CanContinueToolSearchCondition : Unity.Behavior.Condition
     {
         [SerializeReference] public BlackboardVariable<GameObject> Agent;
 
