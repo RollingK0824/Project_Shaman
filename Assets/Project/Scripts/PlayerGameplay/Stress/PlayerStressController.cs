@@ -150,6 +150,16 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
         );
     }
 
+    public void ApplyStressLevel(StressLevel level)
+    {
+        if (level == CurrentLevel)
+            return;
+
+
+        CurrentLevel = level;
+
+        StressLevelChanged?.Invoke(CurrentLevel);
+    }
     private StressLevel CalculateStressLevel(
         float stress)
     {

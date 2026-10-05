@@ -12,6 +12,9 @@ public static class PlayerEvents
     // 플레이어가 월드 아이템을 주으려고 할 때 (네트워크에서 본인의 NetPlayerInventory가 서버로 전달)
     public static event Action<GameObject, WorldItem> PickupRequested;
 
+    // 스트레스 변화
+    public static event Action<PlayerStressController, float, StressCause, GameObject> StressRequested;
+
     public static void RaiseDamageRequested(IDamageable target, float amount, GameObject source)
     {
         if (target == null)
@@ -44,6 +47,16 @@ public static class PlayerEvents
         PickupRequested?.Invoke(interactor, item);
     }
 
+    public static void RaiseStressRequested(PlayerStressController target, float delta, StressCause cause, GameObject source)
+    {
+        if (target == null || Mathf.Approximately(delta, 0f))
+        {
+            return;
+        }
+
+        StressRequested?.Invoke(target, delta, cause, source);
+    }
+
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetOnPlay()
@@ -51,5 +64,6 @@ public static class PlayerEvents
         DamageRequested = null;
         DeathConfirmed = null;
         PickupRequested = null;
+        StressRequested = null;
     }
 }
