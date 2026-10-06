@@ -5,6 +5,10 @@ public struct TestSelfDamageMessage : NetworkMessage
 {
     public bool kill;
 }
+public struct TestSelfStressMessage : NetworkMessage
+{
+    public float delta;
+}
 
 public class NetworkTestTrigger : MonoBehaviour
 {
@@ -17,6 +21,7 @@ public class NetworkTestTrigger : MonoBehaviour
     // 테스트 패널 (F1)
     private bool _panelOpen;
     private bool _lookBeforePanel;
+    private Vector2 _panelScroll;
 
     private NetGM GameNetwork
     {
@@ -35,7 +40,11 @@ public class NetworkTestTrigger : MonoBehaviour
         _itemSpawner = FindFirstObjectByType<NetItemSpawner>();
 
         if (NetworkServer.active)
+        {
             NetworkServer.ReplaceHandler<TestSelfDamageMessage>(OnTestSelfDamage);
+            NetworkServer.ReplaceHandler<TestSelfStressMessage>(OnTestSelfStress);
+        }
+
 
         // TimeManager는 이미 public 이벤트가 있으니 그냥 구독해서 로그만 찍음
         TimeManager.Instance.OnDayStart += () =>
@@ -56,6 +65,7 @@ public class NetworkTestTrigger : MonoBehaviour
     void OnDestroy()
     {
         NetworkServer.UnregisterHandler<TestSelfDamageMessage>();
+        NetworkServer.UnregisterHandler<TestSelfStressMessage>();
     }
 
     void Update()
@@ -82,6 +92,12 @@ public class NetworkTestTrigger : MonoBehaviour
 
         NetworkClient.Send(new TestSelfDamageMessage { kill = kill });
     }
+    private void RequestSelfStress(float delta)
+    {
+        if (!NetworkClient.active || !NetworkClient.ready) return;
+
+        NetworkClient.Send(new TestSelfStressMessage { delta = delta });
+    }
 
     // [호스트] 9 : 랜덤 아이템 하나 스폰
     private void ServerSpawnItem()
@@ -90,7 +106,6 @@ public class NetworkTestTrigger : MonoBehaviour
 
         _itemSpawner.GetComponent<ItemSpawner>().RequestSpawn();
     }
-
 
     // [호스트] 0: 스포너 아이템 전체 회수
     private void ServerDespawnAllItems()
@@ -140,8 +155,6 @@ public class NetworkTestTrigger : MonoBehaviour
         }
     }
 
-
-
     void OnGUI()
     {
         DrawResult();
@@ -159,7 +172,8 @@ public class NetworkTestTrigger : MonoBehaviour
 
     private void DrawPanel()
     {
-        GUILayout.BeginArea(new Rect(10, 10, 300, 360), GUI.skin.box);
+        GUILayout.BeginArea(new Rect(10, 10, 320, Screen.height - 20), GUI.skin.box);
+        _panelScroll = GUILayout.BeginScrollView(_panelScroll);
         GUILayout.Label("테스트 패널 (F1 닫기)");
 
         // 상태
@@ -180,6 +194,19 @@ public class NetworkTestTrigger : MonoBehaviour
             GUILayout.Label($"내 HP {health.CurrentHealth:0} / {health.MaxHealth:0}{dead}");
         }
 
+        PlayerStressController myStress = LocalPlayer != null ? LocalPlayer.GetComponent<PlayerStressController>() : null;
+        if (myStress != null)
+        {
+            GUILayout.Label($"내 스트레스 {myStress.CurrentStress:0} ({myStress.CurrentLevel})");
+        }
+
+        // 모든 플레이어의 공개 단계 (다른 클라이언트에 단계가 동기화되는지 확인용)
+        foreach (NetPlayerStatus status in FindObjectsByType<NetPlayerStatus>(FindObjectsSortMode.None))
+        {
+            string dead = status.IsDead ? " (사망)" : "";
+            GUILayout.Label($" · {status.PlayerName}: {status.StressLevel}{dead}");
+        }
+
         if (NetworkServer.active)
         {
             GUILayout.Label($"참가 {PlayerRoster.Players.Count} / 생존 {PlayerRoster.AliveCount}");
@@ -191,6 +218,8 @@ public class NetworkTestTrigger : MonoBehaviour
         GUILayout.Label("── 모두 ──");
         if (GUILayout.Button("7  자기 25 피해")) RequestSelfDamage(false);
         if (GUILayout.Button("8  자기 즉사")) RequestSelfDamage(true);
+        if (GUILayout.Button("스트레스 +20")) RequestSelfStress(20f);
+        if (GUILayout.Button("스트레스 -20")) RequestSelfStress(-20f);
 
         // 호스트 전용
         GUILayout.Space(6);
@@ -201,6 +230,7 @@ public class NetworkTestTrigger : MonoBehaviour
         if (GUILayout.Button("-  귀신 퇴마")) ServerExorciseGhost();
         GUI.enabled = true;
 
+        GUILayout.EndScrollView();
         GUILayout.EndArea();
     }
 
@@ -244,5 +274,20 @@ public class NetworkTestTrigger : MonoBehaviour
 
         Debug.Log($"[TEST] {playerName} 자기 피해 요청 {amount: 0.##}");
         PlayerEvents.RaiseDamageRequested(health, amount, null);
+    }
+
+    private void OnTestSelfStress(NetworkConnectionToClient conn, TestSelfStressMessage msg)
+    {
+        if (!Debug.isDebugBuild) return;
+        if (conn.identity == null) return;
+
+        PlayerStressController stress = conn.identity.GetComponent<PlayerStressController>();
+        if (stress == null) return;
+
+
+        float delta = Mathf.Clamp(msg.delta, -100f, 100f);
+
+        Debug.Log($"[TEST] {conn.identity.name} 스트레스 요청 {delta:+0;-0}");
+        PlayerEvents.RaiseStressRequested(stress, delta, StressCause.Other, null);
     }
 }
