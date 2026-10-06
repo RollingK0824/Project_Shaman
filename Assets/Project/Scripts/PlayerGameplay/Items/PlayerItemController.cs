@@ -1,4 +1,5 @@
-using UnityEngine;
+﻿using UnityEngine;
+using Exorcist.FirstPerson;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerInventory))]
@@ -7,18 +8,21 @@ public class PlayerItemController : MonoBehaviour
     [Header("References")]
     [SerializeField] private Transform _itemHoldPoint;
 
+    [Header("First Person Hand")]
+    [SerializeField] private FirstPersonRightHand _rightHand;
+
     public int SelectedSlotIndex { get; private set; } = -1;
 
     public ItemData EquippedItemData { get; private set; }
 
+    // ItemBase가 없는 Visual Only 아이템도 장착 상태로 취급
     public bool HasEquippedItem =>
-        _equippedItem != null;
+        EquippedItemData != null;
 
     public bool CanUseItems { get; set; } = true;
 
     private PlayerInputReader _inputReader;
     private PlayerInventory _inventory;
-
     private PlayerViewModeController _viewModeController;
 
     private GameObject _equippedObject;
@@ -34,6 +38,12 @@ public class PlayerItemController : MonoBehaviour
 
         _viewModeController =
             GetComponent<PlayerViewModeController>();
+
+        // 게임 시작 시에는 오른손을 숨긴다.
+        if (_rightHand != null)
+        {
+            _rightHand.gameObject.SetActive(false);
+        }
     }
 
     private void OnEnable()
@@ -86,8 +96,7 @@ public class PlayerItemController : MonoBehaviour
             UnequipCurrentItem();
 
             Debug.Log(
-                $"[Item] 슬롯 {slotIndex + 1}: " +
-                "비어 있음"
+                $"[Item] 슬롯 {slotIndex + 1}: 비어 있음"
             );
 
             return;
@@ -103,42 +112,77 @@ public class PlayerItemController : MonoBehaviour
 
     private void EquipItem(ItemData itemData)
     {
-        if (!CanUseItems)
-        {
-            return;
-        }
-
-        if (itemData == null)
+        if (!CanUseItems ||
+            itemData == null)
         {
             return;
         }
 
         if (ReferenceEquals(
                 EquippedItemData,
-                itemData) &&
-            _equippedItem != null)
+                itemData))
         {
             return;
         }
 
         UnequipCurrentItem();
 
-        if (_itemHoldPoint == null)
+        // =====================================================
+        // 오른손 시스템을 사용하는 아이템
+        // =====================================================
+
+        if (_rightHand != null &&
+            itemData.HandProfile != null)
         {
-            Debug.LogWarning(
-                "[Item] ItemHoldPoint가 " +
-                "지정되지 않았습니다.",
+            // 아이템을 장착할 때만 오른손 표시
+            _rightHand.gameObject.SetActive(true);
+
+            _rightHand.Equip(
+                itemData.HandProfile
+            );
+
+            _equippedObject =
+                _rightHand.EquippedInstance;
+
+            if (_equippedObject != null)
+            {
+                _equippedItem =
+                    _equippedObject
+                        .GetComponentInChildren<ItemBase>(true);
+            }
+
+            EquippedItemData = itemData;
+
+            InitializeEquippedItem(itemData);
+
+            Debug.Log(
+                $"[Item] 오른손 장착: " +
+                $"{itemData.DisplayName}",
                 gameObject
             );
 
             return;
         }
 
-        if (itemData.HeldPrefab == null)
+        // =====================================================
+        // HandProfile이 없는 기존 아이템 Fallback
+        // =====================================================
+
+        if (_itemHoldPoint == null)
+        {
+            Debug.LogWarning(
+                "[Item] ItemHoldPoint가 지정되지 않았습니다.",
+                gameObject
+            );
+
+            return;
+        }
+
+        if (itemData.VisualPrefab == null)
         {
             Debug.LogWarning(
                 $"[Item] {itemData.DisplayName}의 " +
-                "Held Prefab이 없습니다.",
+                "Visual Prefab이 없습니다.",
                 itemData
             );
 
@@ -147,7 +191,7 @@ public class PlayerItemController : MonoBehaviour
 
         _equippedObject =
             Instantiate(
-                itemData.HeldPrefab,
+                itemData.VisualPrefab,
                 _itemHoldPoint
             );
 
@@ -158,26 +202,33 @@ public class PlayerItemController : MonoBehaviour
             Quaternion.identity;
 
         _equippedItem =
-            _equippedObject.GetComponent<ItemBase>();
+            _equippedObject
+                .GetComponentInChildren<ItemBase>(true);
 
+        EquippedItemData = itemData;
+
+        InitializeEquippedItem(itemData);
+
+        Debug.Log(
+            $"[Item] 장착: {itemData.DisplayName}",
+            _equippedObject
+        );
+    }
+
+    private void InitializeEquippedItem(
+        ItemData itemData)
+    {
+        // 단순 Visual 아이템은 ItemBase가 없어도 정상 장착
         if (_equippedItem == null)
         {
-            Debug.LogWarning(
-                $"[Item] {itemData.DisplayName}의 " +
-                "Held Prefab에 ItemBase 계열 " +
-                "컴포넌트가 없습니다.",
-                _equippedObject
+            Debug.Log(
+                $"[Item] {itemData.DisplayName}은 " +
+                "Visual Only 아이템으로 장착됩니다.",
+                gameObject
             );
-
-            Destroy(_equippedObject);
-
-            _equippedObject = null;
 
             return;
         }
-
-        EquippedItemData =
-            itemData;
 
         _equippedItem.Initialize(
             itemData,
@@ -185,12 +236,6 @@ public class PlayerItemController : MonoBehaviour
         );
 
         _equippedItem.OnEquipped();
-
-        Debug.Log(
-            $"[Item] 장착: " +
-            $"{itemData.DisplayName}",
-            _equippedObject
-        );
     }
 
     public void UnequipCurrentItem()
@@ -200,8 +245,19 @@ public class PlayerItemController : MonoBehaviour
             _equippedItem.OnUnequipped();
         }
 
-        if (_equippedObject != null)
+        // 오른손 시스템으로 생성한 아이템이면
+        // FirstPersonRightHand가 직접 제거
+        if (_rightHand != null &&
+            _rightHand.CurrentItem != null)
         {
+            _rightHand.Unequip();
+
+            // 아이템이 없을 때는 손도 숨김
+            _rightHand.gameObject.SetActive(false);
+        }
+        else if (_equippedObject != null)
+        {
+            // 기존 ItemHoldPoint 방식의 아이템
             Destroy(_equippedObject);
         }
 
@@ -222,12 +278,8 @@ public class PlayerItemController : MonoBehaviour
 
     private void UseItemCanceled()
     {
-        if (!CanUseItems)
-        {
-            return;
-        }
-
-        if (_equippedItem == null)
+        if (!CanUseItems ||
+            _equippedItem == null)
         {
             return;
         }
@@ -242,6 +294,8 @@ public class PlayerItemController : MonoBehaviour
             return false;
         }
 
+        // Visual Only 아이템은 손에 들 수는 있지만
+        // 실제 사용 동작은 실행하지 않는다.
         if (_equippedItem == null)
         {
             return false;

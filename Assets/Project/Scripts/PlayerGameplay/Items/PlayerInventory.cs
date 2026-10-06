@@ -31,15 +31,35 @@ public class PlayerInventory : MonoBehaviour
             return false;
         }
 
+        int emptySlotIndex =
+            FindFirstEmptyQuickSlot();
+
+        if (emptySlotIndex < 0)
+        {
+            Debug.LogWarning(
+                $"[Inventory] 슬롯이 가득 차서 " +
+                $"{itemData.DisplayName}을 획득할 수 없습니다."
+            );
+
+            return false;
+        }
+
         _items.Add(itemData);
+
+        _quickSlots[emptySlotIndex] =
+            itemData;
 
         ItemAdded?.Invoke(itemData);
 
-        Debug.Log(
-            $"[Inventory] 획득: {itemData.DisplayName}"
+        QuickSlotChanged?.Invoke(
+            emptySlotIndex,
+            itemData
         );
 
-        TryAssignFirstEmptyQuickSlot(itemData);
+        Debug.Log(
+            $"[Inventory] {itemData.DisplayName} 획득 → " +
+            $"슬롯 {emptySlotIndex + 1} 등록"
+        );
 
         return true;
     }
@@ -75,7 +95,8 @@ public class PlayerInventory : MonoBehaviour
             return false;
         }
 
-        _quickSlots[slotIndex] = itemData;
+        _quickSlots[slotIndex] =
+            itemData;
 
         QuickSlotChanged?.Invoke(
             slotIndex,
@@ -95,38 +116,19 @@ public class PlayerInventory : MonoBehaviour
         return _items.Contains(itemData);
     }
 
-    private void TryAssignFirstEmptyQuickSlot(
-        ItemData itemData)
+    private int FindFirstEmptyQuickSlot()
     {
         for (int i = 0;
              i < QUICK_SLOT_COUNT;
              i++)
         {
-            if (_quickSlots[i] != null)
+            if (_quickSlots[i] == null)
             {
-                continue;
+                return i;
             }
-
-            _quickSlots[i] = itemData;
-
-            QuickSlotChanged?.Invoke(
-                i,
-                itemData
-            );
-
-            Debug.Log(
-                $"[Inventory] " +
-                $"{itemData.DisplayName} → " +
-                $"슬롯 {i + 1} 자동 등록"
-            );
-
-            return;
         }
 
-        Debug.Log(
-            $"[Inventory] {itemData.DisplayName} 획득. " +
-            "현재 비어 있는 퀵슬롯은 없습니다."
-        );
+        return -1;
     }
 
     private bool IsValidQuickSlotIndex(
@@ -135,5 +137,10 @@ public class PlayerInventory : MonoBehaviour
         return
             slotIndex >= 0 &&
             slotIndex < QUICK_SLOT_COUNT;
+    }
+
+    internal bool HasEmptyQuickSlot()
+    {
+        throw new NotImplementedException();
     }
 }

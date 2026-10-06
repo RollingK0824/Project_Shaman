@@ -25,12 +25,9 @@ public class WorldItem : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
-        if (_isCollected)
-        {
-            return false;
-        }
-
-        if (_itemData == null)
+        if (_isCollected ||
+            _itemData == null ||
+            interactor == null)
         {
             return false;
         }
@@ -41,10 +38,12 @@ public class WorldItem : MonoBehaviour, IInteractable
         return inventory != null;
     }
 
+
     public void Interact(GameObject interactor)
     {
         if (_isCollected ||
-            _itemData == null)
+            _itemData == null ||
+            interactor == null)
         {
             return;
         }
@@ -62,14 +61,18 @@ public class WorldItem : MonoBehaviour, IInteractable
 
         if (!success)
         {
+            Debug.LogWarning(
+                $"[WorldItem] {_itemData.DisplayName} 획득 실패",
+                gameObject
+            );
+
             return;
         }
 
         _isCollected = true;
 
         Debug.Log(
-            $"[WorldItem] 획득 완료: " +
-            $"{_itemData.DisplayName}",
+            $"[WorldItem] 획득 완료: {_itemData.DisplayName}",
             gameObject
         );
 

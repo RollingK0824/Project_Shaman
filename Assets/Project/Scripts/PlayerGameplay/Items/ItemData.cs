@@ -1,4 +1,6 @@
 ﻿using UnityEngine;
+using UnityEngine.Serialization;
+using Exorcist.FirstPerson;
 
 [CreateAssetMenu(
     fileName = "ItemData",
@@ -12,11 +14,17 @@ public class ItemData : ScriptableObject
 
     [Header("Prefabs")]
     [SerializeField] private GameObject _worldPrefab;
-    [SerializeField] private GameObject _heldPrefab;
+
+    [Header("First Person Hand")]
+    [SerializeField] private HandItemProfile _handProfile;
+
+    [FormerlySerializedAs("_heldPrefab")]
+    [SerializeField] private GameObject _visualPrefab;
 
     public string DisplayName => _displayName;
     public ItemCategory Category => _category;
 
     public GameObject WorldPrefab => _worldPrefab;
-    public GameObject HeldPrefab => _heldPrefab;
+    public GameObject VisualPrefab => _visualPrefab;
+    public HandItemProfile HandProfile => _handProfile;
 }
