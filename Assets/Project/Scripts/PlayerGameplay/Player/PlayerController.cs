@@ -13,6 +13,9 @@ public class PlayerController : NetworkBehaviour
     [SerializeField] private float _gravity = -20f;
     [SerializeField] private float _groundedForce = -2f;
 
+    [Header("Jump")]
+    [SerializeField] private float _jumpHeight = 1.2f;
+
     [Header("Animation")]
     [SerializeField] private Animator _animator;
 
@@ -23,30 +26,83 @@ public class PlayerController : NetworkBehaviour
     private PlayerInputReader _inputReader;
 
     private float _verticalVelocity;
+    private bool _jumpQueued;
 
-    // Starter Assets Animator parameter
+    // =========================================================
+    // Starter Assets Animator Parameters
+    // =========================================================
+
     private static readonly int SpeedHash =
         Animator.StringToHash("Speed");
 
     private static readonly int MotionSpeedHash =
         Animator.StringToHash("MotionSpeed");
 
+    private static readonly int GroundedHash =
+        Animator.StringToHash("Grounded");
+
+    private static readonly int JumpHash =
+        Animator.StringToHash("Jump");
+
+    private static readonly int FreeFallHash =
+        Animator.StringToHash("FreeFall");
+
+    // =========================================================
+    // Unity
+    // =========================================================
+
     private void Awake()
     {
-        _characterController = GetComponent<CharacterController>();
-        _inputReader = GetComponent<PlayerInputReader>();
+        _characterController =
+            GetComponent<CharacterController>();
+
+        _inputReader =
+            GetComponent<PlayerInputReader>();
+    }
+
+    private void OnEnable()
+    {
+        if (_inputReader != null)
+        {
+            _inputReader.JumpPressed +=
+                OnJumpPressed;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (_inputReader != null)
+        {
+            _inputReader.JumpPressed -=
+                OnJumpPressed;
+        }
     }
 
     private void Update()
     {
-        // 네트워크 플레이 중일 때만 Local Player 여부를 검사
-        if (NetworkClient.active && !isLocalPlayer)
+        // 네트워크 플레이 중에는
+        // Local Player만 입력과 이동을 처리한다.
+        if (NetworkClient.active &&
+            !isLocalPlayer)
         {
             return;
         }
 
         HandleMovement();
     }
+
+    // =========================================================
+    // Jump Input
+    // =========================================================
+
+    private void OnJumpPressed()
+    {
+        _jumpQueued = true;
+    }
+
+    // =========================================================
+    // Movement
+    // =========================================================
 
     private void HandleMovement()
     {
@@ -63,7 +119,8 @@ public class PlayerController : NetworkBehaviour
             moveDirection.Normalize();
         }
 
-        bool isMoving = moveInput.sqrMagnitude > 0.01f;
+        bool isMoving =
+            moveInput.sqrMagnitude > 0.01f;
 
         bool isSprinting =
             CanMove &&
@@ -75,28 +132,100 @@ public class PlayerController : NetworkBehaviour
             ? _sprintSpeed
             : _walkSpeed;
 
-        Vector3 velocity = moveDirection * moveSpeed;
+        Vector3 velocity =
+            moveDirection * moveSpeed;
 
-        if (_characterController.isGrounded &&
+        bool isGrounded =
+            _characterController.isGrounded;
+
+        // -----------------------------------------------------
+        // Ground
+        // -----------------------------------------------------
+
+        if (isGrounded &&
             _verticalVelocity < 0f)
         {
-            _verticalVelocity = _groundedForce;
+            // 바닥에 붙어 있도록 약간의 하강 속도 유지
+            _verticalVelocity =
+                _groundedForce;
         }
-        else
+
+        // -----------------------------------------------------
+        // Jump
+        // -----------------------------------------------------
+
+        bool jumpRequested =
+            _jumpQueued;
+
+        // 입력은 한 번만 소비
+        _jumpQueued = false;
+
+        bool jumpStarted = false;
+
+        if (CanMove &&
+            isGrounded &&
+            jumpRequested)
         {
-            _verticalVelocity += _gravity * Time.deltaTime;
+            _verticalVelocity =
+                Mathf.Sqrt(
+                    _jumpHeight *
+                    -2f *
+                    _gravity
+                );
+
+            jumpStarted = true;
         }
 
-        velocity.y = _verticalVelocity;
+        // -----------------------------------------------------
+        // Gravity
+        // -----------------------------------------------------
 
-        _characterController.Move(
-            velocity * Time.deltaTime
+        _verticalVelocity +=
+            _gravity * Time.deltaTime;
+
+        velocity.y =
+            _verticalVelocity;
+
+        // -----------------------------------------------------
+        // Move
+        // -----------------------------------------------------
+
+        CollisionFlags collisionFlags =
+    _characterController.Move(
+        velocity * Time.deltaTime
+    );
+
+        bool isGroundedAfterMove =
+    (collisionFlags & CollisionFlags.Below) != 0 ||
+    _characterController.isGrounded;
+
+        if (isGroundedAfterMove &&
+    _verticalVelocity < 0f)
+        {
+            _verticalVelocity =
+                _groundedForce;
+        }
+        // -----------------------------------------------------
+        // Animation
+        // -----------------------------------------------------
+
+        UpdateMovementAnimation(
+            isMoving,
+            isSprinting,
+            moveInput
         );
 
-        UpdateAnimation(isMoving, isSprinting, moveInput);
+        UpdateJumpAnimation(
+            jumpStarted,
+            isGroundedAfterMove
+        );
     }
 
-    private void UpdateAnimation(
+    // =========================================================
+    // Movement Animation
+    // =========================================================
+
+    private void UpdateMovementAnimation(
         bool isMoving,
         bool isSprinting,
         Vector2 moveInput)
@@ -125,6 +254,39 @@ public class PlayerController : NetworkBehaviour
         _animator.SetFloat(
             MotionSpeedHash,
             moveInput.magnitude
+        );
+    }
+
+    // =========================================================
+    // Jump Animation
+    // =========================================================
+
+    private void UpdateJumpAnimation(
+    bool jumpStarted,
+    bool isGrounded)
+    {
+        if (_animator == null)
+        {
+            return;
+        }
+
+        bool isFalling =
+            !isGrounded &&
+            _verticalVelocity < 0f;
+
+        _animator.SetBool(
+            GroundedHash,
+            isGrounded
+        );
+
+        _animator.SetBool(
+            JumpHash,
+            jumpStarted
+        );
+
+        _animator.SetBool(
+            FreeFallHash,
+            isFalling
         );
     }
 }
