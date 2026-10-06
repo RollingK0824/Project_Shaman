@@ -1,0 +1,141 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b6d813aa4f6177747aeaca91e211dcd2, type: 3}
+  m_Name: MockAIDataProvider
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Mock.MockAIDataProvider
+  _names:
+  - Name: "\uAE40\uCCA8\uC9C0"
+    Condition:
+      Genders: 00000000
+      SocialClasses: 
+      AgeGroups: 
+  - Name: "\uBC15\uC11C\uBC29"
+    Condition:
+      Genders: 00000000
+      SocialClasses: 
+      AgeGroups: 
+  - Name: "\uC21C\uC774"
+    Condition:
+      Genders: 01000000
+      SocialClasses: 
+      AgeGroups: 
+  - Name: "\uC625\uBD84\uC774"
+    Condition:
+      Genders: 01000000
+      SocialClasses: 
+      AgeGroups: 
+  _jobs:
+  - JobId: Woodcutter
+    DisplayName: "\uB098\uBB34\uAFBC"
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+  - JobId: Farmer
+    DisplayName: "\uB18D\uBD80"
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+  _routines:
+  - RoutineId: Farming
+    DisplayName: "\uBC2D \uAC08\uAE30"
+    Category: 1
+    JobIds:
+    - Farmer
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+    PlaceId: Field
+    ToolId: Hoe
+    ActionId: 
+    IsCoop: 0
+    MaxPeople: 2
+    WrongToolIds:
+    - Axe
+    WrongActionIds: []
+    WrongPlaceIds:
+    - Woodpile
+  - RoutineId: Weeding
+    DisplayName: "\uAE40\uB9E4\uAE30"
+    Category: 1
+    JobIds:
+    - Farmer
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+    PlaceId: Field
+    ToolId: 
+    ActionId: 
+    IsCoop: 0
+    MaxPeople: 2
+    WrongToolIds: []
+    WrongActionIds: []
+    WrongPlaceIds:
+    - WoodPile
+  - RoutineId: Chopping
+    DisplayName: "\uC7A5\uC791 \uD328\uAE30"
+    Category: 1
+    JobIds:
+    - Woodcutter
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+    PlaceId: Woodpile
+    ToolId: Axe
+    ActionId: Chop
+    IsCoop: 0
+    MaxPeople: 2
+    WrongToolIds:
+    - Hoe
+    WrongActionIds:
+    - Stack
+    WrongPlaceIds:
+    - Field
+  - RoutineId: Stacking
+    DisplayName: "\uC7A5\uC791 \uC313\uAE30"
+    Category: 1
+    JobIds:
+    - Woodcutter
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+    PlaceId: Woodpile
+    ToolId: 
+    ActionId: Stack
+    IsCoop: 0
+    MaxPeople: 2
+    WrongToolIds: []
+    WrongActionIds:
+    - Chop
+    WrongPlaceIds:
+    - Tavern
+  - RoutineId: TavernRest
+    DisplayName: "\uC8FC\uB9C9\uC5D0\uC11C \uC26C\uAE30"
+    Category: 2
+    JobIds: []
+    Condition:
+      Genders: 
+      SocialClasses: 
+      AgeGroups: 
+    PlaceId: Tavern
+    ToolId: 
+    ActionId: 
+    IsCoop: 0
+    MaxPeople: 5
+    WrongToolIds: []
+    WrongActionIds: []
+    WrongPlaceIds: []
