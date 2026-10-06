@@ -34,10 +34,13 @@ public class DamageSource : MonoBehaviour
             return;
         }
 
-        damageable.ReceiveDamage(
-            _damageAmount,
-            gameObject
-        );
+        //damageable.ReceiveDamage(
+        //    _damageAmount,
+        //    gameObject
+        //);
+
+        // 변경 (직접 판정하지 않고, 요청만 보내는 방식으로 변경)
+        PlayerEvents.RaiseDamageRequested(damageable, _damageAmount, gameObject);
     }
 
     private void OnValidate()

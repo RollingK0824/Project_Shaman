@@ -24,34 +24,61 @@ public class LobbyUI : MonoBehaviour
 
     private Coroutine _warningCoroutine;
     private RoomPlayer _localRoomPlayer;
+    private bool _refreshRequested;
     void Start()
     {
         _leaveConfirmPanel.SetActive(false);
         _notEnoughPlayerCount.SetActive(false);
     }
-    // Update is called once per frame
-    void Update()
+
+    private void OnEnable()
     {
-        RefreshUI();
+        RoomPlayer.NotEnoughPlayers += ShowNotification;
+        RoomPlayer.LobbyChanged += RequestRefresh;
+        RequestRefresh();
     }
 
-    public void OnGUI()
+    private void OnDisable()
     {
+        RoomPlayer.NotEnoughPlayers -= ShowNotification;
+        RoomPlayer.LobbyChanged -= RequestRefresh;
+        _refreshRequested = false;
+        _localRoomPlayer = null;
+    }
 
+
+    private void RequestRefresh()
+    {
+        _refreshRequested = true;
+    }
+
+    private void LateUpdate()
+    {
+        if (!_refreshRequested) return;
+
+        // 같은 프레임의 입장 및 SyncVar 이벤트를 모아 한 번만 갱신합니다.
+        // Mirror의 목록 등록과 로컬 플레이어 초기화가 끝난 상태를 읽습니다.
+        _refreshRequested = false;
+        RefreshUI();
     }
 
     public void RefreshUI()
     {
-        // 1. 기존 자식들을 즉시 모두 제거
+        // Destroy는 프레임 끝에 실행되므로 기존 행은 먼저 숨깁니다.
         for (int i = _playerListParent.childCount - 1; i >= 0; i--)
         {
-            DestroyImmediate(_playerListParent.GetChild(i).gameObject);
+            GameObject row = _playerListParent.GetChild(i).gameObject;
+            row.SetActive(false);
+            Destroy(row);
         }
 
         // 2. roomSlots 순회하며 생성
         var roomManager = NetworkManager.singleton as NetworkRoomManager;
         if (roomManager == null)
         {
+            _localRoomPlayer = null;
+            _readyButton.interactable = false;
+            _playerCountText.text = "0 / 0";
             return;
         }
 
@@ -70,19 +97,18 @@ public class LobbyUI : MonoBehaviour
 
         }
 
-        if (_localRoomPlayer == null)
-        {
-            _localRoomPlayer = NetworkClient.connection?.identity?.GetComponent<RoomPlayer>();
-        }
+        _localRoomPlayer = roomManager.roomSlots.OfType<RoomPlayer>()
+            .FirstOrDefault(player => player != null && player.isLocalPlayer);
         
 
         UpdateReadyButton(roomManager);
     }
     private void UpdateReadyButton(NetworkRoomManager roomManager)
     {
-        //var localRoomPlayer = NetworkClient.connection?.identity?.GetComponent<RoomPlayer>();
         if (_localRoomPlayer == null)
         {
+            _readyButton.interactable = false;
+            _playerCountText.text = $"{roomManager.roomSlots.Count} / -";
             return;
         }
 
@@ -123,14 +149,14 @@ public class LobbyUI : MonoBehaviour
         }
         else
         {
-            NetworkManager.singleton.StopClient();
+            ((RoomManager)NetworkManager.singleton).LeaveSession();
         }
     }
     // 호스트가 방 나가기를 할때의 UI에서 확인버튼 클릭시
     public void OnConfirmLeave()
     {
         _leaveConfirmPanel.SetActive(false);
-        NetworkManager.singleton.StopHost();
+        ((RoomManager)NetworkManager.singleton).LeaveSession();
     }
 
     // 호스트가 방 나가기를 할때의 UI에서 취소버튼 클릭시

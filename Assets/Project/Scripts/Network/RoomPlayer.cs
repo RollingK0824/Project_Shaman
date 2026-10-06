@@ -1,9 +1,68 @@
 using UnityEngine;
 using Mirror;
+using System;
 public class RoomPlayer : NetworkRoomPlayer
 {
-    [SyncVar] public string nickname;
-    [SyncVar] public int roomMaxPlayers;
+    [SyncVar(hook = nameof(OnNicknameChanged))] public string nickname;
+    [SyncVar(hook = nameof(OnRoomMaxPlayersChanged))] public int roomMaxPlayers;
+
+    public static event Action NotEnoughPlayers;
+    public static event Action LobbyChanged;
+
+    public override void OnStartLocalPlayer()
+    {
+        base.OnStartLocalPlayer();
+        LobbyChanged?.Invoke();
+    }
+
+    public override void OnClientEnterRoom()
+    {
+        base.OnClientEnterRoom();
+        LobbyChanged?.Invoke();
+    }
+
+    public override void OnClientExitRoom()
+    {
+        base.OnClientExitRoom();
+        LobbyChanged?.Invoke();
+    }
+
+    public override void OnDisable()
+    {
+        // Mirror가 roomSlots에서 제거한 뒤 알립니다. 마지막 참가자 퇴장도 포함합니다.
+        base.OnDisable();
+        LobbyChanged?.Invoke();
+    }
+
+    public override void ReadyStateChanged(bool oldReadyState, bool newReadyState)
+    {
+        base.ReadyStateChanged(oldReadyState, newReadyState);
+        LobbyChanged?.Invoke();
+    }
+
+    public override void IndexChanged(int oldIndex, int newIndex)
+    {
+        base.IndexChanged(oldIndex, newIndex);
+        LobbyChanged?.Invoke();
+    }
+
+    private void OnNicknameChanged(string oldValue, string newValue)
+    {
+        LobbyChanged?.Invoke();
+    }
+
+    private void OnRoomMaxPlayersChanged(int oldValue, int newValue)
+    {
+        LobbyChanged?.Invoke();
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetEventsOnPlay()
+    {
+        LobbyChanged = null;
+        NotEnoughPlayers = null;
+    }
+
     public override void OnGUI()
     {
         
@@ -35,9 +94,7 @@ public class RoomPlayer : NetworkRoomPlayer
     [ClientRpc]
     public void RpcShowNotEnoughPlayers()
     {
-        // UI 켜기
-        var lobbyUI = Object.FindFirstObjectByType<LobbyUI>();
-        lobbyUI?.ShowNotification();
+        NotEnoughPlayers?.Invoke();
     }
 
     public override void OnStartServer()

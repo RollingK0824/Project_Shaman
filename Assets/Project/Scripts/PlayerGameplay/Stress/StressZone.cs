@@ -60,16 +60,21 @@ public class StressZone : MonoBehaviour
         float amount =
             _stressPerSecond * Time.deltaTime;
 
-        switch (_zoneType)
-        {
-            case StressZoneType.Increase:
-                stressController.AddStress(amount);
-                break;
+        // 직접 수정 x / 서버에 요청보내기
+        float delta = _zoneType == StressZoneType.Increase ? amount : -amount;
 
-            case StressZoneType.Reduce:
-                stressController.ReduceStress(amount);
-                break;
-        }
+        PlayerEvents.RaiseStressRequested(stressController, delta, StressCause.Other, gameObject);
+
+        //switch (_zoneType)
+        //{
+        //    case StressZoneType.Increase:
+        //        stressController.AddStress(amount);
+        //        break;
+        //
+        //    case StressZoneType.Reduce:
+        //        stressController.ReduceStress(amount);
+        //        break;
+        //}
     }
 
     private void OnTriggerExit(Collider other)

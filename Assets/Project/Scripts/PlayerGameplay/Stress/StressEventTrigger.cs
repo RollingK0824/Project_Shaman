@@ -33,17 +33,27 @@ public class StressEventTrigger : MonoBehaviour
             return;
         }
 
-        IStressReceiver receiver = other.GetComponentInParent<IStressReceiver>();
-        if (receiver == null)
+        PlayerStressController stressController = other.GetComponentInParent<PlayerStressController>();
+
+        if (stressController == null)
         {
             return;
         }
 
-        receiver.ReceiveStress(
-            _stressAmount,
-            _cause,
-            gameObject
-        );
+        // 서버에 요청 보내는 거로 수정
+        PlayerEvents.RaiseStressRequested(stressController, _stressAmount, _cause, gameObject);
+
+        //IStressReceiver receiver = other.GetComponentInParent<IStressReceiver>();
+        //if (receiver == null)
+        //{
+        //    return;
+        //}
+        //
+        //receiver.ReceiveStress(
+        //    _stressAmount,
+        //    _cause,
+        //    gameObject
+        //);
 
         _hasTriggered = true;
     }

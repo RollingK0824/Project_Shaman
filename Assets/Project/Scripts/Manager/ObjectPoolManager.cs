@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Pool;
+using UnityEngine.SceneManagement;
 public class ObjectPoolManager : GlobalSingleton<ObjectPoolManager>
 {
     [Header("Pool Sizing Defaults")]
@@ -18,7 +19,11 @@ public class ObjectPoolManager : GlobalSingleton<ObjectPoolManager>
         }
         IObjectPool<GameObject> pool = GetOrCreatePool(prefab);
         GameObject instance = pool.Get();
+        // 보관 중인 오브젝트만 영속 풀 아래에 두고, 사용 중에는 현재 씬에 배치합니다.
+        instance.transform.SetParent(null);
+        SceneManager.MoveGameObjectToScene(instance, SceneManager.GetActiveScene());
         instance.transform.SetPositionAndRotation(position, rotation);
+        instance.SetActive(true);
         return instance;
     }
 
@@ -42,9 +47,18 @@ public class ObjectPoolManager : GlobalSingleton<ObjectPoolManager>
             return existingPool;
         }
         IObjectPool<GameObject> newPool = new ObjectPool<GameObject>(
-            createFunc: () => Instantiate(prefab),
-            actionOnGet: (obj) => obj.SetActive(true),
-            actionOnRelease: (obj) => obj.SetActive(false),
+            createFunc: () =>
+            {
+                GameObject obj = Instantiate(prefab);
+                obj.SetActive(false);
+                return obj;
+            },
+            actionOnGet: null,
+            actionOnRelease: (obj) =>
+            {
+                obj.SetActive(false);
+                obj.transform.SetParent(transform);
+            },
             actionOnDestroy: (obj) => Destroy(obj),
             collectionCheck: true, 
             defaultCapacity: defaultCapacity,
