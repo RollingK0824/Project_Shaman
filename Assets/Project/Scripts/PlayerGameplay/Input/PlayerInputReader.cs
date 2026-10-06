@@ -14,6 +14,7 @@ public class PlayerInputReader : MonoBehaviour
     public event Action UseItemStarted;
     public event Action UseItemCanceled;
     public event Action<int> SlotSelected;
+    public event Action JumpPressed;
 
     private ShamanInput _input;
 
@@ -29,6 +30,7 @@ public class PlayerInputReader : MonoBehaviour
         _input.Player.Interact.performed += OnInteract;
         _input.Player.Cancel.performed += OnCancel;
         _input.Player.Notebook.performed += OnNotebook;
+        _input.Player.Jump.performed += OnJump;
 
         _input.Player.UseItem.started += OnUseItemStarted;
         _input.Player.UseItem.canceled += OnUseItemCanceled;
@@ -70,10 +72,16 @@ public class PlayerInputReader : MonoBehaviour
         _input.Player.Slot6.performed -= OnSlot6;
 
         _input.Player.Disable();
+        _input.Player.Jump.performed -= OnJump;
 
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
         SprintHeld = false;
+    }
+
+    private void OnJump(InputAction.CallbackContext context)
+    {
+        JumpPressed?.Invoke();
     }
 
     private void OnDestroy()

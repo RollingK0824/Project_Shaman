@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerController))]
@@ -6,9 +7,33 @@
 [RequireComponent(typeof(PlayerInteractor))]
 public class PlayerViewModeController : MonoBehaviour
 {
+    public enum ViewMode
+    {
+        FirstPerson,
+        ThirdPerson
+    }
+
     [Header("References")]
     [SerializeField] private Camera _playerCamera;
     [SerializeField] private Transform _inspectAnchor;
+
+    [Header("View Mode")]
+    [SerializeField] private ViewMode _startViewMode = ViewMode.ThirdPerson;
+
+    [SerializeField]
+    private Vector3 _firstPersonCameraLocalPosition =
+        new Vector3(0f, 0f, 0f);
+
+    [SerializeField]
+    private Vector3 _thirdPersonCameraLocalPosition =
+        new Vector3(0.45f, 0.15f, -3f);
+
+    [SerializeField] private float _viewTransitionSpeed = 12f;
+
+    [Tooltip("1인칭에서 숨길 플레이어 본체 Renderer")]
+    [SerializeField] private Renderer[] _playerBodyRenderers;
+
+    [SerializeField] private bool _hideBodyInFirstPerson = true;
 
     [Header("Inspect")]
     [SerializeField] private float _inspectRotationSensitivity = 0.2f;
@@ -21,6 +46,8 @@ public class PlayerViewModeController : MonoBehaviour
     public bool IsInspecting { get; private set; }
     public bool IsObserving { get; private set; }
     public bool IsBusy => IsInspecting || IsObserving;
+
+    public ViewMode CurrentViewMode { get; private set; }
 
     private PlayerInputReader _inputReader;
     private PlayerController _playerController;
@@ -48,8 +75,17 @@ public class PlayerViewModeController : MonoBehaviour
         _playerHealth = GetComponent<PlayerHealth>();
     }
 
+    private void Start()
+    {
+        CurrentViewMode = _startViewMode;
+
+        ApplyViewModeImmediate();
+    }
+
     private void Update()
     {
+        HandleViewToggle();
+
         if (IsInspecting && _inspectTransform != null)
         {
             RotateInspectTarget();
@@ -61,12 +97,113 @@ public class PlayerViewModeController : MonoBehaviour
         if (IsObserving)
         {
             UpdateObservationFocus();
+            return;
         }
+
+        UpdateCameraViewPosition();
     }
 
     private void OnDisable()
     {
         EndCurrentMode();
+    }
+
+    // =========================================================
+    // View Mode
+    // =========================================================
+
+    private void HandleViewToggle()
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        if (Keyboard.current == null)
+        {
+            return;
+        }
+
+        if (!Keyboard.current.vKey.wasPressedThisFrame)
+        {
+            return;
+        }
+
+        ToggleViewMode();
+    }
+
+    public void ToggleViewMode()
+    {
+        if (CurrentViewMode == ViewMode.FirstPerson)
+        {
+            CurrentViewMode = ViewMode.ThirdPerson;
+        }
+        else
+        {
+            CurrentViewMode = ViewMode.FirstPerson;
+        }
+
+        ApplyBodyVisibility();
+
+        Debug.Log(
+            $"[ViewMode] {CurrentViewMode}"
+        );
+    }
+
+    private void UpdateCameraViewPosition()
+    {
+        if (_playerCamera == null)
+        {
+            return;
+        }
+
+        Vector3 targetPosition =
+            CurrentViewMode == ViewMode.FirstPerson
+                ? _firstPersonCameraLocalPosition
+                : _thirdPersonCameraLocalPosition;
+
+        _playerCamera.transform.localPosition =
+            Vector3.Lerp(
+                _playerCamera.transform.localPosition,
+                targetPosition,
+                _viewTransitionSpeed * Time.deltaTime
+            );
+    }
+
+    private void ApplyViewModeImmediate()
+    {
+        if (_playerCamera == null)
+        {
+            return;
+        }
+
+        _playerCamera.transform.localPosition =
+            CurrentViewMode == ViewMode.FirstPerson
+                ? _firstPersonCameraLocalPosition
+                : _thirdPersonCameraLocalPosition;
+
+        ApplyBodyVisibility();
+    }
+
+    private void ApplyBodyVisibility()
+    {
+        if (!_hideBodyInFirstPerson)
+        {
+            return;
+        }
+
+        bool visible =
+            CurrentViewMode == ViewMode.ThirdPerson;
+
+        foreach (Renderer bodyRenderer in _playerBodyRenderers)
+        {
+            if (bodyRenderer == null)
+            {
+                continue;
+            }
+
+            bodyRenderer.enabled = visible;
+        }
     }
 
     // =========================================================
@@ -94,8 +231,6 @@ public class PlayerViewModeController : MonoBehaviour
 
         _inspectTarget = target;
 
-        // 실제 월드 오브젝트는 건드리지 않고
-        // 플레이어 카메라 앞에 로컬 프리뷰만 생성한다.
         _inspectPreviewObject = Instantiate(
             target.InspectPreviewPrefab,
             _inspectAnchor
