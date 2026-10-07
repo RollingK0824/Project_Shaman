@@ -16,7 +16,7 @@ public class SceneSingleton<T> : MonoBehaviour where T : Component
 
             if (_instance == null)
             {
-                _instance = FindFirstObjectByType<T>();
+                _instance = FindFirstObjectByType<T>(FindObjectsInactive.Include);
                 if (_instance == null)
                 {
                     GameObject obj = new GameObject(typeof(T).Name);
@@ -44,8 +44,13 @@ public class SceneSingleton<T> : MonoBehaviour where T : Component
     {
         if (_instance == this)
         {
-            _isQuitting = true;
+            //_isQuitting = true;
             _instance = null;
         }
+    }
+
+    protected virtual void OnApplicationQuit()
+    {
+        _isQuitting = true;
     }
 }
