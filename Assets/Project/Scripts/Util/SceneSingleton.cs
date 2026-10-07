@@ -44,7 +44,6 @@ public class SceneSingleton<T> : MonoBehaviour where T : Component
     {
         if (_instance == this)
         {
-            //_isQuitting = true;
             _instance = null;
         }
     }
