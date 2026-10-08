@@ -12,8 +12,10 @@ public class CreateRoomUI : MonoBehaviour
     [SerializeField]
     private List<Button> maxPlayerCountButtons;
 
-    private CreateGameRoomData roomData;
+    [SerializeField] private bool _allowSoloInEditor = false;
 
+    private CreateGameRoomData roomData;
+    private const int MinPlayersToStart = 2;
 
 
     void Start()
@@ -123,7 +125,11 @@ public class CreateRoomUI : MonoBehaviour
 
         // 방 설정 작업 처리
         manager.maxConnections = roomData.maxPlayerCount;
-        manager.minPlayers = roomData.maxPlayerCount;
+        int minPlayers = Mathf.Min(MinPlayersToStart, roomData.maxPlayerCount);
+
+        if (Application.isEditor && _allowSoloInEditor) minPlayers = 1;
+
+        manager.minPlayers = minPlayers;
 
         manager.SetGhostCount(roomData.ghostCount);
 
