@@ -18,8 +18,8 @@ public class VoteCellUI : MonoBehaviour
     [SerializeField]
     private GameObject _voteMarker;
 
-    private int _npcId;
-    private Action<int> _onClick;
+    private string _npcId;
+    private Action<string> _onClick;
 
     private void Awake()
     {
@@ -27,7 +27,7 @@ public class VoteCellUI : MonoBehaviour
     }
 
     // 셀을 만들 때 한 번만 호출. 하루 동안 바뀌지 않는 값
-    public void Setup(int npcId, string name, Action<int> onClick)
+    public void Setup(string npcId, string name, Action<string> onClick)
     {
         _npcId = npcId;
         _nameText.SetText(name);

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public class VotingPanel : UIPanel
@@ -6,4 +7,6 @@ public class VotingPanel : UIPanel
     private VoteCellUI _cellPrefab;
     [SerializeField]
     private Transform _gridRoot;
+
+    private Dictionary<string, VoteCellUI> _cells;
 }
