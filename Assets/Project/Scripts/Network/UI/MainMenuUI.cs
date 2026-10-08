@@ -8,6 +8,10 @@ public class MainMenuUI : MonoBehaviour
     [SerializeField] private TMP_Text _noticeText;
     [SerializeField] private float _noticeDuration = 3f;
 
+    [Header("화면")]
+    [SerializeField] private GameObject _lanUI;     // 기존 OnlineUI
+    [SerializeField] private GameObject _steamUI;   // 새롭게 생성
+
     private void Start()
     {
         _noticePanel.SetActive(false);
@@ -27,6 +31,42 @@ public class MainMenuUI : MonoBehaviour
 
         _noticePanel.SetActive(false);
     }
+
+    public void OnClickLanButton()
+    {
+        if (!SelectedMode(RoomManager.NetworkMode.Lan)) return;
+
+        OpenScreen(_lanUI);
+    }
+
+    public void OnClickSteamButton()
+    {
+        var manager = RoomManager.singleton as RoomManager;
+        if (manager != null && !manager.IsSteamAvailable)
+        {
+            StartCoroutine(ShowNoticeRoutine("Steam is not running. Start Steam and restart the game."));
+            return;
+        }
+
+        if (!SelectedMode(RoomManager.NetworkMode.Steam)) return;
+
+        OpenScreen(_steamUI);
+    }
+
+    private bool SelectedMode(RoomManager.NetworkMode mode)
+    {
+        var manager = RoomManager.singleton as RoomManager;
+        return manager != null && manager.TrySelectMode(mode);
+    }
+
+    private void OpenScreen(GameObject screen)
+    {
+        if (screen == null) return;
+        screen.SetActive(true);
+        gameObject.SetActive(false);
+    }
+
+
 
     public void OnClickOnlineButton()
     {

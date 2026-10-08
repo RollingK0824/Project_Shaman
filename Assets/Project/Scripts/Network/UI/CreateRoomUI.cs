@@ -6,6 +6,10 @@ using UnityEngine.UI;
 
 public class CreateRoomUI : MonoBehaviour
 {
+    [Header("선택 표시 색")]
+    [SerializeField] private Color _selectedColor = new Color(0.45f, 0.30f, 0.18f, 0.8f);
+    [SerializeField] private Color _unselectedColor = new Color(1f, 1f, 1f, 0f);
+
     [SerializeField]
     private List<Button> ghostCountButtons;
 
@@ -17,13 +21,20 @@ public class CreateRoomUI : MonoBehaviour
     private CreateGameRoomData roomData;
     private const int MinPlayersToStart = 2;
 
+    private readonly List<Color> _maxPlayerTextColors = new List<Color>();
+
 
     void Start()
     {
-
-
         roomData = new CreateGameRoomData() { ghostCount = 4, maxPlayerCount = 4 };
         //UpdateCrewImage();
+
+        foreach (Button button in maxPlayerCountButtons)
+        {
+            _maxPlayerTextColors.Add(button.GetComponentInChildren<TMP_Text>().color);
+        }
+
+        UpdateGhostCount(roomData.ghostCount);
     }
 
     //private void UpdateCrewImage()
@@ -64,17 +75,7 @@ public class CreateRoomUI : MonoBehaviour
     {
         roomData.ghostCount = count;
 
-        for (int i = 0; i < ghostCountButtons.Count; i++)
-        {
-            if (i == count - 2)
-            {
-                ghostCountButtons[i].image.color = new Color(1f, 1f, 1f, 0.4f);
-            }
-            else
-            {
-                ghostCountButtons[i].image.color = new Color(1f, 1f, 1f, 0f);
-            }
-        }
+        ApplySelection(ghostCountButtons, count - 2);
 
         int limitMaxPlayer = count == 2 ? 2 : count == 3 ? 3 : 4;
         if (roomData.maxPlayerCount < limitMaxPlayer)
@@ -89,16 +90,12 @@ public class CreateRoomUI : MonoBehaviour
         for (int i = 0; i < maxPlayerCountButtons.Count; i++)
         {
             var text = maxPlayerCountButtons[i].GetComponentInChildren<TMP_Text>();
-            if (i < limitMaxPlayer - 2)
-            {
-                maxPlayerCountButtons[i].interactable = false;
-                text.color = Color.gray;
-            }
-            else
-            {
-                maxPlayerCountButtons[i].interactable = true;
-                text.color = Color.white;
-            }
+            Color baseColor = _maxPlayerTextColors[i];
+            bool selectable = i >= limitMaxPlayer - 2;
+
+            maxPlayerCountButtons[i].interactable = selectable;
+
+            text.color = selectable ? baseColor : new Color(baseColor.r, baseColor.g, baseColor.b, 0.35f);
         }
     }
 
@@ -106,17 +103,7 @@ public class CreateRoomUI : MonoBehaviour
     {
         roomData.maxPlayerCount = count;
 
-        for (int i = 0; i < maxPlayerCountButtons.Count; i++)
-        {
-            if (i == count - 2)
-            {
-                maxPlayerCountButtons[i].image.color = new Color(1f, 1f, 1f, 0.4f);
-            }
-            else
-            {
-                maxPlayerCountButtons[i].image.color = new Color(1f, 1f, 1f, 0f);
-            }
-        }
+        ApplySelection(maxPlayerCountButtons, count - 2);
     }
 
     public void CreateRoom()
@@ -134,6 +121,14 @@ public class CreateRoomUI : MonoBehaviour
         manager.SetGhostCount(roomData.ghostCount);
 
         manager.StartHost();
+    }
+
+    private void ApplySelection(List<Button> buttons, int selectedIndex)
+    {
+        for (int i = 0; i < buttons.Count; i++)
+        {
+            buttons[i].image.color = i == selectedIndex ? _selectedColor : _unselectedColor;
+        }
     }
 }
 
