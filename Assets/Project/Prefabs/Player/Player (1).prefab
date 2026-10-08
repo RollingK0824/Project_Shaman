@@ -1384,6 +1384,8 @@ GameObject:
   m_Component:
   - component: {fileID: -8679921383154817045}
   - component: {fileID: 5866666021909216657}
+  - component: {fileID: 459378941721435606}
+  - component: {fileID: 6072524350611613611}
   m_Layer: 0
   m_Name: Korean_Exorcist_Waist_Fixed
   m_TagString: Untagged
@@ -1430,6 +1432,43 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &459378941721435606
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919132149155446097}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 628aee53a65e3894885aefc9c857de4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Exorcist.OriginalRightHand::Exorcist.OriginalRig.OriginalRightArm
+  animator: {fileID: 5866666021909216657}
+  handSocket: {fileID: 5562027698989521316}
+  itemSet: {fileID: 11400000, guid: 42d0ea454c43119458ed2177c5413445, type: 2}
+--- !u!114 &6072524350611613611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 919132149155446097}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d71739d7cbb1d254aa47ff3c0b2d9fb5, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: ProjectShaman.ItemHold::ProjectShaman.ItemHold.ItemHoldDriver
+  animator: {fileID: 5866666021909216657}
+  itemSocket: {fileID: 3157399583964945631}
+  poseBlendSeconds: 0.26
+  useMotions:
+  - id: 1
+    state: UseBell
+    duration: 0.72
+  - id: 2
+    state: UseObserve
+    duration: 1.15
 --- !u!1 &922237402338748889
 GameObject:
   m_ObjectHideFlags: 0
@@ -1682,6 +1721,37 @@ Transform:
   m_Children:
   - {fileID: -3724274763301460626}
   m_Father: {fileID: 7057341479546356181}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &4190113500452080853
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5562027698989521316}
+  m_Layer: 0
+  m_Name: OriginalRightHand_ItemSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5562027698989521316
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4190113500452080853}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4164213433230802979}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4810749507537613609
 GameObject:
@@ -1939,6 +2009,8 @@ Transform:
   - {fileID: 5955788961780740549}
   - {fileID: 7500264208946573300}
   - {fileID: -5989699476893587959}
+  - {fileID: 5562027698989521316}
+  - {fileID: 3157399583964945631}
   m_Father: {fileID: -2120646191811761597}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6629324228755502638
@@ -2071,6 +2143,7 @@ Transform:
   m_Children:
   - {fileID: 9094981445098566278}
   - {fileID: 7337206443793820912}
+  - {fileID: 3778830622863300424}
   m_Father: {fileID: 6589697041310780332}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!20 &7294129451887348670
@@ -2584,6 +2657,7 @@ GameObject:
   - component: {fileID: 6240059519502650093}
   - component: {fileID: 7558248565342878481}
   - component: {fileID: 4823412500604799436}
+  - component: {fileID: 2361748397408297295}
   m_Layer: 0
   m_Name: Player (1)
   m_TagString: Untagged
@@ -2738,6 +2812,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::PlayerItemController
   _itemHoldPoint: {fileID: 7337206443793820912}
+  _rightHand: {fileID: 152053432917896764}
+  _itemHoldDriver: {fileID: 6072524350611613611}
 --- !u!114 &442961967616506406
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2883,8 +2959,25 @@ MonoBehaviour:
   syncDirection: 1
   syncMode: 0
   syncInterval: 0
-  clientAuthority: 0
-  animator: {fileID: 0}
+  clientAuthority: 1
+  animator: {fileID: 5866666021909216657}
+--- !u!114 &2361748397408297295
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe2c4169d7e644843a58832265db8bc2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Exorcist.OriginalRightHand::Exorcist.OriginalRig.OriginalRightArmNetwork
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  presentation: {fileID: 459378941721435606}
+  usesNetworkAnimator: 1
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0
@@ -2980,6 +3073,37 @@ Transform:
   m_Children: []
   m_Father: {fileID: 7337627966353921235}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &8977627570886063293
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3157399583964945631}
+  m_Layer: 0
+  m_Name: RightHand_ItemSocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3157399583964945631
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8977627570886063293}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 4164213433230802979}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &9062142731307574492
 GameObject:
   m_ObjectHideFlags: 0
@@ -3012,3 +3136,80 @@ Transform:
   - {fileID: 3088667073138442651}
   m_Father: {fileID: 3742407835892290726}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1001 &1047583954578993547
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 7337627966353921235}
+    m_Modifications:
+    - target: {fileID: 906903324574834615, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: startingItem
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.23
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: -0.17
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.99209934
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.06937434
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: -0.10427384
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0.007291537
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 7621450754403855724, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+      propertyPath: m_Name
+      value: FirstPersonRightHand
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+--- !u!114 &152053432917896764 stripped
+MonoBehaviour:
+  m_CorrespondingSourceObject: {fileID: 906903324574834615, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+  m_PrefabInstance: {fileID: 1047583954578993547}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cbacad31a830d424289777afd28da010, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Exorcist.FirstPerson.FirstPersonRightHand
+--- !u!4 &3778830622863300424 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4249390753449961155, guid: 2f165ebc06981274eb276fe3dac7859b, type: 3}
+  m_PrefabInstance: {fileID: 1047583954578993547}
+  m_PrefabAsset: {fileID: 0}

@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using Exorcist.FirstPerson;
+using ProjectShaman.ItemHold;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerInventory))]
@@ -11,11 +12,13 @@ public class PlayerItemController : MonoBehaviour
     [Header("First Person Hand")]
     [SerializeField] private FirstPersonRightHand _rightHand;
 
+    [Header("Third Person Hold")]
+    [SerializeField] private ItemHoldDriver _itemHoldDriver;
+
     public int SelectedSlotIndex { get; private set; } = -1;
 
     public ItemData EquippedItemData { get; private set; }
 
-    // ItemBase가 없는 Visual Only 아이템도 장착 상태로 취급
     public bool HasEquippedItem =>
         EquippedItemData != null;
 
@@ -25,8 +28,19 @@ public class PlayerItemController : MonoBehaviour
     private PlayerInventory _inventory;
     private PlayerViewModeController _viewModeController;
 
+    // 1인칭 장착 오브젝트
     private GameObject _equippedObject;
     private ItemBase _equippedItem;
+
+    // 3인칭 장착 오브젝트
+    private GameObject _thirdPersonVisual;
+    private Renderer[] _firstPersonRenderers;
+    private Renderer[] _thirdPersonRenderers;
+
+    // 아이템 교체 시
+    // 기존 아이템 Unequip이 끝난 뒤 장착할 아이템
+    private ItemData _pendingThirdPersonItem;
+
 
     private void Awake()
     {
@@ -39,12 +53,21 @@ public class PlayerItemController : MonoBehaviour
         _viewModeController =
             GetComponent<PlayerViewModeController>();
 
-        // 게임 시작 시에는 오른손을 숨긴다.
+        // Inspector에서 지정하지 않아도
+        // 캐릭터 자식에서 자동으로 찾는다.
+        if (_itemHoldDriver == null)
+        {
+            _itemHoldDriver =
+                GetComponentInChildren<ItemHoldDriver>(true);
+        }
+
+        // 게임 시작 시에는 1인칭 오른손 숨김
         if (_rightHand != null)
         {
             _rightHand.gameObject.SetActive(false);
         }
     }
+
 
     private void OnEnable()
     {
@@ -55,23 +78,55 @@ public class PlayerItemController : MonoBehaviour
 
         _inputReader.UseItemCanceled +=
             UseItemCanceled;
+
+        if (_itemHoldDriver != null)
+        {
+            _itemHoldDriver.Unequipped +=
+                OnThirdPersonUnequipped;
+        }
     }
+
 
     private void OnDisable()
     {
-        if (_inputReader == null)
+        if (_inputReader != null)
         {
-            return;
+            _inputReader.SlotSelected -= SelectSlot;
+
+            _inputReader.UseItemStarted -=
+                UseItemStarted;
+
+            _inputReader.UseItemCanceled -=
+                UseItemCanceled;
         }
 
-        _inputReader.SlotSelected -= SelectSlot;
-
-        _inputReader.UseItemStarted -=
-            UseItemStarted;
-
-        _inputReader.UseItemCanceled -=
-            UseItemCanceled;
+        if (_itemHoldDriver != null)
+        {
+            _itemHoldDriver.Unequipped -=
+                OnThirdPersonUnequipped;
+        }
     }
+
+    private void LateUpdate()
+    {
+        // Keep the hand rig running while hiding the camera-only view in third person.
+        bool firstPerson = _viewModeController == null ||
+            _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.FirstPerson;
+        SetVisualVisibility(_firstPersonRenderers, firstPerson);
+        SetVisualVisibility(_thirdPersonRenderers, !firstPerson);
+    }
+
+    private static void SetVisualVisibility(Renderer[] renderers, bool visible)
+    {
+        if (renderers == null) return;
+        foreach (Renderer visual in renderers)
+            if (visual != null) visual.enabled = visible;
+    }
+
+
+    // =========================================================
+    // Slot
+    // =========================================================
 
     private void SelectSlot(int slotIndex)
     {
@@ -110,6 +165,11 @@ public class PlayerItemController : MonoBehaviour
         );
     }
 
+
+    // =========================================================
+    // Equip
+    // =========================================================
+
     private void EquipItem(ItemData itemData)
     {
         if (!CanUseItems ||
@@ -125,16 +185,39 @@ public class PlayerItemController : MonoBehaviour
             return;
         }
 
-        UnequipCurrentItem();
+        // 기존 1인칭 아이템만 먼저 해제한다.
+        UnequipFirstPerson();
 
-        // =====================================================
-        // 오른손 시스템을 사용하는 아이템
-        // =====================================================
+        // 새로운 아이템을 현재 장착 데이터로 지정
+        EquippedItemData = itemData;
+
+        // 3인칭은 자연스럽게:
+        // 기존 아이템 내리기 → 교체 → 새 아이템 올리기
+        RequestThirdPersonEquip(itemData);
+
+        // 1인칭 장착
+        EquipFirstPerson(itemData);
+
+        Debug.Log(
+            $"[Item] 장착: {itemData.DisplayName}",
+            gameObject
+        );
+    }
+
+
+    // =========================================================
+    // First Person
+    // =========================================================
+
+    private void EquipFirstPerson(ItemData itemData)
+    {
+        // -----------------------------------------------------
+        // FirstPersonRightHand 사용
+        // -----------------------------------------------------
 
         if (_rightHand != null &&
             itemData.HandProfile != null)
         {
-            // 아이템을 장착할 때만 오른손 표시
             _rightHand.gameObject.SetActive(true);
 
             _rightHand.Equip(
@@ -143,6 +226,7 @@ public class PlayerItemController : MonoBehaviour
 
             _equippedObject =
                 _rightHand.EquippedInstance;
+            _firstPersonRenderers = _rightHand.GetComponentsInChildren<Renderer>(true);
 
             if (_equippedObject != null)
             {
@@ -151,12 +235,10 @@ public class PlayerItemController : MonoBehaviour
                         .GetComponentInChildren<ItemBase>(true);
             }
 
-            EquippedItemData = itemData;
-
             InitializeEquippedItem(itemData);
 
             Debug.Log(
-                $"[Item] 오른손 장착: " +
+                $"[Item] 1인칭 오른손 장착: " +
                 $"{itemData.DisplayName}",
                 gameObject
             );
@@ -164,9 +246,10 @@ public class PlayerItemController : MonoBehaviour
             return;
         }
 
-        // =====================================================
-        // HandProfile이 없는 기존 아이템 Fallback
-        // =====================================================
+
+        // -----------------------------------------------------
+        // 기존 ItemHoldPoint Fallback
+        // -----------------------------------------------------
 
         if (_itemHoldPoint == null)
         {
@@ -200,25 +283,19 @@ public class PlayerItemController : MonoBehaviour
 
         _equippedObject.transform.localRotation =
             Quaternion.identity;
+        _firstPersonRenderers = _equippedObject.GetComponentsInChildren<Renderer>(true);
 
         _equippedItem =
             _equippedObject
                 .GetComponentInChildren<ItemBase>(true);
 
-        EquippedItemData = itemData;
-
         InitializeEquippedItem(itemData);
-
-        Debug.Log(
-            $"[Item] 장착: {itemData.DisplayName}",
-            _equippedObject
-        );
     }
+
 
     private void InitializeEquippedItem(
         ItemData itemData)
     {
-        // 단순 Visual 아이템은 ItemBase가 없어도 정상 장착
         if (_equippedItem == null)
         {
             Debug.Log(
@@ -238,33 +315,229 @@ public class PlayerItemController : MonoBehaviour
         _equippedItem.OnEquipped();
     }
 
-    public void UnequipCurrentItem()
+
+    private void UnequipFirstPerson()
     {
         if (_equippedItem != null)
         {
             _equippedItem.OnUnequipped();
         }
 
-        // 오른손 시스템으로 생성한 아이템이면
-        // FirstPersonRightHand가 직접 제거
         if (_rightHand != null &&
             _rightHand.CurrentItem != null)
         {
             _rightHand.Unequip();
-
-            // 아이템이 없을 때는 손도 숨김
             _rightHand.gameObject.SetActive(false);
         }
         else if (_equippedObject != null)
         {
-            // 기존 ItemHoldPoint 방식의 아이템
             Destroy(_equippedObject);
         }
 
         _equippedObject = null;
         _equippedItem = null;
+        _firstPersonRenderers = null;
+    }
+
+
+    // =========================================================
+    // Third Person
+    // =========================================================
+
+    private void RequestThirdPersonEquip(
+        ItemData itemData)
+    {
+        if (_itemHoldDriver == null)
+        {
+            return;
+        }
+
+        _pendingThirdPersonItem = itemData;
+
+        // 현재 아이템을 들고 있는 중이면
+        // 우선 자연스럽게 내린다.
+        if (_itemHoldDriver.Phase != HoldPhase.Empty)
+        {
+            _itemHoldDriver.Unequip();
+            return;
+        }
+
+        // 이미 빈손이라면 바로 새 아이템 장착
+        ApplyPendingThirdPersonItem();
+    }
+
+
+    private void OnThirdPersonUnequipped()
+    {
+        // 손이 완전히 내려간 시점에
+        // 기존 3인칭 아이템을 제거
+        DestroyThirdPersonVisual();
+
+        // 교체할 아이템이 있다면 새로 장착
+        ApplyPendingThirdPersonItem();
+    }
+
+
+    private void ApplyPendingThirdPersonItem()
+    {
+        if (_itemHoldDriver == null ||
+            _pendingThirdPersonItem == null)
+        {
+            return;
+        }
+
+        ItemData itemData =
+            _pendingThirdPersonItem;
+
+        _pendingThirdPersonItem = null;
+
+        DestroyThirdPersonVisual();
+
+        if (itemData.HoldType == HoldType.Empty)
+        {
+            return;
+        }
+
+        SpawnThirdPersonVisual(itemData);
+
+        _itemHoldDriver.SetHoldType(
+            (int)itemData.HoldType
+        );
+
+        _itemHoldDriver.Equip();
+
+        Debug.Log(
+            $"[Item] 3인칭 장착: " +
+            $"{itemData.DisplayName} / " +
+            $"{itemData.HoldType}",
+            gameObject
+        );
+    }
+
+
+    private void SpawnThirdPersonVisual(
+        ItemData itemData)
+    {
+        if (_itemHoldDriver == null ||
+            _itemHoldDriver.ItemSocket == null)
+        {
+            Debug.LogWarning(
+                "[Item] RightHand_ItemSocket을 찾을 수 없습니다.",
+                gameObject
+            );
+
+            return;
+        }
+
+        GameObject prefab =
+            itemData.ThirdPersonVisualPrefab;
+
+        if (prefab == null)
+        {
+            Debug.LogWarning(
+                $"[Item] {itemData.DisplayName}의 " +
+                "3인칭 Visual Prefab이 없습니다.",
+                itemData
+            );
+
+            return;
+        }
+
+        _thirdPersonVisual =
+            Instantiate(
+                prefab,
+                _itemHoldDriver.ItemSocket,
+                false
+            );
+
+        Transform visualTransform =
+            _thirdPersonVisual.transform;
+
+        visualTransform.localPosition =
+            itemData.ThirdPersonLocalPosition;
+
+        visualTransform.localRotation =
+            Quaternion.Euler(
+                itemData.ThirdPersonLocalEuler
+            );
+
+        visualTransform.localScale =
+            itemData.ThirdPersonLocalScale;
+        _thirdPersonRenderers = _thirdPersonVisual.GetComponentsInChildren<Renderer>(true);
+
+        // 손에 든 아이템은 월드 충돌 대상이 아니므로
+        // Collider를 끈다.
+        Collider[] colliders =
+            _thirdPersonVisual
+                .GetComponentsInChildren<Collider>(true);
+
+        foreach (Collider col in colliders)
+        {
+            col.enabled = false;
+        }
+
+        Rigidbody[] rigidbodies =
+            _thirdPersonVisual
+                .GetComponentsInChildren<Rigidbody>(true);
+
+        foreach (Rigidbody rb in rigidbodies)
+        {
+            rb.isKinematic = true;
+            rb.useGravity = false;
+        }
+    }
+
+
+    private void DestroyThirdPersonVisual()
+    {
+        if (_thirdPersonVisual == null)
+        {
+            return;
+        }
+
+        Destroy(_thirdPersonVisual);
+
+        _thirdPersonVisual = null;
+        _thirdPersonRenderers = null;
+    }
+
+
+    // =========================================================
+    // Unequip
+    // =========================================================
+
+    public void UnequipCurrentItem()
+    {
+        // 새로운 아이템을 기다리고 있던 상태도 취소
+        _pendingThirdPersonItem = null;
+
+        UnequipFirstPerson();
+
+        if (_itemHoldDriver != null)
+        {
+            if (_itemHoldDriver.Phase != HoldPhase.Empty)
+            {
+                // 아이템을 든 채 자연스럽게 팔을 내린 뒤
+                // OnThirdPersonUnequipped에서 Visual 제거
+                _itemHoldDriver.Unequip();
+            }
+            else
+            {
+                DestroyThirdPersonVisual();
+            }
+        }
+        else
+        {
+            DestroyThirdPersonVisual();
+        }
+
         EquippedItemData = null;
     }
+
+
+    // =========================================================
+    // Use
+    // =========================================================
 
     private void UseItemStarted()
     {
@@ -273,8 +546,20 @@ public class PlayerItemController : MonoBehaviour
             return;
         }
 
-        _equippedItem.OnUseStarted();
+        // 실제 게임 기능
+        _equippedItem?.OnUseStarted();
+
+        // 3인칭 사용 모션
+        if (_itemHoldDriver != null &&
+            EquippedItemData != null &&
+            _itemHoldDriver.IsEquipped)
+        {
+            _itemHoldDriver.Use(
+                EquippedItemData.ThirdPersonUseMotionId
+            );
+        }
     }
+
 
     private void UseItemCanceled()
     {
@@ -287,6 +572,7 @@ public class PlayerItemController : MonoBehaviour
         _equippedItem.OnUseCanceled();
     }
 
+
     private bool CanUseItem()
     {
         if (!CanUseItems)
@@ -294,9 +580,9 @@ public class PlayerItemController : MonoBehaviour
             return false;
         }
 
-        // Visual Only 아이템은 손에 들 수는 있지만
-        // 실제 사용 동작은 실행하지 않는다.
-        if (_equippedItem == null)
+        // Visual-only items can still request their configured presentation motion.
+        // Gameplay callbacks remain optional and run only when ItemBase exists.
+        if (EquippedItemData == null)
         {
             return false;
         }

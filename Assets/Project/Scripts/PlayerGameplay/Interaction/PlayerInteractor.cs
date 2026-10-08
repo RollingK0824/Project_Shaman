@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using UnityEngine;
 
 [RequireComponent(typeof(PlayerInputReader))]
@@ -21,13 +21,17 @@ public class PlayerInteractor : MonoBehaviour
 
     private void Awake()
     {
-        _inputReader = GetComponent<PlayerInputReader>();
-        _viewModeController = GetComponent<PlayerViewModeController>();
+        _inputReader =
+            GetComponent<PlayerInputReader>();
+
+        _viewModeController =
+            GetComponent<PlayerViewModeController>();
     }
 
     private void OnEnable()
     {
-        _inputReader.InteractPressed += TryInteract;
+        _inputReader.InteractPressed +=
+            TryInteract;
     }
 
     private void Update()
@@ -39,7 +43,8 @@ public class PlayerInteractor : MonoBehaviour
     {
         if (_inputReader != null)
         {
-            _inputReader.InteractPressed -= TryInteract;
+            _inputReader.InteractPressed -=
+                TryInteract;
         }
     }
 
@@ -51,18 +56,26 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        SetCurrentTarget(FindInteractable());
+        SetCurrentTarget(
+            FindInteractable()
+        );
     }
 
-    private void SetCurrentTarget(IInteractable newTarget)
+    private void SetCurrentTarget(
+        IInteractable newTarget)
     {
-        if (ReferenceEquals(CurrentTarget, newTarget))
+        if (ReferenceEquals(
+                CurrentTarget,
+                newTarget))
         {
             return;
         }
 
         CurrentTarget = newTarget;
-        TargetChanged?.Invoke(CurrentTarget);
+
+        TargetChanged?.Invoke(
+            CurrentTarget
+        );
     }
 
     private IInteractable FindInteractable()
@@ -87,12 +100,48 @@ public class PlayerInteractor : MonoBehaviour
             return null;
         }
 
-        return hit.collider.GetComponentInParent<IInteractable>();
+        return
+            hit.collider
+                .GetComponentInParent<IInteractable>();
+    }
+
+    public bool TryGetTargetComponent<T>(
+        out T target)
+        where T : class
+    {
+        target = null;
+
+        if (_playerCamera == null)
+        {
+            return false;
+        }
+
+        Ray ray = new Ray(
+            _playerCamera.transform.position,
+            _playerCamera.transform.forward
+        );
+
+        if (!Physics.Raycast(
+                ray,
+                out RaycastHit hit,
+                _interactionDistance,
+                _interactionMask,
+                QueryTriggerInteraction.Ignore))
+        {
+            return false;
+        }
+
+        target =
+            hit.collider
+                .GetComponentInParent<T>();
+
+        return target != null;
     }
 
     private void TryInteract()
     {
-        if (_viewModeController != null && _viewModeController.IsBusy)
+        if (_viewModeController != null &&
+            _viewModeController.IsBusy)
         {
             _viewModeController.EndCurrentMode();
             return;
@@ -108,12 +157,15 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        if (!CurrentTarget.CanInteract(gameObject))
+        if (!CurrentTarget.CanInteract(
+                gameObject))
         {
             return;
         }
 
-        CurrentTarget.Interact(gameObject);
+        CurrentTarget.Interact(
+            gameObject
+        );
     }
 
     private void OnDrawGizmosSelected()
@@ -125,7 +177,8 @@ public class PlayerInteractor : MonoBehaviour
 
         Gizmos.DrawRay(
             _playerCamera.transform.position,
-            _playerCamera.transform.forward * _interactionDistance
+            _playerCamera.transform.forward *
+            _interactionDistance
         );
     }
 }
