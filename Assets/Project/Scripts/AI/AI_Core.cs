@@ -28,6 +28,7 @@ namespace ProjectShaman.AI
         public AIState CurrentState => currentState;
         public VillagerProfile Profile => _profile;
         public VillagerPublicInfo PublicInfo => _publicInfo;
+        public VillagerScheduleView ScheduleView { get; private set; }
         public bool IsInitialized => _profile != null;
         public ResolvedRoutine CurrentRoutine { get; private set; }
         public bool HasRoutine => CurrentRoutine.Source != null;
@@ -57,10 +58,17 @@ namespace ProjectShaman.AI
 
             _profile = profile;
             _publicInfo = profile.PublicInfo;
+            ScheduleView = VillagerScheduleView.FromSchedule(profile.Schedule);
 
             _routineDebug.SetSchedule(profile.Schedule);
             AILog.Log(AILog.CORE, LogId, $"Initialize {_publicInfo}");
             OnPublicInfoApplied?.Invoke(_publicInfo);
+        }
+
+        public void ApplyNetworkSchedule(VillagerScheduleView scheduleView)
+        {
+            ScheduleView = scheduleView;
+            AILog.Log(AILog.NET, LogId, $"Schedule applied on client ({(scheduleView != null ? $"{scheduleView.CycleDays}x{scheduleView.SlotsPerDay}" : "none")})");
         }
 
         public void ApplyNetworkPublicInfo(VillagerPublicInfo publicInfo)

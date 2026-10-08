@@ -33,8 +33,10 @@ namespace ProjectShaman.AI.Core
         private ScheduleBuilder _scheduleBuilder;
         private System.Random _random;
         private bool _hasCreated;
+        private VillagerRegistry _registry;
 
         public GameObject VillagerPrefab => _villagerPrefab;
+        internal VillagerRegistry Registry => _registry;
         public IAIDataProvider DataProvider => _dataProvider;
         public ISpawnHandler SpawnHandler { get; private set; }
         public IReadOnlyList<AI_Core> SpawnedVillagers => _spawnedVillagers;
@@ -42,6 +44,17 @@ namespace ProjectShaman.AI.Core
 
         public event System.Action<IReadOnlyList<AI_Core>> OnVillagersCreated;
         public event System.Action OnVillagersCleared;
+
+        private void Awake()
+        {
+            _registry = new VillagerRegistry();
+        }
+
+        private void OnDestroy()
+        {
+            _registry?.Close();
+            _registry = null;
+        }
 
         public void CreateVillagers(ISpawnHandler spawnHandler)
         {
@@ -107,6 +120,7 @@ namespace ProjectShaman.AI.Core
                 spawnHandler.Spawn(core.gameObject);
 
                 _spawnedVillagers.Add(core);
+                _registry.Register(core.PublicInfo, core.ScheduleView);
             }
 
             AILog.Log(AILog.FACTORY, $"Spawn end (spawned={_spawnedVillagers.Count})");
@@ -129,6 +143,7 @@ namespace ProjectShaman.AI.Core
             OnVillagersCleared?.Invoke();
 
             _spawnedVillagers.Clear();
+            _registry?.Clear();
             _usedNames.Clear();
             _scheduleBuilder = null;
             _hasCreated = false;
