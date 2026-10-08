@@ -10,7 +10,7 @@ using ProjectShaman.AI.Work;
 
 namespace ProjectShaman.AI.Core
 {
-    public class AIManager : MonoBehaviour
+    public class AIManager : SceneSingleton<AIManager>
     {
         [SerializeField] private AIFactory _factory;
         [SerializeField] private MonoBehaviour _timeSourceBehaviour;
@@ -23,10 +23,12 @@ namespace ProjectShaman.AI.Core
         private RoutineResolver _resolver;
         private bool _isRunning;
 
-        public IReadOnlyList<VillagerRuntime> Villagers => _villagers;
+        internal IReadOnlyList<VillagerRuntime> Villagers => _villagers;
+        public VillagerRegistry Registry => _factory != null ? _factory.Registry : null;
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
             _timeSource = _timeSourceBehaviour as ITimeSource;
 
             if (_factory != null)
@@ -36,7 +38,7 @@ namespace ProjectShaman.AI.Core
             }
         }
 
-        private void OnDestroy()
+        protected override void OnDestroy()
         {
             if (_factory != null)
             {
@@ -45,6 +47,7 @@ namespace ProjectShaman.AI.Core
             }
 
             UnsubscribeTime();
+            base.OnDestroy();
         }
 
         private void UnsubscribeTime()
@@ -313,7 +316,7 @@ namespace ProjectShaman.AI.Core
             }
         }
 
-        public void RemoveVillager(AI_Core core, string reason)
+        internal void RemoveVillager(AI_Core core, string reason)
         {
             VillagerRuntime villager = _villagers.Find(v => v.Core == core);
             if (villager == null)
@@ -326,6 +329,7 @@ namespace ProjectShaman.AI.Core
             _villagers.Remove(villager);
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
+            _factory.Registry?.MarkDead(villager.Id);
             AIEvents.RaiseVillagerDied(villager.Id, reason);
 
             if (_factory.SpawnHandler != null)

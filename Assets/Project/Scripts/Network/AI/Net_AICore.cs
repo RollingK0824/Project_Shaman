@@ -4,6 +4,7 @@ using ProjectShaman.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Routine;
 
 namespace ProjectShaman.Network.AI
 {
@@ -19,6 +20,10 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private VillagerGender _syncGender;
         [SyncVar] private VillagerSocialClass _syncSocialClass;
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
+
+        [SyncVar] private int _syncCycleDays;
+        [SyncVar] private int _syncSlotsPerDay;
+        private readonly SyncList<RoutineSlotInfo> _syncSchedule = new SyncList<RoutineSlotInfo>();
 
         private AI_Core aiCore;
         private AI_Movement aiMovement;
@@ -64,10 +69,24 @@ namespace ProjectShaman.Network.AI
                 if (aiCore != null)
                 {
                     aiCore.ApplyNetworkState(_networkState);
+                    aiCore.ApplyNetworkSchedule(VillagerScheduleView.FromFlat(_syncCycleDays, _syncSlotsPerDay, _syncSchedule));
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
                     gameObject.name = $"Villager_{_syncVillagerId}";
+                    RegisterToRegistry();
                 }
             }
+        }
+
+        private void RegisterToRegistry()
+        {
+            VillagerRegistry registry = AIManager.Instance != null ? AIManager.Instance.Registry : null;
+            if (registry == null)
+            {
+                AILog.Warn(AILog.NET, $"{aiCore.LogId} no AIManager/VillagerRegistry in scene, not registered");
+                return;
+            }
+
+            registry.Register(aiCore.PublicInfo, aiCore.ScheduleView);
         }
 
         public override void OnStopServer()
@@ -104,6 +123,26 @@ namespace ProjectShaman.Network.AI
             _syncAgeGroup = info.AgeGroup;
 
             AILog.Log(AILog.NET, info.VillagerId, "Public info written to SyncVars");
+            WriteScheduleToSyncList();
+        }
+
+        [Server]
+        private void WriteScheduleToSyncList()
+        {
+            VillagerScheduleView schedule = aiCore.ScheduleView;
+            _syncSchedule.Clear();
+
+            if (schedule == null)
+            {
+                AILog.Warn(AILog.NET, $"{aiCore.LogId} spawned without schedule");
+                return;
+            }
+
+            _syncCycleDays = schedule.CycleDays;
+            _syncSlotsPerDay = schedule.SlotsPerDay;
+            _syncSchedule.AddRange(schedule.FlatSlots);
+
+            AILog.Log(AILog.NET, aiCore.LogId, $"Schedule written to SyncList ({schedule.CycleDays}x{schedule.SlotsPerDay})");
         }
 
         private VillagerPublicInfo ReadPublicInfoFromSyncVars()
