@@ -562,6 +562,7 @@ GameObject:
   - component: {fileID: 1665083147}
   - component: {fileID: 1665083146}
   - component: {fileID: 1665083149}
+  - component: {fileID: 1665083150}
   m_Layer: 0
   m_Name: RoomManager
   m_TagString: Untagged
@@ -657,7 +658,7 @@ MonoBehaviour:
   _steamTransport: {fileID: 1665083149}
   _kcpTransport: {fileID: 1665083146}
   _useKcpInEditor: 1
-  _steamLobby: {fileID: 0}
+  _steamLobby: {fileID: 1665083150}
 --- !u!4 &1665083148
 Transform:
   m_ObjectHideFlags: 0
@@ -685,6 +686,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 513bbb057d473954490cd96c7f4f9ccd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Steam.SteamTransport
+--- !u!114 &1665083150
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1665083145}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 62f24584d6dc3bf42be66cc5ec00dc7c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::SteamLobbyService
+  _maxResults: 50
 --- !u!1 &2034652486
 GameObject:
   m_ObjectHideFlags: 0
