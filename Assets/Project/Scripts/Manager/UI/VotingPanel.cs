@@ -40,6 +40,14 @@ public class VotingPanel : UIPanel
             voteManager.NpcVotedOut += HandleNpcVotedOut;
         }
 
+        // 클라 시계는 서버보다 조금 늦어서, 결과가 낮일 때 도착할 수 있다. 내 시계로 낮/밤이 바뀔 때도 다시 그린다
+        TimeManager timeManager = TimeManager.Instance;
+        if (timeManager != null)
+        {
+            timeManager.OnDayStart += RefreshCells;
+            timeManager.OnNightStart += RefreshCells;
+        }
+
         _subscribedReg = AIManager.Instance != null ? AIManager.Instance.Registry : null;
         if (_subscribedReg != null)
         {
@@ -59,6 +67,13 @@ public class VotingPanel : UIPanel
         {
             voteManager.VotesChanged -= RefreshCells;
             voteManager.NpcVotedOut -= HandleNpcVotedOut;
+        }
+
+        TimeManager timeManager = TimeManager.Instance;
+        if (timeManager != null)
+        {
+            timeManager.OnDayStart -= RefreshCells;
+            timeManager.OnNightStart -= RefreshCells;
         }
 
         if (_subscribedReg != null)
