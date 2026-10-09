@@ -13,10 +13,12 @@ public class RoomRowUI : MonoBehaviour
     [SerializeField] private TMP_Text _playersText;
     [SerializeField] private TMP_Text _stateText;
 
-    [Header("색")]
-    [SerializeField] private Color _normalColor = new Color(1f, 1f, 1f, 0f);
-    [SerializeField] private Color _selectedColor = new Color(0.60f, 0.15f, 0.12f, 0.9f);   // 시안의 붉은 강조
-    [SerializeField] private Color _normalTextColor = new Color(0.15f, 0.12f, 0.10f, 1f);
+    [Header("배경")]
+    [SerializeField] private Sprite _normalSprite;      // SteamBrowser_RoomRow_Normal
+    [SerializeField] private Sprite _selectedSprite;    // SteamBrowser_RoomRow_Selected (붉은 붓 터치)
+
+    [Header("글자색")]
+    [SerializeField] private Color _normalTextColor = new Color(0.15f, 0.12f, 0.10f, 1f);   // 먹색
     [SerializeField] private Color _selectedTextColor = Color.white;
 
     public RoomInfo Room { get; private set; }
@@ -38,7 +40,8 @@ public class RoomRowUI : MonoBehaviour
 
     public void SetSelected(bool selected)
     {
-        _background.color = selected ? _selectedColor : _normalColor;
+        Sprite sprite = selected ? _selectedSprite : _normalSprite;
+        if (sprite != null) _background.sprite = sprite;
 
         Color textColor = selected ? _selectedTextColor : _normalTextColor;
         _nameText.color = textColor;
