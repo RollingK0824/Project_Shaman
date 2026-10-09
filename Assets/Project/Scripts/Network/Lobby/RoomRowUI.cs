@@ -66,6 +66,6 @@ public class RoomRowUI : MonoBehaviour
     {
         if (!room.IsWaiting) return "게임 중";
         if (room.IsFull) return "가득 참";
-        return "대기 중";
+        return room.IsLocked ? "비공개" : "공개";
     }
 }

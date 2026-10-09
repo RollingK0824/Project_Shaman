@@ -197,8 +197,16 @@ namespace ProjectShaman.Steam
 
         public override void ClientDisconnect()
         {
+            // 이미 끊겼거나 연결한 적이 없으면 무시
+            if (_clientConnection == HSteamNetConnection.Invalid) return;
+
+            // linger = ture : 아직 못 보낸 Reliable 메시지를 보낸 뒤 닫음
             SteamNetworkingSockets.CloseConnection(_clientConnection, 0, "client disconnect", false);
+            _clientConnection = HSteamNetConnection.Invalid;
             _clientConnected = false;
+            Debug.Log("[SteamTransport] ClientDisconnect");
+
+            OnClientDisconnected?.Invoke();
         }
 
         /*****************************************************************

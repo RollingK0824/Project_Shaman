@@ -32,10 +32,16 @@ public class SteamLobbyUI : MonoBehaviour
     [SerializeField] private GameObject _mainMenuUI;
     [SerializeField] private GameObject _createRoomUI;
 
+    [Header("비밀번호 입력창")]
+    [SerializeField] private GameObject _passwordPanel;
+    [SerializeField] private TMP_InputField _joinPasswordInput;
+
+
     private readonly List<RoomInfo> _rooms = new List<RoomInfo>();
     private readonly List<RoomRowUI> _rows = new List<RoomRowUI>();
     private string _selectedAddress;      // 새로고침 후에도 같은 방을 다시 선택하기 위해 주소로 기억
     private bool _isLoading;
+    private string _pendingJoinAddress;
 
     // RoomManager는 DontDestroyOnLoad라서 인스펙터로 연결하면 메인 메뉴에 돌아왔을 때 끊어짐 → 매번 찾음
     private static SteamLobbyService LobbyService =>
@@ -52,6 +58,8 @@ public class SteamLobbyUI : MonoBehaviour
         RoomManager.JoinFailed += OnJoinFailed;
         ShowMessage(string.Empty);
         Refresh();
+
+        if (_passwordPanel != null) _passwordPanel.SetActive(false);
     }
 
     private void OnDisable()
@@ -185,24 +193,36 @@ public class SteamLobbyUI : MonoBehaviour
         RoomInfo? room = FindSelectedRoom();
         if (!room.HasValue || !room.Value.IsJoinable) return;
 
-        var manager = RoomManager.singleton as RoomManager;
-        if (manager == null) return;
+        // 비밀번호 방이면 입력창을 먼저 띄움
+        if (room.Value.IsLocked && _passwordPanel != null)
+        {
+            _pendingJoinAddress = room.Value.Address;
+            _joinPasswordInput.text = string.Empty;
+            _passwordPanel.SetActive(true);
+            _joinPasswordInput.ActivateInputField();
+            return;
+        }
 
-        // Steam 화면에는 닉네임 입력칸이 없으므로 Steam 이름 사용
-        UserData.Nickname = SteamFriends.GetPersonaName();
+        StartJoin(room.Value.Address, string.Empty);
 
-        _joinButton.interactable = false;   // 중복 클릭 방지
-        ShowMessage("Joining...");
-
-        manager.networkAddress = room.Value.Address;
-        manager.BeginJoinAttempt();
-        manager.StartClient();
+        //var manager = RoomManager.singleton as RoomManager;
+        //if (manager == null) return;
+        //
+        //// Steam 화면에는 닉네임 입력칸이 없으므로 Steam 이름 사용
+        //UserData.Nickname = SteamFriends.GetPersonaName();
+        //
+        //_joinButton.interactable = false;   // 중복 클릭 방지
+        //ShowMessage("Joining...");
+        //
+        //manager.networkAddress = room.Value.Address;
+        //manager.BeginJoinAttempt();
+        //manager.StartClient();
     }
 
     private void OnJoinFailed()
     {
-        // 그 사이 방이 없어졌거나 가득 찼을 수 있으므로 목록을 다시 받음
-        ShowMessage("Failed to join the room.");
+        // 비밀번호 거절이면 그 사유, 아니면 일반 실패 (방이 사라졌거나 가득 참)
+        ShowMessage(RoomPasswordAuthenticator.ConsumeRejectReason() ?? "Failed to join the room.");
         Refresh();
     }
 
@@ -217,6 +237,39 @@ public class SteamLobbyUI : MonoBehaviour
     {
         _mainMenuUI.SetActive(true);
         gameObject.SetActive(false);
+    }
+
+    public void OnClickPasswordConfirm()
+    {
+        if (string.IsNullOrEmpty(_pendingJoinAddress)) return;
+
+        _passwordPanel.SetActive(false);
+        StartJoin(_pendingJoinAddress, _joinPasswordInput.text);
+        _pendingJoinAddress = null;
+    }
+
+    // 비밀번호 입력창 [취소]
+    public void OnClickPasswordCancel()
+    {
+        _pendingJoinAddress = null;
+        _passwordPanel.SetActive(false);
+    }
+
+    private void StartJoin(string address, string password)
+    {
+        var manager = RoomManager.singleton as RoomManager;
+        if (manager == null) return;
+
+        // Steam 화면에는 닉네임 입력칸이 없으므로 Steam 이름 사용
+        UserData.Nickname = SteamFriends.GetPersonaName();
+        RoomPasswordAuthenticator.PendingPassword = password;
+
+        _joinButton.interactable = false;   // 중복 클릭 방지
+        ShowMessage("Joining...");
+
+        manager.networkAddress = address;
+        manager.BeginJoinAttempt();
+        manager.StartClient();
     }
 
     private void ShowMessage(string message)
