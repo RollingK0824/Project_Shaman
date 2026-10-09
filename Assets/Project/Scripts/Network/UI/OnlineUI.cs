@@ -29,6 +29,8 @@ public class OnlineUI : MonoBehaviour
         if (_joinFailedText != null)
             _defaultJoinFailedMessage = _joinFailedText.text;
         _joinFailedPanel.SetActive(false);
+
+        RoomManager.JoinFailed += ShowJoinFailed;
     }
 
     public void Start()
@@ -36,10 +38,19 @@ public class OnlineUI : MonoBehaviour
         _joinFailedPanel.SetActive(false);
     }
 
+    private void OnDestroy()
+    {
+        RoomManager.JoinFailed -= ShowJoinFailed;
+    }
+
     public void ShowJoinFailed() => ShowJoinMessage(_defaultJoinFailedMessage);
 
     private void ShowJoinMessage(string message)
     {
+        // Steam 화면의 참가 실패는 SteamLobbyUI가 처리
+        var manager = RoomManager.singleton as RoomManager;
+        if (manager != null && manager.IsUsingSteam) return;
+
         if (_joinFailedText != null) _joinFailedText.text = message;
         _joinFailedPanel.SetActive(true);
 
@@ -94,39 +105,53 @@ public class OnlineUI : MonoBehaviour
             return;
         }
 
-        if (!(manager.transport is SteamTransport))
+        string input = _hostSteamIdInputField != null ?
+            _hostSteamIdInputField.text.Trim() : string.Empty;
+
+        string address;
+        if ( manager.IsUsingSteam)
         {
-            ShowJoinMessage("Steam connection is not configured.");
-            return;
+            if (!TryGetSteamHostAddress(manager, input, out address)) return;
+        }
+        else
+        {
+            address = string.IsNullOrEmpty(input) ? "localhost" : input;
         }
 
-        string address = _hostSteamIdInputField != null
-            ? _hostSteamIdInputField.text.Trim() : string.Empty;
-        if (!ulong.TryParse(address, NumberStyles.None, CultureInfo.InvariantCulture, out ulong value)
+
+        if (_joinFailedCoroutine != null) StopCoroutine(_joinFailedCoroutine);
+        _joinFailedPanel.SetActive(false);
+        UserData.Nickname = nickname;
+        manager.networkAddress = address;
+        manager.BeginJoinAttempt();
+        manager.StartClient();
+    }
+
+    private bool TryGetSteamHostAddress(RoomManager manager, string input, out string address)
+    {
+        address = null;
+
+        if (!ulong.TryParse(input, NumberStyles.None, CultureInfo.InvariantCulture, out ulong value)
             || !new CSteamID(value).IsValid() || !new CSteamID(value).BIndividualAccount())
         {
             ShowJoinMessage("Enter a valid host SteamID64.");
             _hostSteamIdInputField?.ActivateInputField();
-            return;
+            return false;
         }
 
         if (!manager.transport.Available())
         {
             ShowJoinMessage("Sign in to Steam and restart the game.");
-            return;
+            return false;
         }
 
         if (value == SteamUser.GetSteamID().m_SteamID)
         {
             ShowJoinMessage("Enter the host's SteamID64, not your own.");
-            return;
+            return false;
         }
 
-        if (_joinFailedCoroutine != null) StopCoroutine(_joinFailedCoroutine);
-        _joinFailedPanel.SetActive(false);
-        UserData.Nickname = nickname;
-        manager.networkAddress = value.ToString(CultureInfo.InvariantCulture);
-        manager.BeginJoinAttempt();
-        manager.StartClient();
+        address = value.ToString(CultureInfo.InvariantCulture);
+        return true;
     }
 }

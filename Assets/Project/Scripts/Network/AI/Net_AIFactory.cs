@@ -30,6 +30,8 @@ namespace ProjectShaman.Network.AI
 
         private void HandleVillagerDied(string villagerId, string reason)
         {
+            RpcVillagerDied(villagerId);
+
             NetGM gameManager = FindFirstObjectByType<NetGM>();
             if (gameManager == null)
             {
@@ -53,6 +55,21 @@ namespace ProjectShaman.Network.AI
         {
             base.OnStartClient();
             AILog.Log(AILog.NET, $"Net_AIFactory OnStartClient (isServer={isServer}, ready={NetworkClient.ready})");
+        }
+
+        public override void OnStopClient()
+        {
+            _factory.Registry?.Clear();
+            base.OnStopClient();
+        }
+
+        [ClientRpc]
+        private void RpcVillagerDied(string villagerId)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.MarkDead(villagerId);
+            }
         }
 
         [Server]

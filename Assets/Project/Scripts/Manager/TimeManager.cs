@@ -1,5 +1,6 @@
 using System;
 using Mirror;
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum TimeOfDay
@@ -10,35 +11,61 @@ public enum TimeOfDay
 
 public class TimeManager : SceneSingleton<TimeManager>
 {
+    [SerializeField]
+    private int _startOfDay = 3;
+    private bool _hasEvaluated;
+    private List<string> _textTime = new List<string> { "자시", "축시", "인시", "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시", "해시" };
+
     public const float DAY_DURATION = 40f;
     public const float NIGHT_DURATION = 20f;
     public const float CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
 
+    public double Elapsed {  get; private set; }
     public double CycleStartTime {  get; private set; }
-    public double Seconds { get; private set; }
     public int DayCount{ get; private set; }
     public TimeOfDay CurrentTimePhase { get; private set; }
+
+    public bool IsRunning { get; private set; }
 
     public event Action OnDayStart;
     public event Action OnNightStart;
     public event Action<int> OnNewDay;
 
-    public void SetCycleStart(double startTime) => CycleStartTime = startTime;
+    public void SetCycleStart(double startTime)
+    {
+        CycleStartTime = startTime;
+        IsRunning = true;
+    }
 
     private void Update()
     {
-        Seconds = NetworkTime.time - CycleStartTime;
-        if (Seconds < 0)
+        if (!IsRunning)
         {
             return;
         }
 
-        double intoCycle = Seconds % CYCLE_DURATION;
-        var newPhase = intoCycle < DAY_DURATION ? TimeOfDay.Day : TimeOfDay.Night;
-        int newDay = (int)(Seconds / CYCLE_DURATION) + 1;
 
-        if (newPhase != CurrentTimePhase)
+        Elapsed = NetworkTime.time - CycleStartTime;
+        if (Elapsed < 0)
         {
+            return;
+        }
+
+        double intoCycle = Elapsed % CYCLE_DURATION;
+        var newPhase = intoCycle < DAY_DURATION ? TimeOfDay.Day : TimeOfDay.Night;
+        int newDay = (int)(Elapsed / CYCLE_DURATION) + 1;
+
+       
+        if (newDay != DayCount)
+        {
+            DayCount = newDay;
+            OnNewDay?.Invoke(DayCount);
+        }
+
+        if (!_hasEvaluated || newPhase != CurrentTimePhase)
+        {
+            _hasEvaluated = true;
+
             CurrentTimePhase = newPhase;
             if (newPhase == TimeOfDay.Day)
             {
@@ -50,10 +77,6 @@ public class TimeManager : SceneSingleton<TimeManager>
             }
         }
 
-        if (newDay != DayCount)
-        {
-            DayCount = newDay;
-            OnNewDay?.Invoke(DayCount);
-        }
+        
     }
 }

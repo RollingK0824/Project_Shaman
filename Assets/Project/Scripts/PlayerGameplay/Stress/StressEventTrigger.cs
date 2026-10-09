@@ -26,6 +26,30 @@ public class StressEventTrigger : MonoBehaviour
             colliders = new HashSet<Collider>();
             _occupants.Add(component, colliders);
         }
+
+        PlayerStressController stressController = other.GetComponentInParent<PlayerStressController>();
+
+        if (stressController == null)
+        {
+            return;
+        }
+
+        // 서버에 요청 보내는 거로 수정
+        PlayerEvents.RaiseStressRequested(stressController, _stressAmount, _cause, gameObject);
+
+        //IStressReceiver receiver = other.GetComponentInParent<IStressReceiver>();
+        //if (receiver == null)
+        //{
+        //    return;
+        //}
+        //
+        //receiver.ReceiveStress(
+        //    _stressAmount,
+        //    _cause,
+        //    gameObject
+        //);
+
+        _hasTriggered = true;
         bool alreadyInside = colliders.Count > 0;
         if (!colliders.Add(other) || (_oncePerEntry && alreadyInside)) return;
         receiver.ReceiveStress(_stressAmount, _cause, gameObject);
