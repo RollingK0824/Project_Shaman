@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -16,8 +16,6 @@ public class StressZone : MonoBehaviour
     private readonly List<PlayerStressController> _leaving = new();
     private void Reset() => GetComponent<Collider>().isTrigger = true;
     private void OnValidate() => _stressPerSecond = Mathf.Max(0f, _stressPerSecond);
-    private void OnTriggerEnter(Collider other) => Track(other);
-    private void OnTriggerStay(Collider other) => Track(other);
 
     private void Track(Collider other)
     {
@@ -86,7 +84,7 @@ public class StressZone : MonoBehaviour
         //        stressController.ReduceStress(amount);
         //        break;
         //}
-        player.SetSourceRate(this, _zoneType == StressZoneType.Reduce ? -_stressPerSecond : _stressPerSecond);
+        stressController.SetSourceRate(this, _zoneType == StressZoneType.Reduce ? -_stressPerSecond : _stressPerSecond);
     }
 
     private void OnTriggerExit(Collider other)

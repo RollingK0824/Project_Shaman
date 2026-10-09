@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -9,6 +9,7 @@ public class StressEventTrigger : MonoBehaviour
     [SerializeField, Min(0f)] private float _stressAmount = 20f;
     [Header("Trigger")]
     [SerializeField] private bool _oncePerEntry = true;
+    private bool _hasTriggered;
     private readonly Dictionary<Component, HashSet<Collider>> _occupants = new();
     private readonly List<Component> _leaving = new();
 

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -112,8 +112,6 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
 
         StressLevelChanged?.Invoke(CurrentLevel);
     }
-    private StressLevel CalculateStressLevel(
-        float stress)
     private StressLevel CalculateStressLevel(float stress)
     {
         if (stress >= _highThreshold) return StressLevel.High;
