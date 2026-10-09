@@ -12,6 +12,7 @@ public class ItemData : ScriptableObject
     [Header("Info")]
     [SerializeField] private string _displayName;
     [SerializeField] private ItemCategory _category;
+    [SerializeField] private Sprite _icon;
 
     [Header("World")]
     [SerializeField] private GameObject _worldPrefab;
@@ -47,6 +48,7 @@ public class ItemData : ScriptableObject
 
     public string DisplayName => _displayName;
     public ItemCategory Category => _category;
+    public Sprite Icon => _icon;
 
     public GameObject WorldPrefab => _worldPrefab;
 
