@@ -21,6 +21,10 @@ public class VoteCellUI : MonoBehaviour
     [SerializeField]
     private Image _markPrefab;
 
+    // X끼리의 가로 간격. X 너비의 절반이면 반쯤 겹쳐 보인다
+    [SerializeField]
+    private float _markStep = 25f;
+
     private string _npcId;
     private readonly List<Image> _marks = new List<Image>();
 
@@ -51,6 +55,9 @@ public class VoteCellUI : MonoBehaviour
             _marks.Add(mark);
         }
 
+        // 가운데를 기준으로 좌우 대칭 배치: 1개면 정중앙, 2개면 양옆, 3개면 가운데 + 양옆
+        float firstOffset = -(needed - 1) * 0.5f * _markStep;
+
         for (int i = 0; i < _marks.Count; i++)
         {
             bool used = i < needed;
@@ -59,6 +66,10 @@ public class VoteCellUI : MonoBehaviour
             if (used)
             {
                 _marks[i].color = markColors[i];
+
+                RectTransform rect = _marks[i].rectTransform;
+                rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+                rect.anchoredPosition = new Vector2(firstOffset + i * _markStep, 0f);
             }
         }
     }
