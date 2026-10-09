@@ -47,6 +47,10 @@ public class OnlineUI : MonoBehaviour
 
     private void ShowJoinMessage(string message)
     {
+        // Steam 화면의 참가 실패는 SteamLobbyUI가 처리
+        var manager = RoomManager.singleton as RoomManager;
+        if (manager != null && manager.IsUsingSteam) return;
+
         if (_joinFailedText != null) _joinFailedText.text = message;
         _joinFailedPanel.SetActive(true);
 

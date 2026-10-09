@@ -1,6 +1,10 @@
 using UnityEngine;
 using Mirror;
 using System.Collections;
+using System.Collections.Generic;
+using ProjectShaman.AI;
+using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Ghost;
 
 /* *GameManager 동기화할 데이트들
 * NpcTotal : 초기 NPC 수 동기화
@@ -36,6 +40,9 @@ public class NetGM : NetworkBehaviour
     public double ReturnToLobbyTime => _returnToLobbyTime;
 
     private GameManager _serverGameManager;
+
+    // [서버] 씬에 AI가 있으면 실제 생성된 주민,귀신 수로 초기화 없으면 _initialNpcCount 사용
+    private AIFactory _aiFactory;
 
     // [서버] 이번 프레임에 참가자, 생존자가 바뀌었는지 LateUpdate에서 한번만 검사
     private bool _rosterDirty;
@@ -134,7 +141,24 @@ public class NetGM : NetworkBehaviour
         }
 
 
-        ServerInitialize(_initialNpcCount, roomManager.SelectedGhostCount);
+        
+
+        _aiFactory = FindFirstObjectByType<AIFactory>(FindObjectsInactive.Include);
+
+        if (_aiFactory == null)
+        {
+            ServerInitialize(_initialNpcCount, roomManager.SelectedGhostCount);
+            return;
+        }
+
+        if (_aiFactory.SpawnedVillagers.Count > 0)
+        {
+            ServerInitializedFromVillagers(_aiFactory.SpawnedVillagers);
+        }
+        else
+        {
+            _aiFactory.OnVillagersCreated += HandleVillagersCreated;
+        }
     }
 
     public override void OnStopServer()
@@ -145,6 +169,11 @@ public class NetGM : NetworkBehaviour
         {
             _serverGameManager.OnWin -= HandleGameOverOnServer;
             _serverGameManager.OnLose -= HandleGameOverOnServer;
+        }
+
+        if (_aiFactory != null)
+        {
+            _aiFactory.OnVillagersCreated-= HandleVillagersCreated;
         }
 
         base.OnStopServer();
@@ -208,6 +237,30 @@ public class NetGM : NetworkBehaviour
     private void HandleRosterChanged()
     {
         _rosterDirty = true;
+    }
+
+    private void HandleVillagersCreated(IReadOnlyList<AI_Core> villagers)
+    {
+        _aiFactory.OnVillagersCreated -= HandleVillagersCreated;
+
+        ServerInitializedFromVillagers(villagers);
+    }
+
+    [Server]
+    private void ServerInitializedFromVillagers(IReadOnlyList<AI_Core> villagers)
+    {
+        int ghostCount = 0;
+
+        foreach(AI_Core villager in villagers)
+        {
+            if (villager != null && villager.GetComponent<AI_Possession>() != null)
+            {
+                ghostCount++;
+            }
+        }
+
+        Debug.Log($"[NetGM] AI 기준 초기화: 주민 {villagers.Count}, 귀신 {ghostCount}");
+        ServerInitialize(villagers.Count, ghostCount);
     }
 
 
