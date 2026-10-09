@@ -39,6 +39,8 @@ public class RoomManager : NetworkRoomManager
 
     // [Steam 로비] 방 생성 화면에서 설정. 비어 있으면 "방장 방"
     public string RoomName { get; set; }
+    public string RoomPassword { get; set; }
+    public bool HasPassword => !string.IsNullOrEmpty(RoomPassword);
 
     private bool _isAttemptingJoin;
     public void BeginJoinAttempt() => _isAttemptingJoin = true;
@@ -98,7 +100,7 @@ public class RoomManager : NetworkRoomManager
         {
             string owner = GetOwnerName();
             string roomName = string.IsNullOrWhiteSpace(RoomName) ? $"{owner}'s room" : RoomName;
-            _steamLobby.HostLobby(roomName, owner, maxConnections, SelectedGhostCount);
+            _steamLobby.HostLobby(roomName, owner, maxConnections, SelectedGhostCount, HasPassword);
         }
     }
 

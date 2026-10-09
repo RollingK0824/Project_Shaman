@@ -24,6 +24,7 @@ public class SteamLobbyService : MonoBehaviour
     private const string StateKey = "state";
     private const string StateLobby = "lobby";
     private const string StateInGame = "ingame";
+    private const string LockedKey = "locked";
 
 
     [SerializeField] private int _maxResults = 50;
@@ -42,6 +43,7 @@ public class SteamLobbyService : MonoBehaviour
     private int _ghostCount;
     private int _playerCount;
     private bool _inGame;
+    private bool _isLocked;
 
     private void EnsureCallResults()
     {
@@ -57,7 +59,7 @@ public class SteamLobbyService : MonoBehaviour
 
 
     // 호스트 부분
-    public void HostLobby(string roomName, string ownerName, int maxPlayers, int ghostCount)
+    public void HostLobby(string roomName, string ownerName, int maxPlayers, int ghostCount, bool isLocked)
     {
         if (!SteamManager.Initialized) return;
         EnsureCallResults();
@@ -69,6 +71,7 @@ public class SteamLobbyService : MonoBehaviour
         _ghostCount = ghostCount;
         _playerCount = 1;
         _inGame = false;
+        _isLocked = isLocked;
 
         SteamAPICall_t call = SteamMatchmaking.CreateLobby(ELobbyType.k_ELobbyTypePublic, maxPlayers);
         _lobbyCreatedResult.Set(call);
@@ -98,6 +101,7 @@ public class SteamLobbyService : MonoBehaviour
         SteamMatchmaking.SetLobbyData(lobby, OwnerKey, _ownerName);
         SteamMatchmaking.SetLobbyData(lobby, MaxKey, _maxPlayers.ToString(CultureInfo.InvariantCulture));
         SteamMatchmaking.SetLobbyData(lobby, GhostKey, _ghostCount.ToString(CultureInfo.InvariantCulture));
+        SteamMatchmaking.SetLobbyData(lobby, LockedKey, _isLocked ? "1" : "0");
         PublishState();
 
         Debug.Log($"[SteamLobby] 로비 생성: {lobby.m_SteamID} ({_roomName} / {_ownerName})");
@@ -195,8 +199,9 @@ public class SteamLobbyService : MonoBehaviour
         int max = ReadInt(lobby, MaxKey);
         int ghost = ReadInt(lobby, GhostKey);
         bool waiting = SteamMatchmaking.GetLobbyData(lobby, StateKey) == StateLobby;
+        bool locked = SteamMatchmaking.GetLobbyData(lobby, LockedKey) == "1";
 
-        room = new RoomInfo(name, owner, host, players, max, ghost, waiting, waiting && players < max);
+        room = new RoomInfo(name, owner, host, players, max, ghost, waiting, locked, waiting && players < max);
         return true;
     }
 

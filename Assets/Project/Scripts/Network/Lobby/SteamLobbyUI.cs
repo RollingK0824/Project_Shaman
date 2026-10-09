@@ -162,7 +162,7 @@ public class SteamLobbyUI : MonoBehaviour
         _infoNameText.text = has ? room.Value.Name : "-";
         _infoOwnerText.text = has ? room.Value.Owner : "-";
         _infoPlayersText.text = has ? $"{room.Value.CurrentPlayers} / {room.Value.MaxPlayers}" : "-";
-        _infoStateText.text = has ? RoomRowUI.GetStateLabel(room.Value) : "-";
+        _infoStateText.text = has ? $"{(room.Value.IsLocked ? "비공개 방" : "공개 방")} · {RoomRowUI.GetStateLabel(room.Value)}" : "-";
 
         _joinButton.interactable = has && room.Value.IsJoinable;
     }

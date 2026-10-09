@@ -9,11 +9,12 @@ public readonly struct RoomInfo
     public readonly int MaxPlayers;
     public readonly int GhostCount;
     public readonly bool IsWaiting;
+    public readonly bool IsLocked;
     public readonly bool IsJoinable;            // 대기중이고 자리 있을때만 true
 
     public bool IsFull => MaxPlayers > 0 && CurrentPlayers >= MaxPlayers;
 
-    public RoomInfo(string name, string owner, string address, int currentPlayers, int maxPlayers, int ghostCount, bool isWaiting, bool isJoinable)
+    public RoomInfo(string name, string owner, string address, int currentPlayers, int maxPlayers, int ghostCount, bool isWaiting, bool isLocked ,bool isJoinable)
     {
         Name = name;
         Owner = owner;
@@ -22,6 +23,7 @@ public readonly struct RoomInfo
         MaxPlayers = maxPlayers;
         GhostCount = ghostCount;
         IsWaiting = isWaiting;
+        IsLocked = isLocked;
         IsJoinable = isJoinable;
     }
 }

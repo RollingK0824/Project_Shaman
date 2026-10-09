@@ -21,6 +21,12 @@ public class RoomRowUI : MonoBehaviour
     [SerializeField] private Color _normalTextColor = new Color(0.15f, 0.12f, 0.10f, 1f);   // 먹색
     [SerializeField] private Color _selectedTextColor = Color.white;
 
+    [Header("좌물쇠")]
+    [SerializeField] private Image _lockIcon;
+    [SerializeField] private Sprite _lockedSprite;
+    [SerializeField] private Sprite _unlockedSprite;
+
+
     public RoomInfo Room { get; private set; }
 
     public void Bind(RoomInfo room, Action<RoomRowUI> onClick)
@@ -31,6 +37,11 @@ public class RoomRowUI : MonoBehaviour
         _ownerText.text = room.Owner;
         _playersText.text = $"{room.CurrentPlayers} / {room.MaxPlayers}";
         _stateText.text = GetStateLabel(room);
+
+        if (_lockIcon != null)
+        {
+            _lockIcon.sprite = room.IsLocked ? _lockedSprite : _unlockedSprite;
+        }
 
         _button.onClick.RemoveAllListeners();
         _button.onClick.AddListener(() => onClick?.Invoke(this));
