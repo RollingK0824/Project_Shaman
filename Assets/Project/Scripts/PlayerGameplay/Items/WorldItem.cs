@@ -39,6 +39,12 @@ public class WorldItem : MonoBehaviour, IInteractable
             return false;
         }
 
+        if (_itemData == null)
+        {
+            return false;
+        }
+
+
         PlayerInventory inventory =
             interactor.GetComponent<PlayerInventory>();
 

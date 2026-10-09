@@ -1,9 +1,13 @@
+using kcp2k;
 using Mirror;
 using ProjectShaman.Steam;
+using Steamworks;
 using System;
 using System.Linq;
 using UnityEngine;
-using kcp2k;
+
+
+using static RoomManager;
 
 public enum DisconnectNotice
 {
@@ -17,14 +21,26 @@ public class RoomManager : NetworkRoomManager
     [SerializeField] private SteamTransport _steamTransport;
     [SerializeField] private KcpTransport _kcpTransport;
 
+    [Tooltip("메인 메뉴에서 LAN/Steam을 고르기 전의 기본값. 버튼을 누르면 그 선택이 우선합니다.")]
     [SerializeField] private bool _useKcpInEditor = true;
+
+    [Header("Steam 로비")]
+    [SerializeField] private SteamLobbyService _steamLobby;
 
     public static DisconnectNotice PendingNotice { get; private set;  }
 
 
     public bool IsUsingSteam => transport is SteamTransport;
 
+    public enum NetworkMode { Lan, Steam}
+    public bool IsSteamAvailable => _steamTransport != null && _steamTransport.Available();
+
     public int SelectedGhostCount { get; private set; }
+
+    // [Steam 로비] 방 생성 화면에서 설정. 비어 있으면 "방장 방"
+    public string RoomName { get; set; }
+    public string RoomPassword { get; set; }
+    public bool HasPassword => !string.IsNullOrEmpty(RoomPassword);
 
     private bool _isAttemptingJoin;
     public void BeginJoinAttempt() => _isAttemptingJoin = true;
@@ -75,13 +91,45 @@ public class RoomManager : NetworkRoomManager
         _isLeavingVoluntarily = false;
         base.OnStartClient();
     }
+    // [Steam 로비] Steam으로 호스트를 시작하면 방 목록에 등록
+    public override void OnStartHost()
+    {
+        base.OnStartHost();
+
+        if (IsUsingSteam && _steamLobby != null)
+        {
+            string owner = GetOwnerName();
+            string roomName = string.IsNullOrWhiteSpace(RoomName) ? $"{owner}'s room" : RoomName;
+            _steamLobby.HostLobby(roomName, owner, maxConnections, SelectedGhostCount, HasPassword);
+        }
+    }
+
+    // [Steam 로비] 접속하면 인원 갱신
+    public override void OnRoomServerConnect(NetworkConnectionToClient conn)
+    {
+        base.OnRoomServerConnect(conn);
+        UpdateLobbyPlayerCount(null);
+    }
+
+    // [Steam 로비] 게임 씬으로 가면 "게임 중", 로비 씬으로 돌아오면 "대기 중"
+    public override void OnRoomServerSceneChanged(string sceneName)
+    {
+        base.OnRoomServerSceneChanged(sceneName);
+        if (_steamLobby != null) _steamLobby.SetInGame(sceneName == GameplayScene);
+    }
 
     public override void OnStopServer()
     {
         _isServerStopping = true;
         base.OnStopServer();
     }
-
+    
+    // [Steam 로비] 호스트 종료 시 방 목록에서 제거
+    public override void OnStopHost()
+    {
+        if (_steamLobby != null) _steamLobby.CloseLobby();
+        base.OnStopHost();
+    }
 
     public void SetGhostCount(int ghostCount)
     {
@@ -98,6 +146,7 @@ public class RoomManager : NetworkRoomManager
     public override void OnRoomServerDisconnect(NetworkConnectionToClient conn)
     {
         base.OnRoomServerDisconnect(conn);
+        UpdateLobbyPlayerCount(conn);   // [Steam 로비] 아래 return보다 먼저 (로비 씬 이탈도 반영)
 
         if (_isServerStopping || conn is LocalConnectionToClient)
         {
@@ -158,16 +207,28 @@ public class RoomManager : NetworkRoomManager
     // 로비 -> 게임 전환 시 NetPlayer를 생성하고 스폰 전에 닉네임을 설정합니다.
     public override GameObject OnRoomServerCreateGamePlayer(NetworkConnectionToClient conn, GameObject roomPlayer)
     {
-        // 1. 스폰 위치 가져오기 (NetworkStartPosition이 없으면 Vector3.zero 사용)
-        Transform startPos = GetStartPosition();
-        Vector3 spawnPos = startPos != null ? startPos.position : Vector3.zero;
-        Quaternion spawnRot = startPos != null ? startPos.rotation : Quaternion.identity;
+        var roomPlayerComp = roomPlayer.GetComponent<RoomPlayer>();
+
+        // 1. 스폰 위치 - 게임 씬의 PlayerSpawnArea가 있으면 로비 번호로 원형 배치, 없으면 기존 방식
+        Vector3 spawnPos;
+        Quaternion spawnRot;
+
+        PlayerSpawnArea spawnArea = FindFirstObjectByType<PlayerSpawnArea>();
+        if (spawnArea != null && roomPlayerComp != null)
+        {
+            spawnArea.GetSpawnPose(roomPlayerComp.index, maxConnections, out spawnPos, out spawnRot);
+        }
+        else
+        {
+            Transform startPos = GetStartPosition();
+            spawnPos = startPos != null ? startPos.position : Vector3.zero;
+            spawnRot = startPos != null ? startPos.rotation : Quaternion.identity;
+        }
 
         // 2. 게임 플레이어 생성
         GameObject gamePlayerObj = Instantiate(playerPrefab, spawnPos, spawnRot);
 
         // 3. 로비의 닉네임을 게임 플레이어의 공개 상태로 전달
-        var roomPlayerComp = roomPlayer.GetComponent<RoomPlayer>();
         var status = gamePlayerObj.GetComponent<NetPlayerStatus>();
 
         if (roomPlayerComp != null && status != null)
@@ -198,4 +259,44 @@ public class RoomManager : NetworkRoomManager
         else if (NetworkClient.active) StopClient();
         else if (NetworkServer.active) StopServer();
     }
+
+
+    // 메인 메뉴에서 연결 방식 선택. 접속 중에는 바꿀 수 없음
+    public bool TrySelectMode(NetworkMode mode)
+    {
+        if (NetworkServer.active || NetworkClient.active)
+        {
+            Debug.LogWarning("[RoomManager] 접속 중에는 연결 방식을 바꿀 수 없습니다.");
+            return false;
+        }
+
+        Transport selected = mode == NetworkMode.Steam ? _steamTransport : _kcpTransport;
+        if (selected == null)
+        {
+            Debug.LogError($"[RoomManager] {mode}용 Transport가 인스펙터에 연결되지 않았습니다.");
+            return false;
+        }
+
+        if (!selected.Available()) return false;   // Steam이 꺼져 있거나 초기화 실패
+
+        transport = selected;
+        Transport.active = selected;               // Mirror가 실제로 사용하는 값
+        Debug.Log($"[RoomManager] Transport 선택: {selected.GetType().Name}");
+        return true;
+    }
+
+
+    // Steam 로비 보조 함수들
+
+    private void UpdateLobbyPlayerCount(NetworkConnectionToClient leaving)
+    { // leaving : 지금 끊기는 연결. 끊금 콜백 시점에는 목록에 남아 있을 수 있기에 직접 제외
+        if (_steamLobby == null) return;
+
+        int count = NetworkServer.connections.Count;
+        if (leaving != null && NetworkServer.connections.ContainsKey(leaving.connectionId)) count--;
+        _steamLobby.UpdatePlayerCount(count);
+    }
+
+    private string GetOwnerName() =>
+        string.IsNullOrWhiteSpace(UserData.Nickname) ? SteamFriends.GetPersonaName() : UserData.Nickname;
 }
