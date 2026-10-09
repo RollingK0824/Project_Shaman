@@ -148,25 +148,91 @@ public class VoteManager : SceneSingleton<VoteManager>
         VoteRequested?.Invoke(MyVote);
     }
 
+    // [서버] 밤이 시작될 때 어댑터가 호출. 최다 득표 NPC 하나를 반환, 동점이거나 표가 없으면 null
     public string ResolveVote()
     {
         int highest = 0;
         string winner = null;
+        bool tie = false;
+
         foreach (KeyValuePair<string, int> voteCount in _count)
         {
+            if (!IsVotable(voteCount.Key))
+            {
+                continue;
+            }
+
             if (voteCount.Value > highest)
             {
+                highest = voteCount.Value;
                 winner = voteCount.Key;
+                tie = false;
+            }
+            else if (voteCount.Value == highest)
+            {
+                tie = true;
             }
         }
 
+        if (tie)
+        {
+            winner = null;
+        }
+
+        FinishVote(winner);
+        return winner;
+    }
+
+    // [클라이언트] 서버에서 받은 투표 결과 적용. 호스트에서는 호출하지 않음
+    public void ApplyVoteResult(string npcId)
+    {
+        FinishVote(npcId);
+    }
+
+    // [클라이언트] 서버에서 받은 투표 표로 교체하고 득표 수를 다시 계산. 호스트에서는 호출하지 않음
+    public void ApplyNetworkVotes(IReadOnlyDictionary<uint, string> votes)
+    {
+        _vote.Clear();
+        _count.Clear();
+
+        if (votes != null)
+        {
+            foreach (KeyValuePair<uint, string> vote in votes)
+            {
+                _vote[vote.Key] = vote.Value;
+                ChangeCount(vote.Value, 1);
+            }
+        }
+
+        VotesChanged?.Invoke();
+    }
+
+    // 해당 NPC에 투표한 플레이어들
+    public IReadOnlyList<uint> GetVotersFor(string npcId)
+    {
+        List<uint> voters = new List<uint>();
+
+        foreach (KeyValuePair<uint, string> vote in _vote)
+        {
+            if (vote.Value == npcId)
+            {
+                voters.Add(vote.Key);
+            }
+        }
+
+        return voters;
+    }
+
+    // 하루 투표 마무리. 추방 기록을 NpcVotedOut보다 먼저 남겨야 OnDied 시점에 WasVotedOut이 맞게 나온다
+    private void FinishVote(string winner)
+    {
         _vote.Clear();
         _count.Clear();
         MyVote = null;
 
         RecordVotedOut(winner);
+        VotesChanged?.Invoke();
         NpcVotedOut?.Invoke(winner);
-        return winner;
     }
 
     public bool WasVotedOut(string npcId)
