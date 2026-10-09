@@ -4,14 +4,16 @@ using UnityEngine;
 [RequireComponent(typeof(Collider))]
 public class DashboardInterface : MonoBehaviour, IInteractable
 {
-    public string InteractionPrompt => "게시판 열기";
+    [SerializeField]
+    private VotingPanel _votingPanel;
 
     private bool _isInteractable = true;
 
+    public string InteractionPrompt => "게시판 열기";
     public bool CanInteract(GameObject interactor)
     {
         return
-            _isInteractable;
+            VoteManager.Instance.IsVotingOpen;
     }
 
     public void Interact(GameObject interactor)
@@ -21,6 +23,6 @@ public class DashboardInterface : MonoBehaviour, IInteractable
             return;
         }
 
-        Debug.Log("Interacted with Dashboard");
+        UIManager.Instance.Open(_votingPanel);
     }
 }

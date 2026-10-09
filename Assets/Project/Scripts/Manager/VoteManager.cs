@@ -148,12 +148,13 @@ public class VoteManager : SceneSingleton<VoteManager>
         VoteRequested?.Invoke(MyVote);
     }
 
-    // [서버] 밤이 시작될 때 어댑터가 호출. 최다 득표 NPC 하나를 반환, 동점이거나 표가 없으면 null
+    // [서버] 밤이 시작될 때 어댑터가 호출. 최다 득표 NPC를 반환
+    // 동점이면 동점자 중 무작위, 표가 하나도 없으면 살아있는 NPC 전체 중 무작위. 살아있는 NPC가 없으면 null
+    // 무작위는 서버에서 한 번만 정하고 결과만 클라이언트로 보내므로 모든 화면에서 같은 결과가 나온다
     public string ResolveVote()
     {
         int highest = 0;
-        string winner = null;
-        bool tie = false;
+        List<string> candidates = new List<string>();
 
         foreach (KeyValuePair<string, int> voteCount in _count)
         {
@@ -165,19 +166,30 @@ public class VoteManager : SceneSingleton<VoteManager>
             if (voteCount.Value > highest)
             {
                 highest = voteCount.Value;
-                winner = voteCount.Key;
-                tie = false;
+                candidates.Clear();
+                candidates.Add(voteCount.Key);
             }
             else if (voteCount.Value == highest)
             {
-                tie = true;
+                candidates.Add(voteCount.Key);
             }
         }
 
-        if (tie)
+        // 표가 없으면 살아있는 NPC 전체가 후보
+        if (candidates.Count == 0 && _reg != null)
         {
-            winner = null;
+            foreach (IVillagerView villager in _reg.Villagers)
+            {
+                if (villager.IsAlive)
+                {
+                    candidates.Add(villager.VillagerId);
+                }
+            }
         }
+
+        string winner = candidates.Count > 0
+            ? candidates[UnityEngine.Random.Range(0, candidates.Count)]
+            : null;
 
         FinishVote(winner);
         return winner;
