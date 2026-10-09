@@ -1,5 +1,6 @@
 using System;
 using Mirror;
+using System.Collections.Generic;
 using UnityEngine;
 
 public enum TimeOfDay
@@ -10,6 +11,11 @@ public enum TimeOfDay
 
 public class TimeManager : SceneSingleton<TimeManager>
 {
+    [SerializeField]
+    private int _startOfDay = 3;
+    private bool _hasEvaluated;
+    private List<string> _textTime = new List<string> { "자시", "축시", "인시", "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시", "해시" };
+
     public const float DAY_DURATION = 40f;
     public const float NIGHT_DURATION = 20f;
     public const float CYCLE_DURATION = DAY_DURATION + NIGHT_DURATION;
@@ -19,10 +25,7 @@ public class TimeManager : SceneSingleton<TimeManager>
     public int DayCount{ get; private set; }
     public TimeOfDay CurrentTimePhase { get; private set; }
 
-    // 서버 기준 사이클 시작 시각을 받았는지, 받기 전에는 시간 계산 x
     public bool IsRunning { get; private set; }
-    // 시작 후 첫 계산을 했는지. 첫 계산에서는 현재 페이즈 이벤트를 무조건 한 번 발생
-    private bool _hasEvaluated;
 
     public event Action OnDayStart;
     public event Action OnNightStart;
@@ -52,7 +55,7 @@ public class TimeManager : SceneSingleton<TimeManager>
         var newPhase = intoCycle < DAY_DURATION ? TimeOfDay.Day : TimeOfDay.Night;
         int newDay = (int)(Elapsed / CYCLE_DURATION) + 1;
 
-        // 날짜를 먼저 갱신 (OnDayStart 구독자가 DayCount를 읽을 때 새 날짜가 보이도록)
+       
         if (newDay != DayCount)
         {
             DayCount = newDay;
