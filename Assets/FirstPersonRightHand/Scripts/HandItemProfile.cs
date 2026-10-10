@@ -14,6 +14,8 @@ namespace Exorcist.FirstPerson
         [Range(0,1)] public float ring=0.9f;
         [Range(0,1)] public float pinky=0.9f;
         [Range(-60,90)] public float thumbOpposition=40;
+        [Tooltip("Optional local joint corrections in degrees: thumb, index, middle, ring, pinky; three joints each. Empty preserves the standard curl pose.")]
+        public Vector3[] jointEulerOffsets=new Vector3[0];
         public float[] Curls() { return new[]{thumb,index,middle,ring,pinky}; }
     }
 }

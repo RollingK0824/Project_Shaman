@@ -3,11 +3,16 @@ name: Unity CI
 on:
   pull_request:
     branches: [ dev, main ]
+  push:
+    branches: [ dev, main ]
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
@@ -20,12 +25,13 @@ jobs:
         with:
           lfs: true
 
-      - name: Cache Unity Library
-        uses: actions/cache@v4
+      - name: Restore Unity Library
+        uses: actions/cache/restore@v4
         with:
           path: Library
-          key: Library-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          key: Library-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}-${{ github.sha }}
           restore-keys: |
+            Library-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}-
             Library-
 
       - name: Build Project
@@ -38,8 +44,61 @@ jobs:
           unityVersion: 6000.3.23f1
           targetPlatform: StandaloneWindows64
 
+      - name: Save Unity Library
+        if: ${{ github.event_name == 'push' }}
+        uses: actions/cache/save@v4
+        with:
+          path: Library
+          key: Library-${{ hashFiles('Packages/manifest.json', 'Packages/packages-lock.json', 'ProjectSettings/ProjectVersion.txt') }}-${{ github.sha }}
+
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Windows-Build
           path: build/StandaloneWindows64
+          retention-days: 3
+
+  notify-discord:
+    name: Notify Discord on CI Result
+    needs: build
+    if: ${{ always() && needs.build.result != 'cancelled' && needs.build.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord Notification
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          BRANCH: ${{ github.head_ref || github.ref_name }}
+          ACTOR: ${{ github.actor }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$DISCORD_WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL secret is not configured."
+            exit 0
+          fi
+
+          if [ "$BUILD_RESULT" = "success" ]; then
+            TITLE="CI 성공"
+            COLOR=3066993
+          else
+            TITLE="CI 실패"
+            COLOR=15158332
+          fi
+
+          NL=$'\n'
+          DESC="**Branch**: \`${BRANCH}\`${NL}**실행자**: ${ACTOR}"
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            DESC="**${PR_TITLE}**${NL}${NL}${DESC}${NL}[PR 상세보기](${PR_URL})"
+          fi
+          DESC="${DESC}${NL}[CI 로그 보기](${RUN_URL})"
+
+          PAYLOAD=$(jq -n \
+            --arg title "$TITLE" \
+            --arg desc "$DESC" \
+            --argjson color "$COLOR" \
+            '{username: "GitHub CI Notification", embeds: [{title: $title, description: $desc, color: $color}]}')
+
+          curl -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$DISCORD_WEBHOOK"

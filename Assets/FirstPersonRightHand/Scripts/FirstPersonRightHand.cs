@@ -19,6 +19,7 @@ namespace Exorcist.FirstPerson
         public HandItemProfile CurrentItem {get;private set;}
         public GameObject EquippedInstance {get;private set;}
         readonly float[] curls=new float[5];
+        readonly Vector3[,] jointOffsets=new Vector3[5,3];
         float opposition;
         bool initialized;
 
@@ -56,7 +57,11 @@ namespace Exorcist.FirstPerson
                 for(int j=0;j<finger.joints.Length;j++)
                 {
                     Quaternion extra=i==0 && j==0?Quaternion.AngleAxis(opposition,Vector3.up):Quaternion.identity;
-                    finger.joints[j].localRotation=finger.restRotations[j]*extra*Quaternion.AngleAxis(finger.maximumCurl[j]*curls[i],Vector3.right);
+                    int offsetIndex=i*3+j;
+                    var offsets=CurrentItem?CurrentItem.jointEulerOffsets:null;
+                    Vector3 targetOffset=offsets!=null && offsetIndex<offsets.Length?offsets[offsetIndex]:Vector3.zero;
+                    jointOffsets[i,j]=Vector3.Lerp(jointOffsets[i,j],targetOffset,blend);
+                    finger.joints[j].localRotation=finger.restRotations[j]*extra*Quaternion.AngleAxis(finger.maximumCurl[j]*curls[i],Vector3.right)*Quaternion.Euler(jointOffsets[i,j]);
                 }
             }
         }
