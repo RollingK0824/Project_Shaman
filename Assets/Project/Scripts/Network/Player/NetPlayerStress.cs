@@ -34,12 +34,14 @@ public class NetPlayerStress : NetworkBehaviour
     {
         base.OnStartServer();
         _currentStress = _stress.CurrentStress;
+        _stress.StressChanged += ServerHandleStressChanged;
         PlayerEvents.StressRequested += HandleStressRequested;
     }
 
     public override void OnStopServer()
     {
         PlayerEvents.StressRequested -= HandleStressRequested;
+        _stress.StressChanged -= ServerHandleStressChanged;
         base.OnStopServer();
     }
 
@@ -53,17 +55,19 @@ public class NetPlayerStress : NetworkBehaviour
         GameManager gm = GameManager.Instance;
         if (gm == null || gm.CurrentGameState != GameState.Ongoing) return;
 
-        float next = Mathf.Clamp(_currentStress + delta, 0f, _stress.MaxStress);
-        if (Mathf.Approximately(next, _currentStress)) return;
+        _stress.SetStress(_stress.CurrentStress + delta);
+    }
 
-        _stress.SetStress(next);
-        _currentStress = next;
-
+    private void ServerHandleStressChanged(float value)
+    {
+        _currentStress = value;
         if (_status != null) _status.ServerSetStressLevel(_stress.CurrentLevel);
     }
 
     private void OnStressChanged(float oldValue, float newValue)
     {
+        if (isServer) return;
+
         _stress.SetStress(newValue);
     }
 }
