@@ -40,6 +40,15 @@ public class PlayerItemController : MonoBehaviour
     // 아이템 교체 시
     // 기존 아이템 Unequip이 끝난 뒤 장착할 아이템
     private ItemData _pendingThirdPersonItem;
+    private readonly System.Collections.Generic.Dictionary<ItemData, float> _useCooldowns = new();
+
+    public bool TryBeginUseCooldown(ItemData item, float seconds)
+    {
+        if (item == null || !CanUseItems || !PlayerActionGuard.CanAct(gameObject)) return false;
+        if (_useCooldowns.TryGetValue(item, out float until) && Time.time < until) return false;
+        _useCooldowns[item] = Time.time + Mathf.Max(0f, seconds);
+        return true;
+    }
 
 
     private void Awake()
@@ -72,6 +81,7 @@ public class PlayerItemController : MonoBehaviour
     private void OnEnable()
     {
         _inputReader.SlotSelected += SelectSlot;
+        _inventory.QuickSlotChanged += HandleQuickSlotChanged;
 
         _inputReader.UseItemStarted +=
             UseItemStarted;
@@ -89,6 +99,7 @@ public class PlayerItemController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_inventory != null) _inventory.QuickSlotChanged -= HandleQuickSlotChanged;
         if (_inputReader != null)
         {
             _inputReader.SlotSelected -= SelectSlot;
@@ -169,6 +180,13 @@ public class PlayerItemController : MonoBehaviour
     // =========================================================
     // Equip
     // =========================================================
+
+    private void HandleQuickSlotChanged(int slotIndex, ItemData item)
+    {
+        if (slotIndex != SelectedSlotIndex) return;
+        if (item == null) UnequipCurrentItem();
+        else EquipItem(item);
+    }
 
     private void EquipItem(ItemData itemData)
     {

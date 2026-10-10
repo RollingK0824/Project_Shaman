@@ -7,6 +7,16 @@ public class InventoryPanelUI : MonoBehaviour
     [SerializeField] private PlayerInventory _inventory;
     [SerializeField] private Transform _itemGrid;
     [SerializeField] private InventoryItemSlotUI _itemSlotPrefab;
+    private readonly Dictionary<ItemData, InventoryItemSlotUI> _slots = new();
+    private readonly List<ItemData> _removed = new();
+
+    public void Bind(PlayerInventory inventory)
+    {
+        if (_inventory != null) _inventory.InventoryChanged -= Refresh;
+        _inventory = inventory;
+        if (isActiveAndEnabled && _inventory != null) _inventory.InventoryChanged += Refresh;
+        Refresh();
+    }
 
     private void OnEnable()
     {
@@ -15,7 +25,7 @@ public class InventoryPanelUI : MonoBehaviour
             return;
         }
 
-        _inventory.ItemCountChanged += HandleItemCountChanged;
+        _inventory.InventoryChanged += Refresh;
 
         Refresh();
     }
@@ -27,7 +37,7 @@ public class InventoryPanelUI : MonoBehaviour
             return;
         }
 
-        _inventory.ItemCountChanged -= HandleItemCountChanged;
+        _inventory.InventoryChanged -= Refresh;
     }
 
     private void HandleItemCountChanged(ItemData itemData, int count)
@@ -35,20 +45,23 @@ public class InventoryPanelUI : MonoBehaviour
         Refresh();
     }
 
-    private void Refresh()
+    public void Refresh()
     {
-        if (_inventory == null ||
-            _itemGrid == null ||
+        if (_itemGrid == null ||
             _itemSlotPrefab == null)
         {
             return;
         }
 
-        // 기존 슬롯 제거
-        for (int i = _itemGrid.childCount - 1; i >= 0; i--)
+        _removed.Clear();
+        foreach (var entry in _slots)
         {
-            Destroy(_itemGrid.GetChild(i).gameObject);
+            if (_inventory != null && _inventory.Contains(entry.Key)) continue;
+            if (entry.Value != null) { entry.Value.gameObject.SetActive(false); Destroy(entry.Value.gameObject); }
+            _removed.Add(entry.Key);
         }
+        foreach (var item in _removed) _slots.Remove(item);
+        if (_inventory == null) return;
 
         // PlayerInventory에는 같은 ItemData가 수량만큼 들어 있으므로
         // 같은 종류는 한 번만 슬롯을 생성한다.
@@ -66,8 +79,11 @@ public class InventoryPanelUI : MonoBehaviour
 
             int count = _inventory.GetItemCount(itemData);
 
-            InventoryItemSlotUI slot =
-                Instantiate(_itemSlotPrefab, _itemGrid);
+            if (!_slots.TryGetValue(itemData, out var slot) || slot == null)
+            {
+                slot = Instantiate(_itemSlotPrefab, _itemGrid);
+                _slots[itemData] = slot;
+            }
 
             slot.Setup(itemData, count);
         }

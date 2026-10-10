@@ -1,12 +1,27 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class BellItem : ItemBase
 {
     [Header("Bell Effect")]
     [SerializeField] private float _effectRadius = 5f;
-
     [SerializeField] private LayerMask _targetMask = ~0;
+
+    private ParticleSystem _bellPulse;
+
+
+    private void Awake()
+    {
+        Transform pulseTransform =
+            transform.Find("BellEffectPoint/BellPulse");
+
+        if (pulseTransform != null)
+        {
+            _bellPulse =
+                pulseTransform.GetComponent<ParticleSystem>();
+        }
+    }
+
 
     public override void OnEquipped()
     {
@@ -21,6 +36,7 @@ public class BellItem : ItemBase
         );
     }
 
+
     public override void OnUnequipped()
     {
         if (Data == null)
@@ -34,9 +50,14 @@ public class BellItem : ItemBase
         );
     }
 
+
     public override void OnUseStarted()
     {
-        if (!PlayerActionGuard.CanAct(Owner)) return;
+        if (!PlayerActionGuard.CanAct(Owner))
+        {
+            return;
+        }
+
         if (Owner == null)
         {
             return;
@@ -45,14 +66,17 @@ public class BellItem : ItemBase
         UseBell();
     }
 
+
     public override void OnUseCanceled()
     {
-        // 방울은 클릭 순간 한 번 사용하는 아이템이므로
-        // 현재 프로토타입에서는 해제 시 별도 처리를 하지 않는다.
+        // 방울은 클릭 순간 한 번 사용
     }
+
 
     private void UseBell()
     {
+        PlayBellPulse();
+
         Debug.Log(
             $"[Bell] 사용: {Data.DisplayName}",
             gameObject
@@ -79,8 +103,6 @@ public class BellItem : ItemBase
                 continue;
             }
 
-            // NPC에 Collider가 여러 개 있어도
-            // 같은 대상에게 여러 번 전달하지 않는다.
             if (!reactedTargets.Add(reactable))
             {
                 continue;
@@ -94,6 +116,23 @@ public class BellItem : ItemBase
             gameObject
         );
     }
+
+
+    private void PlayBellPulse()
+    {
+        if (_bellPulse == null)
+        {
+            return;
+        }
+
+        _bellPulse.Stop(
+            true,
+            ParticleSystemStopBehavior.StopEmittingAndClear
+        );
+
+        _bellPulse.Play();
+    }
+
 
     private void OnDrawGizmosSelected()
     {

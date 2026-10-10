@@ -23,6 +23,8 @@ public class PlayerInventory : MonoBehaviour
     public event Action<ItemData, int> ItemCountChanged;
 
     public event Action<int, ItemData> QuickSlotChanged;
+    public event Action InventoryChanged;
+    private bool _publishingTransaction;
 
 
     private void Awake()
@@ -38,7 +40,7 @@ public class PlayerInventory : MonoBehaviour
 
     public bool TryAddItem(ItemData itemData)
     {
-        if (!PlayerActionGuard.CanAct(gameObject)) return false;
+        if (_publishingTransaction || !PlayerActionGuard.CanAct(gameObject)) return false;
         if (itemData == null)
         {
             return false;
@@ -55,6 +57,9 @@ public class PlayerInventory : MonoBehaviour
             itemData,
             currentCount
         );
+
+        InventoryChanged?.Invoke();
+        if (!itemData.CanUseQuickSlot) return true;
 
         // 이미 퀵슬롯에 등록되어 있다면
         // 같은 종류를 새 슬롯에 또 등록하지 않는다.
@@ -112,7 +117,7 @@ public class PlayerInventory : MonoBehaviour
         ItemData itemData,
         int amount = 1)
     {
-        if (itemData == null ||
+        if (_publishingTransaction || itemData == null ||
             amount <= 0)
         {
             return false;
@@ -150,6 +155,7 @@ public class PlayerInventory : MonoBehaviour
             );
         }
 
+        InventoryChanged?.Invoke();
         Debug.Log(
             $"[Inventory] {itemData.DisplayName} 제거 " +
             $"(-{amount}, 남은 수량 {remainingCount})"
@@ -240,7 +246,8 @@ public class PlayerInventory : MonoBehaviour
         int slotIndex,
         ItemData itemData)
     {
-        if (!PlayerActionGuard.CanAct(gameObject)) return false;
+        if (_publishingTransaction || !PlayerActionGuard.CanAct(gameObject)) return false;
+        if (itemData != null && !itemData.CanUseQuickSlot) return false;
         if (!IsValidQuickSlotIndex(
                 slotIndex))
         {
@@ -301,7 +308,7 @@ public class PlayerInventory : MonoBehaviour
     public bool ClearQuickSlot(
         int slotIndex)
     {
-        if (!PlayerActionGuard.CanAct(gameObject)) return false;
+        if (_publishingTransaction || !PlayerActionGuard.CanAct(gameObject)) return false;
         if (!IsValidQuickSlotIndex(
                 slotIndex))
         {
@@ -334,6 +341,60 @@ public class PlayerInventory : MonoBehaviour
     // =========================================================
     // Internal
     // =========================================================
+
+    public bool TryAddItem(ItemData itemData, int amount)
+    {
+        return TryExchangeItems(new Dictionary<ItemData, int>(), itemData, amount);
+    }
+
+    public bool CanExchangeItems(IReadOnlyDictionary<ItemData, int> costs, ItemData result, int resultAmount)
+    {
+        if (!PlayerActionGuard.CanAct(gameObject) || costs == null || result == null || resultAmount <= 0) return false;
+        long finalCount = (long)_items.Count + resultAmount;
+        foreach (var cost in costs)
+        {
+            if (cost.Key == null || cost.Value <= 0 || !HasItem(cost.Key, cost.Value)) return false;
+            finalCount -= cost.Value;
+        }
+        return finalCount >= 0 && finalCount <= int.MaxValue;
+    }
+
+    // Commit all counts and slots before notifying subscribers. Reentrant writes are rejected.
+    public bool TryExchangeItems(IReadOnlyDictionary<ItemData, int> costs, ItemData result, int resultAmount)
+    {
+        if (_publishingTransaction || !CanExchangeItems(costs, result, resultAmount)) return false;
+        var nextItems = new List<ItemData>(_items);
+        var changed = new HashSet<ItemData>();
+        foreach (var cost in costs)
+        {
+            for (int i = 0; i < cost.Value; i++) nextItems.Remove(cost.Key);
+            changed.Add(cost.Key);
+        }
+        for (int i = 0; i < resultAmount; i++) nextItems.Add(result);
+        changed.Add(result);
+        var previousSlots = (ItemData[])_quickSlots.Clone();
+        _items.Clear();
+        _items.AddRange(nextItems);
+        for (int i = 0; i < QUICK_SLOT_COUNT; i++)
+            if (_quickSlots[i] != null && (!_quickSlots[i].CanUseQuickSlot || !Contains(_quickSlots[i]))) _quickSlots[i] = null;
+        if (result.CanUseQuickSlot && FindQuickSlot(result) < 0)
+        {
+            int slot = FindFirstEmptyQuickSlot();
+            if (slot >= 0) _quickSlots[slot] = result;
+        }
+        _publishingTransaction = true;
+        try
+        {
+            foreach (var cost in costs) ItemRemoved?.Invoke(cost.Key);
+            ItemAdded?.Invoke(result);
+            foreach (var item in changed) ItemCountChanged?.Invoke(item, GetItemCount(item));
+            for (int i = 0; i < QUICK_SLOT_COUNT; i++)
+                if (previousSlots[i] != _quickSlots[i]) QuickSlotChanged?.Invoke(i, _quickSlots[i]);
+            InventoryChanged?.Invoke();
+        }
+        finally { _publishingTransaction = false; }
+        return true;
+    }
 
     private int FindFirstEmptyQuickSlot()
     {

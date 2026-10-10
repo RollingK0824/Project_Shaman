@@ -2,6 +2,12 @@ using UnityEngine;
 
 public class CoinItem : ItemBase
 {
+    [SerializeField, Min(0.05f)] private float _reuseDelay = 0.5f;
+    [SerializeField, Min(0.05f)] private float _feedbackDuration = 0.22f;
+    [SerializeField] private Vector3 _feedbackOffset = new Vector3(0f, 0f, 0.018f);
+    private float _nextUseTime;
+    private Coroutine _feedback;
+    private Vector3 _restPosition;
     [Header("Coin")]
     [SerializeField]
     private bool _consumeOnSuccessfulUse;
@@ -21,7 +27,13 @@ public class CoinItem : ItemBase
 
     public override void OnUseStarted()
     {
-        if (!PlayerActionGuard.CanAct(Owner)) return;
+        if (Data == null || !PlayerActionGuard.CanAct(Owner) || Time.time < _nextUseTime) return;
+        var controller = Owner.GetComponent<PlayerItemController>();
+        if (controller != null && !controller.TryBeginUseCooldown(Data, _reuseDelay)) return;
+        _nextUseTime = Time.time + _reuseDelay;
+        StopFeedback();
+        _restPosition = transform.localPosition;
+        _feedback = StartCoroutine(GiveFeedback());
         if (Owner == null)
         {
             return;
@@ -90,4 +102,26 @@ public class CoinItem : ItemBase
             1
         );
     }
+
+    private System.Collections.IEnumerator GiveFeedback()
+    {
+        float elapsed = 0f;
+        while (elapsed < _feedbackDuration)
+        {
+            elapsed += Time.deltaTime;
+            transform.localPosition = _restPosition + _feedbackOffset * Mathf.Sin(Mathf.Clamp01(elapsed / _feedbackDuration) * Mathf.PI);
+            yield return null;
+        }
+        transform.localPosition = _restPosition;
+        _feedback = null;
+    }
+    private void StopFeedback()
+    {
+        if (_feedback == null) return;
+        StopCoroutine(_feedback);
+        _feedback = null;
+        transform.localPosition = _restPosition;
+    }
+    public override void OnUnequipped() => StopFeedback();
+    private void OnDisable() => StopFeedback();
 }

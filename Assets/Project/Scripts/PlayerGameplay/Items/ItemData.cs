@@ -48,6 +48,7 @@ public class ItemData : ScriptableObject
 
     public string DisplayName => _displayName;
     public ItemCategory Category => _category;
+    public bool CanUseQuickSlot => _category != ItemCategory.Material;
     public Sprite Icon => _icon;
 
     public GameObject WorldPrefab => _worldPrefab;

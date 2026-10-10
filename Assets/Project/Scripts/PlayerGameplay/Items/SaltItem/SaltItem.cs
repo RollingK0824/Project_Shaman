@@ -1,10 +1,20 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class SaltItem : ItemBase
 {
     [Header("Salt")]
     [SerializeField]
     private bool _consumeOnSuccessfulUse = false;
+
+    private ParticleSystem _saltSpray;
+
+
+    private void Awake()
+    {
+        _saltSpray =
+            GetComponentInChildren<ParticleSystem>(true);
+    }
+
 
     public override void OnEquipped()
     {
@@ -19,6 +29,7 @@ public class SaltItem : ItemBase
         );
     }
 
+
     public override void OnUnequipped()
     {
         if (Data == null)
@@ -32,13 +43,20 @@ public class SaltItem : ItemBase
         );
     }
 
+
     public override void OnUseStarted()
     {
-        if (!PlayerActionGuard.CanAct(Owner)) return;
+        if (!PlayerActionGuard.CanAct(Owner))
+        {
+            return;
+        }
+
         if (Owner == null)
         {
             return;
         }
+
+        PlaySaltSpray();
 
         PlayerInteractor interactor =
             Owner.GetComponent<PlayerInteractor>();
@@ -88,10 +106,28 @@ public class SaltItem : ItemBase
         }
     }
 
+
     public override void OnUseCanceled()
     {
-        // 소금은 클릭 순간 한 번 사용하는 방식으로 테스트한다.
+        // 소금은 클릭 순간 한 번 사용하는 방식
     }
+
+
+    private void PlaySaltSpray()
+    {
+        if (_saltSpray == null)
+        {
+            return;
+        }
+
+        _saltSpray.Stop(
+            true,
+            ParticleSystemStopBehavior.StopEmittingAndClear
+        );
+
+        _saltSpray.Play();
+    }
+
 
     private void ConsumeOne()
     {

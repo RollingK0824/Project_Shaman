@@ -7,6 +7,7 @@ public class InventoryItemSlotUI : MonoBehaviour
     [Header("References")]
     [SerializeField] private Image _icon;
     [SerializeField] private TMP_Text _countText;
+    [SerializeField] private TMP_Text _nameText;
 
     private ItemData _itemData;
 
@@ -23,7 +24,8 @@ public class InventoryItemSlotUI : MonoBehaviour
 
         if (_countText != null)
         {
-            _countText.text = count > 1 ? $"x{count}" : "";
+            _countText.text = $"x{count}";
         }
+        if (_nameText != null) _nameText.text = itemData != null ? itemData.DisplayName : string.Empty;
     }
 }
