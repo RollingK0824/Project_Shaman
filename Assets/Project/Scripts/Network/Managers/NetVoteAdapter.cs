@@ -132,15 +132,44 @@ public class NetVoteAdapter : NetworkBehaviour
         if (_voteManager == null)
             return;
 
-        _networkVotes.Clear();
+        IReadOnlyDictionary<uint, string> votes = _voteManager.Votes;
 
-        foreach (KeyValuePair<uint, string> vote in _voteManager.Votes)
-            _networkVotes[vote.Key] = vote.Value;
+        // 서버에서 사라진 표 제거
+        var removeVoters = new List<uint>();
+        foreach(uint voterId in _networkVotes.Keys)
+        {
+            if (!votes.ContainsKey(voterId))
+                removeVoters.Add(voterId);
+        }
+
+
+        foreach(uint voteId in removeVoters)
+        {
+            _networkVotes.Remove(voteId);
+        }
+
+        foreach(KeyValuePair<uint, string> vote in votes)
+        {
+            if(!_networkVotes.TryGetValue(vote.Key, out string current) || current != vote.Value)
+            {
+                _networkVotes[vote.Key] = vote.Value;
+            }
+        }
     }
 
 
     private void HandleNetworkVotsChanged(SyncDictionary<uint, string>.Operation operation, uint key, string value)
     {
+        if (operation == SyncDictionary<uint, string>.Operation.OP_CLEAR)
+        {
+            if(!isServer && _voteManager != null)
+            {
+                _voteManager.ApplyNetworkVotes(null);
+            }
+
+            return;
+        }
+
         ApplyNetworkVotes();
     }
 
