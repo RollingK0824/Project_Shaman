@@ -48,6 +48,23 @@ public class VotingPanel : UIPanel
             timeManager.OnNightStart += HandleNightStart;
         }
 
+        SubscribeRegistry();
+        BuildCells();
+    }
+
+    private void Start()
+    {
+        // 씬 시작 시 이미 켜져 있던 패널(월드 스페이스)은 OnEnable 때 레지스트리가 아직 없을 수 있다
+        // Start는 씬의 모든 Awake 이후에 실행되므로 여기서 한 번 더 시도한다
+        if (_subscribedReg == null)
+        {
+            SubscribeRegistry();
+            BuildCells();
+        }
+    }
+
+    private void SubscribeRegistry()
+    {
         _subscribedReg = AIManager.Instance != null ? AIManager.Instance.Registry : null;
         if (_subscribedReg != null)
         {
@@ -55,8 +72,6 @@ public class VotingPanel : UIPanel
             _subscribedReg.OnDied += HandleVillagerChanged;
             _subscribedReg.OnCleared += BuildCells;
         }
-
-        BuildCells();
     }
 
     private void OnDisable()
