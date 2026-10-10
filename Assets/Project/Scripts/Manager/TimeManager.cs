@@ -2,6 +2,7 @@ using System;
 using Mirror;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Serialization;
 
 public enum TimeOfDay
 {
@@ -12,8 +13,8 @@ public enum TimeOfDay
 public class TimeManager : SceneSingleton<TimeManager>
 {
     [SerializeField]
-    private int _textTimeIndex = 4;
-    private int _tempCurrent;
+    private int _startTextTimeIndex = 4;
+    private int _textTimeIndex = -1;
     private bool _hasEvaluated;
     private List<string> _textTime = new List<string> { "자시", "축시", "인시", "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시", "해시" };
 
@@ -39,7 +40,7 @@ public class TimeManager : SceneSingleton<TimeManager>
         IsRunning = true;
     }
 
-    public string GetTextTime() { return _textTime[_textTimeIndex]; }
+    public string GetTextTime() { return _textTime[_textTimeIndex < 0 ? _startTextTimeIndex : _textTimeIndex]; }
 
     private void Update()
     {
@@ -82,19 +83,12 @@ public class TimeManager : SceneSingleton<TimeManager>
         }
 
 
-        if (((int)Elapsed % (int)(CYCLE_DURATION/12)) == 0)
-        {
-            if (_tempCurrent == (int)Elapsed)
-            {
-                return;
-            }
-            _tempCurrent = (int)Elapsed;
+        int step = Mathf.Min((int)(intoCycle / (CYCLE_DURATION / _textTime.Count)), _textTime.Count - 1);
+        int newTextTimeIndex = (_startTextTimeIndex + step) % _textTime.Count;
 
-            _textTimeIndex++;
-            if (_textTimeIndex >= _textTime.Count)
-            {
-                _textTimeIndex = 0;
-            }
+        if (newTextTimeIndex != _textTimeIndex)
+        {
+            _textTimeIndex = newTextTimeIndex;
 
             Debug.Log("[TimeManager] Current Time: " + _textTime[_textTimeIndex]);
 
