@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -21,18 +21,40 @@ public class PlayerInputReader : MonoBehaviour
 
     public event Action<int> SlotSelected;
 
+    [Header("Spectator Input")]
+    [SerializeField] private InputAction _spectateUp = new InputAction("SpectateUp", InputActionType.Button, "<Keyboard>/space");
+    [SerializeField] private InputAction _spectateDown = new InputAction("SpectateDown", InputActionType.Button, "<Keyboard>/leftCtrl");
+    [SerializeField] private InputAction _spectatePrevious = new InputAction("SpectatePrevious", InputActionType.Button, "<Keyboard>/leftBracket");
+    [SerializeField] private InputAction _spectateNext = new InputAction("SpectateNext", InputActionType.Button, "<Keyboard>/rightBracket");
+    [SerializeField] private InputAction _spectateToggle = new InputAction("SpectateToggle", InputActionType.Button, "<Keyboard>/backquote");
+    public float SpectatorVerticalInput => GameplayInputBlocked ? 0f :
+        (_spectateUp.IsPressed() ? 1f : 0f) - (_spectateDown.IsPressed() ? 1f : 0f);
+    public event Action PreviousSpectateTargetPressed;
+    public event Action NextSpectateTargetPressed;
+    public event Action ToggleSpectateModePressed;
+    private PlayerHealth _health;
+    private bool WorldInputBlocked => GameplayInputBlocked || (_health != null && _health.IsDead);
     private ShamanInput _input;
 
 
     private void Awake()
     {
         _input = new ShamanInput();
+        _health = GetComponent<PlayerHealth>();
     }
 
 
     private void OnEnable()
     {
         _input.Player.Enable();
+        _spectateUp.Enable();
+        _spectateDown.Enable();
+        _spectatePrevious.Enable();
+        _spectateNext.Enable();
+        _spectateToggle.Enable();
+        _spectatePrevious.performed += OnSpectatePrevious;
+        _spectateNext.performed += OnSpectateNext;
+        _spectateToggle.performed += OnSpectateToggle;
 
         _input.Player.Interact.performed += OnInteract;
         _input.Player.Cancel.performed += OnCancel;
@@ -98,6 +120,14 @@ public class PlayerInputReader : MonoBehaviour
         _input.Player.Slot6.performed -= OnSlot6;
 
         _input.Player.Disable();
+        _spectateUp.Disable();
+        _spectateDown.Disable();
+        _spectatePrevious.Disable();
+        _spectateNext.Disable();
+        _spectateToggle.Disable();
+        _spectatePrevious.performed -= OnSpectatePrevious;
+        _spectateNext.performed -= OnSpectateNext;
+        _spectateToggle.performed -= OnSpectateToggle;
 
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
@@ -110,6 +140,11 @@ public class PlayerInputReader : MonoBehaviour
     private void OnDestroy()
     {
         _input?.Dispose();
+        _spectateUp.Dispose();
+        _spectateDown.Dispose();
+        _spectatePrevious.Dispose();
+        _spectateNext.Dispose();
+        _spectateToggle.Dispose();
     }
 
 
@@ -138,10 +173,24 @@ public class PlayerInputReader : MonoBehaviour
     // General
     // =========================================================
 
+    private bool CanUseSpectatorInput => !GameplayInputBlocked && _health != null && _health.IsDead;
+    private void OnSpectatePrevious(InputAction.CallbackContext context)
+    {
+        if (CanUseSpectatorInput) PreviousSpectateTargetPressed?.Invoke();
+    }
+    private void OnSpectateNext(InputAction.CallbackContext context)
+    {
+        if (CanUseSpectatorInput) NextSpectateTargetPressed?.Invoke();
+    }
+    private void OnSpectateToggle(InputAction.CallbackContext context)
+    {
+        if (CanUseSpectatorInput) ToggleSpectateModePressed?.Invoke();
+    }
+
     private void OnInteract(
         InputAction.CallbackContext context)
     {
-        if (GameplayInputBlocked)
+        if (WorldInputBlocked)
         {
             return;
         }
@@ -162,11 +211,7 @@ public class PlayerInputReader : MonoBehaviour
     private void OnNotebook(
         InputAction.CallbackContext context)
     {
-        if (GameplayInputBlocked)
-        {
-            return;
-        }
-
+        // Keep read-only Notebook open/close available after death or a UI lock.
         NotebookPressed?.Invoke();
     }
 
@@ -182,7 +227,7 @@ public class PlayerInputReader : MonoBehaviour
     private void OnJump(
     InputAction.CallbackContext context)
     {
-        if (GameplayInputBlocked)
+        if (WorldInputBlocked)
         {
             return;
         }
@@ -197,7 +242,7 @@ public class PlayerInputReader : MonoBehaviour
     private void OnUseItemStarted(
         InputAction.CallbackContext context)
     {
-        if (GameplayInputBlocked)
+        if (WorldInputBlocked)
         {
             return;
         }
@@ -209,7 +254,7 @@ public class PlayerInputReader : MonoBehaviour
     private void OnUseItemCanceled(
         InputAction.CallbackContext context)
     {
-        if (GameplayInputBlocked)
+        if (WorldInputBlocked)
         {
             return;
         }
@@ -267,7 +312,7 @@ public class PlayerInputReader : MonoBehaviour
     private void SelectSlot(
         int slotIndex)
     {
-        if (GameplayInputBlocked)
+        if (WorldInputBlocked)
         {
             return;
         }

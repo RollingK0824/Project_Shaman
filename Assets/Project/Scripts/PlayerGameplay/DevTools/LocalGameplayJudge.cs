@@ -29,11 +29,13 @@ public class LocalGameplayJudge : MonoBehaviour
 
     private void HandleDamageRequested(IDamageable target, float amount, GameObject source)
     {
+        if (NetworkServer.active || NetworkClient.active || target == null) return;
         target.ReceiveDamage(amount, source);
     }
 
     private void HandlePickupRequested(GameObject interactor, WorldItem item)
     {
+        if (NetworkServer.active || NetworkClient.active || item == null || !item.CanInteract(interactor)) return;
         PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
         if (inventory == null || !inventory.TryAddItem(item.ItemData)) return;
 
@@ -42,7 +44,7 @@ public class LocalGameplayJudge : MonoBehaviour
 
     private void HandleStressRequested(PlayerStressController target, float delta, StressCause cause, GameObject source)
     {
-        if (delta > 0f) target.ReceiveStress(delta, cause, source);
-        else target.ReduceStress(-delta);
+        if (NetworkServer.active || NetworkClient.active || target == null || !PlayerActionGuard.CanAct(target.gameObject)) return;
+        target.SetStress(target.CurrentStress + delta);
     }
 }

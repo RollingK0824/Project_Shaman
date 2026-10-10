@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Exorcist.FirstPerson;
 using ProjectShaman.ItemHold;
 
@@ -130,7 +130,7 @@ public class PlayerItemController : MonoBehaviour
 
     private void SelectSlot(int slotIndex)
     {
-        if (!CanUseItems)
+        if (!CanUseItems || !PlayerActionGuard.CanAct(gameObject))
         {
             return;
         }
@@ -172,7 +172,7 @@ public class PlayerItemController : MonoBehaviour
 
     private void EquipItem(ItemData itemData)
     {
-        if (!CanUseItems ||
+        if (!CanUseItems || !PlayerActionGuard.CanAct(gameObject) ||
             itemData == null)
         {
             return;
@@ -506,6 +506,15 @@ public class PlayerItemController : MonoBehaviour
     // Unequip
     // =========================================================
 
+    public void ClearHeldVisualsOnDeath()
+    {
+        CanUseItems = false;
+        _equippedItem?.OnUseCanceled();
+        UnequipCurrentItem();
+        DestroyThirdPersonVisual();
+        if (_rightHand != null) _rightHand.gameObject.SetActive(false);
+    }
+
     public void UnequipCurrentItem()
     {
         // 새로운 아이템을 기다리고 있던 상태도 취소
@@ -563,7 +572,7 @@ public class PlayerItemController : MonoBehaviour
 
     private void UseItemCanceled()
     {
-        if (!CanUseItems ||
+        if (!CanUseItems || !PlayerActionGuard.CanAct(gameObject) ||
             _equippedItem == null)
         {
             return;
@@ -575,7 +584,7 @@ public class PlayerItemController : MonoBehaviour
 
     private bool CanUseItem()
     {
-        if (!CanUseItems)
+        if (!CanUseItems || !PlayerActionGuard.CanAct(gameObject))
         {
             return false;
         }

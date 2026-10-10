@@ -34,6 +34,18 @@ public class NetPlayerEquipment : NetworkBehaviour
         _status = GetComponent<NetPlayerStatus>();
     }
 
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+        GetComponent<PlayerHealth>().Died += HandleDied;
+    }
+    public override void OnStopServer()
+    {
+        GetComponent<PlayerHealth>().Died -= HandleDied;
+        base.OnStopServer();
+    }
+    private void HandleDied(GameObject source) => _equippedItemId = -1;
+
     // [로컬] 장착 변화 감지. 플레이어 코드에 이벤트 생기면 이벤트 구독으로 교체
     private void Update()
     {

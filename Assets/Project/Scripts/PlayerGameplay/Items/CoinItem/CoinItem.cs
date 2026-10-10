@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class CoinItem : ItemBase
 {
@@ -21,6 +21,7 @@ public class CoinItem : ItemBase
 
     public override void OnUseStarted()
     {
+        if (!PlayerActionGuard.CanAct(Owner)) return;
         if (Owner == null)
         {
             return;

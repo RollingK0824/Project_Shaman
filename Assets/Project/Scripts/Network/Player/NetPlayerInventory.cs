@@ -66,7 +66,7 @@ public class NetPlayerInventory : NetworkBehaviour
     [Command]
     private void CmdRequestPickup(NetworkIdentity itemIdentity)
     {
-        if (itemIdentity == null) return;
+        if (itemIdentity == null || !PlayerActionGuard.CanAct(gameObject)) return;
         if (_status != null && _status.IsDead) return;
 
         GameManager gm = GameManager.Instance;

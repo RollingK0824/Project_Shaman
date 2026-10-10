@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class CompassItem : ItemBase
@@ -44,6 +44,7 @@ public class CompassItem : ItemBase
 
     public override void OnUseStarted()
     {
+        if (!PlayerActionGuard.CanAct(Owner)) return;
         // 나침반은 클릭형 아이템이 아니라
         // 장착 중 지속적으로 방향을 표시한다.
     }

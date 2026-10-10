@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(PlayerInputReader))]
 public class PlayerCameraController : MonoBehaviour
@@ -28,7 +28,7 @@ public class PlayerCameraController : MonoBehaviour
 
     private void Update()
     {
-        if (!CanLook)
+        if (!CanLook || !PlayerActionGuard.CanAct(gameObject))
         {
             return;
         }
