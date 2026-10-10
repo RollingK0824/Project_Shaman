@@ -12,7 +12,8 @@ public enum TimeOfDay
 public class TimeManager : SceneSingleton<TimeManager>
 {
     [SerializeField]
-    private int _startOfDay = 3;
+    private int _startTextTimeIndex = 4;
+    private int _textTimeIndex = -1;
     private bool _hasEvaluated;
     private List<string> _textTime = new List<string> { "자시", "축시", "인시", "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시", "해시" };
 
@@ -27,6 +28,7 @@ public class TimeManager : SceneSingleton<TimeManager>
 
     public bool IsRunning { get; private set; }
 
+    public event Action OnTextTimeChange;
     public event Action OnDayStart;
     public event Action OnNightStart;
     public event Action<int> OnNewDay;
@@ -36,6 +38,8 @@ public class TimeManager : SceneSingleton<TimeManager>
         CycleStartTime = startTime;
         IsRunning = true;
     }
+
+    public string GetTextTime() { return _textTime[_textTimeIndex < 0 ? _startTextTimeIndex : _textTimeIndex]; }
 
     private void Update()
     {
@@ -77,6 +81,17 @@ public class TimeManager : SceneSingleton<TimeManager>
             }
         }
 
-        
+
+        int step = Mathf.Min((int)(intoCycle / (CYCLE_DURATION / _textTime.Count)), _textTime.Count - 1);
+        int newTextTimeIndex = (_startTextTimeIndex + step) % _textTime.Count;
+
+        if (newTextTimeIndex != _textTimeIndex)
+        {
+            _textTimeIndex = newTextTimeIndex;
+
+            Debug.Log("[TimeManager] Current Time: " + _textTime[_textTimeIndex]);
+
+            OnTextTimeChange?.Invoke();
+        }
     }
 }
