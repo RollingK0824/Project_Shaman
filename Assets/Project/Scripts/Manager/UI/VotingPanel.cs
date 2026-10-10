@@ -62,14 +62,14 @@ public class VotingPanel : UIPanel
     private void OnDisable()
     {
         // 씬 종료 중이면 SceneSingleton이 null을 돌려준다
-        VoteManager voteManager = VoteManager.Instance;
+        VoteManager voteManager = VoteManager.Existing;
         if (voteManager != null)
         {
             voteManager.VotesChanged -= RefreshCells;
             voteManager.NpcVotedOut -= HandleNpcVotedOut;
         }
 
-        TimeManager timeManager = TimeManager.Instance;
+        TimeManager timeManager = TimeManager.Existing;
         if (timeManager != null)
         {
             timeManager.OnDayStart -= RefreshCells;

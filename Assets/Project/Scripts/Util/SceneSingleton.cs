@@ -27,6 +27,8 @@ public class SceneSingleton<T> : MonoBehaviour where T : Component
         }
     }
 
+    public static T Existing => _instance;
+
     protected virtual void Awake()
     {
         if (_instance == null)
