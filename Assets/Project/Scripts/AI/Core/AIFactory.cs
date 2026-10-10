@@ -18,7 +18,6 @@ namespace ProjectShaman.AI.Core
         [SerializeField] private GameObject _villagerPrefab;
         [SerializeField] private ScriptableObject _dataProviderAsset;
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
-        [SerializeField] private MonoBehaviour _timeSourceBehaviour;
         [SerializeField] private int _villagerCount = 1;
         [SerializeField] private int _ghostCount = 1;
         [SerializeField] private bool _useFixedSeed = true;
@@ -29,7 +28,6 @@ namespace ProjectShaman.AI.Core
         private readonly List<AI_Core> _spawnedVillagers = new List<AI_Core>();
         private readonly HashSet<string> _usedNames = new HashSet<string>();
         private IAIDataProvider _dataProvider;
-        private ITimeSource _timeSource;
         private ScheduleBuilder _scheduleBuilder;
         private System.Random _random;
         private bool _hasCreated;
@@ -83,10 +81,9 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            _timeSource = _timeSourceBehaviour as ITimeSource;
-            if (_timeSource == null || _behaviourConfig == null)
+            if (_behaviourConfig == null)
             {
-                AILog.Error(AILog.FACTORY, "Time source or behaviour config missing");
+                AILog.Error(AILog.FACTORY, "Behaviour config missing");
                 return;
             }
 
@@ -98,7 +95,7 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
             AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
 
-            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _timeSource.SlotsPerDay, _behaviourConfig.MinRestPerDay, _random, GetPlaceCapacity);
+            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.MinRestPerDay, _random, GetPlaceCapacity);
 
             List<VillagerProfile> profiles = GenerateProfiles();
 
@@ -353,12 +350,6 @@ namespace ProjectShaman.AI.Core
             {
                 Debug.LogWarning($"[AI][{AILog.FACTORY}] {_dataProviderAsset.name} does not implement IAIDataProvider");
                 _dataProviderAsset = null;
-            }
-
-            if (_timeSourceBehaviour != null && !(_timeSourceBehaviour is ITimeSource))
-            {
-                Debug.LogWarning($"[AI][{AILog.FACTORY}] {_timeSourceBehaviour.name} does not implement ITimeSource");
-                _timeSourceBehaviour = null;
             }
 
             if (_villagerCount < 0)
