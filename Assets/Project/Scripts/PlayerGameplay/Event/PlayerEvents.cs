@@ -39,7 +39,7 @@ public static class PlayerEvents
 
     public static void RaisePickupRequested(GameObject interactor, WorldItem item)
     {
-        if (interactor == null || item == null)
+        if (!PlayerActionGuard.CanAct(interactor) || item == null)
         {
             return;
         }

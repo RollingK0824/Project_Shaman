@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -9,7 +9,6 @@ public class StressEventTrigger : MonoBehaviour
     [SerializeField, Min(0f)] private float _stressAmount = 20f;
     [Header("Trigger")]
     [SerializeField] private bool _oncePerEntry = true;
-    private bool _hasTriggered;
     private readonly Dictionary<Component, HashSet<Collider>> _occupants = new();
     private readonly List<Component> _leaving = new();
 
@@ -28,29 +27,6 @@ public class StressEventTrigger : MonoBehaviour
             _occupants.Add(component, colliders);
         }
 
-        PlayerStressController stressController = other.GetComponentInParent<PlayerStressController>();
-
-        if (stressController == null)
-        {
-            return;
-        }
-
-        // 서버에 요청 보내는 거로 수정
-        PlayerEvents.RaiseStressRequested(stressController, _stressAmount, _cause, gameObject);
-
-        //IStressReceiver receiver = other.GetComponentInParent<IStressReceiver>();
-        //if (receiver == null)
-        //{
-        //    return;
-        //}
-        //
-        //receiver.ReceiveStress(
-        //    _stressAmount,
-        //    _cause,
-        //    gameObject
-        //);
-
-        _hasTriggered = true;
         bool alreadyInside = colliders.Count > 0;
         if (!colliders.Add(other) || (_oncePerEntry && alreadyInside)) return;
         receiver.ReceiveStress(_stressAmount, _cause, gameObject);

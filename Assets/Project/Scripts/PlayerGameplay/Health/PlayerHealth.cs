@@ -1,4 +1,5 @@
-﻿using System;
+using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerHealth : MonoBehaviour, IDamageable
@@ -20,6 +21,36 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             : _currentHealth / _maxHealth;
 
     public bool IsDead { get; private set; }
+    public bool CanAffectWorld => !IsDead;
+    public bool CanRecordObservations => !IsDead;
+    public bool IsNotebookReadOnly => IsDead;
+
+    // Local view of enabled players, including remote replicas. No scene searches.
+    private static readonly List<PlayerHealth> _activePlayers = new List<PlayerHealth>();
+    private static readonly IReadOnlyList<PlayerHealth> _readOnlyPlayers = _activePlayers.AsReadOnly();
+    public static IReadOnlyList<PlayerHealth> ActivePlayers => _readOnlyPlayers;
+    public static event Action PlayersChanged;
+    private Func<bool> _hasAuthority;
+    public void SetAuthorityCheck(Func<bool> hasAuthority) => _hasAuthority = hasAuthority;
+    private bool HasAuthority => _hasAuthority == null || _hasAuthority();
+
+    private void OnEnable()
+    {
+        if (!_activePlayers.Contains(this)) _activePlayers.Add(this);
+        PlayersChanged?.Invoke();
+    }
+
+    private void OnDisable()
+    {
+        if (_activePlayers.Remove(this)) PlayersChanged?.Invoke();
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetPlayers()
+    {
+        _activePlayers.Clear();
+        PlayersChanged = null;
+    }
 
     public event Action<float, float> HealthChanged;
 
@@ -56,12 +87,13 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         float amount,
         GameObject source = null)
     {
+        if (!HasAuthority) return;
         if (IsDead)
         {
             return;
         }
 
-        if (amount <= 0f)
+        if (float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f)
         {
             return;
         }
@@ -106,12 +138,13 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void RestoreHealth(float amount)
     {
+        if (!HasAuthority) return;
         if (IsDead)
         {
             return;
         }
 
-        if (amount <= 0f)
+        if (float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f)
         {
             return;
         }
@@ -136,6 +169,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void SetHealth(float value)
     {
+        if (!HasAuthority || float.IsNaN(value) || float.IsInfinity(value)) return;
         if (IsDead)
         {
             return;
@@ -160,6 +194,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     public void ApplyHealth(float current, GameObject source = null)
     {
+        if (IsDead || float.IsNaN(current) || float.IsInfinity(current)) return;
         float prevHealth = _currentHealth;
 
         _currentHealth = Mathf.Clamp(current, 0f, _maxHealth);
@@ -193,20 +228,30 @@ public class PlayerHealth : MonoBehaviour, IDamageable
     //private void Die(GameObject source)
     public void ApplyDeath(GameObject source = null)
     {
+        if (!HasAuthority || IsDead) return;
+        ApplyReplicatedDeath(source);
+        PlayerEvents.RaiseDeathConfirmed(this, source);
+    }
+
+    // Called only by the existing network status adapter after server confirmation.
+    internal void ApplyReplicatedDeath(GameObject source = null)
+    {
         if (IsDead)
         {
             return;
         }
 
         IsDead = true;
+        bool healthChanged = !Mathf.Approximately(_currentHealth, 0f);
         _currentHealth = 0f;
+        if (healthChanged) HealthChanged?.Invoke(0f, _maxHealth);
 
-        if (_disableGameplayOnDeath)
-        {
-            DisableGameplay();
-        }
+        // Keep the serialized prototype field for compatibility. Death always
+        // blocks world actions, including prefabs authored with that flag off.
+        DisableGameplay();
 
         Died?.Invoke(source);
+        PlayersChanged?.Invoke();
 
         string sourceName =
             source != null
@@ -222,6 +267,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
 
     private void DisableGameplay()
     {
+        GetComponent<PlayerViewModeController>()?.EndCurrentMode();
         if (_playerController != null)
         {
             _playerController.CanMove = false;
@@ -241,7 +287,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         if (_itemController != null)
         {
             _itemController.CanUseItems = false;
-            _itemController.UnequipCurrentItem();
+            _itemController.ClearHeldVisualsOnDeath();
         }
     }
 
