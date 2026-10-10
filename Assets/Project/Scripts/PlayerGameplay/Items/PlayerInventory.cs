@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -38,6 +38,7 @@ public class PlayerInventory : MonoBehaviour
 
     public bool TryAddItem(ItemData itemData)
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return false;
         if (itemData == null)
         {
             return false;
@@ -239,6 +240,7 @@ public class PlayerInventory : MonoBehaviour
         int slotIndex,
         ItemData itemData)
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return false;
         if (!IsValidQuickSlotIndex(
                 slotIndex))
         {
@@ -299,6 +301,7 @@ public class PlayerInventory : MonoBehaviour
     public bool ClearQuickSlot(
         int slotIndex)
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return false;
         if (!IsValidQuickSlotIndex(
                 slotIndex))
         {

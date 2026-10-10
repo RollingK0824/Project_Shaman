@@ -23,11 +23,12 @@ public class InspectInteractable : MonoBehaviour, IInteractable
 
     public bool CanInteract(GameObject interactor)
     {
-        return _canInteract;
+        return isActiveAndEnabled && _canInteract && PlayerActionGuard.CanAct(interactor);
     }
 
     public void Interact(GameObject interactor)
     {
+        if (!CanInteract(interactor)) return;
         PlayerViewModeController viewModeController =
             interactor.GetComponent<PlayerViewModeController>();
 

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
 public class WorldItem : MonoBehaviour, IInteractable
@@ -32,7 +32,7 @@ public class WorldItem : MonoBehaviour, IInteractable
     public bool CanInteract(GameObject interactor)
     {
         // 비활성 컴포넌트도 인터페이스 검색으로 발견될 수 있습니다.
-        if (!isActiveAndEnabled) return false;
+        if (!isActiveAndEnabled || !PlayerActionGuard.CanAct(interactor)) return false;
 
         if (_isCollected)
         {

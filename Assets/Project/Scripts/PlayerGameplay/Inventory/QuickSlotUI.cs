@@ -9,22 +9,28 @@ public class QuickSlotUI : MonoBehaviour
     [SerializeField] private PlayerInventory _inventory;
 
     [Header("Slot Backgrounds")]
-    [SerializeField] private Image[] _slotBackgrounds = new Image[6];
+    [SerializeField]
+    private Image[] _slotBackgrounds =
+        new Image[6];
 
     [Header("Item Icons")]
-    [SerializeField] private Image[] _slotIcons = new Image[6];
+    [SerializeField]
+    private Image[] _slotIcons =
+        new Image[6];
 
     [Header("Item Counts")]
-    [SerializeField] private TMP_Text[] _countTexts = new TMP_Text[6];
+    [SerializeField]
+    private TMP_Text[] _countTexts =
+        new TMP_Text[6];
 
-    [Header("Colors")]
+    [Header("Selection Colors")]
     [SerializeField]
     private Color _normalColor =
-        new Color(0.35f, 0.35f, 0.35f, 0.75f);
+        new Color(1f, 1f, 1f, 0f);
 
     [SerializeField]
     private Color _selectedColor =
-        new Color(0.85f, 0.7f, 0.35f, 0.95f);
+        new Color(1f, 0.72f, 0.18f, 0.18f);
 
     private int _selectedIndex = -1;
 
@@ -87,8 +93,7 @@ public class QuickSlotUI : MonoBehaviour
             return;
         }
 
-        _selectedIndex =
-            slotIndex;
+        _selectedIndex = slotIndex;
 
         RefreshSelection();
     }
@@ -226,14 +231,9 @@ public class QuickSlotUI : MonoBehaviour
                 ? itemData.Icon
                 : null;
 
-        iconImage.sprite =
-            icon;
-
-        iconImage.preserveAspect =
-            true;
-
-        iconImage.enabled =
-            icon != null;
+        iconImage.sprite = icon;
+        iconImage.preserveAspect = true;
+        iconImage.enabled = icon != null;
     }
 
 
@@ -258,12 +258,7 @@ public class QuickSlotUI : MonoBehaviour
         if (itemData == null ||
             _inventory == null)
         {
-            countText.text =
-                string.Empty;
-
-            countText.enabled =
-                false;
-
+            HideCount(countText);
             return;
         }
 
@@ -272,22 +267,21 @@ public class QuickSlotUI : MonoBehaviour
                 itemData
             );
 
-        // 1개일 때는 굳이 x1을 표시하지 않는다.
         if (count <= 1)
         {
-            countText.text =
-                string.Empty;
-
-            countText.enabled =
-                false;
-
+            HideCount(countText);
             return;
         }
 
-        countText.text =
-            $"x{count}";
+        countText.text = $"x{count}";
+        countText.enabled = true;
+    }
 
-        countText.enabled =
-            true;
+
+    private void HideCount(
+        TMP_Text countText)
+    {
+        countText.text = string.Empty;
+        countText.enabled = false;
     }
 }

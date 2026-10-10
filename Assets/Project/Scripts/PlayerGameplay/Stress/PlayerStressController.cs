@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,6 +16,7 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     [SerializeField, Range(2f, 99f)] private float _highThreshold = 70f;
     [SerializeField] private bool _logStressEvents;
 
+    public bool UseExternalAuthority { get; set; }
     public float CurrentStress => _currentStress;
     public float MaxStress => StressLimit;
     public float NormalizedStress => _currentStress / StressLimit;
@@ -40,6 +41,7 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
 
     private void Update()
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         float increase = 0f;
         float recovery = 0f;
         _expiredSources.Clear();
@@ -53,7 +55,9 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
         // Safe areas take priority over continuous exposure. One-shot scares
         // still use IStressReceiver and do not damage health.
         float rate = recovery < 0f ? recovery : increase;
-        if (rate != 0f) SetStress(_currentStress + rate * Time.deltaTime);
+        if (rate == 0f) return;
+        if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, rate * Time.deltaTime, StressCause.Other, gameObject);
+        else SetStress(_currentStress + rate * Time.deltaTime);
     }
 
     public void SetSourceRate(UnityEngine.Object source, float stressPerSecond)
@@ -70,7 +74,9 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     public void ReceiveStress(float amount, StressCause cause, GameObject source = null)
     {
         if (!IsFinite(amount) || amount <= 0f) return;
-        AddStress(amount);
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
+        if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, amount, cause, source);
+        else AddStress(amount);
         StressReceived?.Invoke(amount, cause, source);
         if (_logStressEvents)
             Debug.Log($"[Stress] {cause} +{amount:0.##} / Current = {_currentStress:0.##}", this);

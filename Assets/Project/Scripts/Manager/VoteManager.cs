@@ -1,6 +1,7 @@
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Interfaces;
 using System;
+using Mirror;
 using System.Collections.Generic;
 
 public class VoteManager : SceneSingleton<VoteManager>
@@ -35,6 +36,8 @@ public class VoteManager : SceneSingleton<VoteManager>
 
     public bool CastVote(uint voterId, string npcId)
     {
+        if (NetworkServer.active && (!NetworkServer.spawned.TryGetValue(voterId, out var voter)
+            || !PlayerActionGuard.CanAct(voter.gameObject))) return false;
         if (voterId == 0 || !IsVotingOpen || !IsVotable(npcId))
         {
             return false;
@@ -137,6 +140,13 @@ public class VoteManager : SceneSingleton<VoteManager>
 
     public void RequestVote(string npcId)
     {
+        if (NetworkClient.active && (NetworkClient.localPlayer == null ||
+            !PlayerActionGuard.CanAct(NetworkClient.localPlayer.gameObject))) return;
+        if (!NetworkClient.active)
+        {
+            foreach (var player in PlayerHealth.ActivePlayers)
+                if (player.TryGetComponent<PlayerInputReader>(out var input) && input.isActiveAndEnabled && player.IsDead) return;
+        }
         if (!IsVotingOpen)
         {
             return;

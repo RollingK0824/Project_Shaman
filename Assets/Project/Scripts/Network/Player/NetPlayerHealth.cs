@@ -12,6 +12,7 @@ public class NetPlayerHealth : NetworkBehaviour
     private void Awake()
     {
         _health = GetComponent<PlayerHealth>();
+        _health.SetAuthorityCheck(() => !NetworkClient.active || NetworkServer.active);
     }
 
     // 에디터에서 컴포넌트를 추가할 때 HP가 다른 플레이어에게 전송되지 않도록 기본값 지정
@@ -26,11 +27,15 @@ public class NetPlayerHealth : NetworkBehaviour
 
         _currentHealth = _health.CurrentHealth;
         PlayerEvents.DamageRequested += HandleDamageRequested;
+        _health.HealthChanged += PublishHealth;
+        _health.Died += PublishDeath;
     }
 
     public override void OnStopServer()
     {
         PlayerEvents.DamageRequested -= HandleDamageRequested;
+        _health.HealthChanged -= PublishHealth;
+        _health.Died -= PublishDeath;
         base.OnStopServer();
     }
 
@@ -47,7 +52,7 @@ public class NetPlayerHealth : NetworkBehaviour
             return;
         }
 
-        if (amount <= 0f)
+        if (float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f)
         {
             return;
         }
@@ -72,9 +77,12 @@ public class NetPlayerHealth : NetworkBehaviour
         if (nextHealth <= 0f)
         {
             _health.ApplyDeath(source);
-            PlayerEvents.RaiseDeathConfirmed(_health, source);
+
         }
     }
+
+    private void PublishHealth(float current, float maximum) => _currentHealth = current;
+    private void PublishDeath(GameObject source) => _currentHealth = 0f;
 
     private void OnHealthChanged(float oldValue, float newValue)
     {
