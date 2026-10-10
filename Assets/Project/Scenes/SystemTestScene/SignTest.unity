@@ -197,6 +197,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::StressZone
   _zoneType: 1
   _stressPerSecond: 15
+  _cause: 4
 --- !u!65 &15688508
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -600,6 +601,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::StressZone
   _zoneType: 0
   _stressPerSecond: 10
+  _cause: 4
 --- !u!65 &404413384
 BoxCollider:
   m_ObjectHideFlags: 0
@@ -1283,6 +1285,54 @@ RectTransform:
   m_CorrespondingSourceObject: {fileID: 8218612336396629005, guid: d6942b1ce15e5f246ab5c1342e590f70, type: 3}
   m_PrefabInstance: {fileID: 1017543909}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1094725934
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1094725936}
+  - component: {fileID: 1094725935}
+  m_Layer: 0
+  m_Name: DataManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1094725935
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1094725934}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 63e87c783a13d3948a08e4a952591861, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::DataManager
+  _inputData:
+  - Name: AI
+    Path: Data/AIData_Sample
+    TypeName: AIDataContainer
+--- !u!4 &1094725936
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1094725934}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -1.42337, y: -0, z: -0.98053}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1118419928
 GameObject:
   m_ObjectHideFlags: 0
@@ -2925,3 +2975,4 @@ SceneRoots:
   - {fileID: 3814470}
   - {fileID: 1166957314}
   - {fileID: 656995474}
+  - {fileID: 1094725936}

@@ -19,6 +19,33 @@ public class DataParser
         return JsonConvert.DeserializeObject<T>(json, Settings);
     }
 
+    public static object Parse(string json, Type type)
+    {
+        return JsonConvert.DeserializeObject(json, type, Settings);
+    }
+
+    public static bool TryParse(string json, Type type, out object result)
+    {
+        result = null;
+        if (string.IsNullOrEmpty(json))
+        {
+            Debug.LogWarning("[DataParser] JSON input string is null or empty.");
+            return false;
+        }
+
+        try
+        {
+            result = Parse(json, type);
+            return result != null;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogError($"[DataParser] Failed to parse JSON into {type.Name}: {ex.Message}");
+            result = null;
+            return false;
+        }
+    }
+
     public static bool TryParse<T>(string json, out T result)
     {
         result = default;

@@ -40,12 +40,12 @@ public class VotingPanel : UIPanel
             voteManager.NpcVotedOut += HandleNpcVotedOut;
         }
 
-        // 클라 시계는 서버보다 조금 늦어서, 결과가 낮일 때 도착할 수 있다. 내 시계로 낮/밤이 바뀔 때도 다시 그린다
+        // 클라 시계는 서버보다 조금 늦어서, 결과가 낮일 때 도착할 수 있다. 낮이 시작되면 다시 그리고, 밤이 되면 창을 닫는다
         TimeManager timeManager = TimeManager.Instance;
         if (timeManager != null)
         {
             timeManager.OnDayStart += RefreshCells;
-            timeManager.OnNightStart += RefreshCells;
+            timeManager.OnNightStart += HandleNightStart;
         }
 
         _subscribedReg = AIManager.Instance != null ? AIManager.Instance.Registry : null;
@@ -73,7 +73,7 @@ public class VotingPanel : UIPanel
         if (timeManager != null)
         {
             timeManager.OnDayStart -= RefreshCells;
-            timeManager.OnNightStart -= RefreshCells;
+            timeManager.OnNightStart -= HandleNightStart;
         }
 
         if (_subscribedReg != null)
@@ -201,5 +201,12 @@ public class VotingPanel : UIPanel
     private void HandleNpcVotedOut(string npcId)
     {
         BuildCells();
+    }
+
+    // 밤이 되면 투표 창을 닫는다. 각자 자기 TimeManager 기준으로 닫히므로 네트워크 없이 모든 플레이어에게 적용된다
+    // 닫히면서 OnDisable이 구독을 해제하므로, 열려 있는 패널에서만 호출된다
+    private void HandleNightStart()
+    {
+        Close();
     }
 }
