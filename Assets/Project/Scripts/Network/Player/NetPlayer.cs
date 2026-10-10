@@ -52,14 +52,12 @@ public sealed class NetPlayer : NetworkBehaviour
 
     private void SetLocalComponents(bool active)
     {
-        if (_playerCamera != null) _playerCamera.enabled = active;
-        if (_audioListener != null) _audioListener.enabled = active;
-
-        if (_localOnlyComponents == null) return;
-        foreach (Behaviour component in _localOnlyComponents)
+        foreach (Behaviour component in _localOnlyComponents ?? System.Array.Empty<Behaviour>())
         {
             if (component != null && component != this)
                 component.enabled = active;
         }
+        if (_playerCamera != null) _playerCamera.enabled = active;
+        if (_audioListener != null) _audioListener.enabled = active;
     }
 }

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class SaltItem : ItemBase
 {
@@ -34,6 +34,7 @@ public class SaltItem : ItemBase
 
     public override void OnUseStarted()
     {
+        if (!PlayerActionGuard.CanAct(Owner)) return;
         if (Owner == null)
         {
             return;

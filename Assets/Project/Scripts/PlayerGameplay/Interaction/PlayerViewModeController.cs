@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(PlayerInputReader))]
@@ -84,6 +84,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     private void Update()
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         HandleViewToggle();
 
         if (IsInspecting && _inspectTransform != null)
@@ -94,6 +95,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (IsObserving)
         {
             UpdateObservationFocus();
@@ -134,6 +136,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     public void ToggleViewMode()
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (CurrentViewMode == ViewMode.FirstPerson)
         {
             CurrentViewMode = ViewMode.ThirdPerson;
@@ -212,6 +215,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     public void BeginInspection(InspectInteractable target)
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (IsBusy ||
             target == null ||
             _inspectAnchor == null)
@@ -356,6 +360,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     public void BeginObservation(NPCObservationInteractable target)
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (IsBusy ||
             target == null ||
             _playerCamera == null)

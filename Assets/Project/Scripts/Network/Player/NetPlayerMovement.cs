@@ -73,6 +73,7 @@ public class NetPlayerMovement : NetworkBehaviour
     [Command(channel = Channels.Unreliable)] // 이전 위치의 재전송을 기다리지 않고 새로운 이동 결과를 보내기 위한 채널
     private void CmdSubmitMove(PlayerMoveProposal proposal)
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (proposal.revision != _serverRevision)
         {
             return;

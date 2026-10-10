@@ -19,6 +19,7 @@ public class NetPlayerStress : NetworkBehaviour
     private void Awake()
     {
         _stress = GetComponent<PlayerStressController>();
+        _stress.UseExternalAuthority = true;
         _health = GetComponent<PlayerHealth>();
         _status = GetComponent<NetPlayerStatus>();
     }
@@ -46,7 +47,7 @@ public class NetPlayerStress : NetworkBehaviour
     // [서버] 버스로 돌아온 스트레스 요청을 판정. 모든 플레이어의 요청이 오므로 내 것만 처리
     private void HandleStressRequested(PlayerStressController target, float delta, StressCause cause, GameObject source)
     {
-        if (target != _stress) return;
+        if (target != _stress || float.IsNaN(delta) || float.IsInfinity(delta)) return;
         if (_health != null && _health.IsDead) return;
 
         GameManager gm = GameManager.Instance;

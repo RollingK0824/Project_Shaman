@@ -19,7 +19,7 @@ public class NetPlayerStatus : NetworkBehaviour
     public bool IsDead => _isDead;
     public PlayerStressController.StressLevel StressLevel => _stressLevel;
 
-    // 클라이언트의 사망 적용 및 관전 전환은 후속 작업에서 연결합니다.
+    // Public death state is observed by health, UI and local spectating.
     public event Action<bool> DeadChanged;
 
     private void Awake()
@@ -57,7 +57,7 @@ public class NetPlayerStatus : NetworkBehaviour
 
         if (_isDead)
         {
-            _health.ApplyDeath();
+            _health.ApplyReplicatedDeath();
         }
 
         if (!isServer && !isOwned && _stress != null)
@@ -94,7 +94,7 @@ public class NetPlayerStatus : NetworkBehaviour
     {
         if (newValue)
         {
-            _health.ApplyDeath();
+            _health.ApplyReplicatedDeath();
         }
 
         DeadChanged?.Invoke(newValue);

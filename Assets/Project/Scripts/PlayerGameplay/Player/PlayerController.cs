@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using Mirror;
 
 [RequireComponent(typeof(CharacterController))]
@@ -82,12 +82,18 @@ public class PlayerController : NetworkBehaviour
     {
         // 네트워크 플레이 중에는
         // Local Player만 입력과 이동을 처리한다.
-        if (NetworkClient.active &&
+        if ((NetworkClient.active || NetworkServer.active) &&
             !isLocalPlayer)
         {
             return;
         }
 
+        if (!PlayerActionGuard.CanAct(gameObject))
+        {
+            _jumpQueued = false;
+            UpdateMovementAnimation(false, false, Vector2.zero);
+            return;
+        }
         HandleMovement();
     }
 

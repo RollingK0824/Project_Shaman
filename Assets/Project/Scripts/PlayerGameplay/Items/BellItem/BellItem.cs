@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class BellItem : ItemBase
@@ -36,6 +36,7 @@ public class BellItem : ItemBase
 
     public override void OnUseStarted()
     {
+        if (!PlayerActionGuard.CanAct(Owner)) return;
         if (Owner == null)
         {
             return;

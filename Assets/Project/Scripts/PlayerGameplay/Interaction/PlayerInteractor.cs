@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 [RequireComponent(typeof(PlayerInputReader))]
@@ -50,7 +50,7 @@ public class PlayerInteractor : MonoBehaviour
 
     private void UpdateTarget()
     {
-        if (!CanInteract)
+        if (!CanInteract || !PlayerActionGuard.CanAct(gameObject))
         {
             SetCurrentTarget(null);
             return;
@@ -110,6 +110,7 @@ public class PlayerInteractor : MonoBehaviour
         where T : class
     {
         target = null;
+        if (!CanInteract || !PlayerActionGuard.CanAct(gameObject)) return false;
 
         if (_playerCamera == null)
         {
@@ -140,6 +141,7 @@ public class PlayerInteractor : MonoBehaviour
 
     private void TryInteract()
     {
+        if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (_viewModeController != null &&
             _viewModeController.IsBusy)
         {
@@ -147,7 +149,7 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        if (!CanInteract)
+        if (!CanInteract || !PlayerActionGuard.CanAct(gameObject))
         {
             return;
         }

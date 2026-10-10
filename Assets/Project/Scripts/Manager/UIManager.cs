@@ -72,7 +72,7 @@ public class UIManager : SceneSingleton<UIManager>
 
         if (_trackedPlayer != null && _trackedPlayer.TryGetComponent(out PlayerInputReader inputReader))
         {
-            inputReader.enabled = !IsMenuOpen;
+            inputReader.SetGameplayInputBlocked(IsMenuOpen);
         }
 
         MenuOpenChanged?.Invoke(IsMenuOpen);

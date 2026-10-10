@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -42,6 +42,7 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
     public bool CanInteract(GameObject interactor)
     {
         return
+            PlayerActionGuard.CanAct(interactor) &&
             _ritualActive &&
             !IsActivated;
     }

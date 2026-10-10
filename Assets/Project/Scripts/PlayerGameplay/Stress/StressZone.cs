@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 [RequireComponent(typeof(Collider))]
@@ -33,59 +33,11 @@ public class StressZone : MonoBehaviour
 
     private void RegisterRate(PlayerStressController player)
     {
-        if (_stressPerSecond < 0f)
-        {
-            _stressPerSecond = 0f;
-        }
+        player.SetSourceRate(this, _zoneType == StressZoneType.Reduce ? -_stressPerSecond : _stressPerSecond);
     }
 
-    private void OnTriggerEnter(Collider other)
-    {
-        PlayerStressController stressController =
-            other.GetComponentInParent<PlayerStressController>();
-
-        if (stressController == null)
-        {
-            return;
-        }
-
-        Debug.Log(
-            $"[StressZone] Player 진입: {gameObject.name} / " +
-            $"Type = {_zoneType}",
-            gameObject
-        );
-    }
-
-    private void OnTriggerStay(Collider other)
-    {
-        PlayerStressController stressController =
-            other.GetComponentInParent<PlayerStressController>();
-
-        if (stressController == null)
-        {
-            return;
-        }
-
-        float amount =
-            _stressPerSecond * Time.deltaTime;
-
-        // 직접 수정 x / 서버에 요청보내기
-        float delta = _zoneType == StressZoneType.Increase ? amount : -amount;
-
-        PlayerEvents.RaiseStressRequested(stressController, delta, StressCause.Other, gameObject);
-
-        //switch (_zoneType)
-        //{
-        //    case StressZoneType.Increase:
-        //        stressController.AddStress(amount);
-        //        break;
-        //
-        //    case StressZoneType.Reduce:
-        //        stressController.ReduceStress(amount);
-        //        break;
-        //}
-        stressController.SetSourceRate(this, _zoneType == StressZoneType.Reduce ? -_stressPerSecond : _stressPerSecond);
-    }
+    private void OnTriggerEnter(Collider other) => Track(other);
+    private void OnTriggerStay(Collider other) => Track(other);
 
     private void OnTriggerExit(Collider other)
     {
