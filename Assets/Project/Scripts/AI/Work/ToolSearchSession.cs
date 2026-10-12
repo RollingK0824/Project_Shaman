@@ -127,7 +127,7 @@ namespace ProjectShaman.AI.Work
             if (wasAfterArrival && !_hasRaisedFirstStress)
             {
                 _hasRaisedFirstStress = true;
-                AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' not at expected place", 1);
+                AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' not at expected place", Config.ToolMissingStress);
             }
 
             return false;
@@ -159,7 +159,7 @@ namespace ProjectShaman.AI.Work
         {
             AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (checked {Mathf.Max(0, CandidateIndex + 1)}/{_candidates.Count}, {(Now > _deadline ? "time over" : "no more candidates")})");
             AILog.Log(AILog.STUB, Id, $"Inquiry to nearby villagers for '{RequiredToolType}' skipped (interaction branch)");
-            AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", 2);
+            AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", Config.ToolSearchFailedStress);
             AIEvents.RaiseRequest(Id, "FindTool", RequiredToolType);
             Cancel();
             _owner.Core.FailCurrentRoutine($"tool '{RequiredToolType}' not found");
