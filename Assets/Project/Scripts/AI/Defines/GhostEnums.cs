@@ -1,5 +1,8 @@
+using Unity.Behavior;
+
 namespace ProjectShaman.AI.Defines
 {
+    [BlackboardEnum]
     public enum CorruptionAxis
     {
         None,
@@ -9,6 +12,7 @@ namespace ProjectShaman.AI.Defines
         Time
     }
 
+    [BlackboardEnum]
     public enum SymptomType
     {
         Tremble,
@@ -16,5 +20,38 @@ namespace ProjectShaman.AI.Defines
         Nonsense,
         Grotesque,
         EmptyHandTool
+    }
+
+    [BlackboardEnum]
+    public enum GhostActionVerb
+    {
+        None,
+        Attack,
+        SleepParalysis,
+        Defile,
+        Absorb,
+        HideTool,
+        Haunt
+    }
+
+    [BlackboardEnum]
+    public enum GhostTargetKind
+    {
+        Villager,
+        Player,
+        Livestock,
+        Well,
+        Storage,
+        Guardian,
+        Offering,
+        ShadowSpot,
+        Tool,
+        AnomalySpot
+    }
+
+    [BlackboardEnum]
+    public enum GhostDayEffect
+    {
+        Dazed
     }
 }

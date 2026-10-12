@@ -47,6 +47,10 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostKillDistance = 1.2f;
         [SerializeField] private int _ghostKillsPerHunt = 1;
 
+        [Header("Stress")]
+        [SerializeField] private float _toolMissingStress = 5f;
+        [SerializeField] private float _toolSearchFailedStress = 10f;
+
         public int CycleDays => _cycleDays;
         public int MinRestPerDay => _minRestPerDay;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
@@ -82,5 +86,7 @@ namespace ProjectShaman.AI.Data
         public float GhostSpawnDelaySeconds => _ghostSpawnDelaySeconds;
         public float GhostKillDistance => _ghostKillDistance;
         public int GhostKillsPerHunt => _ghostKillsPerHunt;
+        public float ToolMissingStress => _toolMissingStress;
+        public float ToolSearchFailedStress => _toolSearchFailedStress;
     }
 }
