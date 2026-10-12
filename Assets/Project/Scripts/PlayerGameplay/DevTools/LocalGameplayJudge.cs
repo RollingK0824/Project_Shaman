@@ -18,6 +18,7 @@ public class LocalGameplayJudge : MonoBehaviour
         PlayerEvents.DamageRequested += HandleDamageRequested;
         PlayerEvents.PickupRequested += HandlePickupRequested;
         PlayerEvents.StressRequested += HandleStressRequested;
+        PlayerEvents.FlagActivateRequested += HandleFlagActivateRequested;
     }
 
     private void OnDisable()
@@ -25,6 +26,7 @@ public class LocalGameplayJudge : MonoBehaviour
         PlayerEvents.DamageRequested -= HandleDamageRequested;
         PlayerEvents.PickupRequested -= HandlePickupRequested;
         PlayerEvents.StressRequested -= HandleStressRequested;
+        PlayerEvents.FlagActivateRequested -= HandleFlagActivateRequested;
     }
 
     private void HandleDamageRequested(IDamageable target, float amount, GameObject source)
@@ -46,5 +48,12 @@ public class LocalGameplayJudge : MonoBehaviour
     {
         if (NetworkServer.active || NetworkClient.active || target == null || !PlayerActionGuard.CanAct(target.gameObject)) return;
         target.SetStress(target.CurrentStress + delta);
+    }
+
+    private void HandleFlagActivateRequested(GameObject interactor, ExorcismFlagInteractable flag)
+    {
+        if (NetworkServer.active || NetworkClient.active || flag == null) return;
+
+        flag.TryActivate(interactor);
     }
 }

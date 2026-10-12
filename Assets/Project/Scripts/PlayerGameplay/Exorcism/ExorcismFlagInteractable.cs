@@ -16,6 +16,9 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
 
     public bool IsRitualActive => _ritualActive;
 
+    // 의식 활성 / 깃발 활성 상태가 바뀔때 (네트워크 동기화)
+    public event Action<ExorcismFlagInteractable> StateChanged;
+
     public string InteractionPrompt
     {
         get
@@ -54,7 +57,10 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
             return;
         }
 
-        Activate(interactor);
+        // 직접 활성화 x
+        PlayerEvents.RaiseFlagActivateRequested(interactor, this);
+
+        //Activate(interactor);
     }
 
     public void SetRitualActive(bool isActive)
@@ -66,6 +72,8 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
             $"RitualActive = {_ritualActive}",
             gameObject
         );
+
+        StateChanged?.Invoke(this);
     }
 
     public void ResetFlag()
@@ -76,6 +84,20 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
             $"[ExorcismFlag] 초기화: {gameObject.name}",
             gameObject
         );
+
+        StateChanged?.Invoke(this);
+    }
+
+    // [판정자 전용] 서버 또는 오프라인 판정기가 활성화를 확정할 때 호출
+    public bool TryActivate(GameObject activator)
+    {
+        if (!CanInteract(activator))
+        {
+            return false;
+        }
+
+        Activate(activator);
+        return true;
     }
 
     private void Activate(GameObject activator)
@@ -86,6 +108,7 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
         }
 
         IsActivated = true;
+        StateChanged?.Invoke(this);
 
         string activatorName =
             activator != null
@@ -103,5 +126,12 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
             this,
             activator
         );
+    }
+
+    public void ApplyState(bool ritualActive, bool activated)
+    {
+        _ritualActive = ritualActive;
+        IsActivated = activated;
+        StateChanged?.Invoke(this);
     }
 }
