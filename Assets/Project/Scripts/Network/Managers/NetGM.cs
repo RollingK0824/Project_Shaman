@@ -1,5 +1,6 @@
 using UnityEngine;
 using Mirror;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using ProjectShaman.AI;
@@ -22,6 +23,8 @@ public struct GameStateSnapshot
     public int ghostCount;
     public GameState state;
 }
+
+public enum NetInitState { Pending, Ready, Failed }
 
 [RequireComponent(typeof(NetworkIdentity))]
 public class NetGM : NetworkBehaviour
@@ -47,6 +50,12 @@ public class NetGM : NetworkBehaviour
     // [서버] 이번 프레임에 참가자, 생존자가 바뀌었는지 LateUpdate에서 한번만 검사
     private bool _rosterDirty;
 
+    // [서버] NPC 귀신 수 초기화 결과
+    // 게이트는 구독 직후 이 값도 확인
+    public NetInitState ServerInitState { get; private set; }
+    public event Action<NetInitState> ServerInitStateChanged;
+
+
     // 게임 준비가 끝난 시점에 서버에서 호출
     [Server]
     public void ServerInitialize(int totalNpc, int totalGhost)
@@ -59,11 +68,13 @@ public class NetGM : NetworkBehaviour
         if (totalNpc <= 0 || totalGhost <= 0)
         {
             Debug.LogError("[NetGM] 초기 NPC 수와 귀신 수는 1 이상이어야 합니다.");
+            ServerSetInitState(NetInitState.Failed);
             return;
         }
 
         GameManager.Instance.Init(totalNpc, totalGhost);
         ServerPublishState();
+        ServerSetInitState(NetInitState.Ready);
     }
 
     // 서버에서 NPC 사망이 확정됬을 때 한 번 호출
@@ -120,6 +131,15 @@ public class NetGM : NetworkBehaviour
             ghostCount = gm.GhostCount,
             state = gm.CurrentGameState
         };
+    }
+
+    [Server]
+    private void ServerSetInitState(NetInitState state)
+    {
+        if (ServerInitState != NetInitState.Pending) return;
+
+        ServerInitState = state;
+        ServerInitStateChanged?.Invoke(state);
     }
 
     public override void OnStartServer()
@@ -201,6 +221,7 @@ public class NetGM : NetworkBehaviour
     private void ServerCheckAllPlayersDead()
     {
         if (!_snapshot.initialized) return;
+        if (!NetGameStartGate.HasStarted) return;
 
         var gm = GameManager.Instance;
         if (gm.IsGameOver) return;

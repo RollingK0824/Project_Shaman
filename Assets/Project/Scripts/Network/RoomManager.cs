@@ -13,6 +13,7 @@ public enum DisconnectNotice
 {
     None,
     HostLost,
+    LoadFailed,     // 게임 로딩 중에 연결이 끊김.. 준비 시간 초과 등
 }
 
 public class RoomManager : NetworkRoomManager
@@ -27,6 +28,9 @@ public class RoomManager : NetworkRoomManager
     [Header("Steam 로비")]
     [SerializeField] private SteamLobbyService _steamLobby;
 
+    [Header("로딩 화면")]
+    [SerializeField] private LoadingScreen _loadingScreen;
+
     public static DisconnectNotice PendingNotice { get; private set;  }
 
 
@@ -40,6 +44,10 @@ public class RoomManager : NetworkRoomManager
     // [Steam 로비] 방 생성 화면에서 설정. 비어 있으면 "방장 방"
     public string RoomName { get; set; }
     public string RoomPassword { get; set; }
+
+    // [클라] 게임 씬으로 전환을 시작한 뒤 게임이 시작되기 전까지 true
+    // 로딩 화면, 로컬 입력 잠금, LoadFailed 판정이 모두 이 값을 기준으로 함
+    public bool IsLoadingGame { get; private set; }
     public bool HasPassword => !string.IsNullOrEmpty(RoomPassword);
 
     private bool _isAttemptingJoin;
@@ -51,12 +59,18 @@ public class RoomManager : NetworkRoomManager
     // 게임 도중 참가자가 나갈 때, 그 플레이어 오브젝트가 파괴되기 직전에 발생
     public static event Action <GameObject> ServerGamePlayerLeaving;
 
+    // [서버] 참가자 연결이 끊길 때 발생 (로딩 중 포함). 게임 시작 게이트가 기대 목록에서 제거하는 데 사용
+    // ServerGamePlayerLeaving은 로딩 중에는 RoomPlayer가 넘어오므로 게이트에는 쓰지 않음
+    public static event Action<NetworkConnectionToClient> ServerConnectionLeft;
+
+    // [클라] 시작 시각이 되어 로딩이 끝난 순간 한 번 발생 (로컬 플레이어 입력 허용용)
+    public static event Action ClientGameStarted;
+
     // 서버 종료 중인지. 종료할 때는 모든 연결이 한꺼번에 끊기므로 이탈로 보지 않음
     private bool _isServerStopping;
 
     // 사용자가 직접 나가기를 눌렀는지. 이 경우에는 끊김 안내를 띄우지 않음
     private bool _isLeavingVoluntarily;
-
 
 
 
@@ -118,6 +132,40 @@ public class RoomManager : NetworkRoomManager
         if (_steamLobby != null) _steamLobby.SetInGame(sceneName == GameplayScene);
     }
 
+    // [호스트] 서버가 씬 로딩을 시작하는 시점
+    // 호스트의 OnClientChangeScene은 서버 로딩이 시작된 뒤에 오므로, 멈춤보다 늦지 않게 여기서 먼저 표시
+    public override void OnServerChangeScene(string newSceneName)
+    {
+        base.OnServerChangeScene(newSceneName);
+        if (NetworkClient.active && newSceneName == GameplayScene) BeginGameLoading();
+    }
+
+    // [클라] 서버로부터 씬 전환 지시를 받은 시점
+    public override void OnClientChangeScene(string newSceneName, SceneOperation sceneOperation, bool customHandling)
+    {
+        base.OnClientChangeScene(newSceneName, sceneOperation, customHandling);
+        if (newSceneName == GameplayScene) BeginGameLoading();
+    }
+
+    // [클라] 씬 로딩 완료
+    public override void OnRoomClientSceneChanged()
+    {
+        base.OnRoomClientSceneChanged();
+
+        // 시작 취소로 로비에 돌아온 경우 로딩 화면 정리
+        if (Mirror.Utils.IsSceneActive(RoomScene))
+        {
+            EndGameLoading();
+        }
+    }
+
+    // 접속 종료 시 상태 정리 (OnRoomClientDisconnect의 LoadFailed 판정 이후에 호출됨)
+    public override void OnRoomStopClient()
+    {
+        base.OnRoomStopClient();
+        EndGameLoading();
+    }
+
     public override void OnStopServer()
     {
         _isServerStopping = true;
@@ -136,7 +184,28 @@ public class RoomManager : NetworkRoomManager
         SelectedGhostCount = ghostCount;
     }
 
+    private void BeginGameLoading()
+    {
+        if (IsLoadingGame) return;
 
+        IsLoadingGame = true;
+        if (_loadingScreen != null) _loadingScreen.Show();
+    }
+
+    private void EndGameLoading()
+    {
+        IsLoadingGame = false;
+        if (_loadingScreen != null) _loadingScreen.Hide();
+    }
+
+    // [클라] 시작 시각 도달 시 호출. 로딩 화면 닫기와 입력 허용을 같은 프레임에 처리
+    public void ClientNotifyGameStarted()
+    {
+        if (!IsLoadingGame) return;
+
+        EndGameLoading();
+        ClientGameStarted?.Invoke();
+    }
 
     public override void OnRoomClientEnter()
     {
@@ -152,6 +221,8 @@ public class RoomManager : NetworkRoomManager
         {
             return;
         }
+
+        ServerConnectionLeft?.Invoke(conn);
 
         if (!Mirror.Utils.IsSceneActive(GameplayScene))
         {
@@ -179,7 +250,8 @@ public class RoomManager : NetworkRoomManager
 
         if (!_isLeavingVoluntarily && !NetworkServer.active)
         {
-            PendingNotice = DisconnectNotice.HostLost;
+            // 게임 준비 중에 끊겼으면 준비 실패(시간 초과 등), 그 외는 호스트 연결 끊김
+            PendingNotice = IsLoadingGame ? DisconnectNotice.LoadFailed : DisconnectNotice.HostLost;
         }
     }
 
@@ -254,6 +326,7 @@ public class RoomManager : NetworkRoomManager
     public void LeaveSession()
     {
         _isLeavingVoluntarily = true;
+        EndGameLoading();
 
         if (NetworkServer.active && NetworkClient.isConnected) StopHost();
         else if (NetworkClient.active) StopClient();

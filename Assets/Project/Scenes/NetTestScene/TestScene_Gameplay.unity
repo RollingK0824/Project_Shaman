@@ -69762,6 +69762,73 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1030995687, guid: abc00000000012332615108375623402, type: 3}
   m_PrefabInstance: {fileID: 665187230}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &665296166
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 665296169}
+  - component: {fileID: 665296168}
+  - component: {fileID: 665296167}
+  m_Layer: 0
+  m_Name: NetGameStartGate
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &665296167
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 665296166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7062ce7a1eec0c64d903036507454ec2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetGameStartGate
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _readyTimeout: 20
+  _startDelay: 1
+--- !u!114 &665296168
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 665296166}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 977630248
+  _assetId: 0
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!4 &665296169
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 665296166}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 851.6288, y: 659.41095, z: 839.7985}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &666174439
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -103535,7 +103602,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Ghost.NightHuntDirector
   _factory: {fileID: 1011216894}
   _manager: {fileID: 1011216893}
-  _timeSourceBehaviour: {fileID: 1011216895}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
   _ghostEntityPrefab: {fileID: 4322653122997329672, guid: 2b6dc148a0e35cd40a3f6871359fe2fb, type: 3}
   _huntTokenGhostId: 
@@ -103553,7 +103619,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Core.AIManager
   _factory: {fileID: 1011216894}
-  _timeSourceBehaviour: {fileID: 1011216895}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
 --- !u!114 &1011216894
 MonoBehaviour:
@@ -103570,7 +103635,6 @@ MonoBehaviour:
   _villagerPrefab: {fileID: 4322653122997329672, guid: b4150d8afbce64c468b5846e3c3db753, type: 3}
   _dataProviderAsset: {fileID: 11400000, guid: bf33835edf45c6949921a58bb9c2ba82, type: 2}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
-  _timeSourceBehaviour: {fileID: 1011216895}
   _villagerCount: 5
   _ghostCount: 1
   _useFixedSeed: 0
@@ -214582,3 +214646,4 @@ SceneRoots:
   - {fileID: 553819798}
   - {fileID: 1198501830}
   - {fileID: 1503884006}
+  - {fileID: 665296169}

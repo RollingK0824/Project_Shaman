@@ -26,6 +26,9 @@ public class GameMenuUI : MonoBehaviour
     {
         if (!Input.GetKeyDown(KeyCode.Escape)) return;
 
+        // 로딩 화면 뒤에서 메뉴가 열리지 않도록
+        if (NetworkManager.singleton is RoomManager roomManager && roomManager.IsLoadingGame) return;
+
         // 로비: 게시판을 보고 있으면 ESC는 게시판에서 빠져나오기만 함
         if (LobbyBoardFocus.Current != null)
         {
