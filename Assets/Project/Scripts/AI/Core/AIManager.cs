@@ -69,6 +69,8 @@ namespace ProjectShaman.AI.Core
                 {
                     villager.Core.OnRoutineFailed -= villager.RoutineFailedHandler;
                 }
+
+                UnsubscribeDeath(villager);
             }
 
             _isRunning = false;
@@ -101,6 +103,7 @@ namespace ProjectShaman.AI.Core
                     VillagerRuntime villager = new VillagerRuntime(core);
                     villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
                     core.OnRoutineFailed += villager.RoutineFailedHandler;
+                    SubscribeDeath(villager);
 
                     foreach (IAIConfigurable configurable in core.GetComponents<IAIConfigurable>())
                     {
@@ -336,6 +339,7 @@ namespace ProjectShaman.AI.Core
 
             ReleaseStation(villager);
             core.OnRoutineFailed -= villager.RoutineFailedHandler;
+            UnsubscribeDeath(villager);
             _villagers.Remove(villager);
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
@@ -345,6 +349,26 @@ namespace ProjectShaman.AI.Core
             if (_factory.SpawnHandler != null)
             {
                 _factory.SpawnHandler.Despawn(core.gameObject);
+            }
+        }
+
+        private void SubscribeDeath(VillagerRuntime villager)
+        {
+            if (!villager.Core.TryGetComponent(out AI_Status status))
+            {
+                return;
+            }
+
+            villager.Status = status;
+            villager.DiedHandler = (_, source) => RemoveVillager(villager.Core, $"died by {(source != null ? source.name : "unknown")}");
+            status.OnDied += villager.DiedHandler;
+        }
+
+        private void UnsubscribeDeath(VillagerRuntime villager)
+        {
+            if (villager.Status != null)
+            {
+                villager.Status.OnDied -= villager.DiedHandler;
             }
         }
 
@@ -442,6 +466,8 @@ namespace ProjectShaman.AI.Core
             public AI_Core Core { get; }
             public AI_ToolHandler ToolHandler { get; }
             public System.Action<string> RoutineFailedHandler { get; set; }
+            public AI_Status Status { get; set; }
+            public System.Action<AI_Status, GameObject> DiedHandler { get; set; }
             public VillagerProfile Profile => Core.Profile;
             public string Id { get; }
             public int LastBlockIndex { get; set; } = -1;
