@@ -55,6 +55,9 @@ GameObject:
   - component: {fileID: 2671599584852545454}
   - component: {fileID: 3448324434548685350}
   - component: {fileID: 6444460200354015310}
+  - component: {fileID: 1888050732527854356}
+  - component: {fileID: 5949884775646949015}
+  - component: {fileID: 5688143873855738353}
   m_Layer: 0
   m_Name: Temp_Villager
   m_TagString: Untagged
@@ -329,6 +332,9 @@ MonoBehaviour:
     StartTime: 0
     EndTime: 0
     IsCorrupted: 0
+    CorruptionAxis: 0
+    CorruptionDetail: 
+    StartDelaySeconds: 0
     MustGoHome: 0
     StationId: 
 --- !u!114 &6136421671149660983
@@ -395,6 +401,51 @@ MonoBehaviour:
   _candidateProgress: 
   _tidyZone: 0
   _isMovingToStorage: 0
+--- !u!114 &1888050732527854356
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f6f74d812d2479cb9838687639e4c1f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Status
+  _data: {fileID: 0}
+  _maxHealth: 1
+  _deathDespawnDelay: 0
+  _health: 0
+  _isDead: 0
+  _isActive: 0
+--- !u!114 &5949884775646949015
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcd8e05a9cc64a21ae74550fb782a94d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_AIStatus
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &5688143873855738353
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6192c5f812d347c8ae391dcd60b1caa4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_DamageReceiver
 --- !u!1001 &8466507210631905825
 PrefabInstance:
   m_ObjectHideFlags: 0
