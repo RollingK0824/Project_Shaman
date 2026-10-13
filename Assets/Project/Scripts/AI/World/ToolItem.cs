@@ -1,10 +1,12 @@
 using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Ghost;
 
 namespace ProjectShaman.AI.World
 {
-    public class ToolItem : MonoBehaviour
+    public class ToolItem : MonoBehaviour, IGhostCarriable
     {
         private const float GROUND_SAMPLE_DISTANCE = 2f;
 
@@ -17,6 +19,7 @@ namespace ProjectShaman.AI.World
         [Header("Runtime")]
         [SerializeField] private string _holderId;
         [SerializeField] private string _reservedBy;
+        [SerializeField] private int _ghostHiddenNight = -1;
 
         private Transform _holderSocket;
 
@@ -28,15 +31,45 @@ namespace ProjectShaman.AI.World
         public bool IsHeld => !string.IsNullOrEmpty(_holderId);
         public bool IsOnGround => !IsHeld;
         public Vector3 Position => transform.position;
+        public GhostTargetKind Kind => GhostTargetKind.Tool;
 
         private void OnEnable()
         {
             ToolRegistry.Register(this);
+            GhostTargetRegistry.Register(this);
         }
 
         private void OnDisable()
         {
             ToolRegistry.Unregister(this);
+            GhostTargetRegistry.Unregister(this);
+        }
+
+        public bool CanBeTargeted(in GhostActionContext context)
+        {
+            return context.Verb == GhostActionVerb.HideTool && IsAvailableFor(context.GhostId) && _ghostHiddenNight != context.NightDay;
+        }
+
+        public int GetPriority(in GhostActionContext context)
+        {
+            return 0;
+        }
+
+        public bool PickUpByGhost(in GhostActionContext context)
+        {
+            Transform socket = context.Entity != null ? context.Entity.CarrySocket : transform;
+            if (!TryPickUp(context.GhostId, socket))
+            {
+                return false;
+            }
+
+            _ghostHiddenNight = context.NightDay;
+            return true;
+        }
+
+        public void DropByGhost(in GhostActionContext context, Vector3 position)
+        {
+            Drop(context.GhostId, position, $"hidden by ghost ({context.ActionId})");
         }
 
         public bool IsAvailableFor(string villagerId)
