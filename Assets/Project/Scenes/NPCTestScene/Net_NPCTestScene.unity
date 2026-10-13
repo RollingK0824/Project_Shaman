@@ -307,6 +307,85 @@ MonoBehaviour:
     m_VarianceClampScale: 0.9
     m_ContrastAdaptiveSharpening: 0
   m_Version: 2
+--- !u!1 &345426996
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 345426997}
+  - component: {fileID: 345427000}
+  - component: {fileID: 345426999}
+  - component: {fileID: 345426998}
+  m_Layer: 0
+  m_Name: TimeManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &345426997
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345426996}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &345426998
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345426996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0677cd7da16aa34a8156faa81d429c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::TimeManager
+  _startTextTimeIndex: 4
+--- !u!114 &345426999
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345426996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ab0c10e76a0243a45a009decfcc096cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetTimeManager
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &345427000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 345426996}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 3519046958
+  _assetId: 0
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -556,6 +635,7 @@ MonoBehaviour:
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _holderId: 
   _reservedBy: 
+  _ghostHiddenNight: -1
 --- !u!114 &637655176
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1243,6 +1323,7 @@ MonoBehaviour:
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _holderId: 
   _reservedBy: 
+  _ghostHiddenNight: -1
 --- !u!114 &1021946281
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1732,6 +1813,7 @@ MonoBehaviour:
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _holderId: 
   _reservedBy: 
+  _ghostHiddenNight: -1
 --- !u!114 &1502785609
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2252,6 +2334,7 @@ MonoBehaviour:
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _holderId: 
   _reservedBy: 
+  _ghostHiddenNight: -1
 --- !u!1 &1923637822
 GameObject:
   m_ObjectHideFlags: 0
@@ -2263,7 +2346,6 @@ GameObject:
   - component: {fileID: 1923637823}
   - component: {fileID: 1923637826}
   - component: {fileID: 1923637825}
-  - component: {fileID: 1923637827}
   - component: {fileID: 1923637824}
   - component: {fileID: 1923637828}
   - component: {fileID: 1923637829}
@@ -2304,9 +2386,8 @@ MonoBehaviour:
   _villagerPrefab: {fileID: 4322653122997329672, guid: b4150d8afbce64c468b5846e3c3db753, type: 3}
   _dataProviderAsset: {fileID: 11400000, guid: bf33835edf45c6949921a58bb9c2ba82, type: 2}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
-  _timeSourceBehaviour: {fileID: 1923637827}
   _villagerCount: 5
-  _ghostCount: 1
+  _ghostCount: 2
   _useFixedSeed: 0
   _randomSeed: 1234
   _spawnRoot: {fileID: 0}
@@ -2347,27 +2428,6 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
---- !u!114 &1923637827
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1923637822}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e00fd4fac5470a944b95cac58d5129a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Mock.MockTimeSource
-  _slotsPerDay: 4
-  _slotDuration: 30
-  _nightDuration: 20
-  _timeScale: 1
-  _isRunning: 0
-  _dayCount: 0
-  _isNight: 0
-  _phaseElapsed: 0
-  _currentSlot: -1
 --- !u!114 &1923637828
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2381,7 +2441,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Core.AIManager
   _factory: {fileID: 1923637824}
-  _timeSourceBehaviour: {fileID: 1923637827}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
 --- !u!114 &1923637829
 MonoBehaviour:
@@ -2397,9 +2456,17 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Ghost.NightHuntDirector
   _factory: {fileID: 1923637824}
   _manager: {fileID: 1923637828}
-  _timeSourceBehaviour: {fileID: 1923637827}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
   _ghostEntityPrefab: {fileID: 4322653122997329672, guid: 2b6dc148a0e35cd40a3f6871359fe2fb, type: 3}
+  _nightActions:
+  - {fileID: 11400000, guid: 2ee0020f961647318e15fdfed4e7d4d9, type: 2}
+  - {fileID: 11400000, guid: 2aa05c7ace0c4e8da66808400ff2e335, type: 2}
+  - {fileID: 11400000, guid: ea74eeeac5954deaa3edbe7b7b3820e7, type: 2}
+  - {fileID: 11400000, guid: 52df8e9577e94954821f248c577256cd, type: 2}
+  - {fileID: 11400000, guid: 2b8f5ac02da5472898275d74afddbd78, type: 2}
+  - {fileID: 11400000, guid: dbdc3909a6db41528fce32e10a5442f6, type: 2}
+  - {fileID: 11400000, guid: 1b3002edce9041b987535adb605a58dd, type: 2}
+  - {fileID: 11400000, guid: 395bbd13be94476dbd693abd7e79db72, type: 2}
   _huntTokenGhostId: 
   _activeEntityCount: 0
 --- !u!1 &2013974468
@@ -2700,3 +2767,4 @@ SceneRoots:
   - {fileID: 1716478311}
   - {fileID: 1923637823}
   - {fileID: 2114686126}
+  - {fileID: 345426997}

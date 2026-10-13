@@ -3,32 +3,24 @@ using Unity.Behavior;
 using Unity.Properties;
 using UnityEngine;
 using ProjectShaman.AI.Ghost;
-using ProjectShaman.AI.Interfaces;
 using Action = Unity.Behavior.Action;
 
 namespace ProjectShaman.AI.BehaviorTree.Actions
 {
     [Serializable, GeneratePropertyBag]
     [NodeDescription(
-        name: "Select Hunt Target",
-        story: "[Agent] selects hunt target into [Target]",
+        name: "Complete Ghost Action",
+        story: "[Agent] completes current command",
         category: "Action/AI Ghost",
-        id: "9e438fbb1b3d4a74bd358dcd65228b9d")]
-    public partial class SelectHuntTargetAction : Action
+        id: "41513829376545cc8fc5b985a908c8fe")]
+    public partial class CompleteGhostActionAction : Action
     {
         [SerializeReference] public BlackboardVariable<GameObject> Agent;
-        [SerializeReference] public BlackboardVariable<GameObject> Target;
 
         protected override Status OnStart()
         {
             AI_GhostEntity ghost = Agent.Value != null ? Agent.Value.GetComponent<AI_GhostEntity>() : null;
-            if (ghost == null || !ghost.TrySelectTarget(out GameObject target))
-            {
-                return Status.Failure;
-            }
-
-            Target.Value = target;
-            return Status.Success;
+            return ghost != null && ghost.CompleteCommand() ? Status.Success : Status.Failure;
         }
     }
 }

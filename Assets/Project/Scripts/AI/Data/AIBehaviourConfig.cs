@@ -44,12 +44,17 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _huntRadiusMin = 10f;
         [SerializeField] private float _huntRadiusMax = 60f;
         [SerializeField] private float _ghostSpawnDelaySeconds = 3f;
-        [SerializeField] private float _ghostKillDistance = 1.2f;
-        [SerializeField] private int _ghostKillsPerHunt = 1;
 
         [Header("Stress")]
         [SerializeField] private float _toolMissingStress = 5f;
         [SerializeField] private float _toolSearchFailedStress = 10f;
+
+        [Header("Night Action")]
+        [SerializeField] private float _nightWitnessRadius = 15f;
+        [SerializeField] private float _sleepParalysisHomeDistance = 4f;
+        [SerializeField] private float _ghostHideMinDistance = 8f;
+        [SerializeField] private float _ghostCommandRetrySeconds = 1f;
+        [SerializeField] private float _ghostCommandTimeoutSeconds = 30f;
 
         public int CycleDays => _cycleDays;
         public int MinRestPerDay => _minRestPerDay;
@@ -84,9 +89,12 @@ namespace ProjectShaman.AI.Data
         public float HuntRadiusMin => _huntRadiusMin;
         public float HuntRadiusMax => _huntRadiusMax;
         public float GhostSpawnDelaySeconds => _ghostSpawnDelaySeconds;
-        public float GhostKillDistance => _ghostKillDistance;
-        public int GhostKillsPerHunt => _ghostKillsPerHunt;
         public float ToolMissingStress => _toolMissingStress;
         public float ToolSearchFailedStress => _toolSearchFailedStress;
+        public float NightWitnessRadius => _nightWitnessRadius;
+        public float SleepParalysisHomeDistance => _sleepParalysisHomeDistance;
+        public float GhostHideMinDistance => _ghostHideMinDistance;
+        public float GhostCommandRetrySeconds => _ghostCommandRetrySeconds;
+        public float GhostCommandTimeoutSeconds => _ghostCommandTimeoutSeconds;
     }
 }

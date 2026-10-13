@@ -35,11 +35,19 @@ namespace ProjectShaman.AI.Defines
     }
 
     [BlackboardEnum]
+    public enum GhostActionShape
+    {
+        None,
+        Instant,
+        Carry
+    }
+
+    [BlackboardEnum]
     public enum GhostTargetKind
     {
         Villager,
         Player,
-        Livestock,
+        Animal,
         Well,
         Storage,
         Guardian,

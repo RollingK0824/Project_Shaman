@@ -266,13 +266,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: dd1178aba4b95784dae2c0bf11006621, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Ghost.AI_GhostEntity
+  _carrySocket: {fileID: 0}
   _ghostId: 
   _hostVillagerId: 
   _center: {x: 0, y: 0, z: 0}
   _radius: 0
-  _killsRemaining: 0
-  _killDistance: 0
-  _currentTargetId: 
+  _isHunter: 0
+  _commandSerial: 0
+  _currentCommand: 
+  _currentShape: 0
+  _movePosition: {x: 0, y: 0, z: 0}
+  _carriedName: 
 --- !u!114 &1518374760427848671
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -318,7 +322,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 400ac94dfcce44bbb8ea4efe471c46c4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::DamageTypeTag
-  _damageType: 0
+  _damageType: 1
 --- !u!1001 &8466507210631905825
 PrefabInstance:
   m_ObjectHideFlags: 0

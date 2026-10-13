@@ -14,7 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Data.AIBehaviourConfig
   _cycleDays: 3
   _minRestPerDay: 1
-  _maxStartOffsetRatio: 0.2
+  _routinesPerDay: 2
+  _routineHours: 6
+  _maxStartDelayHours: 2
   _minRemainingRatio: 0.17
   _homeReturnMarginSeconds: 1
   _toolTidySecondsEstimate: 1
@@ -37,4 +39,16 @@ MonoBehaviour:
   _timeDelayMaxRatio: 0.25
   _maxSymptomsPerRestSlot: 3
   _emptyHandToolYinThreshold: 80
+  _emptyHandToolChance: 0.25
   _toolCorruptionSearchRadius: 25
+  _huntCost: 20
+  _huntRadiusMin: 60
+  _huntRadiusMax: 120
+  _ghostSpawnDelaySeconds: 3
+  _toolMissingStress: 5
+  _toolSearchFailedStress: 10
+  _nightWitnessRadius: 15
+  _sleepParalysisHomeDistance: 4
+  _ghostHideMinDistance: 8
+  _ghostCommandRetrySeconds: 1
+  _ghostCommandTimeoutSeconds: 30
