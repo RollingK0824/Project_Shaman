@@ -30,6 +30,12 @@ namespace ProjectShaman.AI.Mock
                 ghost.SetSimulationActive(true);
             }
 
+            AI_Status status = instance.GetComponent<AI_Status>();
+            if (status != null)
+            {
+                status.SetSimulationActive(true);
+            }
+
             AILog.Log(AILog.FACTORY, $"Local spawn (no network), Agent/BT enabled: {instance.name}");
         }
 
