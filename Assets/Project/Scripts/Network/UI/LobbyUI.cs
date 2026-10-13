@@ -116,7 +116,7 @@ public class LobbyUI : MonoBehaviour
 
         if (NetworkServer.active)
         {
-            _readyButtonText.text = "Start";
+            _readyButtonText.text = "시작";
 
             bool enoughPlayers = roomManager.roomSlots.Count >= roomManager.minPlayers;
             bool othersReady = roomManager.roomSlots.OfType<RoomPlayer>().Where(rp => rp != _localRoomPlayer).All(rp => rp.readyToBegin);
@@ -125,7 +125,7 @@ public class LobbyUI : MonoBehaviour
         }
         else
         {
-            _readyButtonText.text = _localRoomPlayer.readyToBegin ? "Cancel" : "Ready";
+            _readyButtonText.text = _localRoomPlayer.readyToBegin ? "취소" : "준비";
             _readyButton.interactable = true;
         }
     }
