@@ -11,8 +11,6 @@ public class LobbyUI : MonoBehaviour
 
     [SerializeField] private GameObject _playerRowPrefab;
 
-    [SerializeField] private GameObject _leaveConfirmPanel;
-
     [SerializeField] private TMP_Text _readyButtonText;
     [SerializeField] private Button _readyButton;
     [SerializeField] private TMP_Text _playerCountText;
@@ -27,7 +25,6 @@ public class LobbyUI : MonoBehaviour
     private bool _refreshRequested;
     void Start()
     {
-        _leaveConfirmPanel.SetActive(false);
         _notEnoughPlayerCount.SetActive(false);
     }
 
@@ -138,31 +135,6 @@ public class LobbyUI : MonoBehaviour
         {
             _localRoomPlayer.CmdChangeReadyState(!_localRoomPlayer.readyToBegin);
         }
-    }
-
-    // 로비 나가기 버튼
-    public void OnClickLeaveButton()
-    {
-        if (NetworkServer.active)
-        {
-            _leaveConfirmPanel.SetActive(true);
-        }
-        else
-        {
-            ((RoomManager)NetworkManager.singleton).LeaveSession();
-        }
-    }
-    // 호스트가 방 나가기를 할때의 UI에서 확인버튼 클릭시
-    public void OnConfirmLeave()
-    {
-        _leaveConfirmPanel.SetActive(false);
-        ((RoomManager)NetworkManager.singleton).LeaveSession();
-    }
-
-    // 호스트가 방 나가기를 할때의 UI에서 취소버튼 클릭시
-    public void OnCancelLeave()
-    {
-        _leaveConfirmPanel.SetActive(false);
     }
 
     public void ShowNotification()
