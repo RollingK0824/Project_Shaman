@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interfaces;
 
@@ -23,15 +24,26 @@ namespace ProjectShaman.AI.Ghost
 
         private readonly AIManager _manager;
         private readonly ISpawnHandler _spawnHandler;
+        private readonly AIBehaviourConfig _config;
         private readonly List<StressEntry> _stress = new List<StressEntry>();
         private readonly List<DayEffectEntry> _dayEffects = new List<DayEffectEntry>();
         private readonly List<GameObject> _tonightTraces = new List<GameObject>();
         private readonly List<GameObject> _previousTraces = new List<GameObject>();
 
-        public NightOutcomeLedger(AIManager manager, ISpawnHandler spawnHandler)
+        public NightOutcomeLedger(AIManager manager, ISpawnHandler spawnHandler, AIBehaviourConfig config)
         {
             _manager = manager;
             _spawnHandler = spawnHandler;
+            _config = config;
+        }
+
+        public AIBehaviourConfig Config => _config;
+        public int NightDay { get; private set; } = -1;
+
+        public void BeginNight(int dayCount)
+        {
+            NightDay = dayCount;
+            AILog.Log(AILog.GHOST, $"Night outcomes Day{dayCount} opened");
         }
 
         public void AddYin(AI_Possession possession, float amount, string reason)
@@ -44,14 +56,6 @@ namespace ProjectShaman.AI.Ghost
             possession.AddPendingYin(amount, reason);
         }
 
-        public void KillVillager(AI_Core victim, string reason)
-        {
-            if (victim != null && _manager != null)
-            {
-                _manager.RemoveVillager(victim, reason);
-            }
-        }
-
         public void AddVictimStress(string villagerId, float amount, string reason)
         {
             if (amount <= 0f)
@@ -61,6 +65,50 @@ namespace ProjectShaman.AI.Ghost
 
             _stress.Add(new StressEntry { VillagerId = villagerId, Amount = amount, Reason = reason });
             AILog.Log(AILog.GHOST, villagerId, $"Victim stress +{amount} queued for morning ({reason})");
+        }
+
+        public void AddStressAround(Vector3 center, float radius, float amount, string reason)
+        {
+            if (amount <= 0f || _manager == null)
+            {
+                return;
+            }
+
+            float sqrRadius = radius * radius;
+
+            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
+            {
+                if (villager.Profile == null || villager.Profile.IsPossessed)
+                {
+                    continue;
+                }
+
+                Vector3 offset = villager.Profile.HomePosition - center;
+                offset.y = 0f;
+
+                if (radius <= 0f || offset.sqrMagnitude <= sqrRadius)
+                {
+                    AddVictimStress(villager.Id, amount, reason);
+                }
+            }
+        }
+
+        public bool IsAlive(AI_Core core)
+        {
+            if (core == null || _manager == null)
+            {
+                return false;
+            }
+
+            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
+            {
+                if (villager.Core == core)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public GameObject SpawnTrace(GameObject prefab, Vector3 position, Quaternion rotation)
