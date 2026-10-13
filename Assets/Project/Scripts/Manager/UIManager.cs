@@ -10,6 +10,7 @@ public class UIManager : SceneSingleton<UIManager>
     private NetworkIdentity _trackedPlayer;
 
     public bool IsMenuOpen => _openPanels.Count > 0;
+    public bool IsOpen(UIPanel panel) => _openPanels.Contains(panel);
 
     public event Action<bool> MenuOpenChanged;
 
