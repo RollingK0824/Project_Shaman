@@ -158,9 +158,6 @@ public class VoteManager : SceneSingleton<VoteManager>
         VoteRequested?.Invoke(MyVote);
     }
 
-    // [서버] 밤이 시작될 때 어댑터가 호출. 최다 득표 NPC를 반환
-    // 동점이면 동점자 중 무작위, 표가 하나도 없으면 살아있는 NPC 전체 중 무작위. 살아있는 NPC가 없으면 null
-    // 무작위는 서버에서 한 번만 정하고 결과만 클라이언트로 보내므로 모든 화면에서 같은 결과가 나온다
     public string ResolveVote()
     {
         int highest = 0;
@@ -205,13 +202,11 @@ public class VoteManager : SceneSingleton<VoteManager>
         return winner;
     }
 
-    // [클라이언트] 서버에서 받은 투표 결과 적용. 호스트에서는 호출하지 않음
     public void ApplyVoteResult(string npcId)
     {
         FinishVote(npcId);
     }
 
-    // [클라이언트] 서버에서 받은 투표 표로 교체하고 득표 수를 다시 계산. 호스트에서는 호출하지 않음
     public void ApplyNetworkVotes(IReadOnlyDictionary<uint, string> votes)
     {
         _vote.Clear();
@@ -229,7 +224,6 @@ public class VoteManager : SceneSingleton<VoteManager>
         VotesChanged?.Invoke();
     }
 
-    // 해당 NPC에 투표한 플레이어들
     public IReadOnlyList<uint> GetVotersFor(string npcId)
     {
         List<uint> voters = new List<uint>();
@@ -245,7 +239,6 @@ public class VoteManager : SceneSingleton<VoteManager>
         return voters;
     }
 
-    // 하루 투표 마무리. 추방 기록을 NpcVotedOut보다 먼저 남겨야 OnDied 시점에 WasVotedOut이 맞게 나온다
     private void FinishVote(string winner)
     {
         _vote.Clear();

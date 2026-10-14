@@ -24,6 +24,7 @@ public class PlayerController : NetworkBehaviour
 
     private CharacterController _characterController;
     private PlayerInputReader _inputReader;
+    private PlayerCrouch _crouch;
 
     private float _verticalVelocity;
     private bool _jumpQueued;
@@ -53,6 +54,7 @@ public class PlayerController : NetworkBehaviour
 
     private void Awake()
     {
+        _crouch = GetComponent<PlayerCrouch>();
         _characterController =
             GetComponent<CharacterController>();
 
@@ -112,7 +114,9 @@ public class PlayerController : NetworkBehaviour
 
     private void HandleMovement()
     {
-        Vector2 moveInput = CanMove
+        bool inputAllowed = _inputReader.isActiveAndEnabled && !_inputReader.GameplayInputBlocked;
+        if (!inputAllowed) _jumpQueued = false;
+        Vector2 moveInput = CanMove && inputAllowed
             ? _inputReader.MoveInput
             : Vector2.zero;
 
@@ -131,12 +135,14 @@ public class PlayerController : NetworkBehaviour
         bool isSprinting =
             CanMove &&
             CanSprint &&
+            (_crouch == null || !_crouch.IsCrouching) &&
             _inputReader.SprintHeld &&
             isMoving;
 
         float moveSpeed = isSprinting
             ? _sprintSpeed
             : _walkSpeed;
+        if (_crouch != null) moveSpeed *= _crouch.SpeedMultiplier;
 
         Vector3 velocity =
             moveDirection * moveSpeed;
@@ -169,6 +175,7 @@ public class PlayerController : NetworkBehaviour
         bool jumpStarted = false;
 
         if (CanMove &&
+            inputAllowed && (_crouch == null || !_crouch.IsCrouching) &&
             isGrounded &&
             jumpRequested)
         {

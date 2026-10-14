@@ -10,18 +10,18 @@ namespace ProjectShaman.AI.Routine
         private readonly IReadOnlyList<RoutineEntry> _routines;
         private readonly int _cycleDays;
         private readonly int _slotsPerDay;
-        private readonly int _minRestPerDay;
+        private readonly float _restRatio;
         private readonly System.Random _random;
         private readonly System.Func<string, int> _placeCapacityProvider;
         private readonly Dictionary<string, int> _occupancy = new Dictionary<string, int>();
 
-        public ScheduleBuilder(IReadOnlyList<RoutineEntry> routines, int cycleDays, int slotsPerDay, int minRestPerDay, System.Random random, System.Func<string, int> placeCapacityProvider)
+        public ScheduleBuilder(IReadOnlyList<RoutineEntry> routines, int cycleDays, int slotsPerDay, float restRatio, System.Random random, System.Func<string, int> placeCapacityProvider)
         {
             _placeCapacityProvider = placeCapacityProvider;
             _routines = routines;
             _cycleDays = cycleDays;
             _slotsPerDay = slotsPerDay;
-            _minRestPerDay = minRestPerDay;
+            _restRatio = restRatio;
             _random = random;
         }
 
@@ -33,15 +33,9 @@ namespace ProjectShaman.AI.Routine
             List<RoutineEntry> rests = new List<RoutineEntry>();
             CollectLoadable(info, works, rests);
 
-            if (rests.Count == 0 && _minRestPerDay > 0)
+            if (works.Count == 0 && rests.Count == 0)
             {
-                AILog.Log(AILog.ROUTINE, info.VillagerId, $"No loadable rest routine for {info.JobId}");
-                return false;
-            }
-
-            if (works.Count == 0)
-            {
-                AILog.Log(AILog.ROUTINE, info.VillagerId, $"No loadable work routine for {info.JobId}");
+                AILog.Log(AILog.ROUTINE, info.VillagerId, $"No loadable routine for {info.JobId}");
                 return false;
             }
 
@@ -50,19 +44,19 @@ namespace ProjectShaman.AI.Routine
 
             for (int day = 0; day < _cycleDays; day++)
             {
-                HashSet<int> restSlots = PickRestSlots();
-
                 for (int slot = 0; slot < _slotsPerDay; slot++)
                 {
-                    bool isRestSlot = restSlots.Contains(slot);
-                    RoutineEntry picked = PickAvailable(isRestSlot ? rests : works, day, slot);
+                    bool prefersRest = _random.NextDouble() < _restRatio;
+                    List<RoutineEntry> preferred = prefersRest ? rests : works;
+                    List<RoutineEntry> fallback = prefersRest ? works : rests;
+                    RoutineEntry picked = PickAvailable(preferred, day, slot);
 
-                    if (picked == null && !isRestSlot)
+                    if (picked == null)
                     {
-                        picked = PickAvailable(rests, day, slot);
-                        if (picked != null)
+                        picked = PickAvailable(fallback, day, slot);
+                        if (picked != null && preferred.Count > 0)
                         {
-                            AILog.Log(AILog.ROUTINE, info.VillagerId, $"D{day} S{slot} work full, fallback to rest {picked.RoutineId}");
+                            AILog.Log(AILog.ROUTINE, info.VillagerId, $"D{day} S{slot} {(prefersRest ? "rest" : "work")} full, fallback to {picked.RoutineId}");
                         }
                     }
 
@@ -105,19 +99,6 @@ namespace ProjectShaman.AI.Routine
                     works.Add(routine);
                 }
             }
-        }
-
-        private HashSet<int> PickRestSlots()
-        {
-            HashSet<int> restSlots = new HashSet<int>();
-            int count = System.Math.Min(_minRestPerDay, _slotsPerDay);
-
-            while (restSlots.Count < count)
-            {
-                restSlots.Add(_random.Next(_slotsPerDay));
-            }
-
-            return restSlots;
         }
 
         private RoutineEntry PickAvailable(List<RoutineEntry> pool, int day, int slot)

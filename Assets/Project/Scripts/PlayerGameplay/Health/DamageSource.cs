@@ -34,13 +34,15 @@ public class DamageSource : MonoBehaviour
             return;
         }
 
-        //damageable.ReceiveDamage(
-        //    _damageAmount,
-        //    gameObject
-        //);
+        RequestDamage(damageable, _damageAmount, gameObject);
+    }
 
-        // 변경 (직접 판정하지 않고, 요청만 보내는 방식으로 변경)
-        PlayerEvents.RaiseDamageRequested(damageable, _damageAmount, gameObject);
+    // True means a valid request was dispatched, not that a remote target acknowledged damage.
+    public static bool RequestDamage(IDamageable target, float amount, GameObject source)
+    {
+        if (target == null || target.IsDead || float.IsNaN(amount) || float.IsInfinity(amount) || amount <= 0f) return false;
+        PlayerEvents.RaiseDamageRequested(target, amount, source);
+        return true;
     }
 
     private void OnValidate()

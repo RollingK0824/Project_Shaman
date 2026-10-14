@@ -170,6 +170,54 @@ MonoBehaviour:
   _radius: 2
   _boxSize: {x: 4, y: 2, z: 4}
   _maxPeople: 2
+--- !u!1 &325765850
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 325765851}
+  - component: {fileID: 325765852}
+  m_Layer: 0
+  m_Name: DataManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &325765851
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 325765850}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &325765852
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 325765850}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 63e87c783a13d3948a08e4a952591861, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::DataManager
+  _inputData:
+  - Name: AIData
+    Path: Data/AIData_SampleTest
+    TypeName: AIDataContainer
 --- !u!1 &330585543
 GameObject:
   m_ObjectHideFlags: 0
@@ -500,6 +548,51 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1716478311}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &501013834
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 501013835}
+  - component: {fileID: 501013836}
+  m_Layer: 0
+  m_Name: TimeManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &501013835
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501013834}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &501013836
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 501013834}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c0677cd7da16aa34a8156faa81d429c7, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::TimeManager
+  _startTextTimeIndex: 4
 --- !u!1 &637655173
 GameObject:
   m_ObjectHideFlags: 0
@@ -2263,12 +2356,11 @@ GameObject:
   - component: {fileID: 1923637823}
   - component: {fileID: 1923637826}
   - component: {fileID: 1923637825}
-  - component: {fileID: 1923637827}
   - component: {fileID: 1923637824}
   - component: {fileID: 1923637828}
   - component: {fileID: 1923637829}
   m_Layer: 0
-  m_Name: AIIManager
+  m_Name: AIManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2302,11 +2394,11 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Core.AIFactory
   _villagerPrefab: {fileID: 4322653122997329672, guid: b4150d8afbce64c468b5846e3c3db753, type: 3}
+  _useJsonData: 1
   _dataProviderAsset: {fileID: 11400000, guid: bf33835edf45c6949921a58bb9c2ba82, type: 2}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
-  _timeSourceBehaviour: {fileID: 1923637827}
-  _villagerCount: 5
-  _ghostCount: 1
+  _villagerCount: 20
+  _ghostCount: 5
   _useFixedSeed: 0
   _randomSeed: 1234
   _spawnRoot: {fileID: 0}
@@ -2347,27 +2439,6 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
---- !u!114 &1923637827
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1923637822}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e00fd4fac5470a944b95cac58d5129a0, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Mock.MockTimeSource
-  _slotsPerDay: 4
-  _slotDuration: 30
-  _nightDuration: 20
-  _timeScale: 1
-  _isRunning: 0
-  _dayCount: 0
-  _isNight: 0
-  _phaseElapsed: 0
-  _currentSlot: -1
 --- !u!114 &1923637828
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2381,7 +2452,6 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Core.AIManager
   _factory: {fileID: 1923637824}
-  _timeSourceBehaviour: {fileID: 1923637827}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
 --- !u!114 &1923637829
 MonoBehaviour:
@@ -2397,7 +2467,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Ghost.NightHuntDirector
   _factory: {fileID: 1923637824}
   _manager: {fileID: 1923637828}
-  _timeSourceBehaviour: {fileID: 1923637827}
   _behaviourConfig: {fileID: 11400000, guid: 803f1831823efcc43a604de1b6811afb, type: 2}
   _ghostEntityPrefab: {fileID: 4322653122997329672, guid: 2b6dc148a0e35cd40a3f6871359fe2fb, type: 3}
   _huntTokenGhostId: 
@@ -2700,3 +2769,5 @@ SceneRoots:
   - {fileID: 1716478311}
   - {fileID: 1923637823}
   - {fileID: 2114686126}
+  - {fileID: 325765851}
+  - {fileID: 501013835}

@@ -249,6 +249,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         // Keep the serialized prototype field for compatibility. Death always
         // blocks world actions, including prefabs authored with that flag off.
         DisableGameplay();
+        GetComponent<PlayerDeathVisual>()?.ApplyDeathVisual();
 
         Died?.Invoke(source);
         PlayersChanged?.Invoke();

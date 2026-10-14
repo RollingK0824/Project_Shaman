@@ -6,7 +6,7 @@ namespace ProjectShaman.AI.Data
     public class AIBehaviourConfig : ScriptableObject
     {
         [SerializeField] private int _cycleDays = 3;
-        [SerializeField] private int _minRestPerDay = 1;
+        [SerializeField, Range(0f, 1f)] private float _restRatio = 0.3f;
         [SerializeField] private int _routinesPerDay = 2;
         [SerializeField] private int _routineHours = 6;
         [SerializeField] private int _maxStartDelayHours = 2;
@@ -48,7 +48,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int _ghostKillsPerHunt = 1;
 
         public int CycleDays => _cycleDays;
-        public int MinRestPerDay => _minRestPerDay;
+        public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public int RoutineHours => Mathf.Max(1, _routineHours);
         public int MaxStartDelayHours => Mathf.Max(0, _maxStartDelayHours);
