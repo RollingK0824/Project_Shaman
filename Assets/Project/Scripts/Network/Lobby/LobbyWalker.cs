@@ -11,10 +11,24 @@ public class LobbyWalker : MonoBehaviour
     private PlayerInputReader _input;
     private float _verticalVelocity;
 
+    private PlayerInteractor _interactor;
+
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
         _input = GetComponent<PlayerInputReader>();
+
+        _interactor = GetComponent<PlayerInteractor>();
+    }
+
+    private void OnEnable()
+    {
+        _input.UseItemStarted += ClickInteract;
+    }
+
+    private void OnDisable()
+    {
+        if (_input != null) _input.UseItemStarted -= ClickInteract;
     }
 
     private void Update()
@@ -34,5 +48,12 @@ public class LobbyWalker : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.None;
         Cursor.visible = true;
+    }
+
+    // [로컬] 좌클릭으로 바라보는 대상과 상호작용 (F와 같은 동작)
+    private void ClickInteract()
+    {
+        IInteractable target = _interactor != null ? _interactor.CurrentTarget : null;
+        if (target != null && target.CanInteract(gameObject)) target.Interact(gameObject);
     }
 }

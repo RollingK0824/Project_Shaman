@@ -16,9 +16,14 @@ public class MainMenuUI : MonoBehaviour
     {
         _noticePanel.SetActive(false);
 
-        if (RoomManager.ConsumeNotice() == DisconnectNotice.HostLost)
+        DisconnectNotice notice = RoomManager.ConsumeNotice();
+        if (notice == DisconnectNotice.HostLost)
         {
             StartCoroutine(ShowNoticeRoutine("Disconnected from the host."));
+        }
+        else if (notice == DisconnectNotice.LoadFailed)
+        {
+            StartCoroutine(ShowNoticeRoutine("Failed to get ready for the game in time."));
         }
     }
 

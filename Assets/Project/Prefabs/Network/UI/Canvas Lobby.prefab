@@ -465,8 +465,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0.5}
   m_AnchorMax: {x: 0, y: 0.5}
-  m_AnchoredPosition: {x: -823, y: 0}
-  m_SizeDelta: {x: 600, y: 800}
+  m_AnchoredPosition: {x: -820, y: 0}
+  m_SizeDelta: {x: 650, y: 800}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!222 &4498427067172113588
 CanvasRenderer:
@@ -520,7 +520,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::LobbyUI
   _playerListParent: {fileID: 4078896197435023058}
   _playerRowPrefab: {fileID: 7764466702955985740, guid: 13053ab83de26a345af4be604e5a1bec, type: 3}
-  _leaveConfirmPanel: {fileID: 5584959351776310176}
   _readyButtonText: {fileID: 7876317030942310217}
   _readyButton: {fileID: 371345217969704078}
   _playerCountText: {fileID: 6769802609704292612}
@@ -675,7 +674,7 @@ GameObject:
   - component: {fileID: 1741123174583729233}
   - component: {fileID: 4709523593733645724}
   m_Layer: 5
-  m_Name: Text Exit
+  m_Name: Text Back
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -728,7 +727,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uB098\uAC00\uAE30"
+  m_text: "\uB4A4\uB85C\n"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
   m_sharedMaterial: {fileID: -4329709167382420363, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
@@ -813,7 +812,7 @@ GameObject:
   - component: {fileID: 1856769967076963462}
   - component: {fileID: 1152622812662531782}
   m_Layer: 5
-  m_Name: Button Exit
+  m_Name: Button Back
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -921,9 +920,9 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 8063077309469364531}
-        m_TargetAssemblyTypeName: LobbyUI, Project.Runtime
-        m_MethodName: OnClickLeaveButton
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: LobbyBoardFocus, Project.Runtime
+        m_MethodName: Unfocus
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -1327,6 +1326,10 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 1368478306948630379, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
+      propertyPath: m_Navigation.m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 1368478306948630379, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
       propertyPath: m_Colors.m_HighlightedColor.b
       value: 0.50980395
       objectReference: {fileID: 0}
@@ -1353,6 +1356,10 @@ PrefabInstance:
     - target: {fileID: 3840781212539162145, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
       propertyPath: m_Name
       value: Panel LeaveConfirm
+      objectReference: {fileID: 0}
+    - target: {fileID: 3840781212539162145, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5662157717950370694, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
       propertyPath: m_text
@@ -1427,6 +1434,10 @@ PrefabInstance:
       value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8401083877699730811, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
+      propertyPath: m_Navigation.m_Mode
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8401083877699730811, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
       propertyPath: m_Colors.m_HighlightedColor.b
       value: 0.50980395
       objectReference: {fileID: 0}
@@ -1443,11 +1454,6 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
---- !u!1 &5584959351776310176 stripped
-GameObject:
-  m_CorrespondingSourceObject: {fileID: 3840781212539162145, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
-  m_PrefabInstance: {fileID: 8704596996729306497}
-  m_PrefabAsset: {fileID: 0}
 --- !u!224 &8426013154589799765 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 874761054132668628, guid: 4d16db42b4c7de5468132b9c3b22db4a, type: 3}
