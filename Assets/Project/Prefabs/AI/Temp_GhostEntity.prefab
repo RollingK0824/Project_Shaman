@@ -49,6 +49,9 @@ GameObject:
   - component: {fileID: 3396515200370580590}
   - component: {fileID: 3679982066907029231}
   - component: {fileID: 1760817108659043363}
+  - component: {fileID: 1518374760427848671}
+  - component: {fileID: 2598994407249965612}
+  - component: {fileID: 5934861891639141751}
   m_Layer: 0
   m_Name: Temp_GhostEntity
   m_TagString: Untagged
@@ -270,6 +273,52 @@ MonoBehaviour:
   _killsRemaining: 0
   _killDistance: 0
   _currentTargetId: 
+--- !u!114 &1518374760427848671
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f6f74d812d2479cb9838687639e4c1f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Status
+  _data: {fileID: 0}
+  _maxHealth: 1
+  _deathDespawnDelay: 0
+  _health: 0
+  _isDead: 0
+  _isActive: 0
+--- !u!114 &2598994407249965612
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcd8e05a9cc64a21ae74550fb782a94d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_AIStatus
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &5934861891639141751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 400ac94dfcce44bbb8ea4efe471c46c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::DamageTypeTag
+  _damageType: 0
 --- !u!1001 &8466507210631905825
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -337,7 +386,7 @@ PrefabInstance:
     - target: {fileID: 5866666021909216657, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
       propertyPath: m_Controller
       value: 
-      objectReference: {fileID: 9100000, guid: 4169c60d9aebd4647ba66d80c570c2d9, type: 2}
+      objectReference: {fileID: 0}
     - target: {fileID: 5866666021909216657, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
       propertyPath: m_CullingMode
       value: 0

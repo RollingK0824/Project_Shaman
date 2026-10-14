@@ -16,9 +16,9 @@ namespace ProjectShaman.AI.Core
         private const int MAX_ROLL_ATTEMPTS = 20;
 
         [SerializeField] private GameObject _villagerPrefab;
+        [SerializeField] private bool _useJsonData = true;
         [SerializeField] private ScriptableObject _dataProviderAsset;
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
-        [SerializeField] private MonoBehaviour _timeSourceBehaviour;
         [SerializeField] private int _villagerCount = 1;
         [SerializeField] private int _ghostCount = 1;
         [SerializeField] private bool _useFixedSeed = true;
@@ -29,7 +29,6 @@ namespace ProjectShaman.AI.Core
         private readonly List<AI_Core> _spawnedVillagers = new List<AI_Core>();
         private readonly HashSet<string> _usedNames = new HashSet<string>();
         private IAIDataProvider _dataProvider;
-        private ITimeSource _timeSource;
         private ScheduleBuilder _scheduleBuilder;
         private System.Random _random;
         private bool _hasCreated;
@@ -76,29 +75,33 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            _dataProvider = _dataProviderAsset as IAIDataProvider;
+            _dataProvider = ResolveDataProvider();
             if (_dataProvider == null)
             {
-                AILog.Error(AILog.FACTORY, "Data provider asset missing or does not implement IAIDataProvider");
+                AILog.Error(AILog.FACTORY, "No data provider (JSON not loaded and fallback asset missing)");
                 return;
             }
 
-            _timeSource = _timeSourceBehaviour as ITimeSource;
-            if (_timeSource == null || _behaviourConfig == null)
+            if (_behaviourConfig == null)
             {
-                AILog.Error(AILog.FACTORY, "Time source or behaviour config missing");
+                AILog.Error(AILog.FACTORY, "Behaviour config missing");
                 return;
             }
 
             _hasCreated = true;
             SpawnHandler = spawnHandler;
-            Seed = _useFixedSeed ? _randomSeed : Environment.TickCount;
+            if (!_useFixedSeed)
+            {
+                _randomSeed = Environment.TickCount;
+            }
+
+            Seed = _randomSeed;
             _random = new System.Random(Seed);
 
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
             AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
 
-            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _timeSource.SlotsPerDay, _behaviourConfig.MinRestPerDay, _random, GetPlaceCapacity);
+            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.RestRatio, _random, GetPlaceCapacity);
 
             List<VillagerProfile> profiles = GenerateProfiles();
 
@@ -149,6 +152,23 @@ namespace ProjectShaman.AI.Core
             _hasCreated = false;
         }
 
+        private IAIDataProvider ResolveDataProvider()
+        {
+            if (_useJsonData)
+            {
+                DataManager dataManager = FindFirstObjectByType<DataManager>();
+                if (dataManager != null && dataManager.TryGet(out AIDataContainer container))
+                {
+                    return new JsonAIDataProvider(container);
+                }
+
+                string reason = dataManager == null ? "DataManager not in scene" : "DataManager has no AIDataContainer";
+                AILog.Warn(AILog.DATA_TO_AI, $"{reason}, fallback to {(_dataProviderAsset != null ? _dataProviderAsset.name : "none")}");
+            }
+
+            return _dataProviderAsset as IAIDataProvider;
+        }
+
         private int GetPlaceCapacity(string placeId)
         {
             if (PlaceRegistry.TryGet(placeId, out PlaceArea place))
@@ -194,6 +214,12 @@ namespace ProjectShaman.AI.Core
                 info.SocialClass = RollEnum<VillagerSocialClass>();
                 info.AgeGroup = RollEnum<VillagerAgeGroup>();
 
+                if (CollectAvailableNames(info).Count == 0)
+                {
+                    AILog.Log(AILog.FACTORY, info.VillagerId, $"Reroll #{attempt}: no unused name for {info.Gender}/{info.SocialClass}/{info.AgeGroup}");
+                    continue;
+                }
+
                 JobEntry job = PickJob(info);
                 if (job == null)
                 {
@@ -231,7 +257,7 @@ namespace ProjectShaman.AI.Core
             return candidates.Count > 0 ? candidates[_random.Next(candidates.Count)] : null;
         }
 
-        private string PickName(VillagerPublicInfo info)
+        private List<string> CollectAvailableNames(VillagerPublicInfo info)
         {
             List<string> available = new List<string>();
 
@@ -247,6 +273,13 @@ namespace ProjectShaman.AI.Core
                     available.Add(entry.Name);
                 }
             }
+
+            return available;
+        }
+
+        private string PickName(VillagerPublicInfo info)
+        {
+            List<string> available = CollectAvailableNames(info);
 
             if (available.Count == 0)
             {
@@ -353,12 +386,6 @@ namespace ProjectShaman.AI.Core
             {
                 Debug.LogWarning($"[AI][{AILog.FACTORY}] {_dataProviderAsset.name} does not implement IAIDataProvider");
                 _dataProviderAsset = null;
-            }
-
-            if (_timeSourceBehaviour != null && !(_timeSourceBehaviour is ITimeSource))
-            {
-                Debug.LogWarning($"[AI][{AILog.FACTORY}] {_timeSourceBehaviour.name} does not implement ITimeSource");
-                _timeSourceBehaviour = null;
             }
 
             if (_villagerCount < 0)

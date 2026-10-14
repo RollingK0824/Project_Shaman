@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
-using ProjectShaman.AI.Interfaces;
 
 namespace ProjectShaman.AI.Ghost
 {
@@ -10,7 +9,6 @@ namespace ProjectShaman.AI.Ghost
     {
         [SerializeField] private AIFactory _factory;
         [SerializeField] private AIManager _manager;
-        [SerializeField] private MonoBehaviour _timeSourceBehaviour;
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
         [SerializeField] private GameObject _ghostEntityPrefab;
 
@@ -19,7 +17,7 @@ namespace ProjectShaman.AI.Ghost
         [SerializeField] private int _activeEntityCount;
 
         private readonly List<AI_GhostEntity> _entities = new List<AI_GhostEntity>();
-        private ITimeSource _timeSource;
+        private TimeManager _time;
         private AI_Possession _pendingHunter;
         private AI_Core _pendingHost;
         private float _pendingRadius;
@@ -27,8 +25,6 @@ namespace ProjectShaman.AI.Ghost
 
         private void Awake()
         {
-            _timeSource = _timeSourceBehaviour as ITimeSource;
-
             if (_factory != null)
             {
                 _factory.OnVillagersCreated += HandleVillagersCreated;
@@ -49,20 +45,23 @@ namespace ProjectShaman.AI.Ghost
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
         {
-            if (_timeSource == null || _manager == null || _behaviourConfig == null || _ghostEntityPrefab == null)
+            _time = TimeManager.Instance;
+
+            if (_time == null || _manager == null || _behaviourConfig == null || _ghostEntityPrefab == null)
             {
-                AILog.Error(AILog.GHOST, "NightHuntDirector missing references (time source, manager, config or ghost prefab)");
+                AILog.Error(AILog.GHOST, "NightHuntDirector missing references (TimeManager, manager, config or ghost prefab)");
                 return;
             }
 
             UnsubscribeTime();
-            _timeSource.OnNightStart += HandleNightStart;
-            _timeSource.OnNewDay += HandleNewDay;
+            _time.OnDayStart += HandleDayStart;
+            _time.OnNightStart += HandleNightStart;
         }
 
         private void HandleVillagersCleared()
         {
             UnsubscribeTime();
+            _time = null;
             _entities.Clear();
             _pendingSpawnTime = -1f;
             _activeEntityCount = 0;
@@ -70,10 +69,10 @@ namespace ProjectShaman.AI.Ghost
 
         private void UnsubscribeTime()
         {
-            if (_timeSource != null)
+            if (_time != null)
             {
-                _timeSource.OnNightStart -= HandleNightStart;
-                _timeSource.OnNewDay -= HandleNewDay;
+                _time.OnDayStart -= HandleDayStart;
+                _time.OnNightStart -= HandleNightStart;
             }
         }
 
@@ -106,7 +105,7 @@ namespace ProjectShaman.AI.Ghost
             _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
 
             hunter.SpendYin(_behaviourConfig.HuntCost, "hunt token (pre-paid, no refund)");
-            AILog.Log(AILog.GHOST, hunter.GhostId, $"Hunt token Day{_timeSource.DayCount} (yin {yinBefore:F0} → {hunter.Yin:F0}, radius {_pendingRadius:F1}m)");
+            AILog.Log(AILog.GHOST, hunter.GhostId, $"Hunt token Day{_time.DayCount} (yin {yinBefore:F0} → {hunter.Yin:F0}, radius {_pendingRadius:F1}m)");
 
             foreach (AIManager.VillagerRuntime host in hosts)
             {
@@ -137,7 +136,7 @@ namespace ProjectShaman.AI.Ghost
                 }
             }
 
-            System.Random random = new System.Random(unchecked(_factory.Seed * 31 + _timeSource.DayCount));
+            System.Random random = new System.Random(unchecked(_factory.Seed * 31 + _time.DayCount));
             return best[random.Next(best.Count)];
         }
 
@@ -177,7 +176,7 @@ namespace ProjectShaman.AI.Ghost
             _activeEntityCount = _entities.Count;
         }
 
-        private void HandleNewDay(int dayCount)
+        private void HandleDayStart()
         {
             _pendingSpawnTime = -1f;
 

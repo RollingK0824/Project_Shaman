@@ -494,6 +494,20 @@ public class PlayerItemController : MonoBehaviour
         _thirdPersonRenderers = null;
     }
 
+    // [원격 사본 전용] 네트워크가 확정한 장착 아이템의 3인칭 모델만 교체
+    // 팔 자세는 NetworkNaimator가 동기화함. ItemHoldDriver는 구동하지 않음
+    public void ApplyRemoteHeldVisual(ItemData itemData)
+    {
+        DestroyThirdPersonVisual();
+
+        if (itemData == null || itemData.HoldType == HoldType.Empty)
+        {
+            return;
+        }
+
+        SpawnThirdPersonVisual(itemData);
+    }
+
 
     // =========================================================
     // Unequip

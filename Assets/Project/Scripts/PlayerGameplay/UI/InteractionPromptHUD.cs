@@ -1,4 +1,5 @@
 using UnityEngine;
+using TMPro;
 
 public class InteractionPromptHUD : MonoBehaviour
 {
@@ -11,6 +12,11 @@ public class InteractionPromptHUD : MonoBehaviour
     [SerializeField] [Range(0.3f, 0.9f)] private float _verticalPosition = 0.62f;
     [SerializeField] private float _height = 40f;
 
+    [Header("Panel (비우면 OnGUI로 표시)")]
+    [SerializeField] private GameObject _panel;
+    [SerializeField] private TMP_Text _panelText;
+    [SerializeField] private GameObject _panelKeyIcon;
+
     private GUIStyle _style;
 
     private void Awake()
@@ -21,30 +27,45 @@ public class InteractionPromptHUD : MonoBehaviour
         }
     }
 
-    private void OnGUI()
+    private void Update()
     {
-        if (_playerInteractor == null || !_playerInteractor.CanInteract)
-        {
-            return;
-        }
+        if (_panel == null) return;
+
+        bool show = TryGetPrompt(out string prompt, out bool canInteract);
+        _panel.SetActive(show);
+        if (!show) return;
+
+        _panelText.text = prompt;
+        if (_panelKeyIcon != null) _panelKeyIcon.SetActive(canInteract);
+    }
+
+    private void OnDisable()
+    {
+        if (_panel != null) _panel.SetActive(false);
+    }
+
+    // 표시할 안내가 있으면 true. 패널과 OnGUI가 같은 규칙을 쓰도록 한 곳에서 판정
+    private bool TryGetPrompt(out string prompt, out bool canInteract)
+    {
+        prompt = null;
+        canInteract = false;
+
+        if (_playerInteractor == null || !_playerInteractor.CanInteract) return false;
 
         IInteractable target = _playerInteractor.CurrentTarget;
-        if (target == null)
-        {
-            return;
-        }
+        if (target == null) return false;
 
-        string prompt = target.InteractionPrompt;
-        if (string.IsNullOrWhiteSpace(prompt))
-        {
-            return;
-        }
+        prompt = target.InteractionPrompt;
+        if (string.IsNullOrWhiteSpace(prompt)) return false;
 
-        bool canInteract = target.CanInteract(_playerInteractor.gameObject);
-        if (!canInteract && !_showUnavailableStatus)
-        {
-            return;
-        }
+        canInteract = target.CanInteract(_playerInteractor.gameObject);
+        return canInteract || _showUnavailableStatus;
+    }
+
+    private void OnGUI()
+    {
+        if (_panel != null) return;
+        if (!TryGetPrompt(out string prompt, out bool canInteract)) return;
 
         EnsureStyle();
 

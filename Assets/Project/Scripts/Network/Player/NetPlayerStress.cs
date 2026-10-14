@@ -54,6 +54,7 @@ public class NetPlayerStress : NetworkBehaviour
 
         GameManager gm = GameManager.Instance;
         if (gm == null || gm.CurrentGameState != GameState.Ongoing) return;
+        if (!NetGameStartGate.HasStarted) return;
 
         _stress.SetStress(_stress.CurrentStress + delta);
     }

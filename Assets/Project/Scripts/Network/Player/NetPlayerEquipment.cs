@@ -39,6 +39,11 @@ public class NetPlayerEquipment : NetworkBehaviour
         base.OnStartServer();
         GetComponent<PlayerHealth>().Died += HandleDied;
     }
+    public override void OnStartClient()
+    {
+        base.OnStartClient();
+        if (!isLocalPlayer) _itemController.ApplyRemoteHeldVisual(EquippedItem);
+    }
     public override void OnStopServer()
     {
         GetComponent<PlayerHealth>().Died -= HandleDied;
@@ -90,6 +95,9 @@ public class NetPlayerEquipment : NetworkBehaviour
         ItemData item = EquippedItem;
         string itemName = item != null ? item.DisplayName : "없음";
         Debug.Log($"[NetPlayerEquipment] {name} 장착: {itemName}", this);
+
+        // 로컬 플레이어는 PlayerItemController가 이미 1~3인칭표시중
+        if (!isLocalPlayer) _itemController.ApplyRemoteHeldVisual(item);
 
         EquippedItemChanged?.Invoke(item);
     }
