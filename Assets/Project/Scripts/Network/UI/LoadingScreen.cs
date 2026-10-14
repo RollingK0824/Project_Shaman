@@ -9,6 +9,7 @@ using UnityEngine.UI;
 public class LoadingScreen : MonoBehaviour
 {
     [SerializeField] private GameObject _panel;   // Panel Loading
+    [SerializeField] private GameObject _loadingCamera;
     [SerializeField] private Image _progressFill;    // Progress Fill (Filled, Horizontal)
     [SerializeField] private TMP_Text _statusText;   // Text Status
 
@@ -40,12 +41,14 @@ public class LoadingScreen : MonoBehaviour
         _progressFill.fillAmount = 0f;
         _statusText.text = "불러오는 중...";
         _panel.SetActive(true);
+        if (_loadingCamera != null) _loadingCamera.SetActive(true);
     }
 
     public void Hide()
     {
         _completing = false;
         _panel.SetActive(false);
+        if (_loadingCamera != null) _loadingCamera.SetActive(false);
     }
 
     public void Complete()
