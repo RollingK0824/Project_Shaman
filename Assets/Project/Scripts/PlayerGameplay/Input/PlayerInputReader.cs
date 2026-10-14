@@ -7,6 +7,9 @@ public class PlayerInputReader : MonoBehaviour
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookInput { get; private set; }
     public bool SprintHeld { get; private set; }
+    [Header("Crouch Input")]
+    [SerializeField] private InputAction _crouch = new InputAction("Crouch", InputActionType.Button, "<Keyboard>/leftCtrl");
+    public bool CrouchHeld => isActiveAndEnabled && !WorldInputBlocked && _crouch.IsPressed();
 
     public bool GameplayInputBlocked { get; private set; }
 
@@ -47,6 +50,7 @@ public class PlayerInputReader : MonoBehaviour
     private void OnEnable()
     {
         _input.Player.Enable();
+        _crouch.Enable();
         _spectateUp.Enable();
         _spectateDown.Enable();
         _spectatePrevious.Enable();
@@ -120,6 +124,7 @@ public class PlayerInputReader : MonoBehaviour
         _input.Player.Slot6.performed -= OnSlot6;
 
         _input.Player.Disable();
+        _crouch.Disable();
         _spectateUp.Disable();
         _spectateDown.Disable();
         _spectatePrevious.Disable();
@@ -140,6 +145,7 @@ public class PlayerInputReader : MonoBehaviour
     private void OnDestroy()
     {
         _input?.Dispose();
+        _crouch.Dispose();
         _spectateUp.Dispose();
         _spectateDown.Dispose();
         _spectatePrevious.Dispose();

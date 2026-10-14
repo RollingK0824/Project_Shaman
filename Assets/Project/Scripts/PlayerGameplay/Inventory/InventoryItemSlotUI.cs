@@ -2,17 +2,29 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-public class InventoryItemSlotUI : MonoBehaviour
+public class InventoryItemSlotUI : MonoBehaviour, UnityEngine.EventSystems.IPointerClickHandler
 {
     [Header("References")]
     [SerializeField] private Image _icon;
     [SerializeField] private TMP_Text _countText;
+    [SerializeField] private TMP_Text _nameText;
 
     private ItemData _itemData;
+    private System.Action _use;
+    public void SetInstance(string displayName, System.Action use)
+    {
+        if (_nameText != null) _nameText.text = displayName;
+        if (_countText != null) _countText.text = string.Empty;
+        _use = use;
+    }
+    public void SetUse(System.Action use) => _use = use;
+    public void OnPointerClick(UnityEngine.EventSystems.PointerEventData e)
+    { if (e.button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) _use?.Invoke(); }
 
     public void Setup(ItemData itemData, int count)
     {
         _itemData = itemData;
+        _use = null;
 
         if (_icon != null)
         {
@@ -23,7 +35,8 @@ public class InventoryItemSlotUI : MonoBehaviour
 
         if (_countText != null)
         {
-            _countText.text = count > 1 ? $"x{count}" : "";
+            _countText.text = $"x{count}";
         }
+        if (_nameText != null) _nameText.text = itemData != null ? itemData.DisplayName : string.Empty;
     }
 }

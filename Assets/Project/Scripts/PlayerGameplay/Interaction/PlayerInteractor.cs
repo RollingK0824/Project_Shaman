@@ -105,6 +105,19 @@ public class PlayerInteractor : MonoBehaviour
                 .GetComponentInParent<IInteractable>();
     }
 
+    // Items share the existing camera, range and obstruction mask; no second aim controller.
+    public bool TryGetAttackRay(out Ray ray, out float reach)
+    {
+        ray = default; reach = 0f;
+        if (!CanInteract || !PlayerActionGuard.CanAct(gameObject) || _playerCamera == null) return false;
+        ray = new Ray(_playerCamera.transform.position, _playerCamera.transform.forward);
+        reach = _interactionDistance;
+        // Clip at the nearest solid surface but let the attack volume detect trigger-only hitboxes.
+        if (Physics.Raycast(ray, out var hit, reach, _interactionMask, QueryTriggerInteraction.Ignore))
+            reach = Mathf.Min(reach, hit.distance + .01f);
+        return reach > 0f;
+    }
+
     public bool TryGetTargetComponent<T>(
         out T target)
         where T : class
