@@ -28,7 +28,8 @@ SafeStressZone, AnomalyStressTest 구성과 IStressReceiver 진입점을 유지�
 - StressEventTrigger: Cause/Stress Amount/Once Per Entry. 기본 20.
   중복 Collider 진입을 한 번으로 묶되 다른 플레이어와 재진입은 별도 처리한다.
 - 영역 비활성화, Collider 비활성화, 순간이동으로 Exit 누락 시 잔여 효과를 정리한다.
-- 스트레스 자체는 체력을 변경하지 않으며 100에 도달해도 사망하지 않는다.
+- PlayerStressController 자체는 체력을 변경하지 않는다. 2026-10-13 추가된 PlayerStressDamage가
+  임계값 이상 지속 시 기존 PlayerHealth API로 주기적 피해를 주며, 체력이 소진되면 기존 사망 흐름을 따른다.
 
 어둠은 기존 영역 기반이다. 렌더링 픽셀 밝기를 자동 측정하는 시스템은 추가하지 않았다.
 귀신/이상현상 감지자는 실제 노출이 확정되는 지점에서 기존
@@ -90,4 +91,7 @@ High 상태의 걷기/달리기 속도도 유지됨을 확인했다.
 
 수동: DarkStressZone 진입 → 수치 증가 → SafeStressZone 진입 → 감소 → 영역 이탈 후 고정.
 AnomalyStressTest 재진입과 두 플레이어 진입을 확인하고, 35/70 경계에서 오디오와
-화면 효과를 관찰한다. 스트레스 100에서도 체력 감소나 사망이 없어야 한다.
+화면 효과를 관찰한다. 위 과거 비치명 스트레스 검증은 PlayerStressDamage 추가 전의 결과다.
+현재 Player (1)은 임시값 85 이상 10초 유지 시 2 피해, 이후 2초 간격으로 피해를 받는다.
+임계값 미만으로 내려가면 피해와 타이머가 초기화되어야 한다. 상세 연결 및 서버 판정 인계는
+Items/Talisman/README.md를 참고한다.

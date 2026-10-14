@@ -94,12 +94,17 @@ Play Mode 캡처의 '검증 재료/결과물'은 메모리에만 생성한 테�
 
 ## 새 아이템 추가
 
-ItemData 생성 → Category/Icon/WorldPrefab → HandProfile/VisualPrefab 및 3인칭 오프셋 연결 →
+ItemData 생성 → Category/Icon/WorldPrefab → VisualPrefab 및 First Person Local Position/Euler/Scale 연결 →
 필요하면 기존 ItemBase를 상속한 기능 컴포넌트 → 필요하면 CraftingRecipeData에 참조한다.
-Material은 HandProfile이 없어도 된다. 인벤토리/제작/퀵슬롯에 아이템 이름 분기를 추가하지 않는다.
-새로운 손 자세, 실제 제작 재료 밸런스와 네트워크 아이템 ID 등록은 각 담당자가 정한다.
+HandProfile/Grip은 더 이상 사용하지 않는다. 인벤토리/제작/퀵슬롯에 아이템 이름 분기를 추가하지 않는다.
+First Person Display Size는 메시의 가장 긴 축을 맞추는 기준값(현재 0.28m)이다. 0이면 크기 정규화를 끈다. 실제 제작 재료 밸런스와 네트워크 아이템 ID 등록은 각 담당자가 정한다.
 
 ## 검증 및 한계
+
+2026-10-13 재실행: 현재 브랜치에서 동일한 46개 항목이 모두 통과했다. Editor의 Game View
+포커스에 영향을 받지 않도록 테스트 동안만 복제한 InputSettings로 가상 키보드 입력을
+전달했고, 종료 시 원래 설정으로 복원했다. 프로젝트 입력 설정 파일은 수정하지 않았다.
+새 Game View 캡처와 상세 결과는 Codex 작업 폴더 outputs/PlayerItem-1013에 보관했다.
 
 Unity Editor의 PlayerPrototype Play Mode에서 런타임 테스트 오브젝트로 46개 검증을 통과했다.
 실제 씬은 저장하지 않았다. 테스트 오브젝트와 임시 레시피는 Play 종료 시 제거했다.

@@ -1,6 +1,5 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.Serialization;
-using Exorcist.FirstPerson;
 using ProjectShaman.ItemHold;
 
 [CreateAssetMenu(
@@ -18,7 +17,16 @@ public class ItemData : ScriptableObject
     [SerializeField] private GameObject _worldPrefab;
 
     [Header("First Person")]
-    [SerializeField] private HandItemProfile _handProfile;
+    [SerializeField] private Vector3 _firstPersonLocalPosition;
+    [SerializeField] private Vector3 _firstPersonLocalEuler;
+    [SerializeField] private Vector3 _firstPersonLocalScale = Vector3.one;
+    [Tooltip("Normalize the longest mesh dimension at equip time. Zero preserves authored scale.")]
+    [SerializeField, Min(0f)] private float _firstPersonDisplaySize = .28f;
+
+    public Vector3 FirstPersonLocalPosition => _firstPersonLocalPosition;
+    public Vector3 FirstPersonLocalEuler => _firstPersonLocalEuler;
+    public Vector3 FirstPersonLocalScale => _firstPersonLocalScale;
+    public float FirstPersonDisplaySize => _firstPersonDisplaySize;
 
     [FormerlySerializedAs("_heldPrefab")]
     [SerializeField] private GameObject _visualPrefab;
@@ -55,7 +63,6 @@ public class ItemData : ScriptableObject
 
     // 1인칭
     public GameObject VisualPrefab => _visualPrefab;
-    public HandItemProfile HandProfile => _handProfile;
 
     // 3인칭
     public HoldType HoldType => _holdType;

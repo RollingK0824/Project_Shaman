@@ -1,16 +1,15 @@
 using UnityEngine;
-using Exorcist.FirstPerson;
 using ProjectShaman.ItemHold;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerInventory))]
 public class PlayerItemController : MonoBehaviour
 {
+    private bool _firstPersonPresentationSuppressed;
+    public void SetFirstPersonPresentationSuppressed(bool suppressed) => _firstPersonPresentationSuppressed = suppressed;
     [Header("References")]
     [SerializeField] private Transform _itemHoldPoint;
 
-    [Header("First Person Hand")]
-    [SerializeField] private FirstPersonRightHand _rightHand;
 
     [Header("Third Person Hold")]
     [SerializeField] private ItemHoldDriver _itemHoldDriver;
@@ -70,11 +69,6 @@ public class PlayerItemController : MonoBehaviour
                 GetComponentInChildren<ItemHoldDriver>(true);
         }
 
-        // 게임 시작 시에는 1인칭 오른손 숨김
-        if (_rightHand != null)
-        {
-            _rightHand.gameObject.SetActive(false);
-        }
     }
 
 
@@ -99,6 +93,8 @@ public class PlayerItemController : MonoBehaviour
 
     private void OnDisable()
     {
+        UnequipCurrentItem();
+        DestroyThirdPersonVisual();
         if (_inventory != null) _inventory.QuickSlotChanged -= HandleQuickSlotChanged;
         if (_inputReader != null)
         {
@@ -120,10 +116,10 @@ public class PlayerItemController : MonoBehaviour
 
     private void LateUpdate()
     {
-        // Keep the hand rig running while hiding the camera-only view in third person.
+        // Presentation visibility never disables the equipped gameplay component.
         bool firstPerson = _viewModeController == null ||
             _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.FirstPerson;
-        SetVisualVisibility(_firstPersonRenderers, firstPerson);
+        SetVisualVisibility(_firstPersonRenderers, firstPerson && PlayerLocalPresentation.IsLocal(gameObject) && !_firstPersonPresentationSuppressed);
         SetVisualVisibility(_thirdPersonRenderers, !firstPerson);
     }
 
@@ -229,87 +225,88 @@ public class PlayerItemController : MonoBehaviour
 
     private void EquipFirstPerson(ItemData itemData)
     {
-        // -----------------------------------------------------
-        // FirstPersonRightHand 사용
-        // -----------------------------------------------------
-
-        if (_rightHand != null &&
-            itemData.HandProfile != null)
-        {
-            _rightHand.gameObject.SetActive(true);
-
-            _rightHand.Equip(
-                itemData.HandProfile
-            );
-
-            _equippedObject =
-                _rightHand.EquippedInstance;
-            _firstPersonRenderers = _rightHand.GetComponentsInChildren<Renderer>(true);
-
-            if (_equippedObject != null)
-            {
-                _equippedItem =
-                    _equippedObject
-                        .GetComponentInChildren<ItemBase>(true);
-            }
-
-            InitializeEquippedItem(itemData);
-
-            Debug.Log(
-                $"[Item] 1인칭 오른손 장착: " +
-                $"{itemData.DisplayName}",
-                gameObject
-            );
-
-            return;
-        }
-
-
-        // -----------------------------------------------------
-        // 기존 ItemHoldPoint Fallback
-        // -----------------------------------------------------
-
         if (_itemHoldPoint == null)
         {
-            Debug.LogWarning(
-                "[Item] ItemHoldPoint가 지정되지 않았습니다.",
-                gameObject
-            );
-
-            return;
+            var camera = GetComponentInChildren<Camera>(true);
+            if (camera != null)
+            {
+                _itemHoldPoint = camera.transform.Find("FirstPersonItemAnchor");
+                if (_itemHoldPoint == null)
+                {
+                    _itemHoldPoint = new GameObject("FirstPersonItemAnchor").transform;
+                    _itemHoldPoint.SetParent(camera.transform, false);
+                    _itemHoldPoint.localPosition = new Vector3(.23f, -.13f, .65f);
+                }
+            }
         }
-
-        if (itemData.VisualPrefab == null)
+        if (_itemHoldPoint == null || itemData.VisualPrefab == null)
         {
-            Debug.LogWarning(
-                $"[Item] {itemData.DisplayName}의 " +
-                "Visual Prefab이 없습니다.",
-                itemData
-            );
-
+            Debug.LogWarning($"[Item] {itemData.DisplayName}: Item Anchor or Visual Prefab is missing.", this);
             return;
         }
 
-        _equippedObject =
-            Instantiate(
-                itemData.VisualPrefab,
-                _itemHoldPoint
-            );
-
-        _equippedObject.transform.localPosition =
-            Vector3.zero;
-
-        _equippedObject.transform.localRotation =
-            Quaternion.identity;
+        _equippedObject = Instantiate(itemData.VisualPrefab, _itemHoldPoint, false);
+        var visual = _equippedObject.transform;
+        visual.localPosition = Vector3.zero;
+        visual.localRotation = Quaternion.Euler(itemData.FirstPersonLocalEuler);
+        // Preserve the prefab's imported orientation/scale underneath its root.
+        visual.localScale = Vector3.one;
         _firstPersonRenderers = _equippedObject.GetComponentsInChildren<Renderer>(true);
-
-        _equippedItem =
-            _equippedObject
-                .GetComponentInChildren<ItemBase>(true);
-
+        if (TryGetMeshBounds(_firstPersonRenderers, _itemHoldPoint, out Bounds bounds))
+        {
+            float longest = Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z);
+            float scale = itemData.FirstPersonDisplaySize > 0f && longest > .00001f
+                ? itemData.FirstPersonDisplaySize / longest : 1f;
+            visual.localScale = Vector3.Scale(Vector3.one * scale, itemData.FirstPersonLocalScale);
+            if (TryGetMeshBounds(_firstPersonRenderers, _itemHoldPoint, out bounds))
+                visual.localPosition = itemData.FirstPersonLocalPosition - bounds.center;
+        }
+        else
+        {
+            visual.localScale = itemData.FirstPersonLocalScale;
+            visual.localPosition = itemData.FirstPersonLocalPosition;
+        }
+        foreach (var col in _equippedObject.GetComponentsInChildren<Collider>(true)) col.enabled = false;
+        foreach (var rb in _equippedObject.GetComponentsInChildren<Rigidbody>(true)) { rb.isKinematic = true; rb.useGravity = false; }
+        _equippedItem = _equippedObject.GetComponentInChildren<ItemBase>(true);
         InitializeEquippedItem(itemData);
+        foreach (var component in _equippedObject.GetComponentsInChildren<MonoBehaviour>(true))
+            if (component is IItemVisualContext context) context.BindItemVisual(itemData, gameObject);
     }
 
+    // Measure actual geometry, excluding particle/trail bounds that grow during play.
+    private static bool TryGetMeshBounds(Renderer[] renderers, Transform relativeTo, out Bounds bounds)
+    {
+        bounds = default;
+        bool found = false;
+        foreach (var renderer in renderers)
+        {
+            if (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer)) continue;
+            Bounds local = renderer.localBounds;
+            Matrix4x4 matrix = relativeTo.worldToLocalMatrix * renderer.localToWorldMatrix;
+            for (int i = 0; i < 8; i++)
+            {
+                Vector3 point = matrix.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents,
+                    new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1)));
+                if (!found) { bounds = new Bounds(point, Vector3.zero); found = true; }
+                else bounds.Encapsulate(point);
+            }
+        }
+        return found;
+    }
+
+    private void UnequipFirstPerson()
+    {
+        // Clear references before callbacks: consuming an item can notify inventory listeners.
+        var item = _equippedItem;
+        var visual = _equippedObject;
+        _equippedItem = null;
+        _equippedObject = null;
+        _firstPersonRenderers = null;
+        item?.OnUseCanceled();
+        item?.OnUnequipped();
+        if (visual != null) { visual.SetActive(false); Destroy(visual); }
+    }
 
     private void InitializeEquippedItem(
         ItemData itemData)
@@ -331,30 +328,6 @@ public class PlayerItemController : MonoBehaviour
         );
 
         _equippedItem.OnEquipped();
-    }
-
-
-    private void UnequipFirstPerson()
-    {
-        if (_equippedItem != null)
-        {
-            _equippedItem.OnUnequipped();
-        }
-
-        if (_rightHand != null &&
-            _rightHand.CurrentItem != null)
-        {
-            _rightHand.Unequip();
-            _rightHand.gameObject.SetActive(false);
-        }
-        else if (_equippedObject != null)
-        {
-            Destroy(_equippedObject);
-        }
-
-        _equippedObject = null;
-        _equippedItem = null;
-        _firstPersonRenderers = null;
     }
 
 
@@ -482,6 +455,8 @@ public class PlayerItemController : MonoBehaviour
         visualTransform.localScale =
             itemData.ThirdPersonLocalScale;
         _thirdPersonRenderers = _thirdPersonVisual.GetComponentsInChildren<Renderer>(true);
+        foreach (var component in _thirdPersonVisual.GetComponentsInChildren<MonoBehaviour>(true))
+            if (component is IItemVisualContext context) context.BindItemVisual(itemData, gameObject);
 
         // 손에 든 아이템은 월드 충돌 대상이 아니므로
         // Collider를 끈다.
@@ -527,40 +502,19 @@ public class PlayerItemController : MonoBehaviour
     public void ClearHeldVisualsOnDeath()
     {
         CanUseItems = false;
-        _equippedItem?.OnUseCanceled();
         UnequipCurrentItem();
         DestroyThirdPersonVisual();
-        if (_rightHand != null) _rightHand.gameObject.SetActive(false);
     }
 
     public void UnequipCurrentItem()
     {
-        // 새로운 아이템을 기다리고 있던 상태도 취소
         _pendingThirdPersonItem = null;
-
-        UnequipFirstPerson();
-
-        if (_itemHoldDriver != null)
-        {
-            if (_itemHoldDriver.Phase != HoldPhase.Empty)
-            {
-                // 아이템을 든 채 자연스럽게 팔을 내린 뒤
-                // OnThirdPersonUnequipped에서 Visual 제거
-                _itemHoldDriver.Unequip();
-            }
-            else
-            {
-                DestroyThirdPersonVisual();
-            }
-        }
-        else
-        {
-            DestroyThirdPersonVisual();
-        }
-
         EquippedItemData = null;
+        UnequipFirstPerson();
+        if (_itemHoldDriver != null && _itemHoldDriver.Phase != HoldPhase.Empty)
+            _itemHoldDriver.Unequip();
+        else DestroyThirdPersonVisual();
     }
-
 
     // =========================================================
     // Use
@@ -590,8 +544,7 @@ public class PlayerItemController : MonoBehaviour
 
     private void UseItemCanceled()
     {
-        if (!CanUseItems || !PlayerActionGuard.CanAct(gameObject) ||
-            _equippedItem == null)
+        if (_equippedItem == null)
         {
             return;
         }

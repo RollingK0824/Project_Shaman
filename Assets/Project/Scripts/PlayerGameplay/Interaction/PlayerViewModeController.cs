@@ -73,6 +73,10 @@ public class PlayerViewModeController : MonoBehaviour
         _cameraController = GetComponent<PlayerCameraController>();
         _playerInteractor = GetComponent<PlayerInteractor>();
         _playerHealth = GetComponent<PlayerHealth>();
+        // Resolve the current character, including PL_1 replacements and inactive renderers.
+        var character = transform.Find("CharacterVisual");
+        if (character != null) _playerBodyRenderers = character.GetComponentsInChildren<Renderer>(true);
+        CurrentViewMode = _startViewMode;
     }
 
     private void Start()
@@ -108,6 +112,8 @@ public class PlayerViewModeController : MonoBehaviour
     private void OnDisable()
     {
         EndCurrentMode();
+        if (_playerBodyRenderers != null)
+            foreach (var body in _playerBodyRenderers) if (body != null) body.forceRenderingOff = false;
     }
 
     // =========================================================
@@ -136,6 +142,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     public void ToggleViewMode()
     {
+        if (_inputReader != null && (!_inputReader.isActiveAndEnabled || _inputReader.GameplayInputBlocked)) return;
         if (!PlayerActionGuard.CanAct(gameObject)) return;
         if (CurrentViewMode == ViewMode.FirstPerson)
         {
@@ -195,7 +202,8 @@ public class PlayerViewModeController : MonoBehaviour
             return;
         }
 
-        bool visible =
+        if (_playerBodyRenderers == null) return;
+        bool visible = !PlayerLocalPresentation.IsLocal(gameObject) ||
             CurrentViewMode == ViewMode.ThirdPerson;
 
         foreach (Renderer bodyRenderer in _playerBodyRenderers)
@@ -205,7 +213,7 @@ public class PlayerViewModeController : MonoBehaviour
                 continue;
             }
 
-            bodyRenderer.enabled = visible;
+            bodyRenderer.forceRenderingOff = !visible;
         }
     }
 

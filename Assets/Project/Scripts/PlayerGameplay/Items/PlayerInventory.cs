@@ -24,6 +24,8 @@ public class PlayerInventory : MonoBehaviour
 
     public event Action<int, ItemData> QuickSlotChanged;
     public event Action InventoryChanged;
+    // Per-unit delta lets instance data follow consumption/crafting without changing stack behavior.
+    public event Action<ItemData, int> ItemUnitsChanged;
     private bool _publishingTransaction;
 
 
@@ -47,6 +49,7 @@ public class PlayerInventory : MonoBehaviour
         }
 
         _items.Add(itemData);
+        ItemUnitsChanged?.Invoke(itemData, 1);
 
         ItemAdded?.Invoke(itemData);
 
@@ -138,6 +141,7 @@ public class PlayerInventory : MonoBehaviour
 
         int remainingCount =
             GetItemCount(itemData);
+        ItemUnitsChanged?.Invoke(itemData, -amount);
 
         ItemRemoved?.Invoke(itemData);
 
@@ -385,6 +389,8 @@ public class PlayerInventory : MonoBehaviour
         _publishingTransaction = true;
         try
         {
+            foreach (var cost in costs) ItemUnitsChanged?.Invoke(cost.Key, -cost.Value);
+            ItemUnitsChanged?.Invoke(result, resultAmount);
             foreach (var cost in costs) ItemRemoved?.Invoke(cost.Key);
             ItemAdded?.Invoke(result);
             foreach (var item in changed) ItemCountChanged?.Invoke(item, GetItemCount(item));

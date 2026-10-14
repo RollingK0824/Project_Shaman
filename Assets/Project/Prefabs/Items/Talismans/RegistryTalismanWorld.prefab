@@ -1,0 +1,185 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5950078963461761651
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 401626593131698188}
+  - component: {fileID: 7695059693922127133}
+  - component: {fileID: 7947788080795903387}
+  m_Layer: 0
+  m_Name: RegistryTalismanWorld
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &401626593131698188
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5950078963461761651}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 240114111016100292}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!65 &7695059693922127133
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5950078963461761651}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.085592, y: 0.22, z: 0.020156115}
+  m_Center: {x: 0, y: 0.11, z: -1.7443824e-12}
+--- !u!114 &7947788080795903387
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5950078963461761651}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79164f16b0a3fe348a05f19c17ed0bd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::WorldItem
+  _itemData: {fileID: 11400000, guid: fc393e8d10e63d64590a4e4fc6cd9645, type: 2}
+--- !u!1001 &351201599555700271
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 401626593131698188}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.23
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.23
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.23
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.000000013111276
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: efad1e39a65db2c47b1fce9f3004e4e2, type: 2}
+    - target: {fileID: 919132149155446097, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_Name
+      value: AuthoredModel
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 978959349778037822}
+  m_SourcePrefab: {fileID: 100100000, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+--- !u!4 &240114111016100292 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+  m_PrefabInstance: {fileID: 351201599555700271}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &585149297702222718 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+  m_PrefabInstance: {fileID: 351201599555700271}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &978959349778037822
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 585149297702222718}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 321f30f485470f84b9e7d892d59c57e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::TalismanDrawingSurface
+  _paperRenderer: {fileID: 1377576330269530795}
+  _paperImage: {fileID: 0}
+  _paperTexture: {fileID: 0}
+  _inkOnly: 1
+  _drawingRegion:
+    serializedVersion: 2
+    x: 0.23
+    y: 0.07
+    width: 0.53
+    height: 0.86
+  _paperColor: {r: 0.94, g: 0.83, b: 0.55, a: 1}
+  _inkColor: {r: 0.52, g: 0.06, b: 0.035, a: 1}
+--- !u!23 &1377576330269530795 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+  m_PrefabInstance: {fileID: 351201599555700271}
+  m_PrefabAsset: {fileID: 0}

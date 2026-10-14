@@ -1,4 +1,3 @@
-﻿using System.Collections.Generic;
 using UnityEngine;
 
 public class BellItem : ItemBase
@@ -7,6 +6,8 @@ public class BellItem : ItemBase
     [SerializeField] private float _effectRadius = 5f;
     [SerializeField] private LayerMask _targetMask = ~0;
 
+    [SerializeField, Min(.04f)] private float _pulseDuration = .15f;
+    [SerializeField, Min(0f)] private float _staggerDuration = .5f;
     private ParticleSystem _bellPulse;
 
 
@@ -82,39 +83,11 @@ public class BellItem : ItemBase
             gameObject
         );
 
-        Collider[] hits =
-            Physics.OverlapSphere(
-                Owner.transform.position,
-                _effectRadius,
-                _targetMask,
-                QueryTriggerInteraction.Collide
-            );
-
-        HashSet<IBellReactable> reactedTargets =
-            new HashSet<IBellReactable>();
-
-        foreach (Collider hit in hits)
-        {
-            IBellReactable reactable =
-                hit.GetComponentInParent<IBellReactable>();
-
-            if (reactable == null)
-            {
-                continue;
-            }
-
-            if (!reactedTargets.Add(reactable))
-            {
-                continue;
-            }
-
-            reactable.ReactToBell(Owner);
-        }
-
-        Debug.Log(
-            $"[Bell] 반응 대상 수: {reactedTargets.Count}",
-            gameObject
-        );
+        if (!ItemAttackAuthority.CanResolve(Owner)) return;
+        var control = new ItemControlEffect { Kind = ItemControlKind.Stagger, Duration = _staggerDuration };
+        var attack = new ItemAttackSession(Owner, 0f, control, ItemReactionFallback.Bell, _targetMask, _pulseDuration);
+        DamageTrigger.CreateSphere(attack, Owner.transform.position, _effectRadius, _pulseDuration);
+        Debug.Log($"[Bell] 반응 대상 수: {attack.AppliedTargetCount}", gameObject);
     }
 
 
