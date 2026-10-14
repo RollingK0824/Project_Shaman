@@ -13,6 +13,10 @@ public class NetGameStartGate : NetworkBehaviour
     [SerializeField, Min(0f)] private float _startDelay = 1f;    // 시작 시각 SyncVar가 모든 클라에 도착할 여유
 
     [SyncVar] private double _startTime;    // 0이면 아직 미정
+    // [서버 -> 모든 클라] 로딩 화면 표시용 준비 인원
+    [SyncVar] private int _readyCount;
+    [SyncVar] private int _expectedCount;
+
 
     public static NetGameStartGate Instance { get; private set; }
 
@@ -21,6 +25,10 @@ public class NetGameStartGate : NetworkBehaviour
 
     // 시작 시각에 한 번 발생 (서버·클라 각각)
     public static event Action Started;
+
+    public int ReadyCount => _readyCount;
+    public int ExpectedCount => _expectedCount;
+    public bool IsStartScheduled => _startTime > 0;
 
     // 이미 시작했으면 바로 실행, 아니면 시작할 때 한 번 실행
     public static void WhenStarted(Action action)
@@ -120,6 +128,9 @@ public class NetGameStartGate : NetworkBehaviour
     [Server]
     private void ServerCheck()
     {
+        _readyCount = _ready.Count;
+        _expectedCount = _expected.Count;
+
         if (_decided) return;
 
         NetInitState init = _netGM != null ? _netGM.ServerInitState : NetInitState.Ready;
