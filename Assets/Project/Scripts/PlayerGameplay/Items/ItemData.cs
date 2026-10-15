@@ -64,6 +64,10 @@ public class ItemData : ScriptableObject
     )]
     [SerializeField] private int _thirdPersonUseMotionId;
 
+    [Header("Use")]
+    [Tooltip("사용 판정. 비워두면 사용 요청을 보내지 않음(장착, 연출만)")]
+    [SerializeField] private ItemUseAction _useAction; 
+
     public string DisplayName => _displayName;
     public ItemCategory Category => _category;
     public bool CanUseQuickSlot => _category != ItemCategory.Material && _canUseQuickSlot;
@@ -93,4 +97,6 @@ public class ItemData : ScriptableObject
 
     public int ThirdPersonUseMotionId =>
         _thirdPersonUseMotionId;
+
+    public ItemUseAction UseAction => _useAction;
 }

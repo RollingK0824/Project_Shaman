@@ -18,6 +18,14 @@ public static class PlayerEvents
     // 스트레스 변화
     public static event Action<PlayerStressController, float, StressCause, GameObject> StressRequested;
 
+    // 플레이어가 아이템을 사용하려고 할때
+    public static event Action<ItemUseContext> ItemUseRequested;
+
+
+
+
+
+
     public static void RaiseDamageRequested(IDamageable target, float amount, GameObject source)
     {
         if (target == null)
@@ -70,6 +78,17 @@ public static class PlayerEvents
         FlagActivateRequested?.Invoke(interactor, flag);
     }
 
+    public static void RaiseItemUseRequested(ItemUseContext context)
+    {
+        if (!PlayerActionGuard.CanAct(context.Owner) || context.Data == null || context.Data.UseAction == null)
+        {
+            return;
+        }
+
+        ItemUseRequested?.Invoke(context);
+    }
+
+
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetOnPlay()
@@ -79,5 +98,6 @@ public static class PlayerEvents
         PickupRequested = null;
         StressRequested = null;
         FlagActivateRequested = null;
+        ItemUseRequested = null;
     }
 }
