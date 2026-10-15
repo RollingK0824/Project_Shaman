@@ -9,6 +9,7 @@ using System.Collections.Generic;
 [RequireComponent(typeof(ItemAttackAuthority))]
 public class NetPlayerItemUse : NetworkBehaviour
 {
+    private const double ServerCooldownTolerance = 0.1;
     [SerializeField] private NetItemDataBase _dataBase;
     [SerializeField] private float _maxAimOriginDistance = 3f;  // 카메라 위치가 몸에서 이 거리보다 멀면 거부
 
@@ -99,7 +100,7 @@ public class NetPlayerItemUse : NetworkBehaviour
 
         if (!data.UseAction.Execute(context)) return;
 
-        _serverNextUseTime[itemId] = NetworkTime.time + data.UseAction.Cooldown;
+        _serverNextUseTime[itemId] = NetworkTime.time + System.Math.Max(0.0, data.UseAction.Cooldown - ServerCooldownTolerance);
         Debug.Log($"[NetPlayerItemUse] 사용 판정 : {name} -> {data.DisplayName}", this);
 
         RpcPlayUsePresentation(itemId, aimOrigin, aimDirection);
