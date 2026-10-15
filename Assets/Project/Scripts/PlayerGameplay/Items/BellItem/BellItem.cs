@@ -1,12 +1,28 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 public class BellItem : ItemBase
 {
     [Header("Bell Effect")]
     [SerializeField] private float _effectRadius = 5f;
-
     [SerializeField] private LayerMask _targetMask = ~0;
+
+    [SerializeField, Min(.04f)] private float _pulseDuration = .15f;
+    [SerializeField, Min(0f)] private float _staggerDuration = .5f;
+    private ParticleSystem _bellPulse;
+
+
+    private void Awake()
+    {
+        Transform pulseTransform =
+            transform.Find("BellEffectPoint/BellPulse");
+
+        if (pulseTransform != null)
+        {
+            _bellPulse =
+                pulseTransform.GetComponent<ParticleSystem>();
+        }
+    }
+
 
     public override void OnEquipped()
     {
@@ -21,6 +37,7 @@ public class BellItem : ItemBase
         );
     }
 
+
     public override void OnUnequipped()
     {
         if (Data == null)
@@ -34,9 +51,14 @@ public class BellItem : ItemBase
         );
     }
 
+
     public override void OnUseStarted()
     {
-        if (!PlayerActionGuard.CanAct(Owner)) return;
+        if (!PlayerActionGuard.CanAct(Owner))
+        {
+            return;
+        }
+
         if (Owner == null)
         {
             return;
@@ -45,55 +67,45 @@ public class BellItem : ItemBase
         UseBell();
     }
 
+
     public override void OnUseCanceled()
     {
-        // 방울은 클릭 순간 한 번 사용하는 아이템이므로
-        // 현재 프로토타입에서는 해제 시 별도 처리를 하지 않는다.
+        // 방울은 클릭 순간 한 번 사용
     }
+
 
     private void UseBell()
     {
+        PlayBellPulse();
+
         Debug.Log(
             $"[Bell] 사용: {Data.DisplayName}",
             gameObject
         );
 
-        Collider[] hits =
-            Physics.OverlapSphere(
-                Owner.transform.position,
-                _effectRadius,
-                _targetMask,
-                QueryTriggerInteraction.Collide
-            );
+        if (!ItemAttackAuthority.CanResolve(Owner)) return;
+        var control = new ItemControlEffect { Kind = ItemControlKind.Stagger, Duration = _staggerDuration };
+        var attack = new ItemAttackSession(Owner, 0f, control, ItemReactionFallback.Bell, _targetMask, _pulseDuration);
+        DamageTrigger.CreateSphere(attack, Owner.transform.position, _effectRadius, _pulseDuration);
+        Debug.Log($"[Bell] 반응 대상 수: {attack.AppliedTargetCount}", gameObject);
+    }
 
-        HashSet<IBellReactable> reactedTargets =
-            new HashSet<IBellReactable>();
 
-        foreach (Collider hit in hits)
+    private void PlayBellPulse()
+    {
+        if (_bellPulse == null)
         {
-            IBellReactable reactable =
-                hit.GetComponentInParent<IBellReactable>();
-
-            if (reactable == null)
-            {
-                continue;
-            }
-
-            // NPC에 Collider가 여러 개 있어도
-            // 같은 대상에게 여러 번 전달하지 않는다.
-            if (!reactedTargets.Add(reactable))
-            {
-                continue;
-            }
-
-            reactable.ReactToBell(Owner);
+            return;
         }
 
-        Debug.Log(
-            $"[Bell] 반응 대상 수: {reactedTargets.Count}",
-            gameObject
+        _bellPulse.Stop(
+            true,
+            ParticleSystemStopBehavior.StopEmittingAndClear
         );
+
+        _bellPulse.Play();
     }
+
 
     private void OnDrawGizmosSelected()
     {

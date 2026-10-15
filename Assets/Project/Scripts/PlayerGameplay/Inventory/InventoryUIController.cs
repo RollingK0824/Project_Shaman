@@ -10,6 +10,8 @@ public class InventoryUIController : MonoBehaviour
     private GameObject _inventoryPanel;
 
     public bool IsOpen { get; private set; }
+    public bool OwnsPanel(Transform panel) => _inventoryPanel != null &&
+        (panel == _inventoryPanel.transform || panel.IsChildOf(_inventoryPanel.transform));
 
 
     private void OnEnable()
@@ -57,6 +59,7 @@ public class InventoryUIController : MonoBehaviour
 
     private void ToggleInventory()
     {
+        if (!IsOpen && _inputReader != null && (!_inputReader.isActiveAndEnabled || _inputReader.GameplayInputBlocked)) return;
         SetInventoryOpen(
             !IsOpen
         );

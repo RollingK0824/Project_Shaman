@@ -1,0 +1,163 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &2884379638761544740
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 8027235641053315340}
+  - component: {fileID: 269332515021029713}
+  m_Layer: 0
+  m_Name: RegistryTalismanHeld
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &8027235641053315340
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2884379638761544740}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1654890560398861745}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &269332515021029713
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2884379638761544740}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 81fea23ad47353948aa333ab428c82a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::TalismanItem
+  _drawingPanelPrefab: {fileID: 6748382093877189332, guid: 6ea9370a248e6854182e316127391cfa, type: 3}
+--- !u!1001 &1260413399779885658
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 8027235641053315340}
+    m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.22390853
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.22390853
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.22390853
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0.025
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0.000000013111276
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: -0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: efad1e39a65db2c47b1fce9f3004e4e2, type: 2}
+    - target: {fileID: 919132149155446097, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      propertyPath: m_Name
+      value: AuthoredModel
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3293031984984215626}
+  m_SourcePrefab: {fileID: 100100000, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+--- !u!23 &485393628561628894 stripped
+MeshRenderer:
+  m_CorrespondingSourceObject: {fileID: -7511558181221131132, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+  m_PrefabInstance: {fileID: 1260413399779885658}
+  m_PrefabAsset: {fileID: 0}
+--- !u!4 &1654890560398861745 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+  m_PrefabInstance: {fileID: 1260413399779885658}
+  m_PrefabAsset: {fileID: 0}
+--- !u!1 &2142739937152794379 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: f3919da74dccf3440a12b4fb3813da55, type: 3}
+  m_PrefabInstance: {fileID: 1260413399779885658}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &3293031984984215626
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2142739937152794379}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 321f30f485470f84b9e7d892d59c57e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::TalismanDrawingSurface
+  _paperRenderer: {fileID: 485393628561628894}
+  _paperImage: {fileID: 0}
+  _paperTexture: {fileID: 0}
+  _inkOnly: 1
+  _drawingRegion:
+    serializedVersion: 2
+    x: 0.23
+    y: 0.07
+    width: 0.53
+    height: 0.86
+  _paperColor: {r: 0.94, g: 0.83, b: 0.55, a: 1}
+  _inkColor: {r: 0.52, g: 0.06, b: 0.035, a: 1}
