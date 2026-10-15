@@ -6,6 +6,7 @@ using System.Collections.Generic;
 // [서버]      - 보유, 쿨다운, 조준값을 검증한 뒤 ItemUseAction.Execute로 판정
 // [다른 클라] - 판정이 성공하면 RPC로 연출만 재생
 [RequireComponent(typeof(NetworkIdentity), typeof(PlayerInventory), typeof(NetPlayerInventory))]
+[RequireComponent(typeof(ItemAttackAuthority))]
 public class NetPlayerItemUse : NetworkBehaviour
 {
     [SerializeField] private NetItemDataBase _dataBase;
@@ -15,6 +16,8 @@ public class NetPlayerItemUse : NetworkBehaviour
     private NetPlayerInventory _netInventory;
     private NetPlayerStatus _status;
 
+    private ItemAttackAuthority _attackAuthority;
+
     private readonly Dictionary<int, double> _serverNextUseTime = new Dictionary<int, double>();
 
     private void Awake()
@@ -22,6 +25,29 @@ public class NetPlayerItemUse : NetworkBehaviour
         _inventory = GetComponent<PlayerInventory>();
         _netInventory = GetComponent<NetPlayerInventory>();
         _status = GetComponent<NetPlayerStatus>();
+        _attackAuthority = GetComponent<ItemAttackAuthority>();
+    }
+
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+        if (_attackAuthority != null) _attackAuthority.SetAuthorityCheck(ServerCanResolveAttack);
+    }
+
+    public override void OnStopServer()
+    {
+        if (_attackAuthority != null) _attackAuthority.SetAuthorityCheck(null);
+        base.OnStopServer();
+    }
+
+    // [서버] 공격이 대상에 닿을 때마다 호출됨. 쿨다운, 소모는 여기서 하지 않고 지금 상태만 확인
+    private bool ServerCanResolveAttack()
+    {
+        if (!isServer) return false;
+        if (_status != null && _status.IsDead) return false;
+
+        GameManager gm = GameManager.Instance;
+        return gm != null && gm.CurrentGameState == GameState.Ongoing && NetGameStartGate.HasStarted;
     }
 
     public override void OnStartLocalPlayer()
@@ -55,11 +81,7 @@ public class NetPlayerItemUse : NetworkBehaviour
     private void CmdUseItem(int itemId, Vector3 aimOrigin, Vector3 aimDirection)
     {
         if (!PlayerActionGuard.CanAct(gameObject)) return;
-        if (_status != null && _status.IsDead) return;
-
-        GameManager gm = GameManager.Instance;
-        if (gm == null || gm.CurrentGameState != GameState.Ongoing) return;
-        if (!NetGameStartGate.HasStarted) return;
+        if (!ServerCanResolveAttack()) return;
 
         ItemData data = _dataBase.GetItem(itemId);
         if (data == null || data.UseAction == null) return;
