@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class MirrorItem : ItemBase
 {
@@ -7,6 +7,18 @@ public class MirrorItem : ItemBase
     private MirrorObservationView _observationView;
 
 
+    public override void Initialize(ItemData data, GameObject owner)
+    {
+        base.Initialize(data, owner);
+        if (_observationView == null) _observationView = GetComponentInChildren<MirrorObservationView>(true);
+        if (_observationView != null) _observationView.BindOwner(owner);
+    }
+    public override void OnUnequipped() { if (_observationView != null) _observationView.Release(); }
+    private void OnDisable() { if (_observationView != null) _observationView.Release(); }
+    private void Update()
+    {
+        if (_observationView != null && !PlayerActionGuard.CanAct(Owner)) _observationView.Release();
+    }
     public override void OnUseStarted()
     {
         if (Owner == null ||

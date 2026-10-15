@@ -3,5 +3,6 @@
     Investigation,
     Defense,
     Designation,
-    Material
+    Material,
+    Effect
 }

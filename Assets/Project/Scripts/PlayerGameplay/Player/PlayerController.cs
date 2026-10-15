@@ -25,6 +25,7 @@ public class PlayerController : NetworkBehaviour
     private CharacterController _characterController;
     private PlayerInputReader _inputReader;
     private PlayerCrouch _crouch;
+    private PlayerTalismanEffectController _talismanEffects;
 
     private float _verticalVelocity;
     private bool _jumpQueued;
@@ -55,6 +56,7 @@ public class PlayerController : NetworkBehaviour
     private void Awake()
     {
         _crouch = GetComponent<PlayerCrouch>();
+        _talismanEffects = GetComponent<PlayerTalismanEffectController>();
         _characterController =
             GetComponent<CharacterController>();
 
@@ -143,6 +145,7 @@ public class PlayerController : NetworkBehaviour
             ? _sprintSpeed
             : _walkSpeed;
         if (_crouch != null) moveSpeed *= _crouch.SpeedMultiplier;
+        if (_talismanEffects != null) moveSpeed *= _talismanEffects.MovementMultiplier;
 
         Vector3 velocity =
             moveDirection * moveSpeed;

@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -32,7 +32,13 @@ public class QuickSlotUI : MonoBehaviour
     private Color _selectedColor =
         new Color(1f, 0.72f, 0.18f, 0.18f);
 
+    [Header("Presentation")]
+    [SerializeField, Range(.4f, .85f)] private float _iconAreaRatio = .68f;
+    [SerializeField] private Color _selectionAccent = new Color(.67f, .34f, .09f, 1f);
+
     private int _selectedIndex = -1;
+    private readonly TalismanDrawingSurface[] _drawings = new TalismanDrawingSurface[6];
+    private readonly Image[] _selectionFrames = new Image[6];
 
     public void Bind(PlayerInventory inventory, PlayerInputReader inputReader)
     {
@@ -48,6 +54,7 @@ public class QuickSlotUI : MonoBehaviour
 
     private void OnEnable()
     {
+        ApplyPresentationLayout();
         if (_inventory != null && _inventory.TryGetComponent<PlayerItemController>(out var items)) _selectedIndex = items.SelectedSlotIndex;
         if (_inputReader != null)
         {
@@ -98,6 +105,41 @@ public class QuickSlotUI : MonoBehaviour
     }
 
 
+    private void ApplyPresentationLayout()
+    {
+        // The ornamental art is a child Image. A sprite-less panel behind it leaves gray square corners.
+        var backdrop = GetComponent<Image>();
+        if (backdrop != null && backdrop.sprite == null && GetComponent<Mask>() == null)
+        {
+            backdrop.color = Color.clear;
+            backdrop.raycastTarget = false;
+        }
+        for (int i = 0; i < _slotIcons.Length && i < _slotBackgrounds.Length; i++)
+        {
+            var icon = _slotIcons[i];
+            var slot = _slotBackgrounds[i];
+            if (icon == null || slot == null) continue;
+            slot.raycastTarget = false;
+            var rect = icon.rectTransform;
+            rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+            rect.pivot = new Vector2(.5f, .5f);
+            rect.anchoredPosition = new Vector2(2f, -1f);
+            rect.sizeDelta = Vector2.one * Mathf.Min(slot.rectTransform.rect.width, slot.rectTransform.rect.height) * _iconAreaRatio;
+            icon.raycastTarget = false;
+            if (i >= _countTexts.Length || _countTexts[i] == null) continue;
+            var count = _countTexts[i];
+            var countRect = count.rectTransform;
+            countRect.anchorMin = countRect.anchorMax = countRect.pivot = new Vector2(1f, 0f);
+            countRect.anchoredPosition = new Vector2(-7f, 5f);
+            countRect.sizeDelta = new Vector2(46f, 20f);
+            count.fontSize = 17f;
+            count.fontStyle = FontStyles.Bold;
+            count.alignment = TextAlignmentOptions.BottomRight;
+            count.color = new Color(.23f, .14f, .07f, 1f);
+            count.raycastTarget = false;
+        }
+    }
+
     // =========================================================
     // Selection
     // =========================================================
@@ -111,6 +153,8 @@ public class QuickSlotUI : MonoBehaviour
             return;
         }
 
+        if (_inventory != null && _inventory.TryGetComponent<PlayerItemController>(out var items) &&
+            (!items.CanUseItems || !PlayerActionGuard.CanAct(_inventory.gameObject))) return;
         _selectedIndex = slotIndex;
 
         RefreshSelection();
@@ -131,9 +175,30 @@ public class QuickSlotUI : MonoBehaviour
                 continue;
             }
 
+            if (_selectionFrames[i] == null)
+            {
+                var go = new GameObject("SelectedSlotFrame", typeof(RectTransform), typeof(Image));
+                go.transform.SetParent(background.transform, false);
+                var rect = (RectTransform)go.transform;
+                rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
+                rect.anchoredPosition = new Vector2(0f, -7f);
+                rect.sizeDelta = new Vector2(28f, 3f);
+                var frame = go.GetComponent<Image>(); frame.raycastTarget = false;
+                frame.color = _selectionAccent;
+                // Small seal-like marker follows the parchment art without redrawing its border.
+                var marker = new GameObject("SelectionMarker", typeof(RectTransform), typeof(Image));
+                marker.transform.SetParent(rect, false);
+                var markerRect = (RectTransform)marker.transform;
+                markerRect.sizeDelta = new Vector2(8f, 8f);
+                markerRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
+                var markerImage = marker.GetComponent<Image>(); markerImage.raycastTarget = false;
+                markerImage.color = _selectionAccent;
+                _selectionFrames[i] = frame;
+            }
+            _selectionFrames[i].gameObject.SetActive(i == _selectedIndex);
             background.color =
                 i == _selectedIndex
-                    ? _selectedColor
+                    ? new Color(_selectionAccent.r, _selectionAccent.g, _selectionAccent.b, Mathf.Min(_selectedColor.a, .12f))
                     : _normalColor;
         }
     }
@@ -239,6 +304,32 @@ public class QuickSlotUI : MonoBehaviour
             return;
         }
 
+        // Older scene UI starts Icon GameObjects inactive, not just their Image components.
+        iconImage.gameObject.SetActive(itemData != null);
+        var drawing = _inventory != null ? _inventory.GetQuickSlotDrawing(slotIndex) : null;
+        if (drawing != null && itemData is TalismanItemData talisman)
+        {
+            if (_drawings[slotIndex] == null)
+            {
+                var go = new GameObject("DrawingThumbnail", typeof(RectTransform), typeof(RawImage), typeof(AspectRatioFitter), typeof(TalismanDrawingSurface));
+                go.transform.SetParent(iconImage.transform, false);
+                var rect = (RectTransform)go.transform;
+                rect.anchorMin = Vector2.zero; rect.anchorMax = Vector2.one;
+                rect.offsetMin = rect.offsetMax = Vector2.zero;
+                var fit = go.GetComponent<AspectRatioFitter>(); fit.aspectMode = AspectRatioFitter.AspectMode.FitInParent; fit.aspectRatio = .5f;
+                go.GetComponent<RawImage>().raycastTarget = false;
+                _drawings[slotIndex] = go.GetComponent<TalismanDrawingSurface>();
+            }
+            var surface = _drawings[slotIndex];
+            surface.BindThumbnail(surface.GetComponent<RawImage>(), talisman, drawing);
+            iconImage.enabled = false;
+            return;
+        }
+        if (_drawings[slotIndex] != null)
+        {
+            _drawings[slotIndex].gameObject.SetActive(false);
+            Destroy(_drawings[slotIndex].gameObject); _drawings[slotIndex] = null;
+        }
         Sprite icon =
             itemData != null
                 ? itemData.Icon
@@ -280,13 +371,8 @@ public class QuickSlotUI : MonoBehaviour
                 itemData
             );
 
-        if (itemData is TalismanItemData talisman && _inventory.TryGetComponent<PlayerTalismanCollection>(out var collection))
-        {
-            var selected = collection.GetSelected(talisman);
-            if (selected != null && selected.IsCustom) { HideCount(countText); return; }
-            count = 0;
-            foreach (var sheet in collection.GetInstances(talisman)) if (!sheet.IsCustom) count++;
-        }
+        if (!string.IsNullOrEmpty(_inventory.GetQuickSlotInstanceId(slotIndex)))
+        { HideCount(countText); return; }
         if (count <= 1)
         {
             HideCount(countText);

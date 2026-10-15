@@ -225,7 +225,6 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         IsDead = false;
     }
 
-    //private void Die(GameObject source)
     public void ApplyDeath(GameObject source = null)
     {
         if (!HasAuthority || IsDead) return;

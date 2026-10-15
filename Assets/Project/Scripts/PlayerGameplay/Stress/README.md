@@ -52,7 +52,7 @@ SafeStressZone, AnomalyStressTest 구성과 IStressReceiver 진입점을 유지�
 카메라 Look, 이동 속도, 체력, 기존 Animator를 덮어쓰지 않고 별도 Pivot의 로컬 오프셋을 사용한다.
 
 Inspector 연결: Feedback Pivot → 기존 HitFeedbackPivot, Feedback Camera → Main Camera,
-Hand Feedback Pivot → FirstPersonRightHand, Stress Volume → StressFeedback의 Volume,
+Hand Feedback Pivot은 현재 Player (1)에서 비어 있다. Stress Volume → StressFeedback의 Volume,
 Heartbeat/Breathing Source → 전용 AudioSource. 기존 Hit Volume은 유지한다.
 음량, pitch, shake 크기/속도, blend 속도는 Inspector에서 조정한다.
 
@@ -60,9 +60,10 @@ Heartbeat/Breathing Source → 전용 AudioSource. 기존 Hit Volume은 유지�
 `Assets/Project/Audio/Stress/Stress_Heartbeat.wav`, `Stress_Breathing.wav`.
 루프음은 이 작업에서 생성한 기본 효과음이며 팀 오디오로 교체 가능하다.
 
-Player (1)과 NetPlayer 모두 기존 Main Camera 아래 StressFeedback/Heartbeat/Breathing을
-연결했다. NetPlayer에는 현재 FirstPersonRightHand가 없으므로 그 참조는 비워 두었다.
-새 손 모델을 생성하지 않았으며, 기존 카메라 흔들림은 현재 카메라 아래 아이템에도 적용된다.
+현재 Player (1)은 PL_1과 손 없는 FirstPersonItemAnchor를 사용한다. PlayerHandSway의 Visual Pivot은
+FirstPersonItemAnchor이며, PlayerFeedbackController의 Hand Feedback Pivot은 null이다.
+옛 손 오브젝트나 Grip을 다시 연결하지 않는다. 기존 카메라 흔들림도 카메라 아래 아이템에 적용된다.
+NetPlayer의 표현 연결 변경은 네트워크 담당 영역이며 5단계에서 수정하지 않았다.
 
 ## 기존 네트워크 구조와 연결
 

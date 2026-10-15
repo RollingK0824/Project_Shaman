@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class InventoryPanelUI : MonoBehaviour
@@ -11,6 +11,24 @@ public class InventoryPanelUI : MonoBehaviour
     private readonly List<ItemData> _removed = new();
     private readonly Dictionary<string, InventoryItemSlotUI> _customSlots = new();
     private PlayerTalismanCollection _talismans;
+    [SerializeField] private EffectTalismanInventoryView _effectViewPrefab;
+    private EffectTalismanInventoryView _effectView;
+    public bool IsEffectViewOpen => _effectView != null && _effectView.gameObject.activeSelf;
+    public bool BackToMain()
+    {
+        if (!IsEffectViewOpen) return false;
+        _effectView.gameObject.SetActive(false); _itemGrid.gameObject.SetActive(true); Refresh(); return true;
+    }
+    public void OpenEffectGroup()
+    {
+        // Scene-authored panels predating the grouped inventory may not have this new field.
+        // Resolve the same UI prefab from the bound Player, without changing scene overrides.
+        if (_effectViewPrefab == null && _inventory != null)
+            _effectViewPrefab = _inventory.GetComponent<PlayerTalismanDrawingController>()?.EffectInventoryPrefab;
+        if (_talismans == null || _talismans.DrawnEffectCount == 0 || _effectViewPrefab == null) return;
+        if (_effectView == null) _effectView = Instantiate(_effectViewPrefab, transform);
+        _effectView.Bind(_talismans, () => BackToMain()); _itemGrid.gameObject.SetActive(false); _effectView.gameObject.SetActive(true);
+    }
 
     public void Bind(PlayerInventory inventory)
     {
@@ -46,11 +64,7 @@ public class InventoryPanelUI : MonoBehaviour
 
         _inventory.InventoryChanged -= Refresh;
         if (_talismans != null) _talismans.SelectionChanged -= Refresh;
-    }
-
-    private void HandleItemCountChanged(ItemData itemData, int count)
-    {
-        Refresh();
+        BackToMain();
     }
 
     public void Refresh()
@@ -66,7 +80,7 @@ public class InventoryPanelUI : MonoBehaviour
         _customSlots.Clear();
         foreach (var entry in _slots)
         {
-            if (_inventory != null && _inventory.Contains(entry.Key)) continue;
+            if (_inventory != null && _inventory.Contains(entry.Key) && !(entry.Key is TalismanItemData effect && effect.IsEffectTalisman)) continue;
             if (entry.Value != null) { entry.Value.gameObject.SetActive(false); Destroy(entry.Value.gameObject); }
             _removed.Add(entry.Key);
         }
@@ -76,8 +90,12 @@ public class InventoryPanelUI : MonoBehaviour
         // PlayerInventory에는 같은 ItemData가 수량만큼 들어 있으므로
         // 같은 종류는 한 번만 슬롯을 생성한다.
         HashSet<ItemData> displayedItems = new HashSet<ItemData>();
+        int blankEffects = 0;
+        TalismanItemData blankTemplate = null;
 
-        foreach (ItemData itemData in _inventory.Items)
+        var visibleItems = new List<ItemData>(_inventory.Items);
+        if (_inventory.SharedMaterials != null) visibleItems.AddRange(_inventory.SharedMaterials.Counts.Keys);
+        foreach (ItemData itemData in visibleItems)
         {
             if (itemData == null ||
                 displayedItems.Contains(itemData))
@@ -88,6 +106,12 @@ public class InventoryPanelUI : MonoBehaviour
             displayedItems.Add(itemData);
 
             int count = _inventory.GetItemCount(itemData);
+            // Legacy/test data references may coexist with the canonical asset after migration.
+            // Their blank quantities still occupy one visible group, while ownership keeps its original references.
+            if (itemData is TalismanItemData blank && blank.IsEffectTalisman && _talismans != null)
+            {
+                blankEffects += count; blankTemplate ??= blank; continue;
+            }
 
             if (!_slots.TryGetValue(itemData, out var slot) || slot == null)
             {
@@ -113,6 +137,21 @@ public class InventoryPanelUI : MonoBehaviour
                 slot.SetUse(() => UseTalisman(talisman, plainId));
             }
         }
+        if (blankTemplate != null && blankEffects > 0)
+        {
+            var row = Instantiate(_itemSlotPrefab, _itemGrid);
+            row.Setup(blankTemplate, blankEffects); row.SetLabel("미사용 효과 부적"); row.SetUse(() => UseTalisman(blankTemplate, null));
+            _customSlots["effect-blanks"] = row;
+        }
+        if (_talismans != null && _talismans.DrawnEffectCount > 0)
+        {
+            TalismanItemData template = null;
+            foreach (var type in _talismans.ItemTypes) if (type.IsEffectTalisman && _talismans.GetInstances(type).Count > 0) { template = type; break; }
+            var row = Instantiate(_itemSlotPrefab, _itemGrid);
+            row.Setup(template, _talismans.DrawnEffectCount); row.SetLabel("드로잉된 효과 부적"); row.SetUse(OpenEffectGroup);
+            _customSlots["effect-group"] = row;
+        }
+        if (IsEffectViewOpen) _effectView.Refresh();
     }
     private void UseTalisman(TalismanItemData item, string id)
     {

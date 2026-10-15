@@ -90,7 +90,7 @@ public class CraftingPanelUI : MonoBehaviour
         var text = new StringBuilder();
         if (valid)
             foreach (var cost in _costs)
-                text.AppendLine($"{cost.Key.DisplayName}    {(_crafting != null && _crafting.Inventory != null ? _crafting.Inventory.GetItemCount(cost.Key) : 0)} / {cost.Value}");
+                text.AppendLine($"{(cost.Key.Category == ItemCategory.Material ? "[공용] " : "")}{cost.Key.DisplayName}    {(_crafting != null && _crafting.Inventory != null ? _crafting.Inventory.GetItemCount(cost.Key) : 0)} / {cost.Value}");
         if (_requirementsText != null) _requirementsText.text = text.ToString();
         bool canCraft = valid && _crafting != null && _crafting.CanRequestCraft(recipe);
         if (_craftButton != null) _craftButton.interactable = canCraft;

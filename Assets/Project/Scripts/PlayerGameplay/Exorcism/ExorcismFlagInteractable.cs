@@ -60,7 +60,6 @@ public class ExorcismFlagInteractable : MonoBehaviour, IInteractable
         // 직접 활성화 x
         PlayerEvents.RaiseFlagActivateRequested(interactor, this);
 
-        //Activate(interactor);
     }
 
     public void SetRitualActive(bool isActive)

@@ -1,3 +1,5 @@
+> **Legacy 작업 기록 (2026-10-10).** 아래 구현/미구현·수정 파일 목록은 당시 이력이다. 현재 사용법은 [PlayerGameplay 안내](../README.md), 공용 재료는 [3단계 인계](StageThree_Integration.txt), 효과 부적은 [4단계 인계](../Items/Talisman/StageFour_Integration.txt)를 따른다. 현재는 Material이 공용 저장소에 들어가고 한지1+닭피1 효과 부적 제작이 구현되어 있다.
+
 # Player & Item 연결 안내 — 2026-10-10
 
 기존 PlayerInventory / WorldItem / ItemBase 경로를 유지했다. 이 문서의 변경은 첨부 요청의

@@ -3822,6 +3822,8 @@ GameObject:
   m_Component:
   - component: {fileID: 8142620006540202147}
   - component: {fileID: 4312287242868068908}
+  - component: {fileID: 7589133073602242544}
+  - component: {fileID: 4153754098444933909}
   m_Layer: 0
   m_Name: BeanMugwortWorldItem
   m_TagString: Untagged
@@ -3862,12 +3864,46 @@ CapsuleCollider:
   m_LayerOverridePriority: 0
   m_IsTrigger: 0
   m_ProvidesContacts: 0
-  m_Enabled: 1
+  m_Enabled: 0
   serializedVersion: 2
   m_Radius: 0.17866868
   m_Height: 0.41173264
   m_Direction: 1
   m_Center: {x: 0.017456487, y: -0.05538456, z: 0.17930585}
+--- !u!65 &7589133073602242544
+BoxCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4522874126183284204}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Size: {x: 0.27477247, y: 0.29332638, z: 0.20996606}
+  m_Center: {x: 0.016498655, y: -0.05728686, z: 0.17050052}
+--- !u!114 &4153754098444933909
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4522874126183284204}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79164f16b0a3fe348a05f19c17ed0bd2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::WorldItem
+  _itemData: {fileID: 11400000, guid: 2e51544ac138ae64796c03e574829f1d, type: 2}
 --- !u!1 &4895703195339896922
 GameObject:
   m_ObjectHideFlags: 0

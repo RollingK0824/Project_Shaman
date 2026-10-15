@@ -19,19 +19,39 @@ public class TalismanDrawingSurface : MonoBehaviour, IItemVisualContext
     private TalismanDrawingData _data;
     private PlayerTalismanCollection _collection;
     private TalismanItemData _item;
+    private PlayerItemController _items;
+    public string DrawingInstanceId => _data?.Id;
     public Texture2D DrawingTexture => _texture;
     public void BindItemVisual(ItemData item, GameObject owner)
     {
         if (_collection != null) _collection.SelectionChanged -= RefreshSelection;
         _collection = owner != null ? owner.GetComponent<PlayerTalismanCollection>() : null;
         _item = item as TalismanItemData;
+        _items = owner != null ? owner.GetComponent<PlayerItemController>() : null;
         if (_item != null) SetPaper(_item.PaperTexture);
         if (_collection != null) _collection.SelectionChanged += RefreshSelection;
         RefreshSelection();
     }
-    private void RefreshSelection() => Bind(_collection != null ? _collection.GetSelected(_item) : null);
+    private void RefreshSelection()
+    {
+        TalismanDrawingData drawing = null;
+        if (_collection != null && _items != null && !string.IsNullOrEmpty(_items.EquippedTalismanInstanceId))
+        {
+            var found = _collection.Find(_items.EquippedTalismanInstanceId, out var template);
+            if (template == _item) drawing = found;
+        }
+        Bind(drawing);
+    }
+    public void BindThumbnail(RawImage image, TalismanItemData item, TalismanDrawingData drawing)
+    {
+        _paperImage = image;
+        if (_paperTexture != item.PaperTexture) SetPaper(item.PaperTexture);
+        Bind(drawing);
+        if (_texture != null) _paperImage.texture = _texture;
+    }
     public void Bind(TalismanDrawingData data)
     {
+        if (ReferenceEquals(_data, data)) return;
         if (_data != null) _data.Changed -= MarkDirty;
         _data = data;
         if (_data != null) _data.Changed += MarkDirty;
