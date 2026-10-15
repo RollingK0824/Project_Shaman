@@ -19,6 +19,7 @@ public class LocalGameplayJudge : MonoBehaviour
         PlayerEvents.PickupRequested += HandlePickupRequested;
         PlayerEvents.StressRequested += HandleStressRequested;
         PlayerEvents.FlagActivateRequested += HandleFlagActivateRequested;
+        PlayerEvents.ItemUseRequested += HandleItemUseRequested;
     }
 
     private void OnDisable()
@@ -27,6 +28,7 @@ public class LocalGameplayJudge : MonoBehaviour
         PlayerEvents.PickupRequested -= HandlePickupRequested;
         PlayerEvents.StressRequested -= HandleStressRequested;
         PlayerEvents.FlagActivateRequested -= HandleFlagActivateRequested;
+        PlayerEvents.ItemUseRequested -= HandleItemUseRequested;
     }
 
     private void HandleDamageRequested(IDamageable target, float amount, GameObject source)
@@ -55,5 +57,17 @@ public class LocalGameplayJudge : MonoBehaviour
         if (NetworkServer.active || NetworkClient.active || flag == null) return;
 
         flag.TryActivate(interactor);
+    }
+
+    private void HandleItemUseRequested(ItemUseContext context)
+    {
+        if (NetworkServer.active || NetworkClient.active || context.Owner == null) return;
+
+
+        PlayerInventory inventory = context.Owner.GetComponent<PlayerInventory>();
+        if (inventory == null || !inventory.Contains(context.Data)) return;
+
+        ItemData data = context.Data;
+        data.UseAction.Execute(context.WithConsume(amount => inventory.ConsumeItem(data, amount)));
     }
 }

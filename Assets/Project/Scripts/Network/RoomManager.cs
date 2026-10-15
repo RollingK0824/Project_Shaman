@@ -203,7 +203,9 @@ public class RoomManager : NetworkRoomManager
     {
         if (!IsLoadingGame) return;
 
-        EndGameLoading();
+        IsLoadingGame = false;
+
+        if (_loadingScreen != null) _loadingScreen.Complete();
         ClientGameStarted?.Invoke();
     }
 
