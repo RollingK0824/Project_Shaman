@@ -34,9 +34,21 @@ public class QuickSlotUI : MonoBehaviour
 
     private int _selectedIndex = -1;
 
+    public void Bind(PlayerInventory inventory, PlayerInputReader inputReader)
+    {
+        OnDisable();
+        _inventory = inventory;
+        _inputReader = inputReader;
+        _selectedIndex = -1;
+        if (isActiveAndEnabled) OnEnable();
+        RefreshAllSlots();
+        RefreshSelection();
+    }
+
 
     private void OnEnable()
     {
+        if (_inventory != null && _inventory.TryGetComponent<PlayerItemController>(out var items)) _selectedIndex = items.SelectedSlotIndex;
         if (_inputReader != null)
         {
             _inputReader.SlotSelected +=
@@ -45,12 +57,16 @@ public class QuickSlotUI : MonoBehaviour
 
         if (_inventory != null)
         {
+            var sheets = _inventory.GetComponent<PlayerTalismanCollection>();
+            if (sheets != null) sheets.SelectionChanged += RefreshAllSlots;
             _inventory.QuickSlotChanged +=
                 OnQuickSlotChanged;
 
             _inventory.ItemCountChanged +=
                 OnItemCountChanged;
         }
+        RefreshAllSlots();
+        RefreshSelection();
     }
 
 
@@ -71,6 +87,8 @@ public class QuickSlotUI : MonoBehaviour
 
         if (_inventory != null)
         {
+            var sheets = _inventory.GetComponent<PlayerTalismanCollection>();
+            if (sheets != null) sheets.SelectionChanged -= RefreshAllSlots;
             _inventory.QuickSlotChanged -=
                 OnQuickSlotChanged;
 
@@ -172,17 +190,12 @@ public class QuickSlotUI : MonoBehaviour
 
     private void RefreshAllSlots()
     {
-        if (_inventory == null)
-        {
-            return;
-        }
-
         for (int i = 0;
-             i < _inventory.QuickSlotCount;
+             i < 6;
              i++)
         {
             ItemData itemData =
-                _inventory.GetQuickSlotItem(i);
+                _inventory != null ? _inventory.GetQuickSlotItem(i) : null;
 
             RefreshSlot(
                 i,
@@ -267,6 +280,13 @@ public class QuickSlotUI : MonoBehaviour
                 itemData
             );
 
+        if (itemData is TalismanItemData talisman && _inventory.TryGetComponent<PlayerTalismanCollection>(out var collection))
+        {
+            var selected = collection.GetSelected(talisman);
+            if (selected != null && selected.IsCustom) { HideCount(countText); return; }
+            count = 0;
+            foreach (var sheet in collection.GetInstances(talisman)) if (!sheet.IsCustom) count++;
+        }
         if (count <= 1)
         {
             HideCount(countText);

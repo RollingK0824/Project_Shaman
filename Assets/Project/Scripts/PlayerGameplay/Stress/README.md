@@ -2,14 +2,17 @@
 
 ## 화면 상단 HUD
 
-`Assets/Project/Prefabs/UI/StressHUD.prefab`을 Player (1)/NetPlayer의 자식으로 연결했다.
+`Assets/Project/Prefabs/UI/StressHUD.prefab`은 독립 Canvas 프리팹이다.
+Player (1)의 PlayerStressHUDBootstrap이 런타임 UI 루트에 생성한다. Player의 자식이 아니다.
 상단 중앙에 스트레스 수치(소수 1자리 / 100), 게이지, 안정·긴장·위험 단계를 표시한다.
-PlayerStressHUD는 부모 PlayerStressController의 기존 변경 이벤트를 구독하며 수치를 변경하지 않는다.
-NetPlayer의 Local Only Components에 연결되어 자신의 수치만 표시한다.
+PlayerStressHUD.Bind(stress, health)로 대상을 명시하고 변경 이벤트만 구독한다.
+부모 탐색이나 수치 변경을 하지 않는다. Bootstrap은 네트워크 로컬 소유자만 UI를 생성한다.
+NetPlayer는 이번 Player & Item 작업의 수정 금지 영역이다. 기존 자식 HUD를 제거하고
+Bootstrap을 연결하는 네트워크 담당자 작업은 Inventory/README_PlayerItem.md를 참고한다.
 사망 후에는 기본적으로 숨기며 Inspector의 Hide On Death에서 조절할 수 있다.
 Stage Colors로 단계별 색상을, TopCenterPanel RectTransform으로 위치/크기를 조정한다.
 CanvasScaler는 화면 크기에 맞춰 배율을 조절한다. 입력을 받지 않는 표시 전용 UI이다.
-폰트는 기존 ChosunCentennial을 사용한다.
+폰트는 기존 ChosunCentennial의 UI 영역 복사본을 사용한다.
 
 기존 PlayerStressController / StressZone / StressEventTrigger / PlayerFeedbackController를
 확장했다. 별도 스트레스 매니저를 만들지 않았다. 기존 DarkStressZone,
@@ -25,7 +28,8 @@ SafeStressZone, AnomalyStressTest 구성과 IStressReceiver 진입점을 유지�
 - StressEventTrigger: Cause/Stress Amount/Once Per Entry. 기본 20.
   중복 Collider 진입을 한 번으로 묶되 다른 플레이어와 재진입은 별도 처리한다.
 - 영역 비활성화, Collider 비활성화, 순간이동으로 Exit 누락 시 잔여 효과를 정리한다.
-- 스트레스 자체는 체력을 변경하지 않으며 100에 도달해도 사망하지 않는다.
+- PlayerStressController 자체는 체력을 변경하지 않는다. 2026-10-13 추가된 PlayerStressDamage가
+  임계값 이상 지속 시 기존 PlayerHealth API로 주기적 피해를 주며, 체력이 소진되면 기존 사망 흐름을 따른다.
 
 어둠은 기존 영역 기반이다. 렌더링 픽셀 밝기를 자동 측정하는 시스템은 추가하지 않았다.
 귀신/이상현상 감지자는 실제 노출이 확정되는 지점에서 기존
@@ -87,4 +91,7 @@ High 상태의 걷기/달리기 속도도 유지됨을 확인했다.
 
 수동: DarkStressZone 진입 → 수치 증가 → SafeStressZone 진입 → 감소 → 영역 이탈 후 고정.
 AnomalyStressTest 재진입과 두 플레이어 진입을 확인하고, 35/70 경계에서 오디오와
-화면 효과를 관찰한다. 스트레스 100에서도 체력 감소나 사망이 없어야 한다.
+화면 효과를 관찰한다. 위 과거 비치명 스트레스 검증은 PlayerStressDamage 추가 전의 결과다.
+현재 Player (1)은 임시값 85 이상 10초 유지 시 2 피해, 이후 2초 간격으로 피해를 받는다.
+임계값 미만으로 내려가면 피해와 타이머가 초기화되어야 한다. 상세 연결 및 서버 판정 인계는
+Items/Talisman/README.md를 참고한다.
