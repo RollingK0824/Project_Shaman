@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.WSA;
 
 [RequireComponent(typeof(Rigidbody))]
 [RequireComponent(typeof(Collider))]
