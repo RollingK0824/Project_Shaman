@@ -252,7 +252,7 @@ namespace ProjectShaman.Steam
                         Debug.Log($"[SteamTransport] OnServerConnected connId = {connId}");
                         
                         // Mirror 등 상위 네트워크 매니저에게 클라 접속 완료 이벤트 전달
-                        // OnServerConnected?.Invoke(connId);
+                        OnServerConnected?.Invoke(connId);
                     }
                     // [클라 관점] 내 클라 핸들로 원격 서버 접속이 완료된 경우
                     else if (conn.m_HSteamNetConnection == _clientConnection.m_HSteamNetConnection)

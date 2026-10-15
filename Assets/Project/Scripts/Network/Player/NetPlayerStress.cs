@@ -15,6 +15,7 @@ public class NetPlayerStress : NetworkBehaviour
     private PlayerStressController _stress;
     private PlayerHealth _health;
     private NetPlayerStatus _status;
+    private PlayerStressDamage _stressDamage;
 
     private void Awake()
     {
@@ -22,6 +23,7 @@ public class NetPlayerStress : NetworkBehaviour
         _stress.UseExternalAuthority = true;
         _health = GetComponent<PlayerHealth>();
         _status = GetComponent<NetPlayerStatus>();
+        _stressDamage = GetComponent<PlayerStressDamage>();
     }
 
     // 에디터에서 컴포넌트를 추가할 때 수치가 다른 클라에게는 전송되지 않도록
@@ -36,12 +38,15 @@ public class NetPlayerStress : NetworkBehaviour
         _currentStress = _stress.CurrentStress;
         _stress.StressChanged += ServerHandleStressChanged;
         PlayerEvents.StressRequested += HandleStressRequested;
+        // [서버] 지속 스트레스 피해는 서버에서만, 게임 진행 중일 때만 계산
+        if (_stressDamage != null) _stressDamage.SetServerAuthorityCheck(ServerCanApplyStressDamage);
     }
 
     public override void OnStopServer()
     {
         PlayerEvents.StressRequested -= HandleStressRequested;
         _stress.StressChanged -= ServerHandleStressChanged;
+        if (_stressDamage != null) _stressDamage.SetServerAuthorityCheck(null);
         base.OnStopServer();
     }
 
@@ -59,6 +64,14 @@ public class NetPlayerStress : NetworkBehaviour
         _stress.SetStress(_stress.CurrentStress + delta);
     }
 
+    // [서버] HandleStressRequested와 같은 조건. 로딩 중이나 게임 종료 뒤에는 피해 누적 안 함
+    private bool ServerCanApplyStressDamage()
+    {
+        if (!isServer) return false;
+
+        GameManager gm = GameManager.Instance;
+        return gm != null && gm.CurrentGameState == GameState.Ongoing && NetGameStartGate.HasStarted;
+    }
     private void ServerHandleStressChanged(float value)
     {
         _currentStress = value;
