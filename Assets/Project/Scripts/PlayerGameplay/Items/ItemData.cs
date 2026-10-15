@@ -10,8 +10,18 @@ public class ItemData : ScriptableObject
 {
     [Header("Info")]
     [SerializeField] private string _displayName;
+    [Tooltip("Stable content ID: item_<lowercase_snake_case>. Shared with quest TargetId / Reward.Id.")]
+    [SerializeField] private string _itemId;
+    public string ItemId => _itemId;
     [SerializeField] private ItemCategory _category;
     [SerializeField] private Sprite _icon;
+
+    [Header("Ownership")]
+    [SerializeField] private bool _isPermanent;
+    [SerializeField] private bool _isUnique;
+    [SerializeField] private bool _canUseQuickSlot = true;
+    public bool IsPermanent => _isPermanent;
+    public bool IsUnique => _isUnique;
 
     [Header("World")]
     [SerializeField] private GameObject _worldPrefab;
@@ -56,7 +66,7 @@ public class ItemData : ScriptableObject
 
     public string DisplayName => _displayName;
     public ItemCategory Category => _category;
-    public bool CanUseQuickSlot => _category != ItemCategory.Material;
+    public bool CanUseQuickSlot => _category != ItemCategory.Material && _canUseQuickSlot;
     public Sprite Icon => _icon;
 
     public GameObject WorldPrefab => _worldPrefab;

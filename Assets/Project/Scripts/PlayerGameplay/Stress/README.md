@@ -3,7 +3,7 @@
 ## 화면 상단 HUD
 
 `Assets/Project/Prefabs/UI/StressHUD.prefab`은 독립 Canvas 프리팹이다.
-Player (1)의 PlayerStressHUDBootstrap이 런타임 UI 루트에 생성한다. Player의 자식이 아니다.
+Player (1)의 PlayerLocalUIBootstrap이 런타임 UI 루트에 생성한다. Player의 자식이 아니다.
 상단 중앙에 스트레스 수치(소수 1자리 / 100), 게이지, 안정·긴장·위험 단계를 표시한다.
 PlayerStressHUD.Bind(stress, health)로 대상을 명시하고 변경 이벤트만 구독한다.
 부모 탐색이나 수치 변경을 하지 않는다. Bootstrap은 네트워크 로컬 소유자만 UI를 생성한다.
@@ -96,3 +96,4 @@ AnomalyStressTest 재진입과 두 플레이어 진입을 확인하고, 35/70 �
 현재 Player (1)은 임시값 85 이상 10초 유지 시 2 피해, 이후 2초 간격으로 피해를 받는다.
 임계값 미만으로 내려가면 피해와 타이머가 초기화되어야 한다. 상세 연결 및 서버 판정 인계는
 Items/Talisman/README.md를 참고한다.
+

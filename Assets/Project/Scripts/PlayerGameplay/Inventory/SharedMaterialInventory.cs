@@ -22,6 +22,15 @@ public class SharedMaterialInventory : MonoBehaviour
          (NetworkServer.active && _authorityCheck != null && _authorityCheck()));
     public void SetAuthorityCheck(Func<bool> check) => _authorityCheck = check;
 
+    // Unity main thread only. Capture a detached full snapshot with its revision;
+    // the server adapter maps trusted ItemData references to its registered wire IDs.
+    // Editing the exported dictionary never mutates this session's inventory.
+    public Dictionary<ItemData, int> ExportSnapshot(out long version)
+    {
+        version = Version;
+        return new Dictionary<ItemData, int>(_counts);
+    }
+
     public static SharedMaterialInventory ResolveOffline(GameObject player)
     {
         if (player == null || NetworkClient.active || NetworkServer.active) return null;

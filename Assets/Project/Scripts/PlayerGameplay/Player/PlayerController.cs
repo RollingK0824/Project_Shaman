@@ -55,6 +55,17 @@ public class PlayerController : NetworkBehaviour
 
     private void Awake()
     {
+        // Older scene instances can override the prefab's Animator reference with None.
+        // Resolve only the character visual, so held-item Animators cannot be selected.
+        if (_animator == null)
+        {
+            Transform characterVisual = transform.Find("CharacterVisual");
+            if (characterVisual != null)
+            {
+                _animator = characterVisual.GetComponentInChildren<Animator>(true);
+            }
+        }
+
         _crouch = GetComponent<PlayerCrouch>();
         _talismanEffects = GetComponent<PlayerTalismanEffectController>();
         _characterController =

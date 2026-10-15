@@ -87,6 +87,7 @@ public class BellItem : ItemBase
         var control = new ItemControlEffect { Kind = ItemControlKind.Stagger, Duration = _staggerDuration };
         var attack = new ItemAttackSession(Owner, 0f, control, ItemReactionFallback.Bell, _targetMask, _pulseDuration);
         DamageTrigger.CreateSphere(attack, Owner.transform.position, _effectRadius, _pulseDuration);
+        PlayerItemActions.ReportUse(Owner, Data);
         Debug.Log($"[Bell] 반응 대상 수: {attack.AppliedTargetCount}", gameObject);
     }
 

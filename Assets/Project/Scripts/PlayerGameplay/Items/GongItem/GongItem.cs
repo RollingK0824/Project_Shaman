@@ -22,5 +22,6 @@ public class GongItem : ItemBase
         DamageTrigger.CreateSphere(attack, Owner.transform.position, _effectRadius, _pulseDuration);
         if (_pulse != null) _pulse.Play();
         if (_audio != null && _audio.clip != null) _audio.Play();
+        PlayerItemActions.ReportUse(Owner, Data);
     }
 }

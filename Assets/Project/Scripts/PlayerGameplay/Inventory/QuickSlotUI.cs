@@ -36,9 +36,21 @@ public class QuickSlotUI : MonoBehaviour
     [SerializeField, Range(.4f, .85f)] private float _iconAreaRatio = .68f;
     [SerializeField] private Color _selectionAccent = new Color(.67f, .34f, .09f, 1f);
 
+    public PlayerInventory BoundInventory => _inventory;
+
     private int _selectedIndex = -1;
     private readonly TalismanDrawingSurface[] _drawings = new TalismanDrawingSurface[6];
     private readonly Image[] _selectionFrames = new Image[6];
+
+    private void LateUpdate()
+    {
+        var rect = transform as RectTransform;
+        if (rect == null || rect.rect.width <= 0f) return;
+        float unit = PlayerItemUIStyle.ViewportUnit(rect);
+        rect.localScale = Vector3.one * (560f / rect.rect.width) * unit;
+        rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
+        rect.anchoredPosition = new Vector2(0f, 62f * unit);
+    }
 
     public void Bind(PlayerInventory inventory, PlayerInputReader inputReader)
     {
@@ -132,7 +144,7 @@ public class QuickSlotUI : MonoBehaviour
             countRect.anchorMin = countRect.anchorMax = countRect.pivot = new Vector2(1f, 0f);
             countRect.anchoredPosition = new Vector2(-7f, 5f);
             countRect.sizeDelta = new Vector2(46f, 20f);
-            count.fontSize = 17f;
+            count.fontSize = 19f;
             count.fontStyle = FontStyles.Bold;
             count.alignment = TextAlignmentOptions.BottomRight;
             count.color = new Color(.23f, .14f, .07f, 1f);

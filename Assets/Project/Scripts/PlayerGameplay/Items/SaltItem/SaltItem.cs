@@ -86,6 +86,7 @@ public class SaltItem : ItemBase
             ItemReactionFallback.Salt, _targetMask, _contactDuration);
         var inventory = Owner.GetComponent<PlayerInventory>();
         var data = Data;
+        var owner = Owner;
         bool consumed = false;
         bool consumeOnSuccess = _consumeOnSuccessfulUse;
         attack.HitApplied += _ =>
@@ -95,6 +96,7 @@ public class SaltItem : ItemBase
             consumed = true;
             Debug.Log($"[Salt] 사용 성공: {data?.DisplayName}");
             if (consumeOnSuccess && inventory != null && data != null) inventory.ConsumeItem(data, 1);
+            PlayerItemActions.ReportUse(owner, data);
         };
         DamageTrigger.CreateBox(attack, ray.GetPoint(reach * .5f),
             new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f),

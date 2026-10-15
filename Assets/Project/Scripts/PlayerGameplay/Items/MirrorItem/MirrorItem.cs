@@ -43,7 +43,9 @@ public class MirrorItem : ItemBase
             return;
         }
 
+        bool wasLive = _observationView.IsLive;
         _observationView.SetLive(true);
+        if (!wasLive && _observationView.IsLive) PlayerItemActions.ReportUse(Owner, Data);
 
         Debug.Log("[Mirror] LIVE");
     }

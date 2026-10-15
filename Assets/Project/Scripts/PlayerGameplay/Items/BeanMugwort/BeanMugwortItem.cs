@@ -80,6 +80,7 @@ public class BeanMugwortItem : ItemBase
         {
             ConsumeOne();
         }
+        PlayerItemActions.ReportUse(Owner, Data);
     }
 
 

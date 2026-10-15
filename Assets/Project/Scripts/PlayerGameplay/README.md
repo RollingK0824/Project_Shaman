@@ -1,6 +1,6 @@
 # PlayerGameplay 현재 구조
 
-5단계는 코드/문서 정리 단계다. 게임 규칙, public API, serialized field, Player 프리팹 구조와 PL_1은 유지한다. Player Component 정리는 별도 6단계이며 아직 수행하지 않는다.
+5단계는 코드/문서 정리 단계다. 게임 규칙, public API, serialized field, Player 프리팹 구조와 PL_1은 유지한다. 6단계 Component 조사와 최소 Inspector 정리를 완료했다. 현재 구성과 분리 유지 근거는 [Player Component 안내](README_PlayerComponents.md)를 따른다.
 
 ## 책임별 위치
 
@@ -57,3 +57,4 @@
 3. 공용 재료/아이템의 기반은 [3단계 인계](Inventory/StageThree_Integration.txt), 공격 계약은 [Combat 안내](Items/Combat/README.md).
 4. 스트레스는 [Stress 안내](Stress/README.md), 관전 API는 [Spectator 안내](Spectator/README.md).
 5. Legacy 표시된 초기 README의 HandProfile/미정 레시피/미구현 징 설명은 과거 이력이다. 현재 연결 방식으로 재적용하지 않는다.
+

@@ -140,6 +140,7 @@ public class PlayerInventory : MonoBehaviour
             return false;
         }
 
+        if (itemData.IsUnique && Contains(itemData)) return false;
         if (IsMaterial(itemData)) return SharedMaterials != null && SharedMaterials.TryAdd(gameObject,itemData);
 
         _items.Add(itemData);
@@ -214,7 +215,7 @@ public class PlayerInventory : MonoBehaviour
         ItemData itemData,
         int amount = 1)
     {
-        if (_publishingTransaction || itemData == null ||
+        if (_publishingTransaction || itemData == null || itemData.IsPermanent ||
             amount <= 0)
         {
             return false;
@@ -460,10 +461,11 @@ public class PlayerInventory : MonoBehaviour
     internal bool CanExchangePersonalItems(IReadOnlyDictionary<ItemData, int> costs, ItemData result, int resultAmount)
     {
         if (!PlayerActionGuard.CanAct(gameObject) || costs == null || (result == null ? resultAmount != 0 : resultAmount <= 0) || IsMaterial(result)) return false;
+        if (result != null && result.IsUnique && (resultAmount != 1 || Contains(result))) return false;
         long finalCount = (long)_items.Count + resultAmount;
         foreach (var cost in costs)
         {
-            if (cost.Key == null || IsMaterial(cost.Key) || cost.Value <= 0 || !HasItem(cost.Key, cost.Value)) return false;
+            if (cost.Key == null || cost.Key.IsPermanent || IsMaterial(cost.Key) || cost.Value <= 0 || !HasItem(cost.Key, cost.Value)) return false;
             finalCount -= cost.Value;
         }
         return finalCount >= 0 && finalCount <= int.MaxValue;
