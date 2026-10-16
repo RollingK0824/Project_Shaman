@@ -28,7 +28,7 @@ HP는 아이템이 직접 수정하지 않는다. 오프라인에서는 기존 `
 | 소금 | 기존 카메라/상호작용 사거리·차폐 레이, Spray VFX, 성공 시 선택적 소비 | 기존 조준 사거리 내 전방 Trigger 상자(가까운 고체 표면에서 길이 제한). IDamageable 피해 우선, 없으면 ISaltReactable |
 | 팥·쑥 | 투척 프리팹, 방향/힘/회전/수명, 재사용 시간, 투척 시 소비 | Initialize에서 Collider를 Trigger로 전환. 접촉 시 Slow 전달, 기존 Collision 변형도 동일 처리 경로 사용 |
 | 재령 방울 | 기존 효과 반경/대상 마스크, Pulse VFX, 비소모 동작 | 짧은 Trigger 범위 + 초기 Overlap. 공통 Stagger 우선, 없으면 IBellReactable |
-| 향후 징 | 이번 단계에서 구현하지 않음 | SensoryInterference 값과 동일 범위 볼륨으로 확장 가능 |
+| 경면주사 징 | 3단계에서 GongItem 구현, HP 피해 0 | SensoryInterference + CreateSphere, 재사용 제한. 실제 AI 수신 및 최종 음원은 담당자 연결 |
 
 초기 Overlap은 이미 범위 안에 있는 대상과 기존 즉시 사용 반응을 보존한다.
 다음 물리 프레임의 OnTriggerEnter와 기록을 공유하므로 두 번 적용되지 않는다.
@@ -85,7 +85,7 @@ BeginAttack하고 재활성화하여 새 진입을 발생시키거나 CreateSphe
 4. CC 어댑터도 서버에서 실제 AI 상태를 바꾸고 필요한 시각/상태만 복제한다.
 5. 투척물/범위 공격 생성, 사용·소모 승인, VFX 복제와 적중 결과 전달을 서버 경로에 연결한다.
    여기에는 Command/SyncVar/스폰 등록/NetworkIdentity 변경이 포함되어 있지 않다.
-6. 서버 승인 전에는 이 세 아이템의 온라인 Gameplay 판정이 의도적으로 동작하지 않는다.
+6. 서버 승인 전에는 소금·팥쑥·방울·징의 온라인 Gameplay 판정이 의도적으로 동작하지 않는다.
    로컬 VFX 재생만으로 피해가 승인된 것으로 취급하지 않는다.
 
 실제 Ghost AI/Network 코드는 변경하지 않았다. Player (1)의 기존 NetworkIdentity 누락,

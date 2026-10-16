@@ -24,6 +24,9 @@ public class TalismanDrawingData
     private TalismanStroke _active;
     private int _pointCount;
     [SerializeField] private string _customName;
+    [SerializeField] private string _effectId;
+    public string EffectId => _effectId;
+    public const int MaxNameLength = 12;
     [SerializeField] private TalismanType _talismanType;
     [NonSerialized] private List<string> _undo;
     public string Id => _id;
@@ -43,10 +46,48 @@ public class TalismanDrawingData
         if (draft == null || draft.Id != Id) throw new ArgumentException("Draft belongs to another talisman");
         _strokes = draft.CreateDraft()._strokes;
         _customName = (customName ?? string.Empty).Trim();
-        if (_customName.Length > 32) _customName = _customName.Substring(0, 32);
+        if (_customName.Length > MaxNameLength) _customName = _customName.Substring(0, MaxNameLength);
         Recount(); Changed?.Invoke();
     }
     private void Recount() { _active = null; _pointCount = 0; foreach(var stroke in _strokes) _pointCount += stroke.Points.Count; }
+    internal void SetEffect(string effectId) => _effectId = effectId;
+    public static bool ValidName(string name) => !string.IsNullOrWhiteSpace(name) && name.Trim().Length <= MaxNameLength &&
+        !System.Array.Exists(name.ToCharArray(), char.IsControl);
+    public bool IsValidDrawing()
+    {
+        if (string.IsNullOrEmpty(_id) || _id.Length > 64 || _strokes == null || _strokes.Count > MaxStrokes) return false;
+        int count = 0;
+        foreach (var stroke in _strokes)
+        {
+            if (stroke == null || stroke.Points == null) return false;
+            foreach (var point in stroke.Points) if (!Inside(point) || ++count > MaxPoints) return false;
+        }
+        return HasDrawing && HasVisibleInk();
+    }
+    // Match the existing surface region/resolution/brush widths. Fully erased ink is empty.
+    private bool HasVisibleInk()
+    {
+        const int width = 256, height = 512;
+        var ink = new bool[width * height]; var region = new Rect(.23f, .07f, .53f, .86f);
+        foreach (var stroke in _strokes)
+            for (int i = 0; i < stroke.Points.Count; i++)
+            {
+                Vector2 a = region.min + Vector2.Scale(stroke.Points[Mathf.Max(0, i - 1)], region.size);
+                Vector2 b = region.min + Vector2.Scale(stroke.Points[i], region.size);
+                a = Vector2.Scale(a, new Vector2(width - 1, height - 1)); b = Vector2.Scale(b, new Vector2(width - 1, height - 1));
+                int steps = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(a, b))), radius = stroke.Eraser ? 6 : 1;
+                for (int step = 0; step <= steps; step++)
+                {
+                    Vector2 p = Vector2.Lerp(a, b, step / (float)steps);
+                    int x = Mathf.RoundToInt(p.x), y = Mathf.RoundToInt(p.y);
+                    for (int dy = -radius; dy <= radius; dy++) for (int dx = -radius; dx <= radius; dx++)
+                        if (dx * dx + dy * dy <= radius * radius && x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height &&
+                            region.Contains(new Vector2((x + dx) / (float)(width - 1), (y + dy) / (float)(height - 1))))
+                            ink[(y + dy) * width + x + dx] = !stroke.Eraser;
+                }
+            }
+        return Array.Exists(ink, pixel => pixel);
+    }
     private void Remember() { _undo ??= new List<string>(); if (_undo.Count >= 64) _undo.RemoveAt(0); _undo.Add(JsonUtility.ToJson(this)); }
     public bool Undo()
     {

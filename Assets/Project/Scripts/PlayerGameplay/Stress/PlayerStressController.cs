@@ -32,10 +32,12 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     public event Action<float, StressCause, GameObject> StressReceived;
     private readonly Dictionary<UnityEngine.Object, float> _sourceRates = new();
     private readonly List<UnityEngine.Object> _expiredSources = new();
+    private PlayerTalismanEffectController _talismanEffects;
 
     private void Awake()
     {
         ValidateSettings();
+        _talismanEffects = GetComponent<PlayerTalismanEffectController>();
         CurrentLevel = CalculateStressLevel(_currentStress);
     }
 
@@ -55,6 +57,7 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
         // Safe areas take priority over continuous exposure. One-shot scares
         // still use IStressReceiver and do not damage health.
         float rate = recovery < 0f ? recovery : increase;
+        rate = ModifyDelta(rate);
         if (rate == 0f) return;
         if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, rate * Time.deltaTime, StressCause.Other, gameObject);
         else SetStress(_currentStress + rate * Time.deltaTime);
@@ -75,8 +78,9 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     {
         if (!IsFinite(amount) || amount <= 0f) return;
         if (!PlayerActionGuard.CanAct(gameObject)) return;
+        amount = ModifyDelta(amount);
         if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, amount, cause, source);
-        else AddStress(amount);
+        else SetStress(_currentStress + amount);
         StressReceived?.Invoke(amount, cause, source);
         if (_logStressEvents)
             Debug.Log($"[Stress] {cause} +{amount:0.##} / Current = {_currentStress:0.##}", this);
@@ -84,13 +88,17 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
 
     public void AddStress(float amount)
     {
-        if (IsFinite(amount) && amount > 0f) SetStress(_currentStress + amount);
+        if (IsFinite(amount) && amount > 0f) SetStress(_currentStress + ModifyDelta(amount));
     }
 
     public void ReduceStress(float amount)
     {
-        if (IsFinite(amount) && amount > 0f) SetStress(_currentStress - amount);
+        if (IsFinite(amount) && amount > 0f) SetStress(_currentStress + ModifyDelta(-amount));
     }
+
+    // Request delta is modified once; absolute server snapshots still use SetStress unchanged.
+    public float ModifyDelta(float delta) => _talismanEffects == null ? delta : delta *
+        (delta < 0f ? _talismanEffects.StressRecoveryMultiplier : _talismanEffects.StressGainMultiplier);
 
     public void SetStress(float value)
     {

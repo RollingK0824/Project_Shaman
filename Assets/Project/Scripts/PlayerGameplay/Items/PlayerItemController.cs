@@ -17,6 +17,7 @@ public class PlayerItemController : MonoBehaviour
     public int SelectedSlotIndex { get; private set; } = -1;
 
     public ItemData EquippedItemData { get; private set; }
+    public string EquippedTalismanInstanceId { get; private set; }
 
     public bool HasEquippedItem =>
         EquippedItemData != null;
@@ -187,14 +188,14 @@ public class PlayerItemController : MonoBehaviour
     private void EquipItem(ItemData itemData)
     {
         if (!CanUseItems || !PlayerActionGuard.CanAct(gameObject) ||
-            itemData == null)
+            itemData == null || !itemData.CanUseQuickSlot)
         {
             return;
         }
 
-        if (ReferenceEquals(
-                EquippedItemData,
-                itemData))
+        string instanceId = _inventory.GetQuickSlotItem(SelectedSlotIndex) == itemData
+            ? _inventory.GetQuickSlotInstanceId(SelectedSlotIndex) : null;
+        if (ReferenceEquals(EquippedItemData, itemData) && EquippedTalismanInstanceId == instanceId)
         {
             return;
         }
@@ -204,6 +205,7 @@ public class PlayerItemController : MonoBehaviour
 
         // 새로운 아이템을 현재 장착 데이터로 지정
         EquippedItemData = itemData;
+        EquippedTalismanInstanceId = instanceId;
 
         // 3인칭은 자연스럽게:
         // 기존 아이템 내리기 → 교체 → 새 아이템 올리기
@@ -524,6 +526,7 @@ public class PlayerItemController : MonoBehaviour
     {
         _pendingThirdPersonItem = null;
         EquippedItemData = null;
+        EquippedTalismanInstanceId = null;
         UnequipFirstPerson();
         if (_itemHoldDriver != null && _itemHoldDriver.Phase != HoldPhase.Empty)
             _itemHoldDriver.Unequip();
