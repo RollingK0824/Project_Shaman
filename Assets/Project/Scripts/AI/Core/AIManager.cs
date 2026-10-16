@@ -294,7 +294,7 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            possession.ApplyMorningYin(_behaviourConfig.MinimumYin);
+            possession.ApplyMorningYin(_behaviourConfig.MinimumYin, _behaviourConfig.MaxYin);
             CorruptionPlan plan = CorruptionPlanner.Build(possession, villager.Profile.Schedule, dayCount, _behaviourConfig.RoutinesPerDay, _behaviourConfig);
             possession.SetPlan(plan);
             AILog.Log(AILog.GHOST, villager.Id, $"Corruption plan Day{dayCount}: yin={plan.MorningYin:F0}, corrupted slots={plan.CorruptedSlotCount}, symptoms={plan.Symptoms.Count}");
