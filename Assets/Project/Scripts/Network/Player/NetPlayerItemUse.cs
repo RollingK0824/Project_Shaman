@@ -103,6 +103,9 @@ public class NetPlayerItemUse : NetworkBehaviour
         _serverNextUseTime[itemId] = NetworkTime.time + System.Math.Max(0.0, data.UseAction.Cooldown - ServerCooldownTolerance);
         Debug.Log($"[NetPlayerItemUse] 사용 판정 : {name} -> {data.DisplayName}", this);
 
+        // 퀘스트 Use 보고는 판정이 확정된 서버에서 한 번만
+        PlayerItemActions.ReportUse(gameObject, data);
+
         RpcPlayUsePresentation(itemId, aimOrigin, aimDirection);
     }
 
