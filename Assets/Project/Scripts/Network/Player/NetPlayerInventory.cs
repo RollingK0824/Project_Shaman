@@ -26,18 +26,35 @@ public class NetPlayerInventory : NetworkBehaviour
         syncMode = SyncMode.Owner;
     }
 
+    public override void OnStartServer()
+    {
+        base.OnStartServer();
+
+        _inventory.ItemUnitsChanged += ServerMirrorUnits;
+        if (NetSharedMaterials.Instance != null) _inventory.BindSharedMaterials(NetSharedMaterials.Instance.Store);
+    }
+
+    public override void OnStopServer()
+    {
+        _inventory.ItemUnitsChanged -= ServerMirrorUnits;
+
+        base.OnStopServer();
+    }
+
     public override void OnStartClient()
     {
         base.OnStartClient();
 
         _itemIds.OnAdd += HandleItemIdAdded;
         _itemIds.OnRemove += HandleItemIdRemoved;
+        if (NetSharedMaterials.Instance != null) _inventory.BindSharedMaterials(NetSharedMaterials.Instance.Store);
     }
 
     public override void OnStopClient()
     {
         _itemIds.OnAdd -= HandleItemIdAdded;
         _itemIds.OnRemove -= HandleItemIdRemoved;
+        
         base.OnStopClient();
     }
 
@@ -81,11 +98,16 @@ public class NetPlayerInventory : NetworkBehaviour
 
         ItemData itemData = item.ItemData;
 
-        int id = _dataBase.GetId(itemData);
-
-        if (id < 0)
+        if (_dataBase.GetId(itemData) < 0)
         {
             Debug.LogError($"[NetPlayerInventory] NetItemDataBase에 없는 아이템: {itemData.DisplayName}", this);
+            return;
+        }
+
+        // 인벤토리에 먼저 넣어보고 성공했을때만 월드 아이템 제거
+        if (!_inventory.TryAddItem(itemData))
+        {
+            Debug.LogWarning($"[NetPlayerInventory] 획득 거절 : {name} <- {itemData.DisplayName}", this);
             return;
         }
 
@@ -94,10 +116,7 @@ public class NetPlayerInventory : NetworkBehaviour
             NetworkServer.Destroy(item.gameObject);
         }
 
-        _inventory.TryAddItem(itemData);
-        _itemIds.Add(id);
-
-        Debug.Log($"[NetPlayerInventory] 획득 판정 : {name} <- {itemData.DisplayName} (id : {id})", this);
+        //Debug.Log($"[NetPlayerInventory] 획득 판정 : {name} <- {itemData.DisplayName} (id : {id})", this);
     }
 
     // [서버] 아이템 차감. 서버 인벤토리와 소유 클라에 보내는 보유 목록에 함꼐 줄임
@@ -118,17 +137,24 @@ public class NetPlayerInventory : NetworkBehaviour
         if (!_inventory.HasItem(itemData, amount)) return false;
         if (!_inventory.ConsumeItem(itemData, amount)) return false;
 
-        // 같은 ID 수량만큼 들어 있으므로 하나씩 제거, Remove는 첫번째 하나만 지움
-        for (int i =0; i < amount; i++)
-        {
-            _itemIds.Remove(id);
-        }
-
         Debug.Log($"[NetPlayerInventory] 차감 판정 : {name} -> {itemData.DisplayName} x {amount} (id : {id})", this);
 
         return true;
     }
 
+    [Server]
+    private void ServerMirrorUnits(ItemData itemData, int delta)
+    {
+        int id = _dataBase.GetId(itemData);
+        if (id < 0)
+        {
+            Debug.LogError($"[NetPlayerInventory] NetItemDataBase에 없는 아이템: {itemData.DisplayName}", this);
+            return;
+        }
+
+        for (int i = 0; i < delta; i++) _itemIds.Add(id);
+        for (int i = 0; i < -delta; i++) _itemIds.Remove(id);
+    }
 
     private void HandleItemIdAdded(int index)
     {

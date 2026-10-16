@@ -45,7 +45,13 @@ public class MirrorItem : ItemBase
 
         bool wasLive = _observationView.IsLive;
         _observationView.SetLive(true);
-        if (!wasLive && _observationView.IsLive) PlayerItemActions.ReportUse(Owner, Data);
+        //if (!wasLive && _observationView.IsLive) PlayerItemActions.ReportUse(Owner, Data);
+
+        // 관찰 화면은 로컬 전용. 판정자에게는 사용 사실만 요청으로 보냄 (Use 보고는 판정자가 함)
+        if (!wasLive && _observationView.IsLive && TryBuildUseRequest(out var context))
+        {
+            PlayerEvents.RaiseItemUseRequested(context);
+        }
 
         Debug.Log("[Mirror] LIVE");
     }

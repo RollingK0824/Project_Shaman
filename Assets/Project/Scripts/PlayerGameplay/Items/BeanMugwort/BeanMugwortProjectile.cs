@@ -113,7 +113,9 @@ public class BeanMugwortProjectile : MonoBehaviour
 
     private void Hit(Collider other)
     {
-        if (!isActiveAndEnabled || _hasHit || _attack == null || other == null ||
+        //if (!isActiveAndEnabled || _hasHit || _attack == null || other == null || (_owner != null && other.transform.IsChildOf(_owner.transform))) return;
+
+        if (!isActiveAndEnabled || _hasHit || other == null ||
             (_owner != null && other.transform.IsChildOf(_owner.transform))) return;
 
         bool reacted = false;
