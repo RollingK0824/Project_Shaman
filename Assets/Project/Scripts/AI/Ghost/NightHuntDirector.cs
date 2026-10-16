@@ -29,6 +29,7 @@ namespace ProjectShaman.AI.Ghost
 
         private readonly List<AI_GhostEntity> _entities = new List<AI_GhostEntity>();
         private readonly List<PendingEntity> _pendingEntities = new List<PendingEntity>();
+        private readonly HashSet<string> _excludedGhostIds = new HashSet<string>();
         private TimeManager _time;
         private NightOutcomeLedger _ledger;
         private float _pendingSpawnTime = -1f;
@@ -85,6 +86,7 @@ namespace ProjectShaman.AI.Ghost
             _ledger = null;
             _entities.Clear();
             _pendingEntities.Clear();
+            _excludedGhostIds.Clear();
             _pendingSpawnTime = -1f;
             _activeEntityCount = 0;
         }
@@ -124,13 +126,46 @@ namespace ProjectShaman.AI.Ghost
             foreach (AIManager.VillagerRuntime host in hosts)
             {
                 AI_Possession possession = host.Profile.Possession;
+
+                if (_excludedGhostIds.Contains(possession.GhostId))
+                {
+                    AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount}: exorcism target, no entity tonight");
+                    continue;
+                }
+
                 float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(possession.Yin, _behaviourConfig));
                 AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount} (yin {possession.Yin:F0}, radius {radius:F1}m)");
                 _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, Radius = radius });
             }
 
-            AssignHuntToken();
             _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
+        }
+
+        public void ExcludeGhostTonight(string ghostId)
+        {
+            if (string.IsNullOrEmpty(ghostId) || !_excludedGhostIds.Add(ghostId))
+            {
+                return;
+            }
+
+            int removed = _pendingEntities.RemoveAll(pending => pending.Possession != null && pending.Possession.GhostId == ghostId);
+
+            for (int i = _entities.Count - 1; i >= 0; i--)
+            {
+                AI_GhostEntity entity = _entities[i];
+                if (entity == null || entity.GhostId != ghostId)
+                {
+                    continue;
+                }
+
+                entity.ReleaseForDespawn();
+                _factory.SpawnHandler?.Despawn(entity.gameObject);
+                _entities.RemoveAt(i);
+                removed++;
+            }
+
+            _activeEntityCount = _entities.Count;
+            AILog.Log(AILog.GHOST, ghostId, $"Excluded from hunt token and accumulation tonight (exorcism target, removed {removed})");
         }
 
         private void AssignHuntToken()
@@ -248,6 +283,11 @@ namespace ProjectShaman.AI.Ghost
 
             _pendingSpawnTime = -1f;
 
+            if (_pendingEntities.Count > 0)
+            {
+                AssignHuntToken();
+            }
+
             foreach (PendingEntity pending in _pendingEntities)
             {
                 SpawnEntity(pending);
@@ -298,6 +338,7 @@ namespace ProjectShaman.AI.Ghost
             }
 
             _entities.Clear();
+            _excludedGhostIds.Clear();
             _activeEntityCount = 0;
             _huntTokenGhostId = string.Empty;
             _ledger?.FlushMorning(_time.DayCount);
