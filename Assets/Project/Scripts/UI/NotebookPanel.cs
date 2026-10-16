@@ -10,6 +10,7 @@ public class NotebookPanel : UIPanel
     private Button[] _tabButtons;
 
     private int _currentTab;
+    public Transform GetTabRoot(int index) => index >= 0 && index < _tabs.Length && _tabs[index] != null ? _tabs[index].transform : null;
 
     private void Awake()
     {

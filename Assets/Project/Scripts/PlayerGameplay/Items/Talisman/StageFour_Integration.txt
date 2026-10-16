@@ -1,0 +1,164 @@
+Project Shaman — 4단계 효과 부적 후속 보완 인계 (2026-10-15)
+
+사용 흐름
+기존 RegistryTalisman ItemData/World/Held GUID는 그대로이며 표시명은 '효과 부적', Category는 Effect(4)이다.
+TalismanType의 기존 Registry(0)는 Effect(0)의 호환 alias다. Barrier(1)는 그대로다.
+빈 효과 부적은 개인 PlayerInventory의 기존 ItemData 스택이다. 빈 부적을 장착해 사용하거나
+인벤토리의 '미사용 효과 부적' 그룹을 클릭하면 기존 Drawing UI가 열린다.
+그림 작성 → 저장 → 이름(1~12자) 및 효과 명시 선택 → 저장 성공 때만 빈 부적 1개 소비.
+취소/빈 그림/완전히 지운 그림/잘못된 이름/효과 미선택/권한 거절은 소비하지 않는다.
+Ctrl+Z, 지우개, 전체 초기화를 유지했고 Undo 버튼은 없다. 그림 정답 판정은 없다.
+
+데이터 소유
+PlayerTalismanCollection의 효과 부적 목록에는 저장 완료된 unique TalismanDrawingData만 들어간다.
+빈 종이마다 미리 drawing instance를 만들지 않는다. 저장 순간 새 draft ID를 확정하고
+PlayerInventory.TryExchangePersonalItems의 기존 트랜잭션으로 빈 종이 -1 / collection +1을 함께 커밋한다.
+각 데이터는 InstanceId / CustomName / 정규화된 Stroke / EffectId를 보유한다.
+각 그림에 ScriptableObject, ItemData, Prefab을 생성하지 않는다.
+현재 저장 보장은 동일 Player 런타임의 해제/재장착/메뉴 닫기까지다. 디스크 영구 저장은 이번 범위가 아니다.
+기존 32자 단순 절단 구현을 저장 전 1~12자 검증으로 정리했고 TMP 입력 길이도 12로 통일했다.
+기존 저장 데이터의 디스크 저장 시스템은 없으므로 디스크 세이브 변환기는 추가하지 않았다.
+
+인벤토리
+미사용 효과 부적 xN = 실제 개인 ItemData 수량의 합계.
+드로잉된 효과 부적 xM = collection 기반 가상 슬롯 하나.
+기존 Debug Registry ItemData와 canonical ItemData가 함께 있어도 미사용 그룹은 하나다.
+소유권은 원래 ItemData 참조로 유지하고, 그리기 진입 시 보유한 첫 템플릿을 사용한다.
+드로잉 그룹 클릭 → 서브 인벤토리 → 개별 그림 선택 → 퀵슬롯 등록 → 1~6 중 선택.
+뒤로/Esc로 메인 인벤토리, 다시 Esc로 닫기. 숫자키로 장착 후 좌클릭으로 효과를 사용한다.
+저장 직후 자동 등록하지 않는다. 빈 부적은 기존 일반 ItemData 자동 등록 정책을 따른다.
+일반 퀵슬롯의 ItemData[6]는 유지하며 저장 그림만 string[6] InstanceId sidecar를 가진다.
+PlayerInventory.AssignTalismanQuickSlot(index,id), GetQuickSlotInstanceId(index), GetQuickSlotDrawing(index).
+서로 다른 ID는 같은 템플릿이어도 각각 등록할 수 있다. 동일 ID의 다른 슬롯 등록은 거절한다.
+이미 찬 슬롯은 교체하지만 기존 그림을 소비하지 않는다. 일반 AssignQuickSlot의 이동 정책은 유지한다.
+일반 스택의 소비/제작/자동 등록은 InstanceId 없는 슬롯만 대상으로 한다.
+PlayerItemController.EquippedTalismanInstanceId가 현재 장착 그림의 기준이다.
+TalismanDrawingSurface는 collection의 UI 선택값 대신 장착 ID를 읽는다. 빈 부적은 빈 면을 표시한다.
+서브 인벤토리에서 다른 그림을 선택해도 장착 그림이 바뀌지 않는다.
+TalismanItem: 빈 부적 좌클릭은 Drawing UI, 장착 ID가 있는 부적은 Collection.RequestUse(id).
+성공하고 ConsumeOnUse=true일 때만 collection에서 제거한다. SelectionChanged에 따라 인벤토리가
+유효하지 않은 ID를 검사/제거하고 QuickSlotChanged가 아이콘/장착 오브젝트를 함께 갱신한다.
+실패 또는 ConsumeOnUse=false는 슬롯/그림을 유지한다. ResetRound/확정 snapshot도 같은 정리 경로를 쓴다.
+이 내부 정리는 사망 상태에서도 가능하다. 플레이어가 죽은 상태의 등록/장착/사용은 금지한다.
+QuickSlotUI는 기존 6칸 아트를 유지한다. 비활성 Icon GameObject도 내용에 맞게 활성화하고,
+선택된 칸에는 _selectionAccent 기반 배경 tint와 하단 선택 마커를 표시한다.
+빈 칸 선택 시에도 선택 표시가 해당 칸으로 이동하고 장착물만 해제한다. 기존 QuickSlot 아트는 유지한다.
+그림 아이콘은 기존 TalismanDrawingSurface/RawImage로 렌더링한다. 슬롯 변경/제거 시 texture를 해제한다.
+손, Grip, 별도 캐릭터/그림별 프리팹은 만들지 않는다.
+
+효과 정의와 임시 QA 값
+Assets/Project/Data/Items/Talismans/Effects/
+move_speed.asset       이동속도 증가:       1.2배, 15초
+stress_gain.asset      스트레스 획득 감소:  0.7배, 15초
+stress_recovery.asset  스트레스 회복 증가:  1.5배, 15초
+전부 ConsumeOnUse=true, StackPolicy=RefreshDuration. 최종 밸런스가 아니다.
+EffectId는 저장 데이터 키이므로 배포 후 변경 시 별도 ID 마이그레이션이 필요하다.
+Magnitude는 더하는 값이 아닌 배율이다. Inspector에서 정의/설명/시간/소비 정책을 조절한다.
+같은 ID는 지속시간 Refresh 또는 RejectWhileActive. 같은 종류의 다른 ID는 가장 강한 배율만 적용한다.
+다른 종류는 함께 적용된다. 무제한 배율 곱셈은 없다. 시간 기준은 기존 게임의 Time.time이다.
+PlayerController는 (Walk 또는 Sprint) × Crouch × MovementMultiplier로 이동한다.
+PlayerStressController는 ReceiveStress/AddStress/ReduceStress와 연속 영역 delta에 한 번만 배율을 적용한다.
+SetStress는 서버의 절대 수치 적용 API이므로 배율을 적용하지 않는다.
+Base 이동/스트레스 설정을 덮어쓰거나 원복값을 추측하지 않는다.
+지속시간 종료 / 사망 / modifier disable / Player 비활성·파괴 시 배율이 남지 않는다.
+라운드 담당자는 기존 reset 흐름에서 collection.ResetRound()를 연결한다. Manager 코드는 변경하지 않았다.
+
+Inspector 연결 완료
+Player (1): PlayerTalismanEffectController 추가. 기존 PlayerTalismanCollection/드로잉 컨트롤러 유지.
+RegistryTalisman.asset 및 Debug/Test_RegistryTalisman.asset: 효과 정의 3개 연결, 표시명/Category 변경.
+TalismanDrawingPanel.prefab: _effectDropdown / _saveButton / _saveStatus 연결, 기존 입력/그림/버튼 유지.
+InventoryPanelUI.prefab: _effectViewPrefab → EffectTalismanInventory.prefab.
+EffectTalismanInventory.prefab: 행/스크롤/상세/뒤로/퀵슬롯 등록 및 _slotPicker/_slotButtons[6] 연결.
+Player (1)의 PlayerTalismanDrawingController._effectInventoryPrefab → 같은 EffectTalismanInventory prefab.
+씬에 직접 만든 InventoryPanelUI의 _effectViewPrefab이 비어 있으면 바인딩된 Player에서 이 참조를 가져온다.
+문제 씬은 클릭 Raycast 자체는 정상이었지만 새 필드가 비어 있어 OpenEffectGroup이 조기 종료했다.
+Scene 파일을 수정하거나 Resources에 UI를 복제하지 않았다.
+EffectTalismanRow.prefab: RawImage + 기존 TalismanDrawingSurface 연결. 텍스처는 행 파괴 시 해제된다.
+원본 PL_1, FirstPersonItemAnchor, 카메라, locomotion 및 Network 컴포넌트 설정은 변경하지 않았다.
+
+제작
+기존 Debug/Test_RegistryTalismanRecipe.asset의 GUID를 유지했다.
+현재 확정 재료는 공용 '한지 1개 + 닭피 1개'이다. 한지 2개만으로는 제작되지 않는다.
+ChickenBloodMaterial.asset(Category=Material), Materials/ChickenBloodWorldItem.prefab, Icons/ChickenBloodMaterial_Icon.png를 추가했다.
+WorldItem은 제공된 CraftingItems/CBlood의 FBX 인스턴스와 단순 BoxCollider를 사용한다.
+원본 FBX/Material/Texture는 수정하지 않았다. 닭피는 HeldVisual/사용 기능/퀵슬롯 등록 없이 공용 저장소로만 간다.
+씬 배치/스폰 목록은 담당자가 ChickenBloodWorldItem prefab을 연결해야 한다. 이번 작업에서 Scene은 변경하지 않았다.
+표시명은 '효과 부적 제작', 결과는 canonical Talismans/RegistryTalisman.asset의 빈 개인 아이템이다.
+기존 SharedMaterialInventory와 PlayerCraftingController를 그대로 사용한다.
+결계 ItemData/프리팹/레시피는 변경하지 않았다.
+
+사용 트랜잭션
+collection.TryUse(instanceId): 활성/생존 + CanUseItems + collection 권한 → 소유 instance 조회 →
+허용 catalogue의 EffectId 해석 → 효과 controller 권한/유효성/중첩 정책 → 적용 → ConsumeOnUse에 따른 제거.
+적용 실패/권한 거절/사망/없는 ID는 소비하지 않는다. 관찰 이벤트는 커밋 뒤 발생한다.
+재진입을 막고, 이미 처리한 저장 ID는 같은 런타임/라운드에서 재사용하지 못한다.
+
+Network 담당자 인계 (실제 Mirror Command/SyncVar/Manager 변경 없음)
+오프라인은 기본 허용. 온라인은 클라이언트 로컬 판정 금지, 서버도 명시적 권한 delegate 전에는 거절한다.
+collection.SetAuthorityCheck와 effects.SetAuthorityCheck에 라운드/소유권 등 서버 승인 조건을 연결한다.
+서버의 통신 핸들러는 송신자 → 실제 Player를 먼저 검증해야 한다. 클라이언트가 임의 Player나 ItemData를 고르게 하지 않는다.
+
+저장 요청: collection.SaveRequested(itemTemplate, TalismanSaveData)
+ - UI의 그리는 중 스트로크는 보내지 않는다.
+ - 요청은 최종 InstanceId / CustomName / EffectId / DrawingJson만 전송한다.
+ - itemTemplate은 프로세스 내 참조다. 통신에서는 기존 Item ID로 바꿔 서버 catalogue로 해석한다.
+ - 서버는 크기/빈 그림/이름/효과/소유 blank/생존/재요청을 검증하고 SaveFinal(template,payload)을 호출한다.
+ - SaveFinal은 성공할 때만 blank와 collection을 함께 갱신한다.
+ - 최종 인벤토리 수량과 collection.Export(template)를 함께 동기화한다.
+ - 클라이언트 collection.ApplyReplicatedSnapshot(version,template,records)는 최신 버전만 받는다.
+ - 현재 snapshot version은 collection 전체 스트림 기준이다. 여러 template 갱신이면 같은 전역 단조 증가 순서를 사용한다.
+ - 승인 후 DrawingController.Close() 또는 확인된 collection snapshot으로 로컬 draft 창을 닫는다.
+ - RequestSave의 false는 로컬 확정 성공이 아니라는 뜻이다. 실제 온라인 승인/실패 응답 UI는 adapter 책임이다.
+
+사용 요청: collection.UseRequested(instanceId)
+ - 서버는 instance 소유자/생존/CanUseItems/라운드/효과 정의를 검증 후 TryUse(id)를 호출한다.
+ - collection Export 및 effects.ExportState()를 같은 성공 결과에서 전송한다.
+ - 효과 payload는 EffectId / RemainingDuration뿐이다. magnitude/ScriptableObject는 클라이언트 입력을 신뢰하지 않는다.
+ - 승인된 클라이언트 수신부에서 effects.ApplyReplicatedState(version,states, trustedCatalogue.FindEffect)를 호출한다.
+ - owner-client movement가 이 확인된 배율을 읽는다. 실제 서버 이동 검증도 같은 정의를 사용해야 한다.
+ - 수신 전송 지연만큼 RemainingDuration을 보정하고, 서버 시간/만료를 최종 기준으로 삼는다.
+ - version은 재연결/라운드 동안 이전 패킷이 역전 적용되지 않는 단조 증가 값으로 관리한다.
+ - 재사용 부적(ConsumeOnUse=false)의 통신 재전송은 request ID로 별도 dedup한다. collection ID만으로 의도적 재사용과 재전송을 구분할 수 없다.
+ - ApplyReplicated*는 신뢰된 서버 메시지 수신부 전용이다. 이 API 자체가 네트워크 인증을 수행하지 않는다.
+
+퀵슬롯 Network 추가 인계
+ - 서버가 검증할 상태: QuickSlot Index(0~5), 템플릿의 프로젝트 고유 Item ID, Talisman InstanceId, Equipped InstanceId.
+ - 현재 sidecar는 로컬 런타임 상태다. 전송/서버 저장/재접속 복원은 아직 연결하지 않았다.
+ - 서버는 소유권, 생존/CanAct, 해당 슬롯 바인딩, 현재 장착 ID, 효과 정의와 재사용 정책을 검증한다.
+ - collection.UseRequested(instanceId) 요청 경로를 유지한다. 클라이언트의 로컬 TryUse 성공을 신뢰하지 않는다.
+ - 확정 collection snapshot을 먼저 적용한 후 유효한 바인딩을 복원한다. 빠진 ID는 자동 정리된다.
+ - 일반 아이템은 기존 AssignQuickSlot, 그림은 AssignTalismanQuickSlot로 분리해 전달한다.
+ - 원격 3인칭 그림 표시에는 현재 Equipped InstanceId와 해당 최종 drawing 데이터의 동기화가 필요하다.
+   현재 ApplyRemoteHeldVisual(ItemData)만으로는 원격 고유 그림이 전달되지 않는다. 담당자가 확정된
+   장착 ID와 그림의 표시 연결을 추가해야 한다. 이번 작업에서 Mirror/Network 코드나 PL_1 Rig는 바꾸지 않았다.
+
+Stress 동기화 주의
+현재 StressRequested에는 modifier가 반영된 delta가 들어간다. 수신부에서 다시 곱하지 않는다.
+서버는 원본 노출량/영역 판정을 검증하고 필요하면 서버 PlayerStressController.ModifyDelta(rawDelta)를 정확히 한 번 호출한다.
+NetPlayerStress.SetStress 절대 snapshot 경로는 그대로다. 이번 단계에서 Network 코드에 새 판정은 넣지 않았다.
+
+회귀 중 발견한 기존 데이터 오류
+GongHeldVisual.prefab의 _senses=-1은 ItemControlEffect.IsValid가 거절하여 징 CC가 적용되지 않았다.
+프리팹의 이 필드 하나만 Vision|Hearing = 3으로 수정했다. 징/공격 코드나 Ghost AI는 바꾸지 않았다.
+
+Legacy / 삭제 후보
+TalismanType.Registry alias, ItemCategory.Designation, Registry* 파일명은 호환용 유지.
+Debug/Test_RegistryTalisman은 기존 참조용으로 Effect 의미로 함께 마이그레이션했다.
+현재 PlayerGameplay Talisman 경로에 주민 지목/NPC 제출/정답 판정 호출은 없다.
+기존 README.md는 이전 단계 기록이며 이 인계 문서를 현재 동작 기준으로 읽는다.
+Barrier UseRequested는 기존 미확정 연동 이벤트로 유지했다. 이번 단계에서 결계 효과를 만들지 않았다.
+Grip/NotebookPresentation 등 이전 삭제 후보는 이번에 삭제/복구하지 않았다.
+
+검증 재현
+원래 4단계 기록은 outputs/StageFour, 후속 보완은 outputs/StageFourFollowup 및 work/stage4-followup/repro에 있다.
+후속 결과: 기존 319개 assertion(53+46+46+34+39+101) 통과, 신규 후속 89개 통과.
+319개 중 변경된 기획 expectation: 서브 인벤토리 직접 사용 → 슬롯 등록,
+기존 한지2 비용 → 한지1+닭피1. 비용 테스트의 setup도 새 재료를 공급하도록 변경했다.
+씬의 실제 InventoryPanelUI/QuickSlotUI를 사용해 InputSystem 마우스/숫자키/Esc/F 입력과
+EventSystem Raycast로 검증했다. PointerClick 함수를 직접 호출한 것만으로 클릭 검증을 대신하지 않았다.
+그룹 오픈 전 실패 재현 캡처와 수정 후 캡처, 장착 그림/선택 테두리/F 획득 캡처를 함께 보관했다.
+기존 218개와 신규 효과 부적 검사는 Unity Editor Play Mode에서 runtime clone을 사용한다.
+NUnit 테스트 218개라는 뜻이 아니라, 보관된 QA runner의 assertion 218개다.
+Player NetworkIdentity 누락은 실제 prefab을 고치지 않고 테스트 clone에만 추가했다.
+실제 다중 클라이언트 동기화/지연/재접속 테스트는 adapter 작업 후 필요하다.
+Editor의 기존 NetworkIdentity 및 GhostActionShape 경고는 이번 작업 대상이 아니다.

@@ -54,57 +54,14 @@ public class WorldItem : MonoBehaviour, IInteractable
 
     public void Interact(GameObject interactor)
     {
-        /** 판정은 서버(호스트)에서 진행하는 방향으로 수정할 예정
-         * if(!CanInteract(interactor))
-         * {
-         *      return;
-         * }
-         * 
-         * 직접 획특하지 않고 요청만 보냄. 서버측에서 인벤토리 추가와 아이템 제거를 처리
-         * PlayerEvents.RaisePickupRequested(interactor, this);
-        */
 
         if (!CanInteract(interactor))
         {
             return;
         }
 
-        //직접 획특하지 않고 요청만 보냄.서버측에서 인벤토리 추가와 아이템 제거를 처리
+        // 판정자가 인벤토리 추가와 월드 아이템 제거를 확정하도록 요청만 보낸다.
         PlayerEvents.RaisePickupRequested(interactor, this);
-
-        //if (!isActiveAndEnabled) return;
-        //
-        //if (_isCollected ||
-        //    _itemData == null)
-        //{
-        //    return;
-        //}
-        //
-        //PlayerInventory inventory =
-        //    interactor.GetComponent<PlayerInventory>();
-        //
-        //if (inventory == null)
-        //{
-        //    return;
-        //}
-        //
-        //bool success =
-        //    inventory.TryAddItem(_itemData);
-        //
-        //if (!success)
-        //{
-        //    return;
-        //}
-        //
-        //_isCollected = true;
-        //
-        //Debug.Log(
-        //    $"[WorldItem] 획득 완료: " +
-        //    $"{_itemData.DisplayName}",
-        //    gameObject
-        //);
-        //
-        //gameObject.SetActive(false);
     }
 
     // 오프라인 전용 획득 확정 시 아이템 숨김

@@ -1,3 +1,5 @@
+> 이 문서의 수정 파일/테스트 결과는 2026-10-10 당시 이력이며 이번 5단계 변경 목록이 아니다. 현재 상태와 후속 인계는 [PlayerGameplay 안내](../README.md)를 참고한다. 수첩은 PlayerNotebook.RequestOpen 최소 진입점만 제공하며 펼치기 UI를 연결하지 않는다.
+
 # 사망·관전 및 F 상호작용 연결
 
 ## 기존 구조와 변경 이유
@@ -34,7 +36,7 @@
 | Exorcism/ExorcismFlagInteractable.cs | 사망자의 의식 상호작용 차단 |
 | Items/PlayerItemController.cs | 사용·장착·슬롯 변경 차단, 사망 시 HeldVisual 즉시 정리 |
 | Items/PlayerInventory.cs, WorldItem.cs | 직접 획득/슬롯 편집 요청도 차단, 기존 기록은 보존 |
-| Items/BellItem/BellItem.cs, CoinItem/CoinItem.cs, SaltItem/SaltItem.cs, CompassItem/CompassItem.cs | 사용 진입점 생존 검사 |
+| Items/BellItem/BellItem.cs, CoinItem/CoinItem.cs, SaltItem/SaltItem.cs | 사용 진입점 생존 검사 (폐기된 Compass 코드 제외) |
 | Event/PlayerEvents.cs | 죽은 플레이어의 획득 요청 거절 |
 | DevTools/LocalGameplayJudge.cs | 네트워크 중 로컬 판정 방지, 생존/상호작용 검사, 스트레스 중복 경로 방지 |
 | Scripts/Manager/UIManager.cs | InputReader 비활성화 대신 SetGameplayInputBlocked 사용 |

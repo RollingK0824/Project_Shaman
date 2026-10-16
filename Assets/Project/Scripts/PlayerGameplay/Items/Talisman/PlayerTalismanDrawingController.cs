@@ -5,6 +5,8 @@ using UnityEngine;
 public class PlayerTalismanDrawingController : MonoBehaviour
 {
     [SerializeField] private TalismanDrawingPanel _panelPrefab;
+    [SerializeField] private EffectTalismanInventoryView _effectInventoryPrefab;
+    public EffectTalismanInventoryView EffectInventoryPrefab => _effectInventoryPrefab;
     private TalismanDrawingPanel _panel;
     public bool IsDrawing => _panel != null && _panel.IsOpen;
     public bool Open(TalismanItemData item, string instanceId = null)

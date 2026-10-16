@@ -1,0 +1,106 @@
+Project Shaman — 수첩 / 플레이어 퀘스트 연결 (2026-10-15)
+
+현재 조작
+- N: 수첩 열기/닫기. Escape: 닫기. I와 Tab은 인벤토리/수첩을 열지 않는다.
+- 기본 수첩은 버리거나 소모할 수 없고 퀵슬롯을 차지하지 않는다.
+- Player Information에 기존 소지품/공용 재료/효과 부적 UI를 연결한다.
+- 일반 개인 아이템 선택 → 1~6 등록 / 등록 해제. 실제 장착·사용은 기존 숫자키/좌클릭 흐름이다.
+- Item Crafting 탭은 기존 CraftingPanelUI와 세 가지 기존 레시피를 재사용한다.
+- F7은 기존 개발 테스트 진입이며 일반 수첩과 중복으로 열리지 않는다.
+- NoteBookUI.png 원본 아트의 N 표시를 사용한다. 퀵슬롯 오른쪽에 12 기준 픽셀 간격,
+  90 기준 픽셀 크기(1280×720 기준)로 표시한다. 수첩/입력 차단/사망 중에는 숨긴다.
+
+Inspector
+- Player (1) / PlayerLocalUIBootstrap: Notebook Prefab, Inventory Panel Prefab,
+  Crafting Panel Prefab, 기존 Crafting Recipes, Quest Item Catalog, Notebook HUD Icon.
+- Player (1) / PlayerNotebook: NotebookItemData.
+- 신규 PlayerNotebookUI.prefab은 기존 NotebookPanel 아트를 복사한 로컬 Canvas다.
+  씬에 기존 NotebookPanel이 있으면 해당 패널에 연결하고 없으면 프리팹을 생성한다.
+  다른 탭 콘텐츠는 수정하지 않는다. 플레이어 루트에 새 컴포넌트를 추가하지 않는다.
+- NotebookHeldVisual은 제공된 FBX를 참조한 준비 에셋이다. N 전용 설계에서는 자동 장착하지 않는다.
+- 기존 Scene, Manager, Network, AI 및 PL_1을 수정하지 않았다.
+
+아이템 ID 규약
+소문자 ASCII snake_case 문자열, 접두사 item_. 표시 이름/에셋 파일명/네트워크 int ID와 독립적이다.
+QuestItemCatalog.asset에서 찾는다. 기존 NetItemDatabase int ID는 변경하지 않는다.
+item_bell            재령 방울
+item_salt            소금
+item_coin            엽전
+item_incense         음기향
+item_mirror          초혼경
+item_bean_mugwort    팥/쑥 타래
+item_gong            경면주사 징
+item_notebook        수첩 (기본 보유, 보상 지급 금지)
+item_effect_talisman 효과 부적
+item_barrier_talisman 결계 부적
+item_coarse_salt     굵은소금 재료
+item_paper           종이 재료 (기존 Debug/Test_Paper 에셋)
+item_chicken_blood   닭피 재료
+item_beans           팥 재료
+item_mugwort         쑥 재료
+item_thread          실 재료
+Debug/Test_* 부적은 QA 에셋이며 생산 카탈로그에 포함하지 않는다.
+
+성공 이벤트
+- Event/GameplayEvents.cs: 제공된 ActionDone 계약. 서버 또는 오프라인에서만 발행한다.
+  순수 클라이언트 호출은 무시한다. 오프라인 playerId는 0.
+- Event/PlayerItemActions.ReportUse: 기존 사용 성공 경로에서 호출한다.
+- 방울/징: 실제 권한 있는 파동 생성 뒤. 징 쿨다운 거절은 이벤트 없음.
+- 팥/쑥: 투척체 생성/투척 뒤. 프리팹·카메라 누락 시 이벤트 없음.
+- 소금: 실제 접촉 효과 성공 뒤 공격 세션당 1회. 다중 Collider/타깃 중복 없음.
+- 엽전: 대상 반응 성공 뒤. 재사용 거절은 이벤트 없음.
+- 초혼경: 관찰 화면이 실제 Live가 된 최초 순간. 클라이언트 표시는 서버 성공으로 간주하지 않는다.
+- 효과 부적: 효과 적용 및 인스턴스 소비 성공 뒤. UseRequested 시점에 발행하지 않는다.
+- 음기향은 현재 자동 감지형으로 명시적 점화/성공 API가 없다. 장착을 Use로 위조하지 않는다.
+  추후 실제 점화 성공 경로가 생기면 ReportUse를 1회 연결한다.
+- 수첩 N 열기는 UI 진입이며 퀘스트 Use로 집계하지 않는다.
+- Use의 장소 조건 ContextId는 실제 장소 담당자가 서버에서 검증해 전달해야 한다.
+  현재 기존 아이템은 장소 ID를 알지 못하므로 null을 전달한다.
+
+Deliver 소유자
+NPC 전달 거래를 완료하는 담당 코드 한 곳에서만 다음을 호출한다.
+GameplayEvents.RaiseActionDone(playerNetId, "Deliver", item.ItemId, villagerId);
+이 작업에서 NPC 전달 거래는 만들지 않았고 일반 RemoveItem/ConsumeItem에 Deliver를 연결하지 않았다.
+요청, 실패, 아이템 단순 소모, 클라이언트 예측 시에는 호출하지 않는다.
+
+공용 보상함 / 정산
+- SharedQuestRewardInventory: 소금/향 등 완성 장비 공용 보관. 카드 클릭으로 1개를 개인 소지품에 수령.
+- 재료 보상은 기존 SharedMaterialInventory로 직접 보낸다.
+- 수령은 개인 인벤토리와 공용 보상함이 함께 커밋된 후 이벤트를 발행한다.
+  중복/재진입 수령, 사망자, 권한 거절, 수량 부족은 지급하지 않는다.
+- PlayerQuestOutcomeReceiver.TryApplyEnded(day, instanceId, state, type, id, amount)
+  Completed + Item → 카탈로그 조회 후 재료/완성품 분기
+  Failed + Stress → 살아 있는 같은 세션 플레이어에 기존 ReceiveStress API 호출
+  Cancelled → 아무 효과 없음
+  day:instanceId로 세션 내 정산 중복 방지. 잘못된 데이터는 정산 완료로 표시하지 않아 재시도 가능.
+  스트레스의 기존 외부 권한 경로가 켜져 있으면 요청만 발생하므로 서버 적용 담당자가 처리해야 한다.
+
+시스템/네트워크 인계 — 아직 직접 연결되지 않은 부분
+현재 디스크에 QuestManager / QuestDatabase / QuestEnded의 구현이 없다.
+QuestManager를 새로 만들거나 리플렉션으로 추측 연결하지 않았다. 제공된 최신 10/15 계약을 기준으로
+시스템 담당자가 실제 타입이 들어온 뒤 세션당 한 번만 QuestEnded를 구독해야 한다:
+
+  Completed: receiver.TryApplyEnded(q.DayIssued, q.InstanceId, "Completed",
+                 q.Definition.Reward.Type, q.Definition.Reward.Id, q.Definition.Reward.Amount);
+  Failed:    receiver.TryApplyEnded(q.DayIssued, q.InstanceId, "Failed",
+                 q.Definition.Penalty.Type, q.Definition.Penalty.Id, q.Definition.Penalty.Amount);
+  Cancelled: receiver.TryApplyEnded(q.DayIssued, q.InstanceId, "Cancelled", null, null, 0);
+
+이는 실제 타입 도착 후 연결할 예시이며, 현재 QuestEnded가 자동 구독되었다는 뜻이 아니다.
+GameplayEvents는 이미 이 프로젝트에 추가했으므로 시스템 담당이 같은 클래스 중복 생성 금지.
+필요하면 기존 .meta/GUID를 유지하며 공용 Util 위치로 이동한다.
+
+온라인 세션에서는:
+1. 서버 세션 오브젝트에 outcome/material/reward store를 구성하고 카탈로그를 Bind한다.
+2. 각 store/outcome의 SetAuthorityCheck에 서버/라운드 조건을 연결한다. 미연결 서버는 fail closed.
+3. 아이템 성공 로직이 실제 실행되는 서버 경로에서만 Use 이벤트를 발생시킨다.
+   로컬 표시만 수행하는 초혼경 등은 서버 확정에 연결해야 한다. 클라이언트 요청을 성공으로 세지 않는다.
+4. 공용 보상함 수령 요청의 player 소유권/생존/수량을 검증한 뒤 서버에서 TryClaim을 호출한다.
+   클라이언트 스냅샷/Command와 요청 UI 연결은 아직 없으며 Network 담당 작업이다.
+5. 기존 스트레스 권한 어댑터가 팀 패널티 요청을 서버에서 확정하고 스냅샷을 전달한다.
+6. 기본 수첩을 권한 있는 시작 인벤토리/스냅샷에도 포함한다. N 진입 자체는 로컬 UI 기능이다.
+7. 정산 중복 키/보상함은 세션 메모리 상태다. 저장/재접속 복구가 필요하면 서버 저장 소유자가 확장한다.
+8. 원래 Player (1) NetworkIdentity 문제는 변경하지 않았다. 테스트는 메모리 복제에만 Identity를 추가한다.
+
+UI 테스트는 개발용 격리 Player 복제 및 실제 InputSystem 키/마우스 이벤트를 사용한다.
+프로덕션 씬 저장이나 네트워크 프리팹 설정 변경 없이 검증한다.

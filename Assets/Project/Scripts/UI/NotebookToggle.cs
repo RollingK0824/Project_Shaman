@@ -8,12 +8,15 @@ public class NotebookToggle : MonoBehaviour
 
     void Update()
     {
+        // A bound gameplay notebook owns input; retain this scene-only preview toggle otherwise.
+        var gameplay = _notebook != null ? _notebook.GetComponentInParent<PlayerNotebookUI>() : null;
+        if (gameplay != null && gameplay.IsBound) return;
         if (Keyboard.current == null)
         {
             return;
         }
 
-        if (Keyboard.current.tabKey.wasPressedThisFrame)
+        if (Keyboard.current.nKey.wasPressedThisFrame)
         {
             if (UIManager.Instance.IsOpen(_notebook))
             {
