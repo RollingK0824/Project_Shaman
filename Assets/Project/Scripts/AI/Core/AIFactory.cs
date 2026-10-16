@@ -248,7 +248,7 @@ namespace ProjectShaman.AI.Core
 
             foreach (JobEntry job in _dataProvider.Jobs)
             {
-                if (job != null && !string.IsNullOrEmpty(job.JobId) && job.Condition.Matches(info.Gender, info.SocialClass, info.AgeGroup))
+                if (job != null && !string.IsNullOrEmpty(job.JobId) && job.Condition.Matches(info))
                 {
                     candidates.Add(job);
                 }
@@ -268,7 +268,7 @@ namespace ProjectShaman.AI.Core
                     continue;
                 }
 
-                if (entry.Condition.Matches(info.Gender, info.SocialClass, info.AgeGroup))
+                if (entry.Condition.Matches(info))
                 {
                     available.Add(entry.Name);
                 }
@@ -330,7 +330,7 @@ namespace ProjectShaman.AI.Core
             }
 
             AI_Possession possession = core.gameObject.AddComponent<AI_Possession>();
-            possession.Initialize(profile.GhostId, _random.Next(), _behaviourConfig.InitialYin);
+            possession.Initialize(profile.GhostId, _random.Next(), Mathf.Min(_behaviourConfig.InitialYin, _behaviourConfig.MaxYin));
             profile.Possession = possession;
         }
 

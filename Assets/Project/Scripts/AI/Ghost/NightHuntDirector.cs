@@ -11,17 +11,29 @@ namespace ProjectShaman.AI.Ghost
         [SerializeField] private AIManager _manager;
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
         [SerializeField] private GameObject _ghostEntityPrefab;
+        [SerializeField] private List<GhostNightActionData> _nightActions = new List<GhostNightActionData>();
 
         [Header("Runtime")]
         [SerializeField] private string _huntTokenGhostId;
         [SerializeField] private int _activeEntityCount;
 
+        private struct PendingEntity
+        {
+            public AI_Possession Possession;
+            public AI_Core Host;
+            public float Radius;
+            public int HuntKills;
+            public bool HuntIgnoresRadius;
+            public bool ChasePlayer;
+        }
+
         private readonly List<AI_GhostEntity> _entities = new List<AI_GhostEntity>();
+        private readonly List<PendingEntity> _pendingEntities = new List<PendingEntity>();
         private TimeManager _time;
-        private AI_Possession _pendingHunter;
-        private AI_Core _pendingHost;
-        private float _pendingRadius;
+        private NightOutcomeLedger _ledger;
         private float _pendingSpawnTime = -1f;
+
+        public IReadOnlyList<GhostNightActionData> NightActions => _nightActions;
 
         private void Awake()
         {
@@ -53,6 +65,13 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
+            _ledger = new NightOutcomeLedger(_manager, _factory.SpawnHandler, _behaviourConfig);
+
+            if (_nightActions.Count == 0)
+            {
+                AILog.Warn(AILog.GHOST, "NightHuntDirector has no night actions, ghosts will idle at night");
+            }
+
             UnsubscribeTime();
             _time.OnDayStart += HandleDayStart;
             _time.OnNightStart += HandleNightStart;
@@ -62,7 +81,10 @@ namespace ProjectShaman.AI.Ghost
         {
             UnsubscribeTime();
             _time = null;
+            _ledger?.Clear();
+            _ledger = null;
             _entities.Clear();
+            _pendingEntities.Clear();
             _pendingSpawnTime = -1f;
             _activeEntityCount = 0;
         }
@@ -94,50 +116,127 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
-            AIManager.VillagerRuntime hunterHost = PickHuntToken(hosts);
-            AI_Possession hunter = hunterHost.Profile.Possession;
-            float yinBefore = hunter.Yin;
+            _ledger.BeginNight(_time.DayCount);
+            AILog.Log(AILog.GHOST, $"Ghost targets: {GhostTargetRegistry.Count} (barriers {GhostBarrierRegistry.Count})");
 
-            _huntTokenGhostId = hunter.GhostId;
-            _pendingHunter = hunter;
-            _pendingHost = hunterHost.Core;
-            _pendingRadius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(yinBefore, _behaviourConfig));
-            _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
-
-            hunter.SpendYin(_behaviourConfig.HuntCost, "hunt token (pre-paid, no refund)");
-            AILog.Log(AILog.GHOST, hunter.GhostId, $"Hunt token Day{_time.DayCount} (yin {yinBefore:F0} → {hunter.Yin:F0}, radius {_pendingRadius:F1}m)");
+            _pendingEntities.Clear();
 
             foreach (AIManager.VillagerRuntime host in hosts)
             {
-                if (host != hunterHost)
-                {
-                    AILog.Log(AILog.STUB, host.Profile.Possession.GhostId, "No hunt token, accumulation/interference skipped");
-                }
+                AI_Possession possession = host.Profile.Possession;
+                float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(possession.Yin, _behaviourConfig));
+                AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount} (yin {possession.Yin:F0}, radius {radius:F1}m)");
+                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, Radius = radius });
             }
+
+            AssignHuntToken();
+            _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
         }
 
-        private AIManager.VillagerRuntime PickHuntToken(List<AIManager.VillagerRuntime> hosts)
+        private void AssignHuntToken()
         {
-            float bestYin = float.MinValue;
-            List<AIManager.VillagerRuntime> best = new List<AIManager.VillagerRuntime>();
+            _huntTokenGhostId = string.Empty;
 
-            foreach (AIManager.VillagerRuntime host in hosts)
+            if (!HasHuntableVillager(Vector3.zero, 0f, false))
             {
-                float yin = host.Profile.Possession.Yin;
-                if (yin > bestYin + 0.001f)
+                AILog.Log(AILog.GHOST, $"No hunt Day{_time.DayCount}: no huntable villager left");
+                return;
+            }
+
+            List<int> order = SortByYin();
+            int hunterIndex = -1;
+
+            foreach (int index in order)
+            {
+                PendingEntity candidate = _pendingEntities[index];
+                if (HasHuntableVillager(candidate.Host.Profile.HomePosition, candidate.Radius, true))
                 {
-                    bestYin = yin;
-                    best.Clear();
-                    best.Add(host);
+                    hunterIndex = index;
+                    break;
                 }
-                else if (Mathf.Abs(yin - bestYin) <= 0.001f)
+
+                AILog.Log(AILog.GHOST, candidate.Possession.GhostId, $"No villager in radius {candidate.Radius:F1}m, hunt token passes on");
+            }
+
+            bool ignoresRadius = hunterIndex < 0;
+            if (ignoresRadius)
+            {
+                hunterIndex = order[0];
+            }
+
+            PendingEntity hunter = _pendingEntities[hunterIndex];
+            float yinBefore = hunter.Possession.Yin;
+
+            if (!_behaviourConfig.TryGetHuntTier(yinBefore, out HuntTier tier))
+            {
+                AILog.Log(AILog.GHOST, hunter.Possession.GhostId, $"No hunt Day{_time.DayCount}: yin {yinBefore:F0} below every hunt tier");
+                return;
+            }
+
+            hunter.Possession.DrainYin($"hunt token Day{_time.DayCount}");
+            hunter.HuntKills = tier.Kills;
+            hunter.HuntIgnoresRadius = ignoresRadius;
+            hunter.ChasePlayer = tier.ChasePlayer;
+            _pendingEntities[hunterIndex] = hunter;
+            _huntTokenGhostId = hunter.Possession.GhostId;
+
+            AILog.Log(AILog.GHOST, _huntTokenGhostId, $"Hunt token Day{_time.DayCount} (yin {yinBefore:F0} → 0, tier {tier}{(ignoresRadius ? ", no villager in any radius → nearest villager" : string.Empty)})");
+        }
+
+        private List<int> SortByYin()
+        {
+            System.Random random = new System.Random(unchecked(_factory.Seed * 31 + _time.DayCount));
+            List<int> order = new List<int>();
+            List<double> tieBreakers = new List<double>();
+
+            for (int i = 0; i < _pendingEntities.Count; i++)
+            {
+                order.Add(i);
+                tieBreakers.Add(random.NextDouble());
+            }
+
+            order.Sort((a, b) =>
+            {
+                float yinA = _pendingEntities[a].Possession.Yin;
+                float yinB = _pendingEntities[b].Possession.Yin;
+
+                if (Mathf.Abs(yinA - yinB) > 0.001f)
                 {
-                    best.Add(host);
+                    return yinB.CompareTo(yinA);
+                }
+
+                return tieBreakers[a].CompareTo(tieBreakers[b]);
+            });
+
+            return order;
+        }
+
+        private bool HasHuntableVillager(Vector3 center, float radius, bool checkRadius)
+        {
+            float sqrRadius = radius * radius;
+
+            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
+            {
+                if (villager.Core == null || villager.Profile == null || villager.Profile.IsPossessed)
+                {
+                    continue;
+                }
+
+                if (!checkRadius)
+                {
+                    return true;
+                }
+
+                Vector3 offset = villager.Core.transform.position - center;
+                offset.y = 0f;
+
+                if (offset.sqrMagnitude <= sqrRadius)
+                {
+                    return true;
                 }
             }
 
-            System.Random random = new System.Random(unchecked(_factory.Seed * 31 + _time.DayCount));
-            return best[random.Next(best.Count)];
+            return false;
         }
 
         private void Update()
@@ -148,19 +247,25 @@ namespace ProjectShaman.AI.Ghost
             }
 
             _pendingSpawnTime = -1f;
-            SpawnEntity();
+
+            foreach (PendingEntity pending in _pendingEntities)
+            {
+                SpawnEntity(pending);
+            }
+
+            _pendingEntities.Clear();
         }
 
-        private void SpawnEntity()
+        private void SpawnEntity(PendingEntity pending)
         {
-            if (_pendingHunter == null || _pendingHost == null || _factory.SpawnHandler == null)
+            if (pending.Possession == null || pending.Host == null || _factory.SpawnHandler == null)
             {
                 return;
             }
 
-            Vector3 center = _pendingHost.Profile.HomePosition;
+            Vector3 center = pending.Host.Profile.HomePosition;
             GameObject instance = Instantiate(_ghostEntityPrefab, center, Quaternion.identity);
-            instance.name = $"GhostEntity_{_pendingHunter.GhostId}";
+            instance.name = $"GhostEntity_{pending.Possession.GhostId}";
 
             AI_GhostEntity entity = instance.GetComponent<AI_GhostEntity>();
             if (entity == null)
@@ -170,7 +275,8 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
-            entity.Initialize(this, _pendingHunter.GhostId, _pendingHost.LogId, center, _pendingRadius, _behaviourConfig.GhostKillsPerHunt, _behaviourConfig.GhostKillDistance);
+            int seed = unchecked(pending.Possession.Seed * 397 + _time.DayCount);
+            entity.Initialize(pending.Possession, _ledger, _nightActions, pending.Host.LogId, center, pending.Radius, pending.HuntKills, pending.HuntIgnoresRadius, pending.ChasePlayer, _behaviourConfig, seed);
             _factory.SpawnHandler.Spawn(instance);
             _entities.Add(entity);
             _activeEntityCount = _entities.Count;
@@ -179,11 +285,13 @@ namespace ProjectShaman.AI.Ghost
         private void HandleDayStart()
         {
             _pendingSpawnTime = -1f;
+            _pendingEntities.Clear();
 
             foreach (AI_GhostEntity entity in _entities)
             {
                 if (entity != null)
                 {
+                    entity.ReleaseForDespawn();
                     AILog.Log(AILog.GHOST, entity.GhostId, "Morning: entity vanishes");
                     _factory.SpawnHandler.Despawn(entity.gameObject);
                 }
@@ -191,54 +299,8 @@ namespace ProjectShaman.AI.Ghost
 
             _entities.Clear();
             _activeEntityCount = 0;
-        }
-
-        public bool IsHuntable(AI_Core core)
-        {
-            return core != null && core.Profile != null && !core.Profile.IsPossessed && IsAlive(core);
-        }
-
-        private bool IsAlive(AI_Core core)
-        {
-            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
-            {
-                if (villager.Core == core)
-                {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        public AI_Core FindHuntTarget(AI_GhostEntity entity)
-        {
-            AI_Core best = null;
-            float bestDistance = float.MaxValue;
-
-            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
-            {
-                AI_Core core = villager.Core;
-                if (!IsHuntable(core) || !entity.IsInsideRadius(core.transform.position))
-                {
-                    continue;
-                }
-
-                float distance = (core.transform.position - entity.transform.position).sqrMagnitude;
-                if (distance < bestDistance)
-                {
-                    bestDistance = distance;
-                    best = core;
-                }
-            }
-
-            return best;
-        }
-
-        public void Kill(AI_GhostEntity entity, AI_Core victim)
-        {
-            AILog.Log(AILog.GHOST, entity.GhostId, $"Killed {victim.LogId}");
-            _manager.RemoveVillager(victim, $"killed by {entity.GhostId}");
+            _huntTokenGhostId = string.Empty;
+            _ledger?.FlushMorning(_time.DayCount);
         }
     }
 }

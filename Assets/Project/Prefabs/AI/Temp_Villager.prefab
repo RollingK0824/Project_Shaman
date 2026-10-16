@@ -58,6 +58,7 @@ GameObject:
   - component: {fileID: 1888050732527854356}
   - component: {fileID: 5949884775646949015}
   - component: {fileID: 5688143873855738353}
+  - component: {fileID: 5279425667210753810}
   m_Layer: 0
   m_Name: Temp_Villager
   m_TagString: Untagged
@@ -446,6 +447,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6192c5f812d347c8ae391dcd60b1caa4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_DamageReceiver
+--- !u!114 &5279425667210753810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0b4491c41377428aae8d8747b34f1552, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_GhostReactionReceiver
+  _isMarked: 0
+  _paralyzedNight: -1
 --- !u!1001 &8466507210631905825
 PrefabInstance:
   m_ObjectHideFlags: 0
