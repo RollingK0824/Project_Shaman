@@ -20,7 +20,9 @@ public class PlayerCraftingController : MonoBehaviour
     // Network integration can grant server execution after validating the request.
     // Until an adapter is connected, online sessions cannot mutate unsynchronized counts.
     public void SetAuthorityCheck(Func<bool> authorityCheck) => _authorityCheck = authorityCheck;
-    public bool CanExecuteLocally => _authorityCheck != null ? _authorityCheck() : !NetworkClient.active && !NetworkServer.active;
+    public bool CanExecuteLocally => !NetworkClient.active && !NetworkServer.active
+        ? _authorityCheck == null || _authorityCheck()
+        : NetworkServer.active && _authorityCheck != null && _authorityCheck();
     public bool CanRequestCraft(CraftingRecipeData recipe) => CanCraft(recipe) && (CanExecuteLocally || CraftRequested != null);
 
     public bool CanCraft(CraftingRecipeData recipe)

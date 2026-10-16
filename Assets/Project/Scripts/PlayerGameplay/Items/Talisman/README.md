@@ -1,3 +1,5 @@
+> **Legacy 초기 부적 작업 기록 (2026-10-13).** 아래 Blank/Reserved, HandProfile/Grip, 다음 장, 미정 레시피, 미구현 징 설명은 현재 적용 안내가 아니다. 현재는 FirstPersonItemAnchor, 효과/결계 부적, 그림별 퀵슬롯, 한지1+닭피1 제작과 GongItem을 사용한다. [현재 4단계 인계](StageFour_Integration.txt)와 [PlayerGameplay 안내](../../README.md)를 우선한다. 기존 초기 상태로 복구하지 않는다.
+
 # Player & Item 후속 기능 — 2026-10-13
 
 ## 부적

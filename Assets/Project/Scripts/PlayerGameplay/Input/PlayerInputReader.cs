@@ -50,6 +50,8 @@ public class PlayerInputReader : MonoBehaviour
     private void OnEnable()
     {
         _input.Player.Enable();
+        // Inventory is now a notebook page; the legacy I action no longer opens a separate menu.
+        _input.Player.Inventory.Disable();
         _crouch.Enable();
         _spectateUp.Enable();
         _spectateDown.Enable();

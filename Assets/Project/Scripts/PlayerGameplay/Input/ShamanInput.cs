@@ -291,7 +291,7 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""8f4a1bff-895d-4818-a06b-a3da2dec8d5d"",
-                    ""path"": ""<Keyboard>/tab"",
+                    ""path"": ""<Keyboard>/n"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

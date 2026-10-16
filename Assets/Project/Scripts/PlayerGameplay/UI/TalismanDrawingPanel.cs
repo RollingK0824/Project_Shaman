@@ -11,6 +11,13 @@ public class TalismanDrawingPanel : MonoBehaviour
     [SerializeField] private Button _clearButton, _closeButton, _nextButton;
     [SerializeField] private GameObject _discardDialog, _saveDialog;
     [SerializeField] private TMP_InputField _nameInput;
+    [SerializeField] private TMP_Dropdown _effectDropdown;
+    [SerializeField] private Button _saveButton;
+    [SerializeField] private TMP_Text _saveStatus;
+    private readonly System.Collections.Generic.List<TalismanEffectDefinition> _choices = new();
+    private bool _hasInk;
+    public string SelectedEffectId => _effectDropdown != null && _effectDropdown.value > 0 && _effectDropdown.value <= _choices.Count
+        ? _choices[_effectDropdown.value - 1].EffectId : null;
     private PlayerTalismanCollection _collection;
     private TalismanItemData _item;
     private PlayerInputReader _input;
@@ -32,16 +39,25 @@ public class TalismanDrawingPanel : MonoBehaviour
         _clearButton.onClick.AddListener(ClearDrawing);
         _closeButton.onClick.AddListener(RequestClose);
         if (_nextButton != null) _nextButton.gameObject.SetActive(false);
+        _nameInput.characterLimit = TalismanDrawingData.MaxNameLength;
+        _nameInput.onValueChanged.AddListener(_ => RefreshSaveButton());
+        if (_effectDropdown != null) _effectDropdown.onValueChanged.AddListener(_ => RefreshSaveButton());
     }
     public bool Open(GameObject owner, PlayerTalismanCollection collection, TalismanItemData item)
     {
         if (IsOpen || !PlayerActionGuard.CanAct(owner) || collection == null || item == null || !item.AllowDrawing) return false;
         _input = owner.GetComponent<PlayerInputReader>();
         if (_input == null || !_input.isActiveAndEnabled || _input.GameplayInputBlocked) return false;
-        var selected = collection.GetSelected(item);
+        var selected = collection.CreateDraft(item);
         if (selected == null) return false;
         _collection = collection; _item = item; _health = owner.GetComponent<PlayerHealth>();
         _draft = selected.CreateDraft();
+        _choices.Clear();
+        var labels = new System.Collections.Generic.List<string> { "효과 선택" };
+        foreach (var effect in item.Effects) if (effect != null && effect.IsValid) { _choices.Add(effect); labels.Add(effect.DisplayName); }
+        if (_effectDropdown != null) { _effectDropdown.ClearOptions(); _effectDropdown.AddOptions(labels); _effectDropdown.SetValueWithoutNotify(0); _effectDropdown.RefreshShownValue(); }
+        _hasInk = false;
+        if (_saveStatus != null) _saveStatus.text = "그림, 이름(1~12자), 효과를 지정해 주세요.";
         _previousInputBlock = _input.GameplayInputBlocked;
         _cursorVisible = Cursor.visible; _cursorLock = Cursor.lockState;
         IsOpen = true; gameObject.SetActive(true);
@@ -57,7 +73,7 @@ public class TalismanDrawingPanel : MonoBehaviour
     }
     private void ValidateInstance()
     {
-        foreach (var sheet in _collection.GetInstances(_item)) if (sheet.Id == _draft.Id) return;
+        if (_collection.GetComponent<PlayerInventory>().Contains(_item) && _collection.Find(_draft.Id, out _) == null) return;
         Close();
     }
     private void OnDestroy() { Close(); _closeAction?.Dispose(); _undoAction?.Dispose(); }
@@ -75,15 +91,25 @@ public class TalismanDrawingPanel : MonoBehaviour
         if (!IsOpen) return;
         _drawingCanvas.EndDrawing(); _drawingCanvas.enabled = false;
         _discardDialog.SetActive(false); _saveDialog.SetActive(true);
+        _hasInk = _draft.IsValidDrawing();
         _nameInput.text = string.IsNullOrEmpty(_draft.CustomName) ? _item.DisplayName : _draft.CustomName;
+        RefreshSaveButton();
         _nameInput.ActivateInputField();
     }
     public void SaveNamed() => Save(_nameInput.text);
     public bool Save(string customName)
     {
-        if (!IsOpen || string.IsNullOrWhiteSpace(customName)) return false;
-        if (!_collection.Save(_item, _draft, customName)) return false;
+        if (!IsOpen || !TalismanDrawingData.ValidName(customName) || string.IsNullOrEmpty(SelectedEffectId)) return false;
+        if (!_collection.RequestSave(_item, _draft, customName, SelectedEffectId))
+        {
+            if (_saveStatus != null) _saveStatus.text = _collection.CanExecute ? "저장하지 못했습니다. 그림과 보유 수량을 확인해 주세요." : "서버 저장 확인을 기다리고 있습니다.";
+            return false;
+        }
         Close(); return true;
+    }
+    private void RefreshSaveButton()
+    {
+        if (_saveButton != null) _saveButton.interactable = _hasInk && TalismanDrawingData.ValidName(_nameInput.text) && !string.IsNullOrEmpty(SelectedEffectId);
     }
     public void Close()
     {

@@ -73,6 +73,8 @@ public class InventoryUIController : MonoBehaviour
             return;
         }
 
+        var panel = _inventoryPanel != null ? _inventoryPanel.GetComponentInChildren<InventoryPanelUI>(true) : null;
+        if (panel != null && panel.BackToMain()) return;
         SetInventoryOpen(false);
     }
 

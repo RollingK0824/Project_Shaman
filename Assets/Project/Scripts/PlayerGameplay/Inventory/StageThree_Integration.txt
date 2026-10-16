@@ -1,0 +1,110 @@
+[단계 이력] 아래는 3단계 완료 시점 기록이다. 부적/레시피의 후속 변경은 Items/Talisman/StageFour_Integration.txt와 PlayerGameplay/README.md를 따른다. 기존 단계의 미진행 항목을 현재 미구현으로 해석하지 않는다.
+
+Project Shaman — 3단계 Player & Item 연결 안내 (2026-10-15)
+
+3-A: 기존 아이템 / 초혼경 / 징 / 수첩
+
+기존 엽전·방울·소금·음기향·팥쑥의 Gameplay 코드를 재작성하지 않았다.
+소금 WorldItem의 잘못된 CoinItemData 참조를 수정하고, 팥쑥 WorldItem의 누락된 획득 컴포넌트를 추가했다.
+5종의 World Collider는 원본 FBX를 수정하지 않고 프리팹 Renderer 범위에 맞췄다.
+소금과 팥쑥은 Defense 분류다. 음기향은 기존 passive YinIncenseDetector를 유지한다.
+향 받침에는 실제 FBX가 연결되어 있으며, 기존 단순 향 막대 메시와 연기는 보조 표현으로 유지했다.
+
+초혼경:
+- 기존 MirrorItem / MirrorObservationView / MirrorHeldVisual 참조와 계층을 재사용했다.
+- OnUseStarted → LIVE, OnUseCanceled → 마지막 RT 프레임 Freeze. 비소모.
+- OnUnequipped / OnDisable / OnDestroy 및 소유자 사망 시 카메라 종료, RT와 생성 Material 정리.
+- 매 사용마다 Material을 암묵적으로 복제하지 않고 sharedMaterial을 복사한 런타임 인스턴스 하나만 사용한다.
+- 렌더링 때 해당 소유자의 Renderer와 거울 표면만 잠시 제외하고 원래 forceRenderingOff 값을 복원한다.
+  Player Layer, 원본 Material, 다른 플레이어 Renderer는 변경하지 않는다.
+- 원형 MirrorSurface의 구면 UV를 평면 원형 UV로 바꾼 전용 표시 메시를 추가했다.
+  원본 FBX 메시/텍스처는 그대로다. Surface는 새로운 MirrorObservationSurface Material을 사용한다.
+- MirrorItemData, MirrorWorldItem은 기존 HeldVisual을 참조한다. 카메라는 기본 비활성이다.
+
+경면주사 징:
+- GongItem은 ItemAttackSession + SensoryInterference CC를 사용한다. HP 피해는 0.
+- 기본 반경 6m, 효과 3초, Trigger 볼륨 0.15초, 재사용 제한 2초(임시값).
+- 여러 Collider에 동일 효과를 중복 전달하지 않는다. 사망/권한 상실 이후에는 효과를 전달하지 않는다.
+- GongHeldVisual에 제공된 FBX, 기존 BellPulse를 재사용한 GongPulse, AudioSource 연결 지점을 구성했다.
+- 최종 징 AudioClip은 제공된 프로젝트에서 찾지 못해 비워두었다. 최종 음원은 AudioSource.clip에 연결한다.
+  실제 소리가 완성되었다고 간주하면 안 된다. 기존 방울의 AudioSource/효과는 유지했다.
+- 실제 Ghost AI가 IItemControlReceiver를 구현해야 감각 차단이 적용된다. 대상 면역/중첩/복구는 수신자 책임.
+
+수첩:
+- 기존 PlayerNotebook을 최소 API로 정리했다. 새 중복 수첩 시스템을 만들지 않았다.
+- HasNotebook=true, RequestOpen() → NotebookOpenRequested. 기본 보유이며 재고·소비·월드 획득·버리기 없음.
+- Player (1)에 연결했고 PlayerInventory의 RequireComponent로 새 플레이어에도 누락되지 않게 했다.
+- 키, 퀵슬롯, 최종 UI, 펼치기 애니메이션을 연결하지 않았다. 기존 NotebookPresentation/Grip 에셋은 미사용 후보로 보존.
+- 후속 UI 담당자는 NotebookOpenRequested에 구독하고 원하는 입력에서 RequestOpen을 호출한다.
+
+3-B: 공용 제작 재료
+
+SharedMaterialInventory는 실제 MonoBehaviour 인스턴스가 소유하는 세션 상태다. static 수량 저장소가 아니다.
+오프라인에서는 PlayerInventory가 자기 Scene의 저장소를 찾고 없으면 하나를 생성한다.
+서로 다른 플레이어가 같은 Scene의 저장소를 사용하며, 플레이어 하나가 죽거나 제거되어도 수량은 유지된다.
+Scene 종료 시 저장소도 정리된다. 라운드 담당자는 ResetSession()으로 명시적으로 초기화할 수 있다.
+온라인에서는 로컬 저장소를 자동 생성하지 않는다.
+
+PlayerInventory:
+- Items는 개인 아이템만 포함한다.
+- TryAddItem / RemoveItem / GetItemCount의 Material 경로는 SharedMaterialInventory에 위임한다.
+- GetItemCount(Material)은 호환용 공용 수량 조회다. 개인 소유 여부를 판단하려면 Items를 사용한다.
+- Material은 자동/수동 퀵슬롯 등록과 직접 EquipItem 경로 모두 거절한다.
+- 일반 Investigation / Defense / Designation 아이템은 개인 목록에 남는다.
+- 인벤토리 UI는 개인 목록 + 공용 재료 종류를 합쳐 기존 슬롯에 표시하고 재료에는 [공용] 표기를 붙인다.
+- MaterialCountChanged / Changed 이벤트가 있고 각 PlayerInventory.InventoryChanged로 UI 갱신을 전달한다.
+- 공유 저장소 미연결 온라인 상태에서는 수량 0/변경 실패로 처리한다. 반복 UI 알림이나 재귀 바인딩을 하지 않는다.
+
+Crafting:
+- 기존 CraftingRecipeData와 PlayerCraftingController 호출 구조를 유지한다.
+- 중복 ingredient 행을 먼저 합산한다. Material 비용은 공용, 그 외 비용은 개인에서 검사한다.
+- 공용 저장소의 TryExchange는 개인 결과 지급 가능 여부와 전체 비용을 먼저 검증한다.
+- 개인 상태와 공용 상태를 모두 커밋한 뒤 알림을 보낸다. 중간에 yield/await나 네트워크 대기는 없다.
+- 같은 Unity 메인 스레드에서 요청을 직렬 처리하며 트랜잭션 알림 중 재진입 쓰기를 차단한다.
+- 지급 실패/부족/사망/권한 거절 시 비용은 확정하지 않는다.
+- 일반 결과는 제작자 개인 인벤토리로, Material 결과인 레시피는 공용 저장소로만 지급한다.
+- 스레드 안전한 범용 서버 DB가 아니다. 네트워크 담당자가 메인 스레드로 요청을 모아 호출해야 한다.
+
+재료 실제 에셋:
+BeansMaterial → 팥 / CraftingItems/Beans
+CoarseSaltMaterial → 굵은소금 / CraftingItems/CoarseSalt
+CoilMaterial → 실타래 / CraftingItems/Coil
+MugwortMaterial → 쑥 / CraftingItems/Mugwort
+Debug/Test_Paper → 한지 / CraftingItems/Paper
+한지는 기존 데이터 GUID와 레시피 참조를 유지하기 위해 기존 Test_Paper를 재사용했다. 별도 Paper ItemData를 만들지 않았다.
+월드 프리팹은 Assets/Project/Prefabs/Items/Materials 아래에 있다. Material에는 HeldVisual이 필요하지 않다.
+기존 Debug 부적/레시피와 기타 데이터는 삭제하지 않았다. 최종 제작 비용/밸런스 레시피는 임의로 확정하지 않았다.
+
+Ghost / Network 담당 인계
+
+1. Ghost는 IDamageable과 필요한 IItemControlReceiver를 배우 루트에 구현한다.
+   기존 전용 Salt/Bell/Bean 인터페이스는 호환 경로로 유지된다. 공통 경로와 중복 호출하지 않는다.
+2. ItemAttackAuthority의 서버 승인 delegate를 연결하고 서버가 공격/CC 볼륨·투척물 생성을 승인한다.
+   클라이언트는 직접 피해/CC를 확정하지 않는다. 온라인 경로는 미연결 상태에서 의도적으로 차단된다.
+3. 세션당 SharedMaterialInventory 하나를 생성하고 모든 PlayerInventory.BindSharedMaterials(store)에 연결한다.
+   서버에서 store.SetAuthorityCheck와 PlayerCraftingController.SetAuthorityCheck를 연결한다.
+   둘 다 NetworkServer.active가 필요하다. 클라이언트에 true delegate만 넣어도 쓰기는 허용되지 않는다.
+4. 기존 PickupRequested를 서버가 검증한 후 Material 수량을 한 번만 추가하고 WorldItem을 한 번만 제거/복제한다.
+   개인 아이템 RPC에 Material을 동시에 넣지 않는다. 기존 NetItemDatabase 항목/식별자와 신규 스폰 등록은 담당자 작업이다.
+5. 기존 CraftRequested 이벤트를 서버 요청에 연결한다. 서버가 소유권/레시피/사망/중복 요청 ID를 검증한 후 TryCraft를 호출한다.
+   네트워크 재전송 요청의 exactly-once 처리는 요청 ID를 가진 서버 어댑터가 담당한다. 여기의 중복 방지는 한 트랜잭션의 재진입/이중 소비 방지다.
+6. 서버 Counts/Version을 데이터 ID 기반으로 직렬화하여 클라이언트의 ApplyReplicatedSnapshot에 전달한다.
+   오래된 버전과 잘못된 Category/수량은 거절한다. ScriptableObject 참조 자체를 네트워크로 보내지 않는다.
+   신규 접속/라운드 변경에는 새 세션 저장소를 바인딩한다. 오프라인 fallback 상태를 온라인 세션에 이어붙이지 않는다.
+7. 클라이언트 UI는 스냅샷 Changed 이벤트를 통해 갱신한다. 로컬 선차감 후 서버 실패 시 복구하는 예측 구조를 추가하지 않았다.
+8. 실제 호스트/복수 클라이언트/SteamTransport 통합 테스트는 별도 필요하다.
+
+보존 / 미진행
+
+PL_1, FirstPersonItemAnchor, 손 없는 1인칭, 기본 locomotion, 스트레스/HP/사망/관전/크라우치 유지.
+Player (1)의 NetworkIdentity 문제는 수정하지 않았다. 실제 Scene/Network/AI/Manager/SteamTransport 코드는 변경하지 않았다.
+명부 부적 개편, 효과 부적 서브 인벤토리, 결계 규칙 확장, 나침반/손/Grip 복구 및 4단계 작업은 하지 않았다.
+
+검증 해석
+
+기존 139개 검증의 목적은 유지했다. 기획 변경에 맞춰 두 기대값만 변경했다:
+- 수첩: 컴포넌트 부재 → 애니메이션 필드 없는 기본 수첩 진입점 존재.
+- Inventory UI: 개인 목록 종류 수 → 개인 목록 + 공용 Material 종류 수.
+권한 분기 검사는 Mirror 상태 플래그를 같은 프레임 안에서 잠시 설정하고 finally로 복원한 단위 수준 검사다.
+실제 네트워크 연결/전송/복제 검증이라고 해석하면 안 된다.
+테스트용 런타임 Player clone에만 NetworkIdentity를 넣어 로컬 검사했으며 원본 프리팹의 네트워크 설정은 그대로다.

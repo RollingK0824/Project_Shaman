@@ -85,6 +85,7 @@ public class CoinItem : ItemBase
         {
             ConsumeOne();
         }
+        PlayerItemActions.ReportUse(Owner, Data);
     }
 
     private void ConsumeOne()

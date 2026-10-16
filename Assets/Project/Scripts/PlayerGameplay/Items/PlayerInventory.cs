@@ -2,8 +2,49 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
+[RequireComponent(typeof(PlayerNotebook))]
 public class PlayerInventory : MonoBehaviour
 {
+    [SerializeField] private SharedMaterialInventory _sharedMaterials;
+    public SharedMaterialInventory SharedMaterials
+    {
+        get
+        {
+            if (_sharedMaterials == null)
+            {
+                var local = SharedMaterialInventory.ResolveOffline(gameObject);
+                if (local != null) BindSharedMaterials(local);
+            }
+            return _sharedMaterials;
+        }
+    }
+    public void BindSharedMaterials(SharedMaterialInventory store)
+    {
+        if (_sharedMaterials != null) _sharedMaterials.Changed -= HandleMaterialsChanged;
+        _sharedMaterials = store;
+        if (isActiveAndEnabled && _sharedMaterials != null) _sharedMaterials.Changed += HandleMaterialsChanged;
+        InventoryChanged?.Invoke();
+    }
+    private void HandleMaterialsChanged() => InventoryChanged?.Invoke();
+    private void OnEnable()
+    {
+        BindTalismans();
+        ValidateTalismanBindings();
+        if (_sharedMaterials == null) _sharedMaterials = SharedMaterialInventory.ResolveOffline(gameObject);
+        if (_sharedMaterials != null) _sharedMaterials.Changed += HandleMaterialsChanged;
+    }
+    private void OnDisable()
+    {
+        if (_sharedMaterials != null) _sharedMaterials.Changed -= HandleMaterialsChanged;
+        if (_talismans != null) _talismans.SelectionChanged -= ValidateTalismanBindings;
+    }
+    private static bool IsMaterial(ItemData item) => item != null && item.Category == ItemCategory.Material;
+    private static bool UsesShared(IReadOnlyDictionary<ItemData,int> costs, ItemData result)
+    {
+        if (IsMaterial(result)) return true;
+        if (costs != null) foreach (var cost in costs) if (IsMaterial(cost.Key)) return true;
+        return false;
+    }
     private const int QUICK_SLOT_COUNT = 6;
 
     // 같은 ItemData가 여러 번 들어 있으면
@@ -12,6 +53,57 @@ public class PlayerInventory : MonoBehaviour
         new List<ItemData>();
 
     private ItemData[] _quickSlots;
+    // Ordinary stacks keep the existing ItemData API. Only saved drawings carry an ID.
+    private readonly string[] _quickSlotInstanceIds = new string[QUICK_SLOT_COUNT];
+    private PlayerTalismanCollection _talismans;
+
+    private void BindTalismans()
+    {
+        var collection = GetComponent<PlayerTalismanCollection>();
+        if (_talismans != null) _talismans.SelectionChanged -= ValidateTalismanBindings;
+        _talismans = collection;
+        if (_talismans != null) _talismans.SelectionChanged += ValidateTalismanBindings;
+    }
+
+    public string GetQuickSlotInstanceId(int slotIndex) =>
+        IsValidQuickSlotIndex(slotIndex) ? _quickSlotInstanceIds[slotIndex] : null;
+
+    public TalismanDrawingData GetQuickSlotDrawing(int slotIndex)
+    {
+        if (!IsValidQuickSlotIndex(slotIndex) || string.IsNullOrEmpty(_quickSlotInstanceIds[slotIndex])) return null;
+        var collection = _talismans != null ? _talismans : GetComponent<PlayerTalismanCollection>();
+        if (collection == null) return null;
+        var drawing = collection.Find(_quickSlotInstanceIds[slotIndex], out var template);
+        return template == _quickSlots[slotIndex] ? drawing : null;
+    }
+
+    public bool AssignTalismanQuickSlot(int slotIndex, string instanceId)
+    {
+        if (_publishingTransaction || !PlayerActionGuard.CanAct(gameObject) || !IsValidQuickSlotIndex(slotIndex) || string.IsNullOrEmpty(instanceId)) return false;
+        BindTalismans();
+        if (_talismans == null) return false;
+        var drawing = _talismans.Find(instanceId, out var template);
+        if (drawing == null || template == null || !template.IsEffectTalisman || !template.CanUseQuickSlot || template.FindEffect(drawing.EffectId) == null) return false;
+        for (int i = 0; i < QUICK_SLOT_COUNT; i++)
+            if (i != slotIndex && _quickSlotInstanceIds[i] == instanceId) return false;
+        _quickSlots[slotIndex] = template;
+        _quickSlotInstanceIds[slotIndex] = instanceId;
+        QuickSlotChanged?.Invoke(slotIndex, template);
+        return true;
+    }
+
+    // Ownership cleanup is not a player action: it must also run during death/reset/snapshot updates.
+    private void ValidateTalismanBindings()
+    {
+        if (_quickSlots == null) return;
+        for (int i = 0; i < QUICK_SLOT_COUNT; i++)
+            if (!string.IsNullOrEmpty(_quickSlotInstanceIds[i]) && GetQuickSlotDrawing(i) == null)
+            {
+                _quickSlots[i] = null;
+                _quickSlotInstanceIds[i] = null;
+                QuickSlotChanged?.Invoke(i, null);
+            }
+    }
 
     public IReadOnlyList<ItemData> Items => _items;
 
@@ -47,6 +139,9 @@ public class PlayerInventory : MonoBehaviour
         {
             return false;
         }
+
+        if (itemData.IsUnique && Contains(itemData)) return false;
+        if (IsMaterial(itemData)) return SharedMaterials != null && SharedMaterials.TryAdd(gameObject,itemData);
 
         _items.Add(itemData);
         ItemUnitsChanged?.Invoke(itemData, 1);
@@ -120,11 +215,13 @@ public class PlayerInventory : MonoBehaviour
         ItemData itemData,
         int amount = 1)
     {
-        if (_publishingTransaction || itemData == null ||
+        if (_publishingTransaction || itemData == null || itemData.IsPermanent ||
             amount <= 0)
         {
             return false;
         }
+
+        if (IsMaterial(itemData)) return SharedMaterials != null && SharedMaterials.TryRemove(gameObject,itemData,amount);
 
         int currentCount =
             GetItemCount(itemData);
@@ -213,6 +310,8 @@ public class PlayerInventory : MonoBehaviour
             return 0;
         }
 
+        if (IsMaterial(itemData)) return SharedMaterials != null ? SharedMaterials.GetCount(itemData) : 0;
+
         int count = 0;
 
         for (int i = 0;
@@ -242,6 +341,7 @@ public class PlayerInventory : MonoBehaviour
             return null;
         }
 
+        ValidateTalismanBindings();
         return _quickSlots[slotIndex];
     }
 
@@ -284,8 +384,7 @@ public class PlayerInventory : MonoBehaviour
                     continue;
                 }
 
-                if (_quickSlots[i] ==
-                    itemData)
+                if (_quickSlots[i] == itemData && string.IsNullOrEmpty(_quickSlotInstanceIds[i]))
                 {
                     _quickSlots[i] = null;
 
@@ -297,6 +396,7 @@ public class PlayerInventory : MonoBehaviour
             }
         }
 
+        _quickSlotInstanceIds[slotIndex] = null;
         _quickSlots[slotIndex] =
             itemData;
 
@@ -324,6 +424,7 @@ public class PlayerInventory : MonoBehaviour
             return true;
         }
 
+        _quickSlotInstanceIds[slotIndex] = null;
         _quickSlots[slotIndex] = null;
 
         QuickSlotChanged?.Invoke(
@@ -353,11 +454,18 @@ public class PlayerInventory : MonoBehaviour
 
     public bool CanExchangeItems(IReadOnlyDictionary<ItemData, int> costs, ItemData result, int resultAmount)
     {
-        if (!PlayerActionGuard.CanAct(gameObject) || costs == null || result == null || resultAmount <= 0) return false;
+        if (result == null || resultAmount <= 0) return false;
+        return UsesShared(costs,result) ? SharedMaterials != null && SharedMaterials.CanExchange(this,costs,result,resultAmount)
+            : CanExchangePersonalItems(costs,result,resultAmount);
+    }
+    internal bool CanExchangePersonalItems(IReadOnlyDictionary<ItemData, int> costs, ItemData result, int resultAmount)
+    {
+        if (!PlayerActionGuard.CanAct(gameObject) || costs == null || (result == null ? resultAmount != 0 : resultAmount <= 0) || IsMaterial(result)) return false;
+        if (result != null && result.IsUnique && (resultAmount != 1 || Contains(result))) return false;
         long finalCount = (long)_items.Count + resultAmount;
         foreach (var cost in costs)
         {
-            if (cost.Key == null || cost.Value <= 0 || !HasItem(cost.Key, cost.Value)) return false;
+            if (cost.Key == null || cost.Key.IsPermanent || IsMaterial(cost.Key) || cost.Value <= 0 || !HasItem(cost.Key, cost.Value)) return false;
             finalCount -= cost.Value;
         }
         return finalCount >= 0 && finalCount <= int.MaxValue;
@@ -366,7 +474,13 @@ public class PlayerInventory : MonoBehaviour
     // Commit all counts and slots before notifying subscribers. Reentrant writes are rejected.
     public bool TryExchangeItems(IReadOnlyDictionary<ItemData, int> costs, ItemData result, int resultAmount)
     {
-        if (_publishingTransaction || !CanExchangeItems(costs, result, resultAmount)) return false;
+        if (_publishingTransaction || result == null || resultAmount <= 0) return false;
+        return UsesShared(costs,result) ? SharedMaterials != null && SharedMaterials.TryExchange(this,costs,result,resultAmount)
+            : TryExchangePersonalItems(costs,result,resultAmount,null,null);
+    }
+    internal bool TryExchangePersonalItems(IReadOnlyDictionary<ItemData,int> costs, ItemData result, int resultAmount, Action commitShared, Action publishShared)
+    {
+        if (_publishingTransaction || !CanExchangePersonalItems(costs,result,resultAmount)) return false;
         var nextItems = new List<ItemData>(_items);
         var changed = new HashSet<ItemData>();
         foreach (var cost in costs)
@@ -375,13 +489,13 @@ public class PlayerInventory : MonoBehaviour
             changed.Add(cost.Key);
         }
         for (int i = 0; i < resultAmount; i++) nextItems.Add(result);
-        changed.Add(result);
+        if (result != null) changed.Add(result);
         var previousSlots = (ItemData[])_quickSlots.Clone();
         _items.Clear();
         _items.AddRange(nextItems);
         for (int i = 0; i < QUICK_SLOT_COUNT; i++)
-            if (_quickSlots[i] != null && (!_quickSlots[i].CanUseQuickSlot || !Contains(_quickSlots[i]))) _quickSlots[i] = null;
-        if (result.CanUseQuickSlot && FindQuickSlot(result) < 0)
+            if (_quickSlots[i] != null && string.IsNullOrEmpty(_quickSlotInstanceIds[i]) && (!_quickSlots[i].CanUseQuickSlot || !Contains(_quickSlots[i]))) _quickSlots[i] = null;
+        if (result != null && result.CanUseQuickSlot && FindQuickSlot(result) < 0)
         {
             int slot = FindFirstEmptyQuickSlot();
             if (slot >= 0) _quickSlots[slot] = result;
@@ -389,16 +503,18 @@ public class PlayerInventory : MonoBehaviour
         _publishingTransaction = true;
         try
         {
+            commitShared?.Invoke();
             foreach (var cost in costs) ItemUnitsChanged?.Invoke(cost.Key, -cost.Value);
-            ItemUnitsChanged?.Invoke(result, resultAmount);
+            if (result != null) ItemUnitsChanged?.Invoke(result, resultAmount);
             foreach (var cost in costs) ItemRemoved?.Invoke(cost.Key);
-            ItemAdded?.Invoke(result);
+            if (result != null) ItemAdded?.Invoke(result);
             foreach (var item in changed) ItemCountChanged?.Invoke(item, GetItemCount(item));
             for (int i = 0; i < QUICK_SLOT_COUNT; i++)
                 if (previousSlots[i] != _quickSlots[i]) QuickSlotChanged?.Invoke(i, _quickSlots[i]);
             InventoryChanged?.Invoke();
         }
-        finally { _publishingTransaction = false; }
+        catch (Exception e) { Debug.LogException(e,this); } // Counts already committed; observer failure is not a failed craft.
+        finally { try { publishShared?.Invoke(); } finally { _publishingTransaction = false; } }
         return true;
     }
 
@@ -430,8 +546,7 @@ public class PlayerInventory : MonoBehaviour
              i < QUICK_SLOT_COUNT;
              i++)
         {
-            if (_quickSlots[i] ==
-                itemData)
+            if (_quickSlots[i] == itemData && string.IsNullOrEmpty(_quickSlotInstanceIds[i]))
             {
                 return i;
             }
@@ -448,8 +563,7 @@ public class PlayerInventory : MonoBehaviour
              i < QUICK_SLOT_COUNT;
              i++)
         {
-            if (_quickSlots[i] !=
-                itemData)
+            if (_quickSlots[i] != itemData || !string.IsNullOrEmpty(_quickSlotInstanceIds[i]))
             {
                 continue;
             }

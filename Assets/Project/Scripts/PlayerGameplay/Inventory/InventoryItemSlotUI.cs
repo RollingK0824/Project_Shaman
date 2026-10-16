@@ -1,4 +1,4 @@
-﻿using TMPro;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -9,7 +9,6 @@ public class InventoryItemSlotUI : MonoBehaviour, UnityEngine.EventSystems.IPoin
     [SerializeField] private TMP_Text _countText;
     [SerializeField] private TMP_Text _nameText;
 
-    private ItemData _itemData;
     private System.Action _use;
     public void SetInstance(string displayName, System.Action use)
     {
@@ -18,12 +17,12 @@ public class InventoryItemSlotUI : MonoBehaviour, UnityEngine.EventSystems.IPoin
         _use = use;
     }
     public void SetUse(System.Action use) => _use = use;
+    public void SetLabel(string displayName) { if (_nameText != null) _nameText.text = displayName; }
     public void OnPointerClick(UnityEngine.EventSystems.PointerEventData e)
     { if (e.button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) _use?.Invoke(); }
 
     public void Setup(ItemData itemData, int count)
     {
-        _itemData = itemData;
         _use = null;
 
         if (_icon != null)
@@ -37,6 +36,6 @@ public class InventoryItemSlotUI : MonoBehaviour, UnityEngine.EventSystems.IPoin
         {
             _countText.text = $"x{count}";
         }
-        if (_nameText != null) _nameText.text = itemData != null ? itemData.DisplayName : string.Empty;
+        if (_nameText != null) _nameText.text = itemData != null ? (itemData.Category == ItemCategory.Material ? "[공용] " : "") + itemData.DisplayName : string.Empty;
     }
 }
