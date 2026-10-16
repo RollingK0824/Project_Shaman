@@ -2,7 +2,7 @@ namespace ProjectShaman.AI.Core
 {
     public static class AIEvents
     {
-        public static event System.Action<string, string, int> OnVillagerStress;
+        public static event System.Action<string, string, float> OnVillagerStress;
         public static event System.Action<string, string, string> OnVillagerRequest;
 
         public static event System.Action<string, string> OnVillagerDied;
@@ -13,10 +13,10 @@ namespace ProjectShaman.AI.Core
             OnVillagerDied?.Invoke(villagerId, reason);
         }
 
-        public static void RaiseStress(string villagerId, string reason, int stage)
+        public static void RaiseStress(string villagerId, string reason, float amount)
         {
-            AILog.Log(AILog.EVENT, villagerId, $"[Stub] Stress stage {stage} ({reason})");
-            OnVillagerStress?.Invoke(villagerId, reason, stage);
+            AILog.Log(AILog.EVENT, villagerId, $"[Stub] Stress +{amount} ({reason})");
+            OnVillagerStress?.Invoke(villagerId, reason, amount);
         }
 
         public static void RaiseRequest(string villagerId, string requestType, string detail)

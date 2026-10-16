@@ -8,6 +8,7 @@ namespace ProjectShaman.AI
     public class AI_Movement : MonoBehaviour, INetworkMovable
     {
         private NavMeshAgent agent;
+        private float defaultSpeed;
 
         public bool IsStopped => agent != null && agent.isStopped;
         public bool HasReachedDestination
@@ -25,6 +26,23 @@ namespace ProjectShaman.AI
         void Awake()
         {
             agent = GetComponent<NavMeshAgent>();
+            defaultSpeed = agent != null ? agent.speed : 0f;
+        }
+
+        public void SetSpeed(float speed)
+        {
+            if (agent != null)
+            {
+                agent.speed = Mathf.Max(0.1f, speed);
+            }
+        }
+
+        public void ResetSpeed()
+        {
+            if (agent != null)
+            {
+                agent.speed = defaultSpeed;
+            }
         }
 
         public void SetAgentActive(bool active)
