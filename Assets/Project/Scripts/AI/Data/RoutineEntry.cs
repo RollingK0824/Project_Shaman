@@ -24,8 +24,7 @@ namespace ProjectShaman.AI.Data
 
         public bool IsLoadableFor(VillagerPublicInfo info)
         {
-            bool isJobAllowed = Category == RoutineCategory.Rest || JobIds == null || JobIds.Count == 0 || JobIds.Contains(info.JobId);
-            return isJobAllowed && Condition.Matches(info.Gender, info.SocialClass, info.AgeGroup);
+            return AttributeCondition.IsAllowed(JobIds, info.JobId) && Condition.Matches(info);
         }
 
         public override string ToString()

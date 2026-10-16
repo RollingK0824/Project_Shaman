@@ -21,6 +21,7 @@ namespace ProjectShaman.AI.Ghost
         private const float TARGET_CHECK_INTERVAL = 0.25f;
         private const float RANGE_TOLERANCE = 0.5f;
         private const float FOLLOW_UPDATE_DISTANCE = 0.5f;
+        private const float IDLE_ARRIVE_DISTANCE = 0.8f;
 
         [SerializeField] private Transform _carrySocket;
 
@@ -30,11 +31,23 @@ namespace ProjectShaman.AI.Ghost
         [SerializeField] private Vector3 _center;
         [SerializeField] private float _radius;
         [SerializeField] private bool _isHunter;
+        [SerializeField] private bool _canChasePlayer;
         [SerializeField] private int _commandSerial;
         [SerializeField] private string _currentCommand;
         [SerializeField] private GhostActionShape _currentShape;
         [SerializeField] private Vector3 _movePosition;
         [SerializeField] private string _carriedName;
+
+        [Header("Debug (server only)")]
+        [SerializeField] private float _yin;
+        [SerializeField] private float _pendingYin;
+        [SerializeField] private float _nextDecisionIn;
+        [SerializeField] private string _lastDecision;
+        [SerializeField] private string _idleState;
+        [SerializeField] private int _huntKillsRemaining;
+        [SerializeField] private bool _huntIgnoresRadius;
+        [SerializeField] private List<string> _huntTargets = new List<string>();
+        [SerializeField] private List<string> _actionUses = new List<string>();
 
         private AI_Movement _movement;
         private BehaviorGraphAgent _behaviorAgent;
@@ -45,7 +58,12 @@ namespace ProjectShaman.AI.Ghost
         private readonly List<GhostNightActionData> _actions = new List<GhostNightActionData>();
         private readonly Dictionary<GhostNightActionData, int> _uses = new Dictionary<GhostNightActionData, int>();
         private readonly List<GhostNightActionData> _candidates = new List<GhostNightActionData>();
+        private readonly List<string> _unavailableReasons = new List<string>();
         private GhostActionSession _session;
+        private GhostHuntPlan _hunt;
+        private GhostNightActionData _huntAction;
+        private GhostIdleController _idle;
+        private float _lastPlayerAttackTime = float.NegativeInfinity;
         private bool _isSimulating;
         private float _nextDecisionTime;
         private float _nextTargetCheckTime;
@@ -63,7 +81,7 @@ namespace ProjectShaman.AI.Ghost
             _behaviorAgent = GetComponent<BehaviorGraphAgent>();
         }
 
-        public void Initialize(AI_Possession possession, NightOutcomeLedger ledger, IReadOnlyList<GhostNightActionData> actions, string hostVillagerId, Vector3 center, float radius, bool isHunter, AIBehaviourConfig config, int seed)
+        public void Initialize(AI_Possession possession, NightOutcomeLedger ledger, IReadOnlyList<GhostNightActionData> actions, string hostVillagerId, Vector3 center, float radius, int huntKills, bool huntIgnoresRadius, bool canChasePlayer, AIBehaviourConfig config, int seed)
         {
             _possession = possession;
             _ledger = ledger;
@@ -72,11 +90,15 @@ namespace ProjectShaman.AI.Ghost
             _hostVillagerId = hostVillagerId;
             _center = center;
             _radius = radius;
-            _isHunter = isHunter;
             _random = new System.Random(seed);
+            _hunt = new GhostHuntPlan(_ghostId, huntKills, huntIgnoresRadius);
+            _isHunter = _hunt.HasKills;
+            _canChasePlayer = _isHunter && canChasePlayer;
+            _idle = new GhostIdleController(this, _movement, config, _random);
 
             _actions.Clear();
             _uses.Clear();
+            _huntAction = null;
 
             if (actions != null)
             {
@@ -85,11 +107,40 @@ namespace ProjectShaman.AI.Ghost
                     if (action != null && !_actions.Contains(action))
                     {
                         _actions.Add(action);
+
+                        if (action.IsHunt && _huntAction == null)
+                        {
+                            _huntAction = action;
+                        }
                     }
                 }
             }
 
-            AILog.Log(AILog.GHOST, _ghostId, $"Entity initialized at {center} radius={radius:F1}m hunter={isHunter} actions={_actions.Count}");
+            if (_hunt.HasKills)
+            {
+                if (_huntAction != null)
+                {
+                    _hunt.Refill(_huntAction.Query, _center, CreateContext(_huntAction));
+                }
+                else
+                {
+                    AILog.Warn(AILog.GHOST, $"{_ghostId} has hunt kills but no night action marked as hunt");
+                }
+            }
+
+            RefreshActionUses();
+            RefreshHuntDebug();
+            AILog.Log(AILog.GHOST, _ghostId, $"Entity initialized at {center} radius={radius:F1}m huntKills={_hunt.KillsRemaining}{(_hunt.IgnoresRadius ? " (ignores radius)" : string.Empty)} reserved={_hunt.TargetCount} chasePlayer={_canChasePlayer} actions={_actions.Count}");
+        }
+
+        private void OnDestroy()
+        {
+            _idle?.Stop("destroyed");
+
+            if (!string.IsNullOrEmpty(_ghostId))
+            {
+                GhostTargetRegistry.ReleaseAll(_ghostId);
+            }
         }
 
         public void SetSimulationActive(bool active)
@@ -113,17 +164,43 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
+            RefreshDebug();
+
             if (_session == null)
             {
                 if (Time.time >= _nextDecisionTime)
                 {
-                    TryBeginNextCommand();
+                    TryBeginNextCommand(false);
+                }
+                else if (CanCutCooldownForChase())
+                {
+                    TryBeginNextCommand(true);
+                }
+
+                if (_session == null)
+                {
+                    _idle.Tick();
                 }
 
                 return;
             }
 
             WatchSession();
+        }
+
+        private bool CanCutCooldownForChase()
+        {
+            return _canChasePlayer
+                && Time.time - _lastPlayerAttackTime >= _config.GhostPlayerAttackCooldown
+                && _idle.DistanceToStalkTarget <= _config.GhostPlayerDetectDistance;
+        }
+
+        public void SetIdleDestination(Vector3 position)
+        {
+            if (_session == null)
+            {
+                SetMovePosition(position);
+            }
         }
 
         public bool IsInsideRadius(Vector3 position)
@@ -140,26 +217,56 @@ namespace ProjectShaman.AI.Ghost
 
         private GhostActionContext CreateContext(GhostNightActionData action)
         {
-            return new GhostActionContext(_possession, this, _ledger, action, _center, _radius);
+            bool ignoreRadius = _hunt != null && _hunt.IgnoresRadius && action != null && action.IsHunt;
+            return new GhostActionContext(_possession, this, _ledger, action, _center, _radius, ignoreRadius);
         }
 
-        private void TryBeginNextCommand()
+        private void TryBeginNextCommand(bool chaseOnly)
         {
             _candidates.Clear();
-            float totalWeight = 0f;
+            _unavailableReasons.Clear();
 
             foreach (GhostNightActionData action in _actions)
             {
-                if (IsAvailable(action))
+                if (chaseOnly && (action == null || !action.RequiresChaseTier))
+                {
+                    continue;
+                }
+
+                if (IsAvailable(action, out string reason))
                 {
                     _candidates.Add(action);
-                    totalWeight += action.Weight;
                 }
+                else if (action != null)
+                {
+                    _unavailableReasons.Add($"{action.ActionId}: {reason}");
+                }
+            }
+
+            if (_candidates.Exists(candidate => candidate.RequiresChaseTier))
+            {
+                _candidates.RemoveAll(candidate => !candidate.RequiresChaseTier);
+            }
+            else if (_candidates.Exists(candidate => candidate.IsHunt))
+            {
+                _candidates.RemoveAll(candidate => !candidate.IsHunt);
+            }
+
+            float totalWeight = 0f;
+
+            foreach (GhostNightActionData candidate in _candidates)
+            {
+                totalWeight += candidate.Weight;
             }
 
             if (_candidates.Count == 0 || totalWeight <= 0f)
             {
-                _nextDecisionTime = Time.time + _config.GhostCommandRetrySeconds;
+                if (!chaseOnly)
+                {
+                    _lastDecision = $"no action ({string.Join(", ", _unavailableReasons)})";
+                    _nextDecisionTime = Time.time + _config.GhostCommandRetrySeconds;
+                }
+
                 return;
             }
 
@@ -176,14 +283,17 @@ namespace ProjectShaman.AI.Ghost
                 }
             }
 
-            IGhostTarget target = GhostTargetRegistry.Find(picked.Query, transform.position, CreateContext(picked));
-            if (target == null)
+            IGhostTarget target = picked.IsHunt ? _hunt.PickNearest(transform.position) : GhostTargetRegistry.Find(picked.Query, transform.position, CreateContext(picked));
+            if (target == null || !GhostTargetRegistry.TryClaim(target, _ghostId))
             {
+                _lastDecision = $"{picked.ActionId}: target unavailable";
                 _nextDecisionTime = Time.time + _config.GhostCommandRetrySeconds;
                 return;
             }
 
+            _idle.Stop("command");
             _uses[picked] = UsesOf(picked) + 1;
+            RefreshActionUses();
 
             if (picked.YinCost > 0f)
             {
@@ -193,32 +303,149 @@ namespace ProjectShaman.AI.Ghost
             _session = new GhostActionSession(++_commandSerial, picked, target, Time.time);
             _nextTargetCheckTime = Time.time + TARGET_CHECK_INTERVAL;
             ApplyCommandToBlackboard();
-            AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} (use {UsesOf(picked)}/{(picked.MaxPerNight > 0 ? picked.MaxPerNight.ToString() : "∞")})");
+            _lastDecision = _session.ToString();
+            AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} (use {UsesOf(picked)}/{FormatMax(picked)})");
         }
 
-        private bool IsAvailable(GhostNightActionData action)
+        private bool IsAvailable(GhostNightActionData action, out string reason)
         {
             if (action == null || _possession == null || action.Weight <= 0f || action.Shape == GhostActionShape.None)
             {
+                reason = "disabled";
                 return false;
             }
 
             if (action.HunterOnly && !_isHunter)
             {
+                reason = "hunter only";
                 return false;
+            }
+
+            if (action.RequiresChaseTier && !_canChasePlayer)
+            {
+                reason = "chase tier only";
+                return false;
+            }
+
+            if (action.IsHunt)
+            {
+                return IsHuntAvailable(action, out reason);
             }
 
             if (action.MaxPerNight > 0 && UsesOf(action) >= action.MaxPerNight)
             {
+                reason = "max per night";
                 return false;
             }
 
             if (_possession.Yin < action.MinYin || _possession.Yin < action.YinCost)
             {
+                reason = "not enough yin";
                 return false;
             }
 
-            return GhostTargetRegistry.HasAny(action.Query, CreateContext(action));
+            if (action.RequiresChaseTier)
+            {
+                return IsPlayerDetected(action, out reason);
+            }
+
+            if (!GhostTargetRegistry.HasAny(action.Query, CreateContext(action)))
+            {
+                reason = "no target";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
+        private bool IsHuntAvailable(GhostNightActionData action, out string reason)
+        {
+            if (!_hunt.HasKills)
+            {
+                reason = "no kills left";
+                return false;
+            }
+
+            _hunt.Refill(action.Query, transform.position, CreateContext(action));
+            RefreshHuntDebug();
+
+            if (_hunt.TargetCount == 0)
+            {
+                reason = "no target";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
+        private bool IsPlayerDetected(GhostNightActionData action, out string reason)
+        {
+            if (Time.time - _lastPlayerAttackTime < _config.GhostPlayerAttackCooldown)
+            {
+                reason = "attack cooldown";
+                return false;
+            }
+
+            IGhostTarget player = GhostTargetRegistry.Find(action.Query, transform.position, CreateContext(action));
+            if (player == null)
+            {
+                reason = "no target";
+                return false;
+            }
+
+            Vector3 offset = player.gameObject.transform.position - transform.position;
+            offset.y = 0f;
+            float detect = _config.GhostPlayerDetectDistance;
+
+            if (offset.sqrMagnitude > detect * detect)
+            {
+                reason = "player not detected";
+                return false;
+            }
+
+            reason = string.Empty;
+            return true;
+        }
+
+        private static string FormatMax(GhostNightActionData action)
+        {
+            return action.MaxPerNight > 0 ? action.MaxPerNight.ToString() : "∞";
+        }
+
+        private void RefreshActionUses()
+        {
+            _actionUses.Clear();
+
+            foreach (GhostNightActionData action in _actions)
+            {
+                _actionUses.Add($"{action.ActionId} {UsesOf(action)}/{FormatMax(action)}");
+            }
+        }
+
+        private void RefreshDebug()
+        {
+            if (_possession != null)
+            {
+                _yin = _possession.Yin;
+                _pendingYin = _possession.PendingYin;
+            }
+
+            _nextDecisionIn = _session == null ? Mathf.Max(0f, _nextDecisionTime - Time.time) : 0f;
+            _idleState = _session == null && _idle != null ? _idle.State : "command";
+        }
+
+        private void RefreshHuntDebug()
+        {
+            if (_hunt == null)
+            {
+                return;
+            }
+
+            _huntKillsRemaining = _hunt.KillsRemaining;
+            _huntIgnoresRadius = _hunt.IgnoresRadius;
+            _hunt.WriteDebug(_huntTargets);
         }
 
         private int UsesOf(GhostNightActionData action)
@@ -228,7 +455,8 @@ namespace ProjectShaman.AI.Ghost
 
         private void WatchSession()
         {
-            if (Time.time - _session.StartTime > _config.GhostCommandTimeoutSeconds)
+            float timeout = _session.Action.IsHunt ? _config.GhostHuntTimeoutSeconds : _config.GhostCommandTimeoutSeconds;
+            if (Time.time - _session.StartTime > timeout)
             {
                 FailCommand("timeout");
                 return;
@@ -410,8 +638,21 @@ namespace ProjectShaman.AI.Ghost
                 _ledger.SpawnTrace(action.TracePrefab, tracePosition, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
             }
 
-            AILog.Log(AILog.GHOST, _ghostId, $"Command {summary} succeeded (yin +{action.YinGain} pending)");
-            EndSession(0f);
+            if (action.IsHunt)
+            {
+                _hunt.OnKilled(_session.Target);
+                RefreshHuntDebug();
+            }
+
+            if (action.RequiresChaseTier)
+            {
+                _lastPlayerAttackTime = Time.time;
+            }
+
+            float cooldown = action.IsHunt && _hunt.HasKills ? _config.GhostCommandRetrySeconds : PickCooldown();
+            string huntInfo = action.IsHunt ? $", kills left {_hunt.KillsRemaining}" : string.Empty;
+            AILog.Log(AILog.GHOST, _ghostId, $"Command {summary} succeeded (yin +{action.YinGain} pending{huntInfo}, cooldown {cooldown:F1}s)");
+            EndSession(cooldown);
             return true;
         }
 
@@ -427,6 +668,7 @@ namespace ProjectShaman.AI.Ghost
                 DropCarried(transform.position);
             }
 
+            _lastDecision = $"failed {_session} ({reason})";
             AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} failed ({reason}, cost not refunded)");
             EndSession(_config != null ? _config.GhostCommandRetrySeconds : 0f);
         }
@@ -434,11 +676,32 @@ namespace ProjectShaman.AI.Ghost
         public void ReleaseForDespawn()
         {
             FailCommand("morning");
+            _idle?.Stop("morning");
+            GhostTargetRegistry.ReleaseAll(_ghostId);
+
+            int lost = _hunt != null ? _hunt.Abandon() : 0;
+            if (lost > 0)
+            {
+                AILog.Log(AILog.GHOST, _ghostId, $"Morning: {lost} unused kills lost");
+            }
+
+            RefreshHuntDebug();
+
             _isSimulating = false;
+        }
+
+        private float PickCooldown()
+        {
+            return Mathf.Lerp(_config.GhostActionCooldownMin, _config.GhostActionCooldownMax, (float)_random.NextDouble());
         }
 
         private void EndSession(float retryDelay)
         {
+            if (!(_session.Action.IsHunt && _hunt.Contains(_session.Target)))
+            {
+                GhostTargetRegistry.Release(_session.Target, _ghostId);
+            }
+
             _session = null;
             _nextDecisionTime = Time.time + retryDelay;
             _commandSerial++;
@@ -460,13 +723,15 @@ namespace ProjectShaman.AI.Ghost
         private bool TryPickHidePosition(Vector3 from, out Vector3 position)
         {
             float minDistance = _config.GhostHideMinDistance;
+            float maxDistance = _config.GhostHideMaxDistance;
             float sqrMinDistance = minDistance * minDistance;
+            float sqrMaxDistance = (maxDistance + NAVMESH_SAMPLE_DISTANCE) * (maxDistance + NAVMESH_SAMPLE_DISTANCE);
 
             for (int i = 0; i < HIDE_POSITION_ATTEMPTS; i++)
             {
                 float angle = (float)(_random.NextDouble() * Mathf.PI * 2f);
-                float distance = Mathf.Sqrt((float)_random.NextDouble()) * _radius;
-                Vector3 candidate = _center + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+                float distance = Mathf.Lerp(minDistance, maxDistance, (float)_random.NextDouble());
+                Vector3 candidate = from + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
 
                 if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) || !IsInsideRadius(hit.position))
                 {
@@ -476,7 +741,7 @@ namespace ProjectShaman.AI.Ghost
                 Vector3 offset = hit.position - from;
                 offset.y = 0f;
 
-                if (offset.sqrMagnitude >= sqrMinDistance)
+                if (offset.sqrMagnitude >= sqrMinDistance && offset.sqrMagnitude <= sqrMaxDistance)
                 {
                     position = hit.position;
                     return true;
@@ -503,6 +768,8 @@ namespace ProjectShaman.AI.Ghost
             _currentCommand = string.Empty;
             _currentShape = GhostActionShape.None;
 
+            SetBlackboardVariable(BB_ARRIVE_DISTANCE, IDLE_ARRIVE_DISTANCE);
+            SetMovePosition(transform.position);
             SetBlackboardVariable(BB_ACTION_SHAPE, GhostActionShape.None);
             SetBlackboardVariable(BB_COMMAND_SERIAL, _commandSerial);
         }

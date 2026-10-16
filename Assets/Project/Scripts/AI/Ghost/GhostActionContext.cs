@@ -13,9 +13,11 @@ namespace ProjectShaman.AI.Ghost
         public readonly GhostActionVerb Verb;
         public readonly Vector3 Center;
         public readonly float Radius;
+        public readonly bool IgnoreRadius;
 
-        public GhostActionContext(AI_Possession possession, AI_GhostEntity entity, NightOutcomeLedger ledger, GhostNightActionData action, Vector3 center, float radius)
+        public GhostActionContext(AI_Possession possession, AI_GhostEntity entity, NightOutcomeLedger ledger, GhostNightActionData action, Vector3 center, float radius, bool ignoreRadius)
         {
+            IgnoreRadius = ignoreRadius;
             GhostId = possession != null ? possession.GhostId : string.Empty;
             Possession = possession;
             Entity = entity;
@@ -31,6 +33,11 @@ namespace ProjectShaman.AI.Ghost
 
         public bool IsInsideRadius(Vector3 position)
         {
+            if (IgnoreRadius)
+            {
+                return true;
+            }
+
             Vector3 offset = position - Center;
             offset.y = 0f;
             return offset.sqrMagnitude <= Radius * Radius;

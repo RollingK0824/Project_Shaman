@@ -22,7 +22,9 @@ namespace ProjectShaman.AI.Ghost
             public AI_Possession Possession;
             public AI_Core Host;
             public float Radius;
-            public bool IsHunter;
+            public int HuntKills;
+            public bool HuntIgnoresRadius;
+            public bool ChasePlayer;
         }
 
         private readonly List<AI_GhostEntity> _entities = new List<AI_GhostEntity>();
@@ -117,55 +119,124 @@ namespace ProjectShaman.AI.Ghost
             _ledger.BeginNight(_time.DayCount);
             AILog.Log(AILog.GHOST, $"Ghost targets: {GhostTargetRegistry.Count} (barriers {GhostBarrierRegistry.Count})");
 
-            AIManager.VillagerRuntime hunterHost = PickHuntToken(hosts);
-            _huntTokenGhostId = hunterHost.Profile.Possession.GhostId;
             _pendingEntities.Clear();
 
             foreach (AIManager.VillagerRuntime host in hosts)
             {
                 AI_Possession possession = host.Profile.Possession;
-                bool isHunter = host == hunterHost;
-                float yinBefore = possession.Yin;
-                float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(yinBefore, _behaviourConfig));
-
-                if (isHunter)
-                {
-                    possession.SpendYin(_behaviourConfig.HuntCost, "hunt token (pre-paid, no refund)");
-                    AILog.Log(AILog.GHOST, possession.GhostId, $"Hunt token Day{_time.DayCount} (yin {yinBefore:F0} → {possession.Yin:F0}, radius {radius:F1}m)");
-                }
-                else
-                {
-                    AILog.Log(AILog.GHOST, possession.GhostId, $"No hunt token Day{_time.DayCount}, accumulation/interference only (yin {yinBefore:F0}, radius {radius:F1}m)");
-                }
-
-                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, Radius = radius, IsHunter = isHunter });
+                float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(possession.Yin, _behaviourConfig));
+                AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount} (yin {possession.Yin:F0}, radius {radius:F1}m)");
+                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, Radius = radius });
             }
 
+            AssignHuntToken();
             _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
         }
 
-        private AIManager.VillagerRuntime PickHuntToken(List<AIManager.VillagerRuntime> hosts)
+        private void AssignHuntToken()
         {
-            float bestYin = float.MinValue;
-            List<AIManager.VillagerRuntime> best = new List<AIManager.VillagerRuntime>();
+            _huntTokenGhostId = string.Empty;
 
-            foreach (AIManager.VillagerRuntime host in hosts)
+            if (!HasHuntableVillager(Vector3.zero, 0f, false))
             {
-                float yin = host.Profile.Possession.Yin;
-                if (yin > bestYin + 0.001f)
+                AILog.Log(AILog.GHOST, $"No hunt Day{_time.DayCount}: no huntable villager left");
+                return;
+            }
+
+            List<int> order = SortByYin();
+            int hunterIndex = -1;
+
+            foreach (int index in order)
+            {
+                PendingEntity candidate = _pendingEntities[index];
+                if (HasHuntableVillager(candidate.Host.Profile.HomePosition, candidate.Radius, true))
                 {
-                    bestYin = yin;
-                    best.Clear();
-                    best.Add(host);
+                    hunterIndex = index;
+                    break;
                 }
-                else if (Mathf.Abs(yin - bestYin) <= 0.001f)
+
+                AILog.Log(AILog.GHOST, candidate.Possession.GhostId, $"No villager in radius {candidate.Radius:F1}m, hunt token passes on");
+            }
+
+            bool ignoresRadius = hunterIndex < 0;
+            if (ignoresRadius)
+            {
+                hunterIndex = order[0];
+            }
+
+            PendingEntity hunter = _pendingEntities[hunterIndex];
+            float yinBefore = hunter.Possession.Yin;
+
+            if (!_behaviourConfig.TryGetHuntTier(yinBefore, out HuntTier tier))
+            {
+                AILog.Log(AILog.GHOST, hunter.Possession.GhostId, $"No hunt Day{_time.DayCount}: yin {yinBefore:F0} below every hunt tier");
+                return;
+            }
+
+            hunter.Possession.DrainYin($"hunt token Day{_time.DayCount}");
+            hunter.HuntKills = tier.Kills;
+            hunter.HuntIgnoresRadius = ignoresRadius;
+            hunter.ChasePlayer = tier.ChasePlayer;
+            _pendingEntities[hunterIndex] = hunter;
+            _huntTokenGhostId = hunter.Possession.GhostId;
+
+            AILog.Log(AILog.GHOST, _huntTokenGhostId, $"Hunt token Day{_time.DayCount} (yin {yinBefore:F0} → 0, tier {tier}{(ignoresRadius ? ", no villager in any radius → nearest villager" : string.Empty)})");
+        }
+
+        private List<int> SortByYin()
+        {
+            System.Random random = new System.Random(unchecked(_factory.Seed * 31 + _time.DayCount));
+            List<int> order = new List<int>();
+            List<double> tieBreakers = new List<double>();
+
+            for (int i = 0; i < _pendingEntities.Count; i++)
+            {
+                order.Add(i);
+                tieBreakers.Add(random.NextDouble());
+            }
+
+            order.Sort((a, b) =>
+            {
+                float yinA = _pendingEntities[a].Possession.Yin;
+                float yinB = _pendingEntities[b].Possession.Yin;
+
+                if (Mathf.Abs(yinA - yinB) > 0.001f)
                 {
-                    best.Add(host);
+                    return yinB.CompareTo(yinA);
+                }
+
+                return tieBreakers[a].CompareTo(tieBreakers[b]);
+            });
+
+            return order;
+        }
+
+        private bool HasHuntableVillager(Vector3 center, float radius, bool checkRadius)
+        {
+            float sqrRadius = radius * radius;
+
+            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
+            {
+                if (villager.Core == null || villager.Profile == null || villager.Profile.IsPossessed)
+                {
+                    continue;
+                }
+
+                if (!checkRadius)
+                {
+                    return true;
+                }
+
+                Vector3 offset = villager.Core.transform.position - center;
+                offset.y = 0f;
+
+                if (offset.sqrMagnitude <= sqrRadius)
+                {
+                    return true;
                 }
             }
 
-            System.Random random = new System.Random(unchecked(_factory.Seed * 31 + _time.DayCount));
-            return best[random.Next(best.Count)];
+            return false;
         }
 
         private void Update()
@@ -205,7 +276,7 @@ namespace ProjectShaman.AI.Ghost
             }
 
             int seed = unchecked(pending.Possession.Seed * 397 + _time.DayCount);
-            entity.Initialize(pending.Possession, _ledger, _nightActions, pending.Host.LogId, center, pending.Radius, pending.IsHunter, _behaviourConfig, seed);
+            entity.Initialize(pending.Possession, _ledger, _nightActions, pending.Host.LogId, center, pending.Radius, pending.HuntKills, pending.HuntIgnoresRadius, pending.ChasePlayer, _behaviourConfig, seed);
             _factory.SpawnHandler.Spawn(instance);
             _entities.Add(entity);
             _activeEntityCount = _entities.Count;

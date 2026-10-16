@@ -40,11 +40,19 @@ namespace ProjectShaman.AI.Ghost
             AILog.Log(AILog.GHOST, _ghostId, $"Yin -{amount} ({reason}) → {_yin}");
         }
 
-        public void ApplyMorningYin(float minimumYin)
+        public float DrainYin(string reason)
         {
             float before = _yin;
-            _yin = Mathf.Max(_yin + _pendingYin, minimumYin);
-            AILog.Log(AILog.GHOST, _ghostId, $"Morning yin {before} + pending {_pendingYin} → {_yin} (min {minimumYin})");
+            _yin = 0f;
+            AILog.Log(AILog.GHOST, _ghostId, $"Yin drained {before} → 0 ({reason})");
+            return before;
+        }
+
+        public void ApplyMorningYin(float minimumYin, float maximumYin)
+        {
+            float before = _yin;
+            _yin = Mathf.Clamp(_yin + _pendingYin, minimumYin, Mathf.Max(minimumYin, maximumYin));
+            AILog.Log(AILog.GHOST, _ghostId, $"Morning yin {before} + pending {_pendingYin} → {_yin} (min {minimumYin}, max {maximumYin})");
             _pendingYin = 0f;
         }
 

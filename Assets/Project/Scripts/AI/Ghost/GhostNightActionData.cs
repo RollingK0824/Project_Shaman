@@ -12,6 +12,8 @@ namespace ProjectShaman.AI.Ghost
         [SerializeField] private bool _preferMarked;
 
         [Header("Condition / Cost")]
+        [SerializeField] private bool _isHunt;
+        [SerializeField] private bool _requiresChaseTier;
         [SerializeField] private bool _hunterOnly;
         [SerializeField] private float _minYin;
         [SerializeField] private float _yinCost;
@@ -34,7 +36,9 @@ namespace ProjectShaman.AI.Ghost
         public GhostActionVerb Verb => _verb;
         public GhostActionShape Shape => _verb == GhostActionVerb.None ? GhostActionShape.None : _verb == GhostActionVerb.HideTool ? GhostActionShape.Carry : GhostActionShape.Instant;
         public GhostTargetQuery Query => new GhostTargetQuery(_preferMarked, _targetKinds);
-        public bool HunterOnly => _hunterOnly;
+        public bool IsHunt => _isHunt;
+        public bool RequiresChaseTier => _requiresChaseTier;
+        public bool HunterOnly => _hunterOnly || _isHunt;
         public float MinYin => _minYin;
         public float YinCost => Mathf.Max(0f, _yinCost);
         public int MaxPerNight => _maxPerNight;

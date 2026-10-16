@@ -11,12 +11,17 @@ namespace ProjectShaman.AI.Data
         public List<VillagerSocialClass> SocialClasses = new List<VillagerSocialClass>();
         public List<VillagerAgeGroup> AgeGroups = new List<VillagerAgeGroup>();
 
+        public bool Matches(VillagerPublicInfo info)
+        {
+            return Matches(info.Gender, info.SocialClass, info.AgeGroup);
+        }
+
         public bool Matches(VillagerGender gender, VillagerSocialClass socialClass, VillagerAgeGroup ageGroup)
         {
             return IsAllowed(Genders, gender) && IsAllowed(SocialClasses, socialClass) && IsAllowed(AgeGroups, ageGroup);
         }
 
-        private static bool IsAllowed<T>(List<T> allowed, T value)
+        public static bool IsAllowed<T>(List<T> allowed, T value)
         {
             return allowed == null || allowed.Count == 0 || allowed.Contains(value);
         }
