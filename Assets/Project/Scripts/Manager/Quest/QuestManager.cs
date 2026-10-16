@@ -15,13 +15,18 @@ public class QuestManager : SceneSingleton<QuestManager>
     [SerializeField]
     private int _maxActive = 3;
 
+    [SerializeField]
+    private int _maxHistory = 3;
+
     private List<QuestInstance> _quests = new List<QuestInstance>();
+    private List<QuestInstance> _history = new List<QuestInstance>();
     private int _nextInstanceId;
     private VillagerRegistry _registry => AIManager.Instance != null ? AIManager.Instance.Registry : null;
     private VillagerRegistry _subscribedReg;
 
 
     public IReadOnlyList<IQuestView> Quests => _quests;
+    public IReadOnlyList<IQuestView> History => _history;
 
     public int ActiveCount
     {
@@ -180,7 +185,6 @@ public class QuestManager : SceneSingleton<QuestManager>
 
         if (TimeManager.Instance)
         {
-            TimeManager.Instance.OnDayStart += HandleDayStart;
             TimeManager.Instance.OnNightStart += HandleNightStart;
         }
 
@@ -216,7 +220,6 @@ public class QuestManager : SceneSingleton<QuestManager>
 
         if (TimeManager.Existing)
         {
-            TimeManager.Existing.OnDayStart -= HandleDayStart;
             TimeManager.Existing.OnNightStart -= HandleNightStart;
         }
 
@@ -232,16 +235,11 @@ public class QuestManager : SceneSingleton<QuestManager>
         }
     }
 
-    // 끝난 퀘스트(완료/실패)만 지움. 같은 아침에 NPC 쪽이 먼저 만든 의뢰가 지워지지 않도록
-    private void HandleDayStart()
-    {
-        _quests.RemoveAll(quest => quest.State != QuestState.Offered && quest.State != QuestState.Active);
-    }
-
     // 받지 않은 의뢰와 진행 중인 퀘스트 모두 실패 (패널티)
     private void HandleNightStart()
     {
-        for (int i = 0; i < _quests.Count; i++)
+        // End 가 리스트에서 지우므로 뒤에서부터 돈다
+        for (int i = _quests.Count - 1; i >= 0; i--)
         {
             QuestInstance quest = _quests[i];
 
@@ -289,8 +287,8 @@ public class QuestManager : SceneSingleton<QuestManager>
     // GameplayEvents.ActionDone 구독: 플레이어가 아이템을 전달/사용할 때마다 호출됨
     private void HandleActionDone(uint playerId, string actionType, string targetId, string contextId)
     {
-        // for문: QuestEnded 구독자가 _quests 를 바꿔도 foreach처럼 예외가 나지 않음
-        for (int i = 0; i < _quests.Count; i++)
+        // 완료되면 End 가 리스트에서 지우므로 뒤에서부터 돈다
+        for (int i = _quests.Count - 1; i >= 0; i--)
         {
             QuestInstance quest = _quests[i];
 
@@ -326,15 +324,25 @@ public class QuestManager : SceneSingleton<QuestManager>
         End(quest, QuestState.Completed);
     }
 
+    // 끝난 퀘스트는 _quests 에서 빠짐. 완료/실패는 기록에 남고 취소는 사라짐
+    // 리스트를 먼저 바꾼 뒤 이벤트를 보내야 구독자(노트북)가 바뀐 목록을 읽음
     private void End(QuestInstance quest, QuestState result)
     {
         quest.State = result;
-        QuestEnded?.Invoke(quest);
+        _quests.Remove(quest);
 
-        if (result == QuestState.Cancelled)
+        if (result == QuestState.Completed || result == QuestState.Failed)
         {
-            _quests.Remove(quest);
+            _history.Add(quest);
+
+            // 가장 오래된 기록부터 지워서 최근 _maxHistory 개만 남김
+            while (_history.Count > _maxHistory)
+            {
+                _history.RemoveAt(0);
+            }
         }
+
+        QuestEnded?.Invoke(quest);
     }
 
     private bool IsInOfferWindow()
