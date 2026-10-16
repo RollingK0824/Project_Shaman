@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace ProjectShaman.AI.Data
@@ -28,6 +29,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _initialYin = 30f;
         [SerializeField] private float _yinForMaxFrequency = 100f;
         [SerializeField] private float _minimumYin = 20f;
+        [SerializeField] private float _maxYin = 100f;
         [SerializeField, Range(0f, 1f)] private float _corruptionChanceAtZeroYin = 0.2f;
         [SerializeField, Range(0f, 1f)] private float _corruptionChanceAtMaxYin = 0.8f;
         [SerializeField, Range(0f, 1f)] private float _lastSlotChanceMultiplier = 0.5f;
@@ -40,12 +42,45 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _toolCorruptionSearchRadius = 25f;
 
         [Header("Night Hunt")]
-        [SerializeField] private float _huntCost = 20f;
+        [SerializeField] private List<HuntTier> _huntTiers = new List<HuntTier>
+        {
+            new HuntTier(1f, 1, false),
+            new HuntTier(26f, 2, false),
+            new HuntTier(51f, 3, false),
+            new HuntTier(76f, 4, true)
+        };
+        [SerializeField] private float _ghostHuntTimeoutSeconds = 90f;
         [SerializeField] private float _huntRadiusMin = 10f;
         [SerializeField] private float _huntRadiusMax = 60f;
         [SerializeField] private float _ghostSpawnDelaySeconds = 3f;
-        [SerializeField] private float _ghostKillDistance = 1.2f;
-        [SerializeField] private int _ghostKillsPerHunt = 1;
+
+        [Header("Stress")]
+        [SerializeField] private float _toolMissingStress = 5f;
+        [SerializeField] private float _toolSearchFailedStress = 10f;
+
+        [Header("Night Action")]
+        [SerializeField] private float _nightWitnessRadius = 15f;
+        [SerializeField] private float _sleepParalysisHomeDistance = 4f;
+        [SerializeField] private float _ghostHideMinDistance = 8f;
+        [SerializeField] private float _ghostHideMaxDistance = 20f;
+        [SerializeField] private float _ghostActionCooldownMin = 15f;
+        [SerializeField] private float _ghostActionCooldownMax = 30f;
+        [SerializeField] private float _ghostCommandRetrySeconds = 1f;
+        [SerializeField] private float _ghostCommandTimeoutSeconds = 30f;
+
+        [Header("Ghost Idle")]
+        [SerializeField] private float _ghostStalkMinDistance = 3f;
+        [SerializeField] private float _ghostStalkMaxDistance = 6f;
+        [SerializeField] private float _ghostStalkSpeed = 3f;
+        [SerializeField] private float _ghostStalkCreepSpeed = 1f;
+        [SerializeField] private float _ghostStalkStressPerSecond = 0.5f;
+        [SerializeField] private float _ghostWanderSpeed = 1.5f;
+        [SerializeField] private float _ghostWanderPauseMin = 2f;
+        [SerializeField] private float _ghostWanderPauseMax = 5f;
+
+        [Header("Ghost Player Chase")]
+        [SerializeField] private float _ghostPlayerDetectDistance = 15f;
+        [SerializeField] private float _ghostPlayerAttackCooldown = 10f;
 
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
@@ -66,6 +101,7 @@ namespace ProjectShaman.AI.Data
         public float InitialYin => _initialYin;
         public float YinForMaxFrequency => _yinForMaxFrequency;
         public float MinimumYin => _minimumYin;
+        public float MaxYin => Mathf.Max(_minimumYin, _maxYin);
         public float CorruptionChanceAtZeroYin => _corruptionChanceAtZeroYin;
         public float CorruptionChanceAtMaxYin => _corruptionChanceAtMaxYin;
         public float LastSlotChanceMultiplier => _lastSlotChanceMultiplier;
@@ -76,11 +112,52 @@ namespace ProjectShaman.AI.Data
         public float EmptyHandToolYinThreshold => _emptyHandToolYinThreshold;
         public float EmptyHandToolChance => _emptyHandToolChance;
         public float ToolCorruptionSearchRadius => _toolCorruptionSearchRadius;
-        public float HuntCost => _huntCost;
+        public IReadOnlyList<HuntTier> HuntTiers => _huntTiers;
+        public float GhostHuntTimeoutSeconds => Mathf.Max(_ghostCommandTimeoutSeconds, _ghostHuntTimeoutSeconds);
         public float HuntRadiusMin => _huntRadiusMin;
         public float HuntRadiusMax => _huntRadiusMax;
         public float GhostSpawnDelaySeconds => _ghostSpawnDelaySeconds;
-        public float GhostKillDistance => _ghostKillDistance;
-        public int GhostKillsPerHunt => _ghostKillsPerHunt;
+        public float ToolMissingStress => _toolMissingStress;
+        public float ToolSearchFailedStress => _toolSearchFailedStress;
+        public float NightWitnessRadius => _nightWitnessRadius;
+        public float SleepParalysisHomeDistance => _sleepParalysisHomeDistance;
+        public float GhostHideMinDistance => _ghostHideMinDistance;
+        public float GhostHideMaxDistance => Mathf.Max(_ghostHideMinDistance, _ghostHideMaxDistance);
+        public float GhostActionCooldownMin => Mathf.Max(0f, _ghostActionCooldownMin);
+        public float GhostActionCooldownMax => Mathf.Max(GhostActionCooldownMin, _ghostActionCooldownMax);
+        public float GhostCommandRetrySeconds => _ghostCommandRetrySeconds;
+        public float GhostCommandTimeoutSeconds => _ghostCommandTimeoutSeconds;
+        public float GhostStalkMinDistance => Mathf.Max(0f, _ghostStalkMinDistance);
+        public float GhostStalkMaxDistance => Mathf.Max(GhostStalkMinDistance, _ghostStalkMaxDistance);
+        public float GhostStalkSpeed => Mathf.Max(0.1f, _ghostStalkSpeed);
+        public float GhostStalkCreepSpeed => Mathf.Max(0.1f, _ghostStalkCreepSpeed);
+        public float GhostStalkStressPerSecond => Mathf.Max(0f, _ghostStalkStressPerSecond);
+        public float GhostWanderSpeed => Mathf.Max(0.1f, _ghostWanderSpeed);
+        public float GhostWanderPauseMin => Mathf.Max(0f, _ghostWanderPauseMin);
+        public float GhostWanderPauseMax => Mathf.Max(GhostWanderPauseMin, _ghostWanderPauseMax);
+        public float GhostPlayerDetectDistance => Mathf.Max(0f, _ghostPlayerDetectDistance);
+        public float GhostPlayerAttackCooldown => Mathf.Max(0f, _ghostPlayerAttackCooldown);
+
+        public bool TryGetHuntTier(float yin, out HuntTier tier)
+        {
+            tier = default;
+            bool found = false;
+
+            if (_huntTiers == null)
+            {
+                return false;
+            }
+
+            foreach (HuntTier candidate in _huntTiers)
+            {
+                if (candidate.Kills > 0 && yin >= candidate.MinYin && (!found || candidate.MinYin > tier.MinYin))
+                {
+                    tier = candidate;
+                    found = true;
+                }
+            }
+
+            return found;
+        }
     }
 }
