@@ -12,6 +12,9 @@ public class QuestsTab : MonoBehaviour
     [SerializeField]
     private GameObject _emptyText;
 
+    [SerializeField]
+    private GameObject _emptyHistoryText;
+
     private void OnEnable()
     {
         QuestManager quests = QuestManager.Instance;
@@ -48,5 +51,6 @@ public class QuestsTab : MonoBehaviour
             Instantiate(_entryPrefab, _finishedRoot).Set(history[i]);
 
         _emptyText.SetActive(QuestManager.Instance.ActiveCount == 0);
+        _emptyHistoryText.SetActive(history.Count == 0);
     }
 }
