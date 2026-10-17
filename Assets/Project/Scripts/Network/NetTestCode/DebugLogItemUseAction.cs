@@ -7,7 +7,7 @@ public class DebugLogItemUseAction : ItemUseAction
 
     public override bool Execute(in ItemUseContext context)
     {
-        Debug.Log($"[] 판정 실행 : {context.Owner.name} / {context.Data.DisplayName} / 조준 {context.AimOrigin} -> {context.AimDirection}");
+        Debug.Log($"[DebugLogItemUseAction] 판정 실행 : {context.Owner.name} / {context.Data.DisplayName} / 조준 {context.AimOrigin} -> {context.AimDirection}");
         context.Consume?.Invoke(_consumeAmount);
         return true;
     }

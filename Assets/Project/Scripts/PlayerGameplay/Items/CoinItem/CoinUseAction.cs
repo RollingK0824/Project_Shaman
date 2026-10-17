@@ -26,7 +26,6 @@ public sealed class CoinUseAction : ItemUseAction
         if (target == null || !target.ReactToCoin(context.Owner)) return false;
 
         context.Consume(1);
-        PlayerItemActions.ReportUse(context.Owner, context.Data);
         Debug.Log($"[Coin] 전달 성공: {context.Data.DisplayName} 1개 소모", context.Owner);
         return true;
     }

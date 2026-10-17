@@ -51,7 +51,7 @@ public class SaltUseAction : ItemUseAction
 
         if (DamageTrigger.CreateBox(attack, ray.GetPoint(reach * .5f), new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f), Quaternion.LookRotation(ray.direction), _contactDuration) == null) return false;
         // Report the resolved spray once; delayed/multiple hits must not count as additional uses.
-        PlayerItemActions.ReportUse(context.Owner, context.Data);
+        // Execute success is reported once by LocalGameplayJudge / NetPlayerItemUse.
         return true;
     }
 

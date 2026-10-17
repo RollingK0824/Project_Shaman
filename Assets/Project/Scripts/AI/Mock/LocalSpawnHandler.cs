@@ -30,6 +30,12 @@ namespace ProjectShaman.AI.Mock
                 ghost.SetSimulationActive(true);
             }
 
+            ProjectShaman.AI.Minion.AI_Minion minion = instance.GetComponent<ProjectShaman.AI.Minion.AI_Minion>();
+            if (minion != null)
+            {
+                minion.SetSimulationActive(true);
+            }
+
             AI_Status status = instance.GetComponent<AI_Status>();
             if (status != null)
             {

@@ -36,7 +36,7 @@ public class BeanMugwortUseAction : ItemUseAction
 
         if (_consumeOnThrow) context.Consume?.Invoke(1);
         // Only the resolving projectile counts. Visual projectiles and later contacts do not report.
-        PlayerItemActions.ReportUse(context.Owner, context.Data);
+        // Execute success is reported once by LocalGameplayJudge / NetPlayerItemUse.
         return true;
     }
 

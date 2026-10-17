@@ -26,7 +26,7 @@ public class BellUseAction : ItemUseAction
         // 위치는 판정자 쪽 플레이어 위치 (서버에서는 서버가 가진 위치)
         if (DamageTrigger.CreateSphere(attack, context.Owner.transform.position, _effectRadius, _pulseDuration) == null) return false;
         // Successful use means the authoritative pulse exists, even when no target is in range.
-        PlayerItemActions.ReportUse(context.Owner, context.Data);
+        // Execute success is reported once by LocalGameplayJudge / NetPlayerItemUse.
         Debug.Log($"[Bell] 반응 대상 수: {attack.AppliedTargetCount}", context.Owner);
         return true;
     }
