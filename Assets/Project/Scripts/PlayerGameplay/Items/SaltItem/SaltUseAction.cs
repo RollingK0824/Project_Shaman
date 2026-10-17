@@ -27,7 +27,7 @@ public class SaltUseAction : ItemUseAction
 
     public override bool Execute(in ItemUseContext context)
     {
-        if (!ItemAttackAuthority.CanResolve(context.Owner)) return false;
+        if (!ItemAttackAuthority.CanResolve(context.Owner) || context.Data == null) return false;
 
         var ray = new Ray(context.AimOrigin, context.AimDirection);
         float reach = GetReach(ray, context.Owner.transform);
@@ -49,7 +49,9 @@ public class SaltUseAction : ItemUseAction
             if (consumeOnSuccess) consume?.Invoke(1);
         };
 
-        DamageTrigger.CreateBox(attack, ray.GetPoint(reach * .5f), new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f), Quaternion.LookRotation(ray.direction), _contactDuration);
+        if (DamageTrigger.CreateBox(attack, ray.GetPoint(reach * .5f), new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f), Quaternion.LookRotation(ray.direction), _contactDuration) == null) return false;
+        // Report the resolved spray once; delayed/multiple hits must not count as additional uses.
+        // Execute success is reported once by LocalGameplayJudge / NetPlayerItemUse.
         return true;
     }
 
@@ -71,7 +73,9 @@ public class SaltUseAction : ItemUseAction
     // [다른 클라] 소금 분사 VFX만. 3인칭용 프리팹이 아직 없으면 비워 둬도 됨
     public override void PlayRemotePresentation(in ItemUseContext context)
     {
+        context.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(context.Data);
         Debug.Log($"[Salt] 원격 연출: {context.Owner.name}", context.Owner);
-        SpawnEffect(_remoteSprayPrefab, context.AimOrigin + context.AimDirection * .5f, Quaternion.LookRotation(context.AimDirection), _remoteSprayLifetime);
+        if (context.Owner.GetComponent<PlayerItemController>()?.PlayThirdPersonSaltSpray(context.AimDirection) != true)
+            SpawnEffect(_remoteSprayPrefab, context.AimOrigin + context.AimDirection * .5f, Quaternion.LookRotation(context.AimDirection), _remoteSprayLifetime);
     }
 }

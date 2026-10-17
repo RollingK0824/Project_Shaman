@@ -28,10 +28,11 @@
 | 레시피 자산 | 공용 비용 | 개인 결과 |
 |---|---|---|
 | `Data/Items/SaltRecipe.asset` | 굵은소금 2 | 소금 1 |
-| `Data/Items/Debug/Test_RegistryTalismanRecipe.asset` | 한지 1 + 닭피 1 | 효과 부적 1 |
+| `Data/Items/Debug/Test_RegistryTalismanRecipe.asset` | 한지 2 + 닭피 1 | 효과 부적 1 |
+| `Data/Items/Debug/Test_BarrierTalismanRecipe.asset` | 한지 2 + 닭피 1 + 굵은소금 1 | 결계 부적 1 |
 | `Data/Items/BeanMugwortRecipe.asset` | 팥 2 + 쑥 1 + 실타래 1 | 팥쑥타래 1 |
 
-효과 부적 자산의 Test/Registry 파일명은 GUID·기존 참조 호환 때문에 유지한다. 표시명은 이미 현행 기획이다. 소금·팥쑥 레시피는 기존 자산이 없어 추가했다. `Test_BarrierTalismanRecipe`의 임시 한지 2 비용은 확정하지 않고 자산 그대로 보존했다. F7 개발 메뉴에는 확정된 위 3개만 연결한다.
+효과 부적 자산의 Test/Registry 파일명은 GUID·기존 참조 호환 때문에 유지한다. 표시명은 이미 현행 기획이다. 소금·팥쑥 레시피는 기존 자산이 없어 추가했다. 2026-10-16 확정: 효과 부적은 한지 2 + 닭피 1, 결계 부적은 한지 2 + 닭피 1 + 굵은소금 1. 결계 제작 결과는 실제 BarrierTalisman(item_barrier_talisman)이며, Player (1)/(2)의 수첩 및 F7 개발 메뉴에 위 4개 레시피를 연결한다.
 
 ## 진입 및 후속 연결
 
