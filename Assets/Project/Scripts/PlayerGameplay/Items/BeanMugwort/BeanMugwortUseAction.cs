@@ -51,7 +51,7 @@ public class BeanMugwortUseAction : ItemUseAction
 
         GetSpawnPose(context, out var position, out var rotation);
         var projectile = Instantiate(_projectilePrefab, position, rotation);
-        //projectile.InitializeVisual(context.Owner, context.AimDirection, _throwForce);
+        projectile.InitializeVisual(context.Owner, context.AimDirection, _throwForce);
     }
 
     // 원래 카메라 기준 계산을 조준값으로 대체 (cameraTransform.up → 조준 방향 기준 위쪽)

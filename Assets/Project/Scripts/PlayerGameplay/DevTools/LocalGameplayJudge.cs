@@ -68,6 +68,10 @@ public class LocalGameplayJudge : MonoBehaviour
         if (inventory == null || !inventory.Contains(context.Data)) return;
 
         ItemData data = context.Data;
-        data.UseAction.Execute(context.WithConsume(amount => inventory.ConsumeItem(data, amount)));
+
+        if (data.UseAction.Execute(context.WithConsume(amount => inventory.ConsumeItem(data, amount))))
+        {
+            PlayerItemActions.ReportUse(context.Owner, data);
+        }
     }
 }
