@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Globalization;
 
 // Steam 방 목록 화면: 새로고침, 검색, 필터, 선택한 방 정보, 생성, 참가
 public class SteamLobbyUI : MonoBehaviour
@@ -36,6 +37,9 @@ public class SteamLobbyUI : MonoBehaviour
     [SerializeField] private GameObject _passwordPanel;
     [SerializeField] private TMP_InputField _joinPasswordInput;
 
+    [Header("내 SteamID (없어도 됨)")]
+    [SerializeField] private TMP_Text _mySteamIdText;
+
 
     private readonly List<RoomInfo> _rooms = new List<RoomInfo>();
     private readonly List<RoomRowUI> _rows = new List<RoomRowUI>();
@@ -51,6 +55,11 @@ public class SteamLobbyUI : MonoBehaviour
     {
         _searchInput.onValueChanged.AddListener(_ => RebuildList());
         _filterDropdown.onValueChanged.AddListener(_ => RebuildList());
+
+        if (_mySteamIdText != null && SteamManager.Initialized)
+        {
+            _mySteamIdText.text = $"내 SteamID: {SteamUser.GetSteamID().m_SteamID}";
+        }
     }
 
     private void OnEnable()
@@ -237,6 +246,15 @@ public class SteamLobbyUI : MonoBehaviour
     {
         _mainMenuUI.SetActive(true);
         gameObject.SetActive(false);
+    }
+
+    // 복사 버튼에 연결
+    public void OnClickCopySteamId()
+    {
+        if (!SteamManager.Initialized) return;
+
+        GUIUtility.systemCopyBuffer = SteamUser.GetSteamID().m_SteamID.ToString(CultureInfo.InvariantCulture);
+        ShowMessage("SteamID를 복사했습니다.");
     }
 
     public void OnClickPasswordConfirm()
