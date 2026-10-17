@@ -15,6 +15,7 @@ public class MirrorObservationView : MonoBehaviour
     private readonly Dictionary<Renderer, bool> _hidden = new();
     public bool IsLive => _observationCamera != null && _observationCamera.enabled;
     public RenderTexture Texture => _renderTexture;
+    public Renderer Surface => _mirrorRenderer;
     public void BindOwner(GameObject owner) => _owner = owner;
     private void Awake() { if (_observationCamera != null) _observationCamera.enabled = false; }
     private void OnEnable()
@@ -37,12 +38,19 @@ public class MirrorObservationView : MonoBehaviour
     {
         if (_observationCamera == null) return;
         if (live && (!isActiveAndEnabled || !EnsureTexture())) return;
+        bool changed = IsLive != live;
         _observationCamera.enabled = live;
+        if (changed && _owner != null)
+        {
+            var audio = _owner.GetComponent<PlayerAudioController>();
+            if (live) audio?.PlayMirrorLive(); else audio?.PlayMirrorFreeze();
+        }
     }
     private bool EnsureTexture()
     {
         if (_renderTexture != null) return true;
         if (_mirrorRenderer == null || _observationCamera == null || _mirrorRenderer.sharedMaterial == null) return false;
+        GetComponent<ThirdPersonMirrorReflection>()?.SetObservationActive(true);
         _originalMaterial = _mirrorRenderer.sharedMaterial;
         _renderTexture = new RenderTexture(Mathf.Clamp(_textureWidth,32,2048), Mathf.Clamp(_textureHeight,32,2048), _depth);
         _renderTexture.name = "MirrorRuntimeRT";
@@ -58,11 +66,14 @@ public class MirrorObservationView : MonoBehaviour
     }
     public void Release()
     {
+        if (_renderTexture != null && _owner != null && PlayerActionGuard.CanAct(_owner))
+            _owner.GetComponent<PlayerAudioController>()?.PlayMirrorRelease();
         RestoreRenderers();
         if (_observationCamera != null) { _observationCamera.enabled = false; _observationCamera.targetTexture = null; }
         if (_mirrorRenderer != null && _runtimeMaterial != null) _mirrorRenderer.sharedMaterial = _originalMaterial;
         if (_renderTexture != null) { _renderTexture.Release(); Destroy(_renderTexture); _renderTexture = null; }
         if (_runtimeMaterial != null) { Destroy(_runtimeMaterial); _runtimeMaterial = null; }
+        GetComponent<ThirdPersonMirrorReflection>()?.SetObservationActive(false);
     }
     private void BeforeRender(ScriptableRenderContext context, Camera camera) => BeforeCamera(camera);
     private void AfterRender(ScriptableRenderContext context, Camera camera) => AfterCamera(camera);

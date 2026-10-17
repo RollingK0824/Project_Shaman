@@ -16,23 +16,22 @@ public class CraftingPanelUI : MonoBehaviour
     [SerializeField] private Button _craftButton;
     [SerializeField, Min(1f)] private float _feedbackDuration = 4f;
     private bool _embedded;
+    private NotebookCraftingView _notebookView;
+    private CraftingRecipeData _pendingRecipe;
+    public bool HasPendingRequest => _pendingRecipe != null;
     public void ConfigureNotebook()
     {
         _embedded = true;
+        if (_notebookView != null) return;
+        var font = GetComponentInChildren<TMP_Text>(true)?.font;
         var background = GetComponent<Image>();
         if (background != null) background.color = Color.clear;
-        foreach (var label in GetComponentsInChildren<TMP_Text>(true))
-            if (label.GetComponentInParent<Button>(true) == null && label.GetComponentInParent<TMP_Dropdown>(true) == null)
-                label.color = new Color(.16f, .11f, .07f, 1f);
-        var title = transform.Find("Title") as RectTransform;
-        if (title != null) { title.anchoredPosition = new Vector2(-245f, title.anchoredPosition.y); title.sizeDelta = new Vector2(420f, 44f); }
-        if (_resultIcon != null) PlayerItemUIStyle.Place(_resultIcon.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(530, -94), new Vector2(100, 100));
-        if (_resultText != null) PlayerItemUIStyle.Place(_resultText.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(650, -110), new Vector2(294, 80));
-        var ingredientsHeading = transform.Find("IngredientsHeading") as RectTransform;
-        if (ingredientsHeading != null) PlayerItemUIStyle.Place(ingredientsHeading, new Vector2(0, 1), new Vector2(0, 1), new Vector2(530, -238), new Vector2(414, 38));
-        var ingredients = transform.Find("Ingredients") as RectTransform;
-        if (ingredients != null) PlayerItemUIStyle.Place(ingredients, new Vector2(0, 1), new Vector2(0, 1), new Vector2(530, -284), new Vector2(414, 110));
-        if (_statusText != null) _statusText.rectTransform.sizeDelta = new Vector2(400, 78);
+        foreach (Transform child in transform) child.gameObject.SetActive(false);
+        var view = new GameObject("NotebookCrafting", typeof(RectTransform), typeof(NotebookCraftingView));
+        view.transform.SetParent(transform, false);
+        _notebookView = view.GetComponent<NotebookCraftingView>();
+        _notebookView.Initialize(this, font);
+        Refresh();
     }
     private readonly Dictionary<ItemData, int> _costs = new();
     private PlayerInventory _subscribedInventory;
@@ -47,6 +46,7 @@ public class CraftingPanelUI : MonoBehaviour
     {
         Unsubscribe();
         _crafting = crafting;
+        _pendingRecipe = null;
         _feedback = null;
         Subscribe();
         Refresh();
@@ -73,9 +73,13 @@ public class CraftingPanelUI : MonoBehaviour
         if (_craftButton != null) _craftButton.onClick.RemoveListener(CraftSelected);
         if (_recipeSelector != null) _recipeSelector.onValueChanged.RemoveListener(SelectRecipe);
         Unsubscribe();
+        // A response can arrive after the user closes the notebook or switches tabs.
+        if (_pendingRecipe != null && _crafting != null) _crafting.Crafted += HandleCrafted;
     }
+    private void OnDestroy() => Unsubscribe();
     private void Subscribe()
     {
+        Unsubscribe();
         if (!isActiveAndEnabled || _crafting == null) return;
         _crafting.Crafted += HandleCrafted;
         _subscribedInventory = _crafting.Inventory;
@@ -102,21 +106,40 @@ public class CraftingPanelUI : MonoBehaviour
         _recipeSelector.SetValueWithoutNotify(Mathf.Clamp(_selectedIndex, 0, Mathf.Max(0, _recipes.Count - 1)));
         _recipeSelector.interactable = options.Count > 0;
     }
-    public void SelectRecipe(int index) { _selectedIndex = index; _feedback = null; Refresh(); }
+    public void SelectRecipe(int index) { _selectedIndex = Mathf.Clamp(index, 0, Mathf.Max(0, _recipes.Count - 1)); _feedback = null; Refresh(); }
     public void CraftSelected()
     {
         var recipe = SelectedRecipe;
         bool valid = recipe != null && recipe.TryGetCosts(_costs);
         string reason = UnavailableReason(recipe, valid);
         if (!string.IsNullOrEmpty(reason)) SetFeedback(reason);
-        else if (!_crafting.RequestCraft(recipe)) SetFeedback("제작하지 못했습니다. 재료와 현재 상태를 확인해 주세요.", true);
-        // A routed network request is not a confirmed craft. Only Crafted reports success.
-        else if (!_crafting.CanExecuteLocally) SetFeedback("제작 요청을 보냈습니다.", true);
+        else
+        {
+            // Mark pending before dispatch: an adapter may confirm synchronously.
+            if (!_crafting.CanExecuteLocally) _pendingRecipe = recipe;
+            if (!_crafting.RequestCraft(recipe))
+            {
+                _pendingRecipe = null;
+                SetFeedback("제작하지 못했습니다. 재료와 현재 상태를 확인해 주세요.", true);
+            }
+            else if (_pendingRecipe != null) SetFeedback("제작 중입니다. 잠시 기다려 주세요.", true);
+        }
+        Refresh();
+    }
+
+    // The existing network adapter can report a rejected request without faking a craft success.
+    public void NotifyCraftRequestFailed(string message)
+    {
+        _pendingRecipe = null;
+        if (!isActiveAndEnabled) Unsubscribe();
+        SetFeedback(string.IsNullOrWhiteSpace(message) ? "제작하지 못했습니다. 다시 시도해 주세요." : message, true);
         Refresh();
     }
 
     private void HandleCrafted(CraftingRecipeData recipe)
     {
+        if (_pendingRecipe == recipe) _pendingRecipe = null;
+        if (!isActiveAndEnabled && _pendingRecipe == null) Unsubscribe();
         SetFeedback($"{recipe.ResultItem.DisplayName} 제작 완료 · x{recipe.ResultAmount}", true);
         Refresh();
     }
@@ -128,7 +151,7 @@ public class CraftingPanelUI : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (_embedded) PlayerItemUIStyle.FitEmbeddedPanel((RectTransform)transform);
+        if (_embedded) PlayerItemUIStyle.FitNotebookSpread((RectTransform)transform);
         else PlayerItemUIStyle.FitPanel((RectTransform)transform);
         // Authority/place conditions can change without an inventory event.
         if (Time.unscaledTime < _nextRefresh) return;
@@ -139,6 +162,7 @@ public class CraftingPanelUI : MonoBehaviour
 
     private string UnavailableReason(CraftingRecipeData recipe, bool valid)
     {
+        if (_pendingRecipe != null) return "제작 중입니다. 잠시 기다려 주세요.";
         if (!valid) return "등록된 레시피가 없습니다";
         if (_crafting == null || !_crafting.isActiveAndEnabled || _crafting.Inventory == null || !PlayerActionGuard.CanAct(_crafting.gameObject))
             return "현재 상태에서는 제작할 수 없습니다.";
@@ -160,6 +184,7 @@ public class CraftingPanelUI : MonoBehaviour
         bool valid = recipe != null && recipe.TryGetCosts(_costs);
         if (_resultIcon != null) { _resultIcon.sprite = recipe != null ? recipe.Icon : null; _resultIcon.enabled = _resultIcon.sprite != null; }
         if (_resultText != null) _resultText.text = valid ? $"{recipe.ResultItem.DisplayName}  x{recipe.ResultAmount}" : "레시피를 선택하세요";
+        if (!valid) _costs.Clear();
         var text = new StringBuilder();
         if (valid)
             foreach (var cost in _costs)
@@ -176,10 +201,9 @@ public class CraftingPanelUI : MonoBehaviour
         if (_craftButton != null) _craftButton.interactable = reason == null;
         // A stale shortage message must not contradict freshly received shared counts.
         if (!_feedbackIsResult && _feedback != reason) _feedback = null;
-        if (_statusText != null)
-        {
-            string availability = reason ?? "제작 가능";
-            _statusText.text = string.IsNullOrEmpty(_feedback) || _feedback == availability ? availability : _feedback + "\n" + availability;
-        }
+        string availability = reason ?? "재료가 준비되었습니다.";
+        string status = string.IsNullOrEmpty(_feedback) || _feedback == availability ? availability : _feedback + "\n" + availability;
+        if (_statusText != null) _statusText.text = status;
+        if (_notebookView != null) _notebookView.Refresh(_recipes, recipe, _crafting, status, reason == null);
     }
 }

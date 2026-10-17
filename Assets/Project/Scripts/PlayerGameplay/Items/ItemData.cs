@@ -32,11 +32,14 @@ public class ItemData : ScriptableObject
     [SerializeField] private Vector3 _firstPersonLocalScale = Vector3.one;
     [Tooltip("Normalize the longest mesh dimension at equip time. Zero preserves authored scale.")]
     [SerializeField, Min(0f)] private float _firstPersonDisplaySize = .28f;
+    [Tooltip("Preferred visible height as a fraction of the first-person camera viewport. Width is capped to keep the center clear.")]
+    [SerializeField, Range(.08f, .52f)] private float _firstPersonViewportHeight = .36f;
 
     public Vector3 FirstPersonLocalPosition => _firstPersonLocalPosition;
     public Vector3 FirstPersonLocalEuler => _firstPersonLocalEuler;
     public Vector3 FirstPersonLocalScale => _firstPersonLocalScale;
     public float FirstPersonDisplaySize => _firstPersonDisplaySize;
+    public float FirstPersonViewportHeight => _firstPersonViewportHeight;
 
     [FormerlySerializedAs("_heldPrefab")]
     [SerializeField] private GameObject _visualPrefab;

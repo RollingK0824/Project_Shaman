@@ -18,19 +18,29 @@ public abstract class ItemBase : MonoBehaviour
     protected bool TryBuildUseRequest(out ItemUseContext context)
     {
         context = default;
-        if (Owner == null || Data == null || Data.UseAction == null) return false;
+        if (Owner == null || Data == null) return false;
+        if (Data.UseAction == null)
+        {
+            Owner.GetComponent<PlayerItemFeedback>()?.Unavailable("사용 기능 연결 필요");
+            Debug.LogWarning($"[Item] {Data.DisplayName}: ItemData의 UseAction 연결이 필요합니다.", this);
+            return false;
+        }
         if (!PlayerActionGuard.CanAct(Owner)) return false;
 
-        // 클라 쿨다운 : 기존 PlayerItemController.TryBeginUseCooldown 재사용
-        var controller = Owner.GetComponent<PlayerItemController>();
-        if (controller != null && !controller.TryBeginUseCooldown(Data, Data.UseAction.Cooldown)) return false;
-
-        // 조준값은 로컬 카메라 기준이고 서버는 값을 받아서 검증 후 사용
         var camera = Owner.GetComponentInChildren<Camera>();
         if (camera == null) return false;
+        // 클라 쿨다운 : 기존 PlayerItemController.TryBeginUseCooldown 재사용
+        var controller = Owner.GetComponent<PlayerItemController>();
+        if (controller != null && !controller.TryBeginUseCooldown(Data, Data.UseAction.Cooldown))
+        {
+            Owner.GetComponent<PlayerItemFeedback>()?.Unavailable("재사용 대기");
+            return false;
+        }
 
+        // 조준값은 로컬 카메라 기준이고 서버는 값을 받아서 검증 후 사용
         Transform aim = camera.transform;
         context = new ItemUseContext(Owner, Data, aim.position, aim.forward);
+        controller?.PlayUsePresentation(Data);
         return true;
     }
 

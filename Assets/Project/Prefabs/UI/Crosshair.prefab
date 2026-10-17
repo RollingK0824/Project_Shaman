@@ -98,10 +98,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::PlayerCrosshair
   _dot: {fileID: 700597736556568484}
-  _size: 4
-  _alpha: 0.7
+  _size: 6
+  _alpha: 1
   _normalColor: {r: 1, g: 1, b: 1, a: 1}
   _highlightColor: {r: 1, g: 0.8, b: 0.45, a: 1}
+  _outlineWidth: 1.2
+  _highlightScale: 1.2
 --- !u!1 &1297487276802185659
 GameObject:
   m_ObjectHideFlags: 0
@@ -113,6 +115,7 @@ GameObject:
   - component: {fileID: 3980758999289968449}
   - component: {fileID: 1715599186322941149}
   - component: {fileID: 700597736556568484}
+  - component: {fileID: 5780371549925339161}
   m_Layer: 0
   m_Name: Dot
   m_TagString: Untagged
@@ -137,7 +140,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 4, y: 4}
+  m_SizeDelta: {x: 6, y: 6}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &1715599186322941149
 CanvasRenderer:
@@ -160,7 +163,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.7}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 0
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -177,3 +180,18 @@ MonoBehaviour:
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
   m_PixelsPerUnitMultiplier: 1
+--- !u!114 &5780371549925339161
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1297487276802185659}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e19747de3f5aca642ab2be37e372fb86, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Outline
+  m_EffectColor: {r: 0.03, g: 0.025, b: 0.02, a: 0.95}
+  m_EffectDistance: {x: 1.2, y: -1.2}
+  m_UseGraphicAlpha: 1

@@ -65,7 +65,11 @@ public class PlayerNotebookUI : MonoBehaviour
         var craftingRoot = CreatePage(2, "PlayerCraftingPage");
         if (inventoryRoot != null && owner.InventoryPanelPrefab != null)
         {
-            _inventory = Instantiate(owner.InventoryPanelPrefab, inventoryRoot);
+            var spread = new GameObject("PlayerInformationSpread", typeof(RectTransform), typeof(NotebookPlayerInfoView));
+            spread.transform.SetParent(inventoryRoot, false);
+            PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
+            spread.GetComponent<NotebookPlayerInfoView>().Bind(owner.gameObject, owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true)?.font);
+            _inventory = Instantiate(owner.InventoryPanelPrefab, spread.transform);
             _inventory.Bind(owner.GetComponent<PlayerInventory>());
             // Initialize the existing presentation before applying its notebook styling.
             _inventory.gameObject.SetActive(true);
@@ -180,7 +184,7 @@ public class PlayerNotebookUI : MonoBehaviour
         Vector2 bottomRight = RectTransformUtility.WorldToScreenPoint(camera, _quickCorners[3]);
         Vector2 topRight = RectTransformUtility.WorldToScreenPoint(camera, _quickCorners[2]);
         float unit = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
-        float size = 90f * unit;
+        float size = 99f * unit;
         var screen = new Vector2(Mathf.Min(Screen.width - size * .5f - 12f * unit, bottomRight.x + 12f * unit + size * .5f),
             Mathf.Max(size * .5f + 12f * unit, (bottomRight.y + topRight.y) * .5f));
         var parent = (RectTransform)_shortcut.transform.parent;
@@ -204,10 +208,10 @@ public class PlayerNotebookUI : MonoBehaviour
     {
         _slotToolbar = new GameObject("QuickSlotAssignment", typeof(RectTransform));
         _slotToolbar.transform.SetParent(_inventory.transform, false);
-        PlayerItemUIStyle.Place((RectTransform)_slotToolbar.transform, new Vector2(.5f, 0f), new Vector2(.5f, 0f), Vector2.zero, new Vector2(916f, 112f));
+        PlayerItemUIStyle.Place((RectTransform)_slotToolbar.transform, new Vector2(.5f, 0f), new Vector2(.5f, 0f), Vector2.zero, new Vector2(440f, 130f));
         _selectionText = new GameObject("SelectedItem", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
         _selectionText.transform.SetParent(_slotToolbar.transform, false);
-        PlayerItemUIStyle.Place(_selectionText.rectTransform, new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(-245, 0), new Vector2(420f, 44f));
+        PlayerItemUIStyle.Place(_selectionText.rectTransform, new Vector2(.5f, 1f), new Vector2(.5f, 1f), new Vector2(0, 0), new Vector2(440f, 40f));
         var font = _owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true).font;
         PlayerItemUIStyle.Label(_selectionText, font, 18f); _selectionText.color = new Color(.16f, .11f, .07f, 1f);
         _selectionText.alignment = TextAlignmentOptions.Center;
@@ -217,8 +221,8 @@ public class PlayerNotebookUI : MonoBehaviour
             int slot = i;
             var buttonObject = new GameObject(i < 6 ? "Slot" + (i + 1) : "Unassign", typeof(RectTransform), typeof(Image), typeof(Button));
             buttonObject.transform.SetParent(_slotToolbar.transform, false);
-            float x = i < 3 ? -350 + i * 100 : 150 + (i - 3) * 100;
-            PlayerItemUIStyle.Place((RectTransform)buttonObject.transform, new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(i == 6 ? 350 : x, i == 6 ? 64 : 12), new Vector2(98f, 42f));
+            float x = -185 + i * 74;
+            PlayerItemUIStyle.Place((RectTransform)buttonObject.transform, new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(i == 6 ? 0 : x, i == 6 ? 0 : 44), new Vector2(i == 6 ? 150f : 66f, 38f));
             var button = buttonObject.GetComponent<Button>(); button.targetGraphic = buttonObject.GetComponent<Image>();
             button.targetGraphic.color = new Color(.23f, .19f, .15f, 1f);
             button.onClick.AddListener(() => AssignSelected(slot)); button.interactable = false;
@@ -257,11 +261,11 @@ public class PlayerNotebookUI : MonoBehaviour
     {
         _rewardButton = new GameObject("OpenSharedRewards", typeof(RectTransform), typeof(Image), typeof(Button));
         _rewardButton.transform.SetParent(_inventory.transform, false);
-        PlayerItemUIStyle.Place((RectTransform)_rewardButton.transform, new Vector2(1, 1), new Vector2(1, .5f), new Vector2(-32, -37), new Vector2(180, 40));
+        PlayerItemUIStyle.Place((RectTransform)_rewardButton.transform, new Vector2(1, 1), new Vector2(1, .5f), new Vector2(0, -36), new Vector2(140, 36));
         var button = _rewardButton.GetComponent<Button>(); button.targetGraphic = _rewardButton.GetComponent<Image>(); button.targetGraphic.color = new Color(.23f, .19f, .15f, 1f);
         button.onClick.AddListener(() => { _inventory.gameObject.SetActive(false); _rewardView.gameObject.SetActive(true); });
         var text = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>(); text.transform.SetParent(_rewardButton.transform, false);
-        PlayerItemUIStyle.Stretch(text.rectTransform, Vector2.zero, Vector2.zero); PlayerItemUIStyle.Label(text, _owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true).font, 20);
+        PlayerItemUIStyle.Stretch(text.rectTransform, Vector2.zero, Vector2.zero); PlayerItemUIStyle.Label(text, _owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true).font, 18);
         text.text = "공용 보상함"; text.alignment = TextAlignmentOptions.Center;
     }
 

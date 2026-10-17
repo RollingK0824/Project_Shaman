@@ -32,11 +32,13 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     private PlayerInputReader _input;
     private PlayerStressHUD _hud;
     private PlayerCrosshair _crosshair;
+    private PlayerInteractor _interactor;
 
     private void Awake()
     {
         _identity = GetComponent<NetworkIdentity>();
         _input = GetComponent<PlayerInputReader>();
+        _interactor = GetComponent<PlayerInteractor>();
         if (_stress == null) _stress = GetComponent<PlayerStressController>();
         if (_health == null) _health = GetComponent<PlayerHealth>();
     }
@@ -86,6 +88,7 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
                     _input != null && _input.isActiveAndEnabled && !_input.GameplayInputBlocked;
         if (show && _crosshair == null && _crosshairPrefab != null) _crosshair = Instantiate(_crosshairPrefab);
         if (_crosshair != null && _crosshair.gameObject.activeSelf != show) _crosshair.gameObject.SetActive(show);
+        if (show && _crosshair != null) _crosshair.SetHighlighted(_interactor != null && _interactor.CanInteract && _interactor.CurrentTarget != null);
     }
 
     private void ReleaseNotebook()

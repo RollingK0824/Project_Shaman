@@ -33,12 +33,12 @@ public class InventoryPanelUI : MonoBehaviour
             if (label.transform.parent == transform)
             {
                 label.color = new Color(.16f, .11f, .07f, 1f);
-                if (label != _footer) { label.rectTransform.anchoredPosition = new Vector2(-245f, -37f); label.rectTransform.sizeDelta = new Vector2(420f, 44f); }
+                if (label != _footer) { PlayerItemUIStyle.Place(label.rectTransform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(0, -16), new Vector2(250, 42)); label.alignment = TextAlignmentOptions.Left; label.text = "개인 소지품"; label.fontSize = 28; }
             }
         if (_footer != null) _footer.gameObject.SetActive(false);
-        PlayerItemUIStyle.Stretch((RectTransform)_scroll.transform, new Vector2(30f, 120f), new Vector2(-30f, -76f));
+        PlayerItemUIStyle.Stretch((RectTransform)_scroll.transform, new Vector2(0f, 150f), new Vector2(0f, -82f));
         var grid = _itemGrid.GetComponent<GridLayoutGroup>();
-        if (grid != null) { grid.cellSize = new Vector2(198f, 174f); grid.spacing = new Vector2(32f, 16f); }
+        if (grid != null) { grid.cellSize = new Vector2(196f, 150f); grid.spacing = new Vector2(16f, 12f); grid.constraintCount = 2; }
         Refresh();
     }
     public bool IsEffectViewOpen => _effectView != null && _effectView.gameObject.activeSelf;
@@ -56,7 +56,8 @@ public class InventoryPanelUI : MonoBehaviour
         if (_effectViewPrefab == null && _inventory != null)
             _effectViewPrefab = _inventory.GetComponent<PlayerTalismanDrawingController>()?.EffectInventoryPrefab;
         if (_talismans == null || _talismans.DrawnEffectCount == 0 || _effectViewPrefab == null) return;
-        if (_effectView == null) _effectView = Instantiate(_effectViewPrefab, transform);
+        if (_effectView == null) _effectView = Instantiate(_effectViewPrefab, _embedded ? transform.parent : transform);
+        if (_embedded) { PlayerItemUIStyle.FitEmbeddedPanel((RectTransform)_effectView.transform); _effectView.transform.SetAsLastSibling(); }
         _effectView.Bind(_talismans, () => BackToMain()); _itemGrid.gameObject.SetActive(false); _effectView.gameObject.SetActive(true);
         if (_footer != null) _footer.gameObject.SetActive(false);
     }
@@ -80,9 +81,10 @@ public class InventoryPanelUI : MonoBehaviour
             return;
         }
 
+        _inventory.InventoryChanged -= Refresh;
         _inventory.InventoryChanged += Refresh;
         _talismans = _inventory.GetComponent<PlayerTalismanCollection>();
-        if (_talismans != null) _talismans.SelectionChanged += Refresh;
+        if (_talismans != null) { _talismans.SelectionChanged -= Refresh; _talismans.SelectionChanged += Refresh; }
 
         Refresh();
     }
@@ -91,7 +93,11 @@ public class InventoryPanelUI : MonoBehaviour
     {
         if (_presentationReady)
         {
-            if (_embedded) PlayerItemUIStyle.FitEmbeddedPanel((RectTransform)transform);
+            if (_embedded)
+            {
+                PlayerItemUIStyle.Place((RectTransform)transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(540, 0), new Vector2(440, 640));
+                transform.localScale = Vector3.one;
+            }
             else PlayerItemUIStyle.FitPanel((RectTransform)transform);
         }
     }
@@ -173,7 +179,7 @@ public class InventoryPanelUI : MonoBehaviour
         _customSlots.Clear();
         foreach (var entry in _slots)
         {
-            if (_inventory != null && _inventory.Contains(entry.Key) && !(entry.Key is TalismanItemData effect && effect.IsEffectTalisman)) continue;
+            if (_inventory != null && (!_embedded || entry.Key.Category != ItemCategory.Material) && _inventory.Contains(entry.Key) && !(entry.Key is TalismanItemData effect && effect.IsEffectTalisman)) continue;
             if (entry.Value != null) { entry.Value.gameObject.SetActive(false); Destroy(entry.Value.gameObject); }
             _removed.Add(entry.Key);
         }
@@ -187,10 +193,10 @@ public class InventoryPanelUI : MonoBehaviour
         TalismanItemData blankTemplate = null;
 
         var visibleItems = new List<ItemData>(_inventory.Items);
-        if (_inventory.SharedMaterials != null) visibleItems.AddRange(_inventory.SharedMaterials.Counts.Keys);
+        if (!_embedded && _inventory.SharedMaterials != null) visibleItems.AddRange(_inventory.SharedMaterials.Counts.Keys);
         foreach (ItemData itemData in visibleItems)
         {
-            if (itemData == null ||
+            if (itemData == null || (_embedded && itemData.Category == ItemCategory.Material) ||
                 displayedItems.Contains(itemData))
             {
                 continue;
@@ -244,6 +250,11 @@ public class InventoryPanelUI : MonoBehaviour
             var row = Instantiate(_itemSlotPrefab, _itemGrid);
             row.Setup(template, _talismans.DrawnEffectCount); row.SetLabel("드로잉된 효과 부적"); row.SetUse(OpenEffectGroup);
             _customSlots["effect-group"] = row;
+        }
+        if (_embedded)
+        {
+            foreach (var slot in _slots.Values) if (slot != null) slot.ConfigureNotebook();
+            foreach (var slot in _customSlots.Values) if (slot != null) slot.ConfigureNotebook();
         }
         if (IsEffectViewOpen) _effectView.Refresh();
     }
