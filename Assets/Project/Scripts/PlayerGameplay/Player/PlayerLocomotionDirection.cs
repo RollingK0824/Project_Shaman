@@ -11,15 +11,21 @@ public class PlayerLocomotionDirection : MonoBehaviour
     [SerializeField, Min(0f)] private float _turnDeadZone = 15f;
     private CharacterController _controller;
     private PlayerController _player;
+    private PlayerCrouch _crouch;
+    private bool _hasCrouch;
     private float _previousYaw;
     private static readonly int MoveX = Animator.StringToHash("MoveX");
     private static readonly int MoveY = Animator.StringToHash("MoveY");
     private static readonly int Turn = Animator.StringToHash("Turn");
+    private static readonly int Crouch = Animator.StringToHash("Crouch");
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
         _player = GetComponent<PlayerController>();
+        _crouch = GetComponent<PlayerCrouch>();
+        if (_animator == null) _animator = transform.Find("CharacterVisual")?.GetComponentInChildren<Animator>(true);
+        if (_animator != null) foreach (var p in _animator.parameters) if (p.nameHash == Crouch) _hasCrouch = true;
     }
     private void OnEnable() => _previousYaw = transform.eulerAngles.y;
     private void LateUpdate()
@@ -40,5 +46,6 @@ public class PlayerLocomotionDirection : MonoBehaviour
         _animator.SetFloat(MoveX, direction.x, _blendTime, Time.deltaTime);
         _animator.SetFloat(MoveY, direction.y, _blendTime, Time.deltaTime);
         _animator.SetFloat(Turn, Mathf.Clamp(turn, -180f, 180f), _blendTime, Time.deltaTime);
+        if (_hasCrouch) _animator.SetBool(Crouch, canMove && _crouch != null && _crouch.IsCrouching);
     }
 }

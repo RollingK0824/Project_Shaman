@@ -96,7 +96,10 @@ public class SaltItem : ItemBase
 
         if (!TryBuildUseRequest(out var context)) return;
 
-        PlaySaltSpray();                                // 로컬 연출 즉시
+        var view = Owner.GetComponent<PlayerViewModeController>();
+        if (view != null && view.CurrentViewMode == PlayerViewModeController.ViewMode.ThirdPerson)
+            Owner.GetComponent<PlayerItemController>()?.PlayThirdPersonSaltSpray(context.AimDirection);
+        else PlaySaltSpray();                           // 기존 1인칭 연출 유지
         PlayerEvents.RaiseItemUseRequested(context);    // 요청 (반드시 마지막에)
     }
 

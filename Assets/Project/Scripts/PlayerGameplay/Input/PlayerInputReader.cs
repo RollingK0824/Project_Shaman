@@ -163,6 +163,7 @@ public class PlayerInputReader : MonoBehaviour
     public void SetGameplayInputBlocked(
         bool blocked)
     {
+        if (blocked && !GameplayInputBlocked) UseItemCanceled?.Invoke();
         GameplayInputBlocked =
             blocked;
 
