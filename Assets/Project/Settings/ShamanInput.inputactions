@@ -37,6 +37,16 @@
                     "priority": 0
                 },
                 {
+                    "name": "Jump",
+                    "type": "Button",
+                    "id": "4adf438f-da3f-4683-851d-e4fe99de6efa",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
                     "name": "Interact",
                     "type": "Button",
                     "id": "97d8c8c0-3ac2-4b2c-af00-2d2202af6e19",
@@ -50,16 +60,6 @@
                     "name": "UseItem",
                     "type": "Button",
                     "id": "a208972d-7b29-4e3d-8e96-a40aae38720f",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false,
-                    "priority": 0
-                },
-                {
-                    "name": "Notebook",
-                    "type": "Button",
-                    "id": "cb937c0f-188e-4529-a1f2-95f39d33e660",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -127,9 +127,9 @@
                     "priority": 0
                 },
                 {
-                    "name": "Cancel",
+                    "name": "Crouch",
                     "type": "Button",
-                    "id": "085d7794-86ec-4701-9fcf-321ef3e41e87",
+                    "id": "2b7978d2-03c1-4f15-b9ad-be85329674db",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -137,19 +137,9 @@
                     "priority": 0
                 },
                 {
-                    "name": "Jump",
+                    "name": "ViewToggle",
                     "type": "Button",
-                    "id": "4adf438f-da3f-4683-851d-e4fe99de6efa",
-                    "expectedControlType": "",
-                    "processors": "",
-                    "interactions": "",
-                    "initialStateCheck": false,
-                    "priority": 0
-                },
-                {
-                    "name": "Inventory",
-                    "type": "Button",
-                    "id": "6396077a-a6f9-4ab4-8f83-4a92cf633939",
+                    "id": "65466308-f654-4b75-a07e-508fad7c8e46",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -199,17 +189,6 @@
                     "processors": "",
                     "groups": "",
                     "action": "UseItem",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
-                    "id": "8f4a1bff-895d-4818-a06b-a3da2dec8d5d",
-                    "path": "<Keyboard>/n",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Notebook",
                     "isComposite": false,
                     "isPartOfComposite": false
                 },
@@ -336,17 +315,6 @@
                 },
                 {
                     "name": "",
-                    "id": "5f1ac20b-ec59-4de1-a9a1-3e0271ead0b1",
-                    "path": "<Keyboard>/escape",
-                    "interactions": "",
-                    "processors": "",
-                    "groups": "",
-                    "action": "Cancel",
-                    "isComposite": false,
-                    "isPartOfComposite": false
-                },
-                {
-                    "name": "",
                     "id": "7b07cf5c-7337-47c4-893d-a5d8ba723ad2",
                     "path": "<Keyboard>/space",
                     "interactions": "",
@@ -358,14 +326,239 @@
                 },
                 {
                     "name": "",
-                    "id": "7293c4e2-89cf-4919-a6c3-33338350eaaa",
-                    "path": "<Keyboard>/i",
+                    "id": "9204ab5a-4c21-4238-b7ca-8a3260a8e782",
+                    "path": "<Keyboard>/leftCtrl",
                     "interactions": "",
                     "processors": "",
                     "groups": "",
-                    "action": "Inventory",
+                    "action": "Crouch",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2ecc608f-0fa1-41c1-83f3-6a6e569e1b0e",
+                    "path": "<Keyboard>/v",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ViewToggle",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "UI",
+            "id": "9191b703-bf44-493e-96e3-42e1776723ea",
+            "actions": [
+                {
+                    "name": "Notebook",
+                    "type": "Button",
+                    "id": "83d55530-6232-4c4d-aae3-ff07a959fbbc",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "Cancel",
+                    "type": "Button",
+                    "id": "e60df279-ab30-4082-b85f-77bee029dace",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "52329e48-84da-4643-844a-a8b2a6a0b348",
+                    "path": "<Keyboard>/n",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Notebook",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "01116f03-d181-44eb-becf-32bfec4082ff",
+                    "path": "<Keyboard>/escape",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Cancel",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "Spectator",
+            "id": "1e86d72a-7e2a-4e5a-9ebe-2524690e6eb6",
+            "actions": [
+                {
+                    "name": "Up",
+                    "type": "Button",
+                    "id": "225f600c-207d-48d7-8f8d-ff6819f5e615",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "Down",
+                    "type": "Button",
+                    "id": "29ab7584-242a-4fe8-a811-507f45db32ae",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "Previous",
+                    "type": "Button",
+                    "id": "144e1360-89ae-49d3-a402-6c9d67bd8dc2",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "Next",
+                    "type": "Button",
+                    "id": "806d17c7-b0f8-472b-b5d5-a182b866ac4b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "ToggleMode",
+                    "type": "Button",
+                    "id": "5bf438fd-41d4-409e-acdc-d3e4ac8643a6",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "",
+                    "id": "513bd2bd-7d40-4372-be17-0173d5f3f137",
+                    "path": "<Keyboard>/space",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Up",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "afcf7c2d-e1fc-4f97-baf1-b7d2245d5480",
+                    "path": "<Keyboard>/leftCtrl",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Down",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "8d3953e2-5952-4375-a743-713ef7865b8b",
+                    "path": "<Keyboard>/leftBracket",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Previous",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f54ba739-e62a-42e7-8ce5-d0494dc16012",
+                    "path": "<Keyboard>/rightBracket",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Next",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "0b04adeb-1e37-4a5d-b158-41e3098c54ed",
+                    "path": "<Keyboard>/backquote",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "ToggleMode",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                }
+            ]
+        },
+        {
+            "name": "Drawing",
+            "id": "d1259126-f296-453a-9cf2-d0726ebfb21b",
+            "actions": [
+                {
+                    "name": "Undo",
+                    "type": "Button",
+                    "id": "fc10d084-79d4-44cf-a8f3-f0ebb80c585a",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                }
+            ],
+            "bindings": [
+                {
+                    "name": "One Modifier",
+                    "id": "55e0f7ef-b03c-496f-b225-58167f7f9437",
+                    "path": "OneModifier",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Undo",
+                    "isComposite": true,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "modifier",
+                    "id": "6b2e471e-5be5-46c5-ba58-dfa0d27ac13f",
+                    "path": "<Keyboard>/ctrl",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Undo",
+                    "isComposite": false,
+                    "isPartOfComposite": true
+                },
+                {
+                    "name": "binding",
+                    "id": "229ea541-44a8-42ae-abb2-2dba17fd54ce",
+                    "path": "<Keyboard>/z",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Undo",
+                    "isComposite": false,
+                    "isPartOfComposite": true
                 }
             ]
         }
