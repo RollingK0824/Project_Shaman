@@ -431,9 +431,9 @@ MonoBehaviour:
   m_fontSize: 36
   m_fontSizeBase: 36
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_fontSizeMax: 36
   m_fontStyle: 1
   m_HorizontalAlignment: 2
   m_VerticalAlignment: 512
@@ -5640,6 +5640,14 @@ PrefabInstance:
       propertyPath: m_fontColor32.rgba
       value: 4278190080
       objectReference: {fileID: 0}
+    - target: {fileID: 2921253802111803269, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
+      propertyPath: m_Type
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2921253802111803269, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
+      propertyPath: m_Sprite
+      value: 
+      objectReference: {fileID: 8669443573580401001, guid: af7e09421e2b6c44ebe12d84aa0a42c1, type: 3}
     - target: {fileID: 3102296035015147224, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
@@ -5920,6 +5928,10 @@ PrefabInstance:
       propertyPath: m_fontColor32.rgba
       value: 2030043136
       objectReference: {fileID: 0}
+    - target: {fileID: 5311315814731546416, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
+      propertyPath: m_SizeDelta.y
+      value: 80
+      objectReference: {fileID: 0}
     - target: {fileID: 5413552005994312775, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
       propertyPath: m_fontSize
       value: 36
@@ -6151,6 +6163,10 @@ PrefabInstance:
     - target: {fileID: 8609922363111253011, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_ObjectArgumentAssemblyTypeName
       value: UnityEngine.Object, UnityEngine
+      objectReference: {fileID: 0}
+    - target: {fileID: 8675678751606032717, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
+      propertyPath: m_text
+      value: "\uBCF5\uC0AC"
       objectReference: {fileID: 0}
     - target: {fileID: 8679167333771187033, guid: 08ada285bdef7da40a9bb1cd80684472, type: 3}
       propertyPath: m_AnchorMax.y
@@ -7042,6 +7058,18 @@ PrefabInstance:
       propertyPath: _noticePanel
       value: 
       objectReference: {fileID: 185577342377417519}
+    - target: {fileID: 886251575165888339, guid: 48677e7d19280c3479f8884854757e35, type: 3}
+      propertyPath: _closeOnInvite.Array.size
+      value: 2
+      objectReference: {fileID: 0}
+    - target: {fileID: 886251575165888339, guid: 48677e7d19280c3479f8884854757e35, type: 3}
+      propertyPath: '_closeOnInvite.Array.data[0]'
+      value: 
+      objectReference: {fileID: 5108826920415164429}
+    - target: {fileID: 886251575165888339, guid: 48677e7d19280c3479f8884854757e35, type: 3}
+      propertyPath: '_closeOnInvite.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2220990379832803730}
     - target: {fileID: 1071153833884560070, guid: 48677e7d19280c3479f8884854757e35, type: 3}
       propertyPath: m_AnchorMax.y
       value: 0

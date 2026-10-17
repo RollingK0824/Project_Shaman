@@ -65,15 +65,19 @@ public class SteamLobbyUI : MonoBehaviour
     private void OnEnable()
     {
         RoomManager.JoinFailed += OnJoinFailed;
+        SteamLobbyService.InviteReady += HandleInvite;
         ShowMessage(string.Empty);
+
+        if (_passwordPanel != null) _passwordPanel.SetActive(false);   // 초대 처리보다 먼저 닫아야 함
         Refresh();
 
-        if (_passwordPanel != null) _passwordPanel.SetActive(false);
+        HandleInvite();   // 메인 메뉴에서 초대를 받아 이 화면이 열린 경우
     }
 
     private void OnDisable()
     {
         RoomManager.JoinFailed -= OnJoinFailed;
+        SteamLobbyService.InviteReady -= HandleInvite;
     }
 
     // ───────── 목록 ─────────
@@ -205,10 +209,7 @@ public class SteamLobbyUI : MonoBehaviour
         // 비밀번호 방이면 입력창을 먼저 띄움
         if (room.Value.IsLocked && _passwordPanel != null)
         {
-            _pendingJoinAddress = room.Value.Address;
-            _joinPasswordInput.text = string.Empty;
-            _passwordPanel.SetActive(true);
-            _joinPasswordInput.ActivateInputField();
+            OpenPasswordPanel(room.Value.Address);
             return;
         }
 
@@ -257,6 +258,31 @@ public class SteamLobbyUI : MonoBehaviour
         ShowMessage("SteamID를 복사했습니다.");
     }
 
+    private void OpenPasswordPanel(string address)
+    {
+        _pendingJoinAddress = address;
+        _joinPasswordInput.text = string.Empty;
+        _passwordPanel.SetActive(true);
+        _joinPasswordInput.ActivateInputField();
+    }
+
+    private void HandleInvite()
+    {
+        SteamLobbyService service = LobbyService;
+        if (service == null || !service.TakePendingInvite(out RoomInfo room, out string error)) return;
+
+        if (error != null) { ShowMessage(error); return; }
+        if (NetworkClient.active || NetworkServer.active) return;
+        if (!room.IsJoinable) { ShowMessage("게임 중이거나 가득 찬 방입니다."); return; }
+
+        if (room.IsLocked && _passwordPanel != null)
+        {
+            OpenPasswordPanel(room.Address);
+            return;
+        }
+
+        StartJoin(room.Address, string.Empty);
+    }
     public void OnClickPasswordConfirm()
     {
         if (string.IsNullOrEmpty(_pendingJoinAddress)) return;

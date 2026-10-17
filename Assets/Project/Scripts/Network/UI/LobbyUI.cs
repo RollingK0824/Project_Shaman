@@ -18,6 +18,9 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] private GameObject _notEnoughPlayerCount;
     [SerializeField] private float _dispalyTime = 2f;
 
+    [SerializeField] private Button _inviteButton; 
+
+
 
 
     private Coroutine _warningCoroutine;
@@ -33,6 +36,9 @@ public class LobbyUI : MonoBehaviour
         RoomPlayer.NotEnoughPlayers += ShowNotification;
         RoomPlayer.LobbyChanged += RequestRefresh;
         RequestRefresh();
+
+        bool canInvite = NetworkServer.active && NetworkManager.singleton is RoomManager room && room.IsUsingSteam;
+        if (_inviteButton != null) _inviteButton.gameObject.SetActive(canInvite);
     }
 
     private void OnDisable()
@@ -134,6 +140,16 @@ public class LobbyUI : MonoBehaviour
         if (_localRoomPlayer != null)
         {
             _localRoomPlayer.CmdChangeReadyState(!_localRoomPlayer.readyToBegin);
+        }
+    }
+
+    // 친구 초대 버튼에 연결
+    public void OnClickInviteButton()
+    {
+        var service = NetworkManager.singleton != null ? NetworkManager.singleton.GetComponent<SteamLobbyService>() : null;
+        if (service == null || !service.OpenInviteDialog())
+        {
+            Debug.LogWarning("[LobbyUI] 초대 창을 열 수 없습니다. (로비 생성 전이거나 Steam 오버레이 꺼짐)");
         }
     }
 
