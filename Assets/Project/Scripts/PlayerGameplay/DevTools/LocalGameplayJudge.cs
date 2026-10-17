@@ -61,7 +61,8 @@ public class LocalGameplayJudge : MonoBehaviour
 
     private void HandleItemUseRequested(ItemUseContext context)
     {
-        if (NetworkServer.active || NetworkClient.active || context.Owner == null) return;
+        if (NetworkServer.active || NetworkClient.active || !PlayerActionGuard.CanAct(context.Owner) ||
+            context.Data == null || context.Data.UseAction == null) return;
 
 
         PlayerInventory inventory = context.Owner.GetComponent<PlayerInventory>();

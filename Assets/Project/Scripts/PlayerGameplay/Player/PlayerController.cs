@@ -18,6 +18,12 @@ public class PlayerController : NetworkBehaviour
 
     [Header("Animation")]
     [SerializeField] private Animator _animator;
+    [Tooltip("Clip reference speeds, measured from the matching root-motion clips. Gameplay still uses in-place animation.")]
+    [SerializeField, Min(.1f)] private float _walkAnimationSpeed = 1.9f;
+    [SerializeField, Min(.1f)] private float _runAnimationSpeed = 3.8f;
+    [Tooltip("Keep these thresholds matched to the Animator Speed blend tree.")]
+    [SerializeField, Min(.1f)] private float _walkBlendSpeed = 2f;
+    [SerializeField, Min(.1f)] private float _runBlendSpeed = 5f;
 
     public bool CanMove { get; set; } = true;
     public bool CanSprint { get; set; } = true;
@@ -29,6 +35,8 @@ public class PlayerController : NetworkBehaviour
 
     private float _verticalVelocity;
     private bool _jumpQueued;
+    private bool _jumpInProgress;
+    private float _airborneTime;
 
     // =========================================================
     // Starter Assets Animator Parameters
@@ -262,14 +270,9 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-        float animationSpeed = 0f;
-
-        if (isMoving)
-        {
-            animationSpeed = isSprinting
-                ? _sprintSpeed
-                : _walkSpeed;
-        }
+        // Collision-resolved motion: pushing into a wall must not keep the feet running.
+        Vector3 velocity = _characterController.enabled ? _characterController.velocity : Vector3.zero;
+        float animationSpeed = isMoving ? new Vector2(velocity.x, velocity.z).magnitude : 0f;
 
         _animator.SetFloat(
             SpeedHash,
@@ -278,9 +281,12 @@ public class PlayerController : NetworkBehaviour
             Time.deltaTime
         );
 
+        float referenceSpeed = Mathf.Lerp(_walkAnimationSpeed, _runAnimationSpeed,
+            Mathf.InverseLerp(_walkBlendSpeed, _runBlendSpeed, animationSpeed));
         _animator.SetFloat(
             MotionSpeedHash,
-            moveInput.magnitude
+            animationSpeed < .1f ? 1f : Mathf.Clamp(animationSpeed / Mathf.Max(.1f, referenceSpeed), .55f, 1.8f),
+            .12f, Time.deltaTime
         );
     }
 
@@ -297,18 +303,19 @@ public class PlayerController : NetworkBehaviour
             return;
         }
 
-        bool isFalling =
-            !isGrounded &&
-            _verticalVelocity < 0f;
+        if (jumpStarted) _jumpInProgress = true;
+        if (isGrounded && !jumpStarted) { _jumpInProgress = false; _airborneTime = 0f; }
+        else _airborneTime += Time.deltaTime;
+        bool isFalling = !isGrounded && _verticalVelocity < 0f && _airborneTime > .1f;
 
         _animator.SetBool(
             GroundedHash,
-            isGrounded
+            isGrounded && !jumpStarted
         );
 
         _animator.SetBool(
             JumpHash,
-            jumpStarted
+            _jumpInProgress && !isFalling
         );
 
         _animator.SetBool(

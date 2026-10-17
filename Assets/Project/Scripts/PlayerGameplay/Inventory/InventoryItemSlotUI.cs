@@ -18,6 +18,22 @@ public class InventoryItemSlotUI : MonoBehaviour, UnityEngine.EventSystems.IPoin
     }
     public void SetUse(System.Action use) => _use = use;
     public void SetLabel(string displayName) { if (_nameText != null) _nameText.text = displayName; }
+    public void ConfigureNotebook()
+    {
+        var background = GetComponent<Image>();
+        if (background != null) background.color = new Color(.37f, .24f, .12f, .14f);
+        if (_icon != null) PlayerItemUIStyle.Place(_icon.rectTransform, new Vector2(.5f, 1), new Vector2(.5f, 1), new Vector2(0, -8), new Vector2(82, 82));
+        if (_nameText != null)
+        {
+            PlayerItemUIStyle.Place(_nameText.rectTransform, new Vector2(.5f, 0), new Vector2(.5f, 0), new Vector2(0, 4), new Vector2(184, 48));
+            _nameText.color = PlayerItemUIStyle.NotebookInk; _nameText.fontSize = 19;
+        }
+        if (_countText != null)
+        {
+            PlayerItemUIStyle.Place(_countText.rectTransform, new Vector2(1, 1), new Vector2(1, 1), new Vector2(-8, -8), new Vector2(66, 25));
+            _countText.color = PlayerItemUIStyle.NotebookInk; _countText.fontSize = 18;
+        }
+    }
     public void OnPointerClick(UnityEngine.EventSystems.PointerEventData e)
     { if (e.button == UnityEngine.EventSystems.PointerEventData.InputButton.Left) _use?.Invoke(); }
 

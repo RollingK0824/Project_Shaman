@@ -17,7 +17,7 @@ public class MirrorItem : ItemBase
     private void OnDisable() { if (_observationView != null) _observationView.Release(); }
     private void Update()
     {
-        if (_observationView != null && !PlayerActionGuard.CanAct(Owner)) _observationView.Release();
+        if (Owner != null && _observationView != null && !PlayerActionGuard.CanAct(Owner)) _observationView.Release();
     }
     public override void OnUseStarted()
     {

@@ -1,0 +1,24 @@
+Project Shaman Player / Item SFX — 2026-10-17
+
+UI_SoftConfirm.wav, UI_OccultOpen.wav, UI_OccultClose.wav
+Original synthesized sine/envelope UI tones created for this project.
+Mono PCM16, 44.1 kHz. No downloaded samples or recorded performances used.
+These are UI/occult feedback cues, not substitutes for real bell/gong/cloth recordings.
+
+Reused references (not copied or modified):
+Assets/ThirdParty/Starter Assets/Runtime/ThirdPersonController/Character/Sfx/
+  Player_Footstep_01..05.wav, Player_Land.wav
+  Existing Starter Assets content. Retain the original package licensing information.
+Assets/Mirror/Examples/_Common/OpenGameArt/Sounds/05._damage_grunt_male.mp3
+  Existing CC0 sound, per Assets/Mirror/Examples/_Common/OpenGameArt/License.txt.
+
+Existing Stress_Heartbeat.wav / Stress_Breathing.wav and their behavior are retained.
+Previous procedural BellChime, salt.wav, throw.wav, gong.wav files are retained,
+but no longer assigned as final Player item sounds. Suitable recordings are needed.
+
+Assign on BOTH Player (1) and Player (2):
+PlayerItemFeedback: Bell / Salt / Throw / Gong (one complete strike + short ring clip).
+PlayerAudioController: Projectile Impact / Death / optional Jump.
+Footstep arrays and Landing/Hurt are already assigned.
+
+No new manager, mixer, RPC, surface system, propagation or occlusion is introduced.

@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 7675042649677654903}
   - component: {fileID: 5720459417675178382}
   - component: {fileID: 4986694005011831236}
+  - component: {fileID: 3811179699149928289}
   m_Layer: 0
   m_Name: MirrorWorldItem
   m_TagString: Untagged
@@ -69,6 +70,19 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::WorldItem
   _itemData: {fileID: 11400000, guid: e470450e551ffbd40a2e8dcc60438a2f, type: 2}
+--- !u!114 &3811179699149928289
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2732311586049422446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 60d417bd307aa174b90866f90bff65e0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ThirdPersonMirrorReflection
+  _surface: {fileID: 6607005398202223059}
 --- !u!1 &3622580347740825397
 GameObject:
   m_ObjectHideFlags: 0

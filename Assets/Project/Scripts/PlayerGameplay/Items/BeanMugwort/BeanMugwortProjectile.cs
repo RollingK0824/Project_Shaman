@@ -113,7 +113,7 @@ public class BeanMugwortProjectile : MonoBehaviour
 
     private void Hit(Collider other)
     {
-        if (!isActiveAndEnabled || _hasHit || _attack == null || other == null ||
+        if (!isActiveAndEnabled || _hasHit || other == null ||
             (_owner != null && other.transform.IsChildOf(_owner.transform))) return;
 
         bool reacted = false;
@@ -132,6 +132,8 @@ public class BeanMugwortProjectile : MonoBehaviour
 
 
         _hasHit = true;
+        if (_visualOnly && _owner != null)
+            _owner.GetComponent<PlayerAudioController>()?.PlayProjectileImpact(transform.position);
         GetComponent<Collider>().enabled = false;
         _rigidbody.linearVelocity = Vector3.zero;
         _rigidbody.isKinematic = true;

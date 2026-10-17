@@ -18,6 +18,8 @@ public class PlayerTalismanCollection : MonoBehaviour
     public event Action<TalismanItemData, TalismanDrawingData> DrawingSaved;
     public event Action<TalismanItemData, TalismanSaveData> SaveRequested;
     public event Action<string> UseRequested;
+    // Presentation notification after effect + consumption commit, never on a request.
+    public event Action<string> UseCommitted;
     public IEnumerable<TalismanItemData> ItemTypes => _instances.Keys;
     public int DrawnEffectCount
     {
@@ -82,7 +84,7 @@ public class PlayerTalismanCollection : MonoBehaviour
             if (definition.ConsumeOnUse) { _instances[item].Remove(drawing); _selected.Remove(item); }
             else _selected[item] = id;
             PlayerItemActions.ReportUse(gameObject, item);
-            try { _effects.PublishChanged(); SelectionChanged?.Invoke(); }
+            try { _effects.PublishChanged(); SelectionChanged?.Invoke(); UseCommitted?.Invoke(id); }
             catch (Exception e) { Debug.LogException(e, this); }
             return true;
         }

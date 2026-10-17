@@ -21,9 +21,10 @@ PlayerGameplay Inventory·Items·Stress·UI, Player/UI 프리팹 범위 안에�
 - StressHUD는 화면 상단 중앙의 독립 Canvas다. Player (1)에는 작은 Bootstrap만 있으며
   PlayerStressController/PlayerHealth는 그대로 남아 있다. Bind(stress, health)를 사용하고
   부모 탐색은 하지 않는다. 사망 시 숨김은 Inspector 옵션이다.
-- CoinItem은 기존 중앙 Raycast → ICoinReactable.ReactToCoin(Owner) 호출을 유지한다.
+- CoinItem은 ItemUseRequested → 판정자 → CoinUseAction → ICoinReactable.ReactToCoin(Owner) 경로를 사용한다.
   기본 0.5초 재사용 제한은 장착물을 교체해도 유지된다. 짧게 아이템만 내미는 피드백을
-  추가했다. 대상 없음/실패는 비소비, 성공도 Consume On Successful Use가 false면 비소비다.
+  제공한다. 대상 없음/거절은 비소비, 수락(true) 시 판정자의 Consume 콜백으로 1개를 소모한다.
+  수취 대상은 코인을 직접 차감하지 않는다. 실제 NPC/상점 담당자가 수취 인터페이스를 연결해야 한다.
   귀신 여부를 알려 주는 UI는 없다. 손 리그/손 핵심 스크립트는 변경하지 않았다.
 
 ## 수정 파일

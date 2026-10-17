@@ -79,6 +79,11 @@ public class PlayerViewModeController : MonoBehaviour
         CurrentViewMode = _startViewMode;
     }
 
+    private void OnEnable()
+    {
+        if (_inputReader != null) _inputReader.CancelPressed += EndCurrentMode;
+    }
+
     private void Start()
     {
         CurrentViewMode = _startViewMode;
@@ -111,6 +116,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     private void OnDisable()
     {
+        if (_inputReader != null) _inputReader.CancelPressed -= EndCurrentMode;
         EndCurrentMode();
         if (_playerBodyRenderers != null)
             foreach (var body in _playerBodyRenderers) if (body != null) body.forceRenderingOff = false;

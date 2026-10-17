@@ -36,11 +36,24 @@ public class PlayerItemController : MonoBehaviour
     private GameObject _thirdPersonVisual;
     private Renderer[] _firstPersonRenderers;
     private Renderer[] _thirdPersonRenderers;
+    private bool _remotePresentation;
+    private ItemData _remoteHeldItem;
 
     // 아이템 교체 시
     // 기존 아이템 Unequip이 끝난 뒤 장착할 아이템
     private ItemData _pendingThirdPersonItem;
     private readonly System.Collections.Generic.Dictionary<ItemData, float> _useCooldowns = new();
+    public float RemainingUseCooldown(ItemData item) => item != null && _useCooldowns.TryGetValue(item, out float until)
+        ? Mathf.Max(0f, until - Time.time) : 0f;
+    // Local request presentation only. This never reports quest success or resolves an attack.
+    public void PlayUsePresentation(ItemData data)
+    {
+        if (data == null || data != EquippedItemData || !CanUseItems ||
+            !PlayerActionGuard.CanAct(gameObject)) return;
+        GetComponent<PlayerItemFeedback>()?.Play(data);
+        if (_itemHoldDriver != null && _itemHoldDriver.IsEquipped)
+            _itemHoldDriver.Use(data.ThirdPersonUseMotionId);
+    }
 
     public bool TryBeginUseCooldown(ItemData item, float seconds)
     {
@@ -120,8 +133,9 @@ public class PlayerItemController : MonoBehaviour
         // Presentation visibility never disables the equipped gameplay component.
         bool firstPerson = _viewModeController == null ||
             _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.FirstPerson;
-        SetVisualVisibility(_firstPersonRenderers, firstPerson && PlayerLocalPresentation.IsLocal(gameObject) && !_firstPersonPresentationSuppressed);
-        SetVisualVisibility(_thirdPersonRenderers, !firstPerson);
+        bool local = !_remotePresentation && PlayerLocalPresentation.IsLocal(gameObject);
+        SetVisualVisibility(_firstPersonRenderers, firstPerson && local && !_firstPersonPresentationSuppressed);
+        SetVisualVisibility(_thirdPersonRenderers, PlayerActionGuard.CanAct(gameObject) && (!local || !firstPerson));
     }
 
     private static void SetVisualVisibility(Renderer[] renderers, bool visible)
@@ -193,6 +207,8 @@ public class PlayerItemController : MonoBehaviour
             return;
         }
 
+        _remotePresentation = false;
+        _remoteHeldItem = null;
         string instanceId = _inventory.GetQuickSlotItem(SelectedSlotIndex) == itemData
             ? _inventory.GetQuickSlotInstanceId(SelectedSlotIndex) : null;
         if (ReferenceEquals(EquippedItemData, itemData) && EquippedTalismanInstanceId == instanceId)
@@ -237,7 +253,7 @@ public class PlayerItemController : MonoBehaviour
                 {
                     _itemHoldPoint = new GameObject("FirstPersonItemAnchor").transform;
                     _itemHoldPoint.SetParent(camera.transform, false);
-                    _itemHoldPoint.localPosition = new Vector3(.23f, -.13f, .65f);
+                    _itemHoldPoint.localPosition = new Vector3(.26f, -.17f, .62f);
                 }
             }
         }
@@ -247,8 +263,12 @@ public class PlayerItemController : MonoBehaviour
             return;
         }
 
-        _equippedObject = Instantiate(itemData.VisualPrefab, _itemHoldPoint, false);
-        var visual = _equippedObject.transform;
+        // A presentation parent keeps viewport fitting separate from item use animations.
+        _equippedObject = new GameObject("FirstPersonItemPresentation");
+        _equippedObject.transform.SetParent(_itemHoldPoint, false);
+        var motion = new GameObject("UseMotion").transform;
+        motion.SetParent(_equippedObject.transform, false);
+        var visual = Instantiate(itemData.VisualPrefab, motion, false).transform;
         visual.localPosition = Vector3.zero;
         visual.localRotation = Quaternion.Euler(itemData.FirstPersonLocalEuler);
         // Preserve the prefab's imported orientation/scale underneath its root.
@@ -274,6 +294,9 @@ public class PlayerItemController : MonoBehaviour
         InitializeEquippedItem(itemData);
         foreach (var component in _equippedObject.GetComponentsInChildren<MonoBehaviour>(true))
             if (component is IItemVisualContext context) context.BindItemVisual(itemData, gameObject);
+        var layout = _equippedObject.AddComponent<FirstPersonItemLayout>();
+        layout.Bind(_itemHoldPoint.GetComponentInParent<Camera>(), itemData, _firstPersonRenderers);
+        GetComponent<PlayerItemFeedback>()?.Bind(motion, itemData);
     }
 
     // Measure actual geometry, excluding particle/trail bounds that grow during play.
@@ -445,6 +468,7 @@ public class PlayerItemController : MonoBehaviour
 
         Transform visualTransform =
             _thirdPersonVisual.transform;
+        PlayerItemFeedback.PrepareVisual(_thirdPersonVisual, itemData);
 
         visualTransform.localPosition =
             itemData.ThirdPersonLocalPosition;
@@ -456,6 +480,16 @@ public class PlayerItemController : MonoBehaviour
 
         visualTransform.localScale =
             itemData.ThirdPersonLocalScale;
+        if (TryGetMeshBounds(_thirdPersonVisual.GetComponentsInChildren<Renderer>(true), visualTransform, out var gripBounds))
+            _thirdPersonVisual.AddComponent<ThirdPersonItemGrip>().Bind(_itemHoldDriver.Animator, itemData, gripBounds);
+        var mirrorView = _thirdPersonVisual.GetComponentInChildren<MirrorObservationView>(true);
+        if (mirrorView != null)
+        {
+            mirrorView.enabled = false;
+            var reflection = _thirdPersonVisual.GetComponent<ThirdPersonMirrorReflection>();
+            if (reflection == null) reflection = _thirdPersonVisual.AddComponent<ThirdPersonMirrorReflection>();
+            reflection.Bind(mirrorView.Surface);
+        }
         _thirdPersonRenderers = _thirdPersonVisual.GetComponentsInChildren<Renderer>(true);
         foreach (var component in _thirdPersonVisual.GetComponentsInChildren<MonoBehaviour>(true))
             if (component is IItemVisualContext context) context.BindItemVisual(itemData, gameObject);
@@ -490,16 +524,49 @@ public class PlayerItemController : MonoBehaviour
             return;
         }
 
+        _thirdPersonVisual.SetActive(false);
         Destroy(_thirdPersonVisual);
 
         _thirdPersonVisual = null;
         _thirdPersonRenderers = null;
     }
 
+    // One world-space spray for either the local third-person view or the existing remote RPC.
+    // Damage, consumption and success events remain owned by SaltUseAction.Execute.
+    public bool PlayThirdPersonSaltSpray(Vector3 direction)
+    {
+        if (_thirdPersonVisual == null || !PlayerActionGuard.CanAct(gameObject)) return false;
+        var template = _thirdPersonVisual.GetComponentInChildren<ParticleSystem>(true);
+        if (template == null) return false;
+        var spray = Instantiate(template, template.transform.position, Quaternion.LookRotation(direction.sqrMagnitude > .001f ? direction : transform.forward));
+        spray.name = "ThirdPersonSaltSpray";
+        spray.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        spray.transform.localScale = Vector3.one;
+        var main = spray.main;
+        main.loop = false; main.playOnAwake = false; main.duration = .15f;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.scalingMode = ParticleSystemScalingMode.Shape;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(.45f, .85f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(1.4f, 3.2f);
+        main.startSize = new ParticleSystem.MinMaxCurve(.006f, .013f);
+        main.startColor = new Color(.95f,.93f,.85f,1f); main.gravityModifier = .7f;
+        var emission = spray.emission; emission.enabled = true; emission.rateOverTime = 0;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 65) });
+        var shape = spray.shape; shape.enabled = true; shape.shapeType = ParticleSystemShapeType.Cone; shape.angle = 16f; shape.radius = .018f;
+        spray.GetComponent<ParticleSystemRenderer>().enabled = true;
+        spray.Play(true);
+        Destroy(spray.gameObject, 1.6f);
+        return true;
+    }
+
     // [원격 사본 전용] 네트워크가 확정한 장착 아이템의 3인칭 모델만 교체
     // 팔 자세는 NetworkNaimator가 동기화함. ItemHoldDriver는 구동하지 않음
     public void ApplyRemoteHeldVisual(ItemData itemData)
     {
+        _remotePresentation = true;
+        if (!PlayerActionGuard.CanAct(gameObject)) itemData = null;
+        if (_remoteHeldItem == itemData && (_thirdPersonVisual != null || itemData == null)) return;
+        _remoteHeldItem = itemData;
         DestroyThirdPersonVisual();
 
         if (itemData == null || itemData.HoldType == HoldType.Empty)
@@ -517,6 +584,7 @@ public class PlayerItemController : MonoBehaviour
 
     public void ClearHeldVisualsOnDeath()
     {
+        _remoteHeldItem = null;
         CanUseItems = false;
         UnequipCurrentItem();
         DestroyThirdPersonVisual();
@@ -528,6 +596,7 @@ public class PlayerItemController : MonoBehaviour
         EquippedItemData = null;
         EquippedTalismanInstanceId = null;
         UnequipFirstPerson();
+        DestroyThirdPersonVisual();
         if (_itemHoldDriver != null && _itemHoldDriver.Phase != HoldPhase.Empty)
             _itemHoldDriver.Unequip();
         else DestroyThirdPersonVisual();
@@ -548,8 +617,7 @@ public class PlayerItemController : MonoBehaviour
         _equippedItem?.OnUseStarted();
 
         // 3인칭 사용 모션
-        if (_itemHoldDriver != null &&
-            EquippedItemData != null &&
+        if (EquippedItemData != null && EquippedItemData.UseAction == null && _itemHoldDriver != null &&
             _itemHoldDriver.IsEquipped)
         {
             _itemHoldDriver.Use(

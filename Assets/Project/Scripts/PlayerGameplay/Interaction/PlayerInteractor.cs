@@ -85,6 +85,9 @@ public class PlayerInteractor : MonoBehaviour
             return null;
         }
 
+        if (_viewModeController != null && _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.ThirdPerson)
+            return FindThirdPersonInteractable();
+
         Ray ray = new Ray(
             _playerCamera.transform.position,
             _playerCamera.transform.forward
@@ -103,6 +106,30 @@ public class PlayerInteractor : MonoBehaviour
         return
             hit.collider
                 .GetComponentInParent<IInteractable>();
+    }
+
+    private IInteractable FindThirdPersonInteractable()
+    {
+        var cameraTransform = _playerCamera.transform;
+        // The camera boom is not interaction reach. Retain the existing player-side F/request path.
+        Vector3 origin = cameraTransform.parent != null ? cameraTransform.parent.position : transform.position + Vector3.up;
+        float rayLength = Vector3.Distance(cameraTransform.position, origin) + _interactionDistance;
+        var hits = Physics.RaycastAll(cameraTransform.position, cameraTransform.forward, rayLength, _interactionMask, QueryTriggerInteraction.Ignore);
+        Array.Sort(hits, (a,b) => a.distance.CompareTo(b.distance));
+        foreach (var hit in hits)
+        {
+            if (hit.collider.transform.IsChildOf(transform)) continue;
+            var target = hit.collider.GetComponentInParent<IInteractable>();
+            if (target == null || Vector3.Distance(origin, hit.point) > _interactionDistance) return null;
+            Vector3 delta = hit.point-origin;
+            foreach (var obstruction in Physics.RaycastAll(origin, delta.normalized, delta.magnitude, _interactionMask, QueryTriggerInteraction.Ignore))
+            {
+                if (obstruction.collider.transform.IsChildOf(transform)) continue;
+                if (!ReferenceEquals(obstruction.collider.GetComponentInParent<IInteractable>(), target)) return null;
+            }
+            return target;
+        }
+        return null;
     }
 
     // Items share the existing camera, range and obstruction mask; no second aim controller.
@@ -166,6 +193,9 @@ public class PlayerInteractor : MonoBehaviour
         {
             return;
         }
+
+        if (_viewModeController != null && _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.ThirdPerson)
+            UpdateTarget(); // Revalidate the third-person target on F.
 
         if (CurrentTarget == null)
         {

@@ -13,6 +13,7 @@ public struct CraftingIngredient
 public class CraftingRecipeData : ScriptableObject
 {
     [SerializeField] private string _displayName;
+    [SerializeField, TextArea(3, 6)] private string _description;
     [SerializeField] private Sprite _icon;
     [SerializeField] private CraftingIngredient[] _ingredients = Array.Empty<CraftingIngredient>();
     [SerializeField] private ItemData _resultItem;
@@ -20,6 +21,8 @@ public class CraftingRecipeData : ScriptableObject
 
     public string DisplayName => string.IsNullOrWhiteSpace(_displayName) && _resultItem != null ? _resultItem.DisplayName : _displayName;
     public Sprite Icon => _icon != null ? _icon : _resultItem != null ? _resultItem.Icon : null;
+    public string Description => string.IsNullOrWhiteSpace(_description)
+        ? "필요한 재료를 모아 제작할 수 있습니다.\n완성한 도구는 내 소지품에 보관됩니다." : _description;
     public IReadOnlyList<CraftingIngredient> Ingredients => _ingredients;
     public ItemData ResultItem => _resultItem;
     public int ResultAmount => _resultAmount;
