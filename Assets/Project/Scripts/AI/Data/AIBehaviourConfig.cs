@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using ProjectShaman.AI.Defines;
 
 namespace ProjectShaman.AI.Data
 {
@@ -82,6 +83,27 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostPlayerDetectDistance = 15f;
         [SerializeField] private float _ghostPlayerAttackCooldown = 10f;
 
+        [Header("Interaction")]
+        [SerializeField] private float _interactionNoticeRadius = 10f;
+        [SerializeField] private float _interactionScanInterval = 0.5f;
+        [SerializeField] private float _glanceDuration = 1.5f;
+        [SerializeField, Range(0, 100)] private int _restResistance = 20;
+        [SerializeField, Range(0, 100)] private int _conversationResistance = 30;
+        [SerializeField, Range(0, 100)] private int _movingResistance = 40;
+        [SerializeField, Range(0, 100)] private int _toolSearchResistance = 50;
+        [SerializeField, Range(0, 100)] private int _workResistance = 60;
+        [SerializeField, Range(0, 100)] private int _returningHomeResistance = 70;
+
+        [Header("Conversation")]
+        [SerializeField] private float _conversationRadius = 5f;
+        [SerializeField] private float _conversationCheckInterval = 2f;
+        [SerializeField, Range(0f, 1f)] private float _conversationChance = 0.3f;
+        [SerializeField] private int _conversationsPerRoutine = 2;
+        [SerializeField] private float _conversationDurationMin = 8f;
+        [SerializeField] private float _conversationDurationMax = 12f;
+        [SerializeField] private int _conversationGroupMax = 4;
+        [SerializeField] private float _conversationPartnerCooldown = 60f;
+
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
@@ -137,6 +159,38 @@ namespace ProjectShaman.AI.Data
         public float GhostWanderPauseMax => Mathf.Max(GhostWanderPauseMin, _ghostWanderPauseMax);
         public float GhostPlayerDetectDistance => Mathf.Max(0f, _ghostPlayerDetectDistance);
         public float GhostPlayerAttackCooldown => Mathf.Max(0f, _ghostPlayerAttackCooldown);
+        public float InteractionNoticeRadius => Mathf.Max(0f, _interactionNoticeRadius);
+        public float InteractionScanInterval => Mathf.Max(0.05f, _interactionScanInterval);
+        public float GlanceDuration => Mathf.Max(0f, _glanceDuration);
+        public float ConversationRadius => Mathf.Max(0f, _conversationRadius);
+        public float ConversationCheckInterval => Mathf.Max(0.1f, _conversationCheckInterval);
+        public float ConversationChance => _conversationChance;
+        public int ConversationsPerRoutine => Mathf.Max(0, _conversationsPerRoutine);
+        public float ConversationDurationMin => Mathf.Max(0f, _conversationDurationMin);
+        public float ConversationDurationMax => Mathf.Max(ConversationDurationMin, _conversationDurationMax);
+        public int ConversationGroupMax => Mathf.Max(2, _conversationGroupMax);
+        public float ConversationPartnerCooldown => Mathf.Max(0f, _conversationPartnerCooldown);
+
+        public int GetInterruptResistance(VillagerActivity activity)
+        {
+            switch (activity)
+            {
+                case VillagerActivity.Rest:
+                    return _restResistance;
+                case VillagerActivity.Conversation:
+                    return _conversationResistance;
+                case VillagerActivity.Moving:
+                    return _movingResistance;
+                case VillagerActivity.ToolSearch:
+                    return _toolSearchResistance;
+                case VillagerActivity.Work:
+                    return _workResistance;
+                case VillagerActivity.ReturningHome:
+                    return _returningHomeResistance;
+                default:
+                    return _workResistance;
+            }
+        }
 
         public bool TryGetHuntTier(float yin, out HuntTier tier)
         {
