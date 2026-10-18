@@ -178,6 +178,61 @@ public class SteamLobbyService : MonoBehaviour
         return true;
     }
 
+    public struct FriendInfo
+    {
+        public CSteamID Id;
+        public string Name;
+        public EPersonaState State;
+        public bool InThisGame;
+    }
+
+    // [초대] 오버레이 없이 초대할 친구 목록 (온라인만, 이 게임 중 -> 온라인 -> 자리 비움 순)
+    public List<FriendInfo> GetOnlineFriends()
+    {
+        var friends = new List<FriendInfo>();
+        if (!SteamManager.Initialized) return friends;
+
+        AppId_t myApp = SteamUtils.GetAppID();
+        int count = SteamFriends.GetFriendCount(EFriendFlags.k_EFriendFlagImmediate);
+
+        for (int i = 0; i < count; i++)
+        {
+            CSteamID id = SteamFriends.GetFriendByIndex(i, EFriendFlags.k_EFriendFlagImmediate);
+            EPersonaState state = SteamFriends.GetFriendPersonaState(id);
+            if (state == EPersonaState.k_EPersonaStateOffline) continue;
+
+            bool inGame = SteamFriends.GetFriendGamePlayed(id, out FriendGameInfo_t game)
+                          && game.m_gameID.AppID() == myApp;
+
+            friends.Add(new FriendInfo
+            {
+                Id = id,
+                Name = SteamFriends.GetFriendPersonaName(id),
+                State = state,
+                InThisGame = inGame
+            });
+        }
+
+        friends.Sort((a, b) =>
+        {
+            if (a.InThisGame != b.InThisGame) return a.InThisGame ? -1 : 1;
+            return a.State.CompareTo(b.State);
+        });
+
+        return friends;
+    }
+
+    public bool InviteFriend(CSteamID friend)
+    {
+        if (!SteamManager.Initialized || !_currentLobby.IsValid()) return false;
+
+        bool sent = SteamMatchmaking.InviteUserToLobby(_currentLobby, friend);
+        Debug.Log($"[SteamLobby] 친구 초대 {(sent ? "전송" : "실패")}: {SteamFriends.GetFriendPersonaName(friend)} ({friend.m_SteamID})");
+        return sent;
+    }
+
+    public bool CanInvite => SteamManager.Initialized && _currentLobby.IsValid();
+
 
 
     // SteamManager 안내대로 Steam 호출은 OnDestroy가 아닌 OnDisable에서
