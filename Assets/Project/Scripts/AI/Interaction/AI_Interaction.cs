@@ -141,7 +141,7 @@ namespace ProjectShaman.AI.Interaction
             return _active == null || _active.Profile == null || priority > _active.Profile.Priority;
         }
 
-        public bool TryBegin(IVillagerInteractable target, InteractionResponse response)
+        public bool TryBegin(IVillagerInteractable target, InteractionResponse response, float durationOverride = -1f)
         {
             if (!InteractableRegistry.IsAlive(target) || target.Profile == null || response == InteractionResponse.None || response == InteractionResponse.Glance)
             {
@@ -153,7 +153,7 @@ namespace ProjectShaman.AI.Interaction
                 return false;
             }
 
-            Begin(target, response, CreateContext());
+            Begin(target, response, CreateContext(), durationOverride);
             return true;
         }
 
@@ -244,7 +244,7 @@ namespace ProjectShaman.AI.Interaction
             ApplyResult(result, InteractionEndReason.Completed);
         }
 
-        private void Begin(IVillagerInteractable target, InteractionResponse response, in InteractionContext context)
+        private void Begin(IVillagerInteractable target, InteractionResponse response, in InteractionContext context, float durationOverride = -1f)
         {
             if (_active != null)
             {
@@ -252,7 +252,7 @@ namespace ProjectShaman.AI.Interaction
             }
 
             InteractionProfile profile = target.Profile;
-            float duration = Random.Range(profile.DurationMin, profile.DurationMax);
+            float duration = durationOverride >= 0f ? durationOverride : Random.Range(profile.DurationMin, profile.DurationMax);
             Vector3 position = response == InteractionResponse.Approach ? target.gameObject.transform.position : transform.position;
 
             _active = target;
@@ -263,7 +263,11 @@ namespace ProjectShaman.AI.Interaction
             _deadline = Time.time + duration + TIMEOUT_MARGIN_SECONDS;
             _serial++;
 
-            MarkSeen(target.InteractableId);
+            if (response != InteractionResponse.Converse)
+            {
+                MarkSeen(target.InteractableId);
+            }
+
             target.BeginInteraction(context, response);
 
             _core.SetBlackboardVariable(BB_INTERACTION_RESPONSE, response);
@@ -329,7 +333,7 @@ namespace ProjectShaman.AI.Interaction
                 return VillagerActivity.ReturningHome;
             }
 
-            if (_toolHandler != null && _toolHandler.Search != null && _toolHandler.Search.IsActive)
+            if (_toolHandler != null && _toolHandler.Search != null && _toolHandler.Search.IsActive && !_toolHandler.Search.HasRequiredTool())
             {
                 return VillagerActivity.ToolSearch;
             }

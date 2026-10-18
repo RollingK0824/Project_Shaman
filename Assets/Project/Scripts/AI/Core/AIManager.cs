@@ -3,6 +3,7 @@ using UnityEngine;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
+using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
@@ -20,6 +21,7 @@ namespace ProjectShaman.AI.Core
         private readonly List<VillagerRuntime> _villagers = new List<VillagerRuntime>();
         private TimeManager _time;
         private RoutineResolver _resolver;
+        private ConversationService _conversations;
         private bool _isRunning;
         private bool _isDayActive;
 
@@ -81,6 +83,8 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, $"Stopped and cleared {_villagers.Count} villagers");
             _villagers.Clear();
             _resolver = null;
+            _conversations?.Clear();
+            _conversations = null;
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -95,6 +99,7 @@ namespace ProjectShaman.AI.Core
 
             _resolver = new RoutineResolver(new System.Random(_factory.Seed + 1), _behaviourConfig);
             AIRuntimeContext context = new AIRuntimeContext(_behaviourConfig, GetGameClock, BuildToolUsePlaces());
+            _conversations = new ConversationService(context, _factory.Seed + 2);
 
             foreach (AI_Core core in cores)
             {
@@ -202,6 +207,7 @@ namespace ProjectShaman.AI.Core
         {
             AILog.Log(AILog.TIME_TO_AI, $"NightStart Day {_time.DayCount}");
             _isDayActive = false;
+            _conversations?.EndAll("night");
 
             foreach (VillagerRuntime villager in _villagers)
             {
@@ -233,6 +239,8 @@ namespace ProjectShaman.AI.Core
                 TryAssignWaitingStation(villager);
                 TickSymptoms(villager, now);
             }
+
+            _conversations?.Tick(_villagers);
         }
 
         private void TickVillager(VillagerRuntime villager, float now)

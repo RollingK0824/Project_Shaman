@@ -31,6 +31,12 @@ namespace ProjectShaman.AI.Defines
         ReturningHome
     }
 
+    public enum ConversationKind
+    {
+        RestTalk,
+        WorkChatter
+    }
+
     public enum InteractionEndReason
     {
         Completed,

@@ -28,12 +28,11 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
             }
 
             AI_Core core = Agent.Value.GetComponent<AI_Core>();
-            if (core == null || core.CurrentRoutine.StartDelaySeconds <= 0f)
+            if (core == null || !core.TryConsumeStartDelay(out float delay))
             {
                 return Status.Success;
             }
 
-            float delay = core.CurrentRoutine.StartDelaySeconds;
             _endTime = Time.time + delay;
             core.SetState(AIState.Idle);
             AILog.Log(AILog.GHOST, core.LogId, $"Standing still {delay:F1}s before routine");
