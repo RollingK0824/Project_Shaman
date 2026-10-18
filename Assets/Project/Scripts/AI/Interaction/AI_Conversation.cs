@@ -10,6 +10,9 @@ namespace ProjectShaman.AI.Interaction
     public class AI_Conversation : MonoBehaviour, IVillagerInteractable
     {
         private const float LOOK_HEIGHT = 1.6f;
+        private static readonly string[] BUSY_BARKS = { "지금 바빠유!", "이따 다시 와주시겠소" };
+        private static readonly string[] HOME_BARKS = { "해가 지는구먼, 들어가 봐야겠소" };
+        private static readonly string[] GREETING_BARKS = { "무슨 일이오?", "어서 오시오" };
 
         [SerializeField] private InteractionProfile _profile;
 
@@ -133,6 +136,34 @@ namespace ProjectShaman.AI.Interaction
         {
             AILog.Log(AILog.INTERACTION, VillagerId, $"Say #{session.Serial} {session.Kind}: {line.Text}");
             OnLineSpoken?.Invoke(session, line);
+        }
+
+        public void RespondToPlayer(GameObject player)
+        {
+            string playerName = player != null ? player.name : "(test)";
+            VillagerActivity activity = CurrentActivity();
+
+            if (activity == VillagerActivity.ReturningHome)
+            {
+                Bark(HOME_BARKS, $"refused {playerName} (going home)");
+                return;
+            }
+
+            if (activity != VillagerActivity.Rest || _interaction.IsInteracting || IsInSession)
+            {
+                Bark(BUSY_BARKS, $"refused {playerName} ({activity})");
+                return;
+            }
+
+            AILog.Log(AILog.STUB, VillagerId, $"Player talk with {playerName} accepted, conversation UI not implemented (dialogue branch)");
+            Bark(GREETING_BARKS, $"greeted {playerName}");
+        }
+
+        private void Bark(string[] lines, string reason)
+        {
+            string text = lines[UnityEngine.Random.Range(0, lines.Length)];
+            AILog.Log(AILog.INTERACTION, VillagerId, $"Bark: {text} ({reason})");
+            OnLineSpoken?.Invoke(null, new ConversationLine(VillagerId, text));
         }
 
         public bool CanInteract(in InteractionContext context)
