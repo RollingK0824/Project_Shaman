@@ -16,6 +16,7 @@ public class NetPlayerItemUse : NetworkBehaviour
     private PlayerInventory _inventory;
     private NetPlayerInventory _netInventory;
     private NetPlayerStatus _status;
+    private NetPlayerEquipment _equipment;
 
     private ItemAttackAuthority _attackAuthority;
 
@@ -27,6 +28,7 @@ public class NetPlayerItemUse : NetworkBehaviour
         _netInventory = GetComponent<NetPlayerInventory>();
         _status = GetComponent<NetPlayerStatus>();
         _attackAuthority = GetComponent<ItemAttackAuthority>();
+        _equipment = GetComponent<NetPlayerEquipment>();
     }
 
     public override void OnStartServer()
@@ -117,6 +119,9 @@ public class NetPlayerItemUse : NetworkBehaviour
         if (data == null || data.UseAction == null) return;
 
         data.UseAction.PlayRemotePresentation(new ItemUseContext(gameObject, data, aimOrigin, aimDirection));
+
+        // 3인칭 팔 모션 (방울 1, 초혼경 2, 소금·팥쑥 3, 징 4)
+        if (_equipment != null) _equipment.PlayRemoteUseMotion(data);
     }
 
     private static bool IsFinite(Vector3 v) =>
