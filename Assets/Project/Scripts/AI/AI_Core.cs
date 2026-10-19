@@ -22,6 +22,7 @@ namespace ProjectShaman.AI
 
         private BehaviorGraphAgent btAgent;
         private VillagerProfile _profile;
+        private int _startDelayConsumedSerial = -1;
         [SerializeField] private VillagerPublicInfo _publicInfo;
         [SerializeField] private RoutineDebugView _routineDebug = new RoutineDebugView();
 
@@ -148,6 +149,20 @@ namespace ProjectShaman.AI
             _routineDebug.Serial = serial;
             AILog.Log(AILog.CORE, LogId, $"Blackboard routine cleared #{serial} ({reason})");
             OnRoutineCleared?.Invoke(reason);
+        }
+
+        public bool TryConsumeStartDelay(out float delay)
+        {
+            delay = 0f;
+
+            if (!HasRoutine || CurrentRoutine.StartDelaySeconds <= 0f || _startDelayConsumedSerial == CurrentRoutine.Serial)
+            {
+                return false;
+            }
+
+            _startDelayConsumedSerial = CurrentRoutine.Serial;
+            delay = CurrentRoutine.StartDelaySeconds;
+            return true;
         }
 
         public void TriggerSymptom(SymptomType symptom)
