@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
+using Mirror;
 
 
 
@@ -45,6 +46,15 @@ public class SteamLobbyService : MonoBehaviour
     private bool _inGame;
     private bool _isLocked;
 
+    // [초대] 친구 초대 수락, 친구 목록 "게임 참가" -> 방 정보를 읽은 뒤 알림 (실패해도 알림. 내용은 TakePendingInvite로)
+    public static event Action InviteReady;
+
+    private Callback<GameLobbyJoinRequested_t> _joinRequested;
+    private Callback<LobbyDataUpdate_t> _lobbyDataUpdated;
+    private CSteamID _inviteLobby = CSteamID.Nil;
+    private RoomInfo? _pendingInvite;
+    private string _pendingInviteError;
+
     private void EnsureCallResults()
     {
         if (_lobbyCreatedResult == null)
@@ -57,6 +67,19 @@ public class SteamLobbyService : MonoBehaviour
         }
     }
 
+    private void Start()
+    {
+        if (!SteamManager.Initialized) return;
+
+        _joinRequested = Callback<GameLobbyJoinRequested_t>.Create(OnJoinRequested);
+        _lobbyDataUpdated = Callback<LobbyDataUpdate_t>.Create(OnLobbyDataUpdated);
+    }
+
+    private void OnDestroy()
+    {
+        _joinRequested?.Dispose();
+        _lobbyDataUpdated?.Dispose();
+    }
 
     // 호스트 부분
     public void HostLobby(string roomName, string ownerName, int maxPlayers, int ghostCount, bool isLocked)
@@ -139,6 +162,79 @@ public class SteamLobbyService : MonoBehaviour
         _currentLobby = CSteamID.Nil;
     }
 
+    public bool OpenInviteDialog()
+    {
+        if (!SteamManager.Initialized || !_currentLobby.IsValid()) return false;
+
+        // 에디터 실행은 보통 오버레이가 붙지 않음 → 빌드에서 테스트
+        if (!SteamUtils.IsOverlayEnabled())
+        {
+            Debug.LogWarning("[SteamLobby] Steam 오버레이가 꺼져 있어 초대 창을 열 수 없습니다.");
+            return false;
+        }
+
+        SteamFriends.ActivateGameOverlayInviteDialog(_currentLobby);
+        Debug.Log($"[SteamLobby] 초대 창 열기: {_currentLobby.m_SteamID}");
+        return true;
+    }
+
+    public struct FriendInfo
+    {
+        public CSteamID Id;
+        public string Name;
+        public EPersonaState State;
+        public bool InThisGame;
+    }
+
+    // [초대] 오버레이 없이 초대할 친구 목록 (온라인만, 이 게임 중 -> 온라인 -> 자리 비움 순)
+    public List<FriendInfo> GetOnlineFriends()
+    {
+        var friends = new List<FriendInfo>();
+        if (!SteamManager.Initialized) return friends;
+
+        AppId_t myApp = SteamUtils.GetAppID();
+        int count = SteamFriends.GetFriendCount(EFriendFlags.k_EFriendFlagImmediate);
+
+        for (int i = 0; i < count; i++)
+        {
+            CSteamID id = SteamFriends.GetFriendByIndex(i, EFriendFlags.k_EFriendFlagImmediate);
+            EPersonaState state = SteamFriends.GetFriendPersonaState(id);
+            if (state == EPersonaState.k_EPersonaStateOffline) continue;
+
+            bool inGame = SteamFriends.GetFriendGamePlayed(id, out FriendGameInfo_t game)
+                          && game.m_gameID.AppID() == myApp;
+
+            friends.Add(new FriendInfo
+            {
+                Id = id,
+                Name = SteamFriends.GetFriendPersonaName(id),
+                State = state,
+                InThisGame = inGame
+            });
+        }
+
+        friends.Sort((a, b) =>
+        {
+            if (a.InThisGame != b.InThisGame) return a.InThisGame ? -1 : 1;
+            return a.State.CompareTo(b.State);
+        });
+
+        return friends;
+    }
+
+    public bool InviteFriend(CSteamID friend)
+    {
+        if (!SteamManager.Initialized || !_currentLobby.IsValid()) return false;
+
+        bool sent = SteamMatchmaking.InviteUserToLobby(_currentLobby, friend);
+        Debug.Log($"[SteamLobby] 친구 초대 {(sent ? "전송" : "실패")}: {SteamFriends.GetFriendPersonaName(friend)} ({friend.m_SteamID})");
+        return sent;
+    }
+
+    public bool CanInvite => SteamManager.Initialized && _currentLobby.IsValid();
+
+
+
     // SteamManager 안내대로 Steam 호출은 OnDestroy가 아닌 OnDisable에서
     private void OnDisable()
     {
@@ -185,6 +281,68 @@ public class SteamLobbyService : MonoBehaviour
         callback?.Invoke(rooms);
     }
 
+    private void OnJoinRequested(GameLobbyJoinRequested_t data)
+    {
+        Debug.Log($"[SteamLobby] 초대 수락: lobby={data.m_steamIDLobby.m_SteamID}, friend={data.m_steamIDFriend.m_SteamID}");
+
+        if (NetworkClient.active || NetworkServer.active)
+        {
+            Debug.Log("[SteamLobby] 이미 방에 있어서 초대를 무시합니다.");
+            return;
+        }
+
+        _inviteLobby = data.m_steamIDLobby;
+
+        // 들어가지 않은 로비의 데이터는 요청해야 읽을 수 있음 → OnLobbyDataUpdated로 응답
+        if (!SteamMatchmaking.RequestLobbyData(_inviteLobby))
+        {
+            _inviteLobby = CSteamID.Nil;
+            SetInviteResult(null, "방 정보를 불러오지 못했습니다.");
+        }
+    }
+
+    private void OnLobbyDataUpdated(LobbyDataUpdate_t data)
+    {
+        // 초대한 로비의 "로비 데이터" 응답만 처리 (호스트 자신의 SetLobbyData, 멤버 데이터 변경도 이 콜백으로 옴)
+        if (!_inviteLobby.IsValid() || data.m_ulSteamIDLobby != _inviteLobby.m_SteamID) return;
+        if (data.m_ulSteamIDMember != data.m_ulSteamIDLobby) return;
+
+        CSteamID lobby = _inviteLobby;
+        _inviteLobby = CSteamID.Nil;
+
+        if (data.m_bSuccess == 0 || !TryReadRoom(lobby, out RoomInfo room))
+        {
+            SetInviteResult(null, "방이 사라졌습니다.");
+            return;
+        }
+
+        Debug.Log($"[SteamLobby] 초대 방 정보: {room.Name} / 호스트 {room.Address} / {room.CurrentPlayers}/{room.MaxPlayers} / 비밀번호 {room.IsLocked}");
+        SetInviteResult(room, null);
+    }
+
+    private void SetInviteResult(RoomInfo? room, string error)
+    {
+        if (error != null) Debug.LogWarning($"[SteamLobby] 초대 처리 실패: {error}");
+
+        _pendingInvite = room;
+        _pendingInviteError = error;
+        InviteReady?.Invoke();
+    }
+
+    // UI가 한 번만 가져감. 성공이면 room, 실패면 error가 채워짐
+    public bool TakePendingInvite(out RoomInfo room, out string error)
+    {
+        bool has = _pendingInvite.HasValue || _pendingInviteError != null;
+        room = _pendingInvite.GetValueOrDefault();
+        error = _pendingInviteError;
+
+        _pendingInvite = null;
+        _pendingInviteError = null;
+        return has;
+    }
+
+
+
     private static bool TryReadRoom(CSteamID lobby, out RoomInfo room)
     {
         room = default;
@@ -210,4 +368,20 @@ public class SteamLobbyService : MonoBehaviour
         int.TryParse(SteamMatchmaking.GetLobbyData(lobby, key), NumberStyles.Integer, CultureInfo.InvariantCulture, out int value);
         return value;
     }
+
+#if UNITY_EDITOR
+    // [테스트 전용] Steam 초대 없이 "방 정보 읽기 성공" 이후 흐름(화면 이동, 비밀번호 창, 참가 시도)만 확인
+    [ContextMenu("Test/Simulate Invite (Open Room)")]
+    private void TestSimulateInviteOpen() => SetInviteResult(TestRoom(false), null);
+
+    [ContextMenu("Test/Simulate Invite (Locked Room)")]
+    private void TestSimulateInviteLocked() => SetInviteResult(TestRoom(true), null);
+
+    [ContextMenu("Test/Simulate Invite (Failed)")]
+    private void TestSimulateInviteFailed() => SetInviteResult(null, "방이 사라졌습니다.");
+
+    // 주소는 아무도 열지 않은 SteamID라 참가 시도는 실패하는 게 정상
+    private static RoomInfo TestRoom(bool locked) =>
+        new RoomInfo("테스트 초대 방", "테스트 호스트", "76561197960287930", 1, 4, 2, true, locked, true);
+#endif
 }

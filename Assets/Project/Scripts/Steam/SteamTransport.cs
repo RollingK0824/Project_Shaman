@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using Steamworks;
 using Mirror;
+using System.Globalization;
 
 namespace ProjectShaman.Steam
 {
@@ -11,8 +12,15 @@ namespace ProjectShaman.Steam
         // 우리 서비스 내에서 쓸 가상 포트 번호
         private const int _virtualPort = 0;
 
+        // 비신뢰 메시지는 MTU 이하로. 넘으면 Steam이 조각내서 보내고, 조각 하나만 잃어도 메시지 전체가 버려짐
+        private const int UnreliableMaxSize = 1200;
+
         // 서버 측 : Mirror의 connectionId(int) <-> Steam의 HSteamNetConnection 매핑
         private readonly Dictionary<int, HSteamNetConnection> _serverConnections = new Dictionary<int, HSteamNetConnection>();
+        // 수신 중에 Mirror가 연결을 끊으면(ServerDisconnect) 목록이 바뀌므로 복사본으로 순회
+        private readonly List<KeyValuePair<int, HSteamNetConnection>> _pollBuffer = new List<KeyValuePair<int, HSteamNetConnection>>();
+
+
         private int _nextConnectionId = 1;
 
         // 서버가 리슨 중인 소켓
@@ -41,9 +49,15 @@ namespace ProjectShaman.Steam
 
         public override int GetMaxPacketSize(int channelId = Channels.Reliable)
         {
-            // TODO: k_cbMaxSteamNetworkingSocketsMessageSizeSend 값으로 채우기
-            return 512 * 1024;
+            // 신뢰 전송은 Steam 한계(512KB)까지. 부적 그림 Cmd(최대 256KB 압축)가 여기에 들어감
+            return channelId == Channels.Reliable
+                ? Constants.k_cbMaxSteamNetworkingSocketsMessageSizeSend
+                : UnreliableMaxSize;
         }
+
+        // Mirror는 작은 메시지를 이 크기까지 묶어서 보냄 (기본값이 GetMaxPacketSize라서 비신뢰도 512KB로 묶이던 문제)
+        // 이보다 큰 메시지는 묶이지 않고 혼자 전송됨
+        public override int GetBatchThreshold(int channelId = Channels.Reliable) => UnreliableMaxSize;
 
         public override void Shutdown()
         {
@@ -157,8 +171,11 @@ namespace ProjectShaman.Steam
 
         public override string ServerGetClientAddress(int connectionId)
         {
-            // TODO: 해당 connectionId의 SteamID 문자열 변환
-            return "";
+            // Mirror가 접속 직후 conn.address로 저장 → 로그, 강퇴, 프로필 표시에 사용
+            if (!_serverConnections.TryGetValue(connectionId, out var conn)) return "";
+            if (!SteamNetworkingSockets.GetConnectionInfo(conn, out SteamNetConnectionInfo_t info)) return "";
+
+            return info.m_identityRemote.GetSteamID().m_SteamID.ToString(CultureInfo.InvariantCulture);
         }
 
         public override Uri ServerUri()
@@ -317,20 +334,25 @@ namespace ProjectShaman.Steam
         private const int _maxMessagesPerPoll = 32;
         private readonly IntPtr[] _messageBuffer = new IntPtr[_maxMessagesPerPoll];
 
-        private void LateUpdate()
-        {
-            if (_serverStarted)
-            {
-                foreach(var kv in _serverConnections)
-                {
-                    PollConnection(kv.Value, kv.Key, isServer: true);
-                }
-            }
 
-            if (_clientConnected)
+        // [서버] Mirror가 프레임 맨 앞(NetworkEarlyUpdate)에서 호출 → 받은 Cmd를 같은 프레임 Update 전에 처리
+        // 부모 Transport의 LateUpdate는 Mirror가 일부러 막아 둔 것이라 같은 이름으로 만들지 않음
+        public override void ServerEarlyUpdate()
+        {
+            if (!_serverStarted) return;
+
+            _pollBuffer.Clear();
+            _pollBuffer.AddRange(_serverConnections);
+            foreach (var kv in _pollBuffer)
             {
-                PollConnection(_clientConnection, -1, isServer: false);
+                if (!_serverConnections.ContainsKey(kv.Key)) continue;   // 이번 프레임에 이미 끊긴 연결
+                PollConnection(kv.Value, kv.Key, isServer: true);
             }
+        }
+        // [클라] 서버와 같은 시점에 수신
+        public override void ClientEarlyUpdate()
+        {
+            if (_clientConnected) PollConnection(_clientConnection, -1, isServer: false);
         }
 
         private void PollConnection(HSteamNetConnection conn, int connId, bool isServer)
