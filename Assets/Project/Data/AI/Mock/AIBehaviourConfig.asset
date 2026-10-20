@@ -14,21 +14,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Data.AIBehaviourConfig
   _cycleDays: 3
   _restRatio: 0.3
-  _maxStartOffsetRatio: 0.2
+  _routinesPerDay: 2
+  _routineHours: 6
+  _maxStartDelayHours: 2
   _minRemainingRatio: 0.17
-  _homeReturnMarginSeconds: 1
-  _toolTidySecondsEstimate: 1
+  _homeReturnMarginSeconds: 10
+  _toolTidySecondsEstimate: 5
   _walkSpeedEstimate: 3.5
   _toolSightRadius: 8
   _toolSightInterval: 1
   _toolPickupDistance: 1.5
   _toolSightingsPerType: 2
-  _toolSearchTimeRatio: 0.8
+  _toolSearchTimeRatio: 0.4
   _tidyRelaxedMaxDistance: 15
   _tidyRushedMaxDistance: 35
-  _initialYin: 100
+  _initialYin: 30
   _yinForMaxFrequency: 100
   _minimumYin: 20
+  _maxYin: 100
   _corruptionChanceAtZeroYin: 0.2
   _corruptionChanceAtMaxYin: 0.8
   _lastSlotChanceMultiplier: 0.5
@@ -37,4 +40,63 @@ MonoBehaviour:
   _timeDelayMaxRatio: 0.25
   _maxSymptomsPerRestSlot: 3
   _emptyHandToolYinThreshold: 80
+  _emptyHandToolChance: 0.25
   _toolCorruptionSearchRadius: 25
+  _huntTiers:
+  - MinYin: 1
+    Kills: 1
+    ChasePlayer: 0
+  - MinYin: 26
+    Kills: 2
+    ChasePlayer: 0
+  - MinYin: 51
+    Kills: 3
+    ChasePlayer: 0
+  - MinYin: 76
+    Kills: 4
+    ChasePlayer: 1
+  _ghostHuntTimeoutSeconds: 90
+  _huntRadiusMin: 10
+  _huntRadiusMax: 60
+  _ghostSpawnDelaySeconds: 3
+  _toolMissingStress: 5
+  _toolSearchFailedStress: 10
+  _nightWitnessRadius: 15
+  _sleepParalysisHomeDistance: 4
+  _ghostHideMinDistance: 8
+  _ghostHideMaxDistance: 20
+  _ghostActionCooldownMin: 15
+  _ghostActionCooldownMax: 30
+  _ghostCommandRetrySeconds: 1
+  _ghostCommandTimeoutSeconds: 30
+  _ghostStalkMinDistance: 3
+  _ghostStalkMaxDistance: 6
+  _ghostStalkSpeed: 3
+  _ghostStalkCreepSpeed: 1
+  _ghostStalkStressPerSecond: 0.5
+  _ghostWanderSpeed: 1.5
+  _ghostWanderPauseMin: 2
+  _ghostWanderPauseMax: 5
+  _ghostPlayerDetectDistance: 15
+  _ghostPlayerAttackCooldown: 10
+  _interactionNoticeRadius: 10
+  _interactionScanInterval: 0.5
+  _glanceDuration: 1.5
+  _restResistance: 20
+  _conversationResistance: 30
+  _movingResistance: 40
+  _toolSearchResistance: 50
+  _workResistance: 60
+  _returningHomeResistance: 70
+  _conversationRadius: 5
+  _conversationCheckInterval: 2
+  _conversationChance: 0.3
+  _conversationsPerRoutine: 2
+  _conversationDurationMin: 8
+  _conversationDurationMax: 12
+  _conversationGroupMax: 4
+  _conversationPartnerCooldown: 60
+  _hearingDistance: 12
+  _traceMaxPerKind: 5
+  _traceNeglectStressPerDay: 0.5
+  _traceNeglectStressMax: 3
