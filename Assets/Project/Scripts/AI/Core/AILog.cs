@@ -23,6 +23,7 @@ namespace ProjectShaman.AI.Core
         public const string DEFENSE = "Defense";
         public const string MINION = "Minion";
         public const string INTERACTION = "Interaction";
+        public const string TRACE = "Trace";
 
         public static bool IsEnabled = true;
         public static bool IsFileLogEnabled = true;

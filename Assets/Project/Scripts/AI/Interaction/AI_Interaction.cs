@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
@@ -193,9 +194,42 @@ namespace ProjectShaman.AI.Interaction
             }
             else if (Time.time > _deadline)
             {
-                AILog.Warn(AILog.INTERACTION, $"[{_core.LogId}] Interaction timed out {_activeKind}:{_activeId}");
+                AILog.Warn(AILog.INTERACTION, $"[{_core.LogId}] Interaction timed out {_activeKind}:{_activeId} ({DescribeApproach()})");
                 End(InteractionEndReason.TargetLost);
             }
+        }
+
+        private string DescribeApproach()
+        {
+            if (!InteractableRegistry.IsAlive(_active))
+            {
+                return "target gone";
+            }
+
+            Vector3 target = _active.gameObject.transform.position;
+            Vector3 offset = transform.position - target;
+            float flat = new Vector2(offset.x, offset.z).magnitude;
+            string text = $"response={_activeResponse}, flatDist={flat:F1}m, dy={offset.y:F1}, arrive={(_active.Profile != null ? _active.Profile.ApproachDistance : 0f):F1}";
+
+            _core.TryGetBlackboardVariable(BB_IS_INTERACTING, out bool bbInteracting);
+            _core.TryGetBlackboardVariable(BB_INTERACTION_SERIAL, out int bbSerial);
+            _core.TryGetBlackboardVariable(BB_INTERACTION_ARRIVE_DISTANCE, out float bbArrive);
+            _core.TryGetBlackboardVariable(BB_INTERACTION_DURATION, out float bbDuration);
+            _core.TryGetBlackboardVariable(BB_INTERACTION_POSITION, out Vector3 bbPosition);
+            text += $", bb[interacting={bbInteracting}, serial={bbSerial}/{_serial}, arrive={bbArrive:F1}, duration={bbDuration:F1}, posDelta={Vector3.Distance(bbPosition, target):F1}m, mustGoHome={IsMustGoHome()}]";
+
+            NavMeshAgent agent = GetComponent<NavMeshAgent>();
+            if (agent != null && agent.isOnNavMesh)
+            {
+                bool onMesh = NavMesh.SamplePosition(target, out NavMeshHit hit, 2f, NavMesh.AllAreas);
+                text += $", path={agent.pathStatus}, pending={agent.pathPending}, remaining={agent.remainingDistance:F1}, stopping={agent.stoppingDistance:F1}, targetOnMesh={onMesh}";
+                if (onMesh)
+                {
+                    text += $"(snap {Vector3.Distance(target, hit.position):F1}m)";
+                }
+            }
+
+            return text;
         }
 
         private void Scan()
