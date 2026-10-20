@@ -32,11 +32,42 @@ namespace ProjectShaman.Network.AI
 
         private void HandleLineSpoken(ConversationSession session, ConversationLine line)
         {
-            RpcSay(line.Text);
+            float hearingDistance = _conversation.HearingDistance;
+            if (hearingDistance <= 0f)
+            {
+                RpcSay(line.Text);
+                return;
+            }
+
+            float sqrDistance = hearingDistance * hearingDistance;
+
+            foreach (NetworkConnectionToClient connection in NetworkServer.connections.Values)
+            {
+                if (connection == null || connection.identity == null)
+                {
+                    continue;
+                }
+
+                if ((connection.identity.transform.position - transform.position).sqrMagnitude <= sqrDistance)
+                {
+                    TargetSay(connection, line.Text);
+                }
+            }
         }
 
         [ClientRpc]
         private void RpcSay(string text)
+        {
+            ShowLine(text);
+        }
+
+        [TargetRpc]
+        private void TargetSay(NetworkConnectionToClient target, string text)
+        {
+            ShowLine(text);
+        }
+
+        private void ShowLine(string text)
         {
             if (_bubble == null)
             {

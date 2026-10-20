@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 using ProjectShaman.AI.Core;
 
 namespace ProjectShaman.AI.World
@@ -32,6 +33,22 @@ namespace ProjectShaman.AI.World
             {
                 _places.Remove(place.PlaceId);
             }
+        }
+
+        public static bool TryFindContaining(Vector3 position, out PlaceArea place)
+        {
+            place = null;
+
+            foreach (PlaceArea candidate in _places.Values)
+            {
+                if (candidate != null && candidate.Contains(position))
+                {
+                    place = candidate;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static bool TryGet(string placeId, out PlaceArea place)
