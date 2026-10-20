@@ -57,7 +57,7 @@ public class EffectTalismanInventoryView : MonoBehaviour
         if (drawing == null) { if (_slotPicker != null) _slotPicker.SetActive(false); _details.text = "효과 부적을 선택해 주세요."; return; }
         _collection.Find(_selectedId, out var item); var effect = item.FindEffect(drawing.EffectId);
         _details.text = effect == null ? "사용할 수 없는 효과입니다." :
-            $"{drawing.CustomName}\n{effect.DisplayName} · {effect.Duration:0.#}초\n{effect.Description}\n{(effect.ConsumeOnUse ? "사용 후 소모" : "사용 후 유지")}";
+            $"{drawing.CustomName}\n{effect.DisplayName} · {effect.Duration:0.#}초\n{effect.ModifierDescription}\n{effect.Description}\n{(effect.ConsumeOnUse ? "사용 후 소모" : "사용 후 유지")}";
         _useButton.interactable &= effect != null;
     }
     public void UseSelected()

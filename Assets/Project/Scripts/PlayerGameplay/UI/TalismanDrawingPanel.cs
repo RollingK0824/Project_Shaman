@@ -25,17 +25,13 @@ public class TalismanDrawingPanel : MonoBehaviour
     private TalismanDrawingData _draft;
     private bool _previousInputBlock, _cursorVisible;
     private CursorLockMode _cursorLock;
-    private InputAction _closeAction, _undoAction;
+    // InputManager의 공용 액션 (Open에서 캐시, 종료 중 Instance를 다시 부르지 않도록)
+    private ShamanInput _actions;
     public bool IsOpen { get; private set; }
     public bool IsConfirmingDiscard => _discardDialog != null && _discardDialog.activeSelf;
     public TalismanDrawingData CurrentDrawing => _draft;
     private void Awake()
     {
-        _closeAction = new InputAction("CloseTalismanDrawing", InputActionType.Button, "<Keyboard>/escape");
-        _closeAction.performed += _ => RequestClose();
-        _undoAction = new InputAction("UndoTalismanDrawing", InputActionType.Button);
-        _undoAction.AddCompositeBinding("ButtonWithOneModifier").With("Modifier", "<Keyboard>/ctrl").With("Button", "<Keyboard>/z");
-        _undoAction.performed += _ => Undo();
         _clearButton.onClick.AddListener(ClearDrawing);
         _closeButton.onClick.AddListener(RequestClose);
         if (_nextButton != null) _nextButton.gameObject.SetActive(false);
@@ -62,7 +58,8 @@ public class TalismanDrawingPanel : MonoBehaviour
         _cursorVisible = Cursor.visible; _cursorLock = Cursor.lockState;
         IsOpen = true; gameObject.SetActive(true);
         _input.enabled = false; _input.SetGameplayInputBlocked(true);
-        _closeAction.Enable(); _undoAction.Enable();
+        _actions = InputManager.Instance.Actions;
+        _actions.UI.Cancel.performed += OnCancelAction; _actions.Drawing.Undo.performed += OnUndoAction;
         if (_health != null) _health.Died += OnDied;
         _collection.SelectionChanged += ValidateInstance;
         Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
@@ -76,7 +73,9 @@ public class TalismanDrawingPanel : MonoBehaviour
         if (_collection.GetComponent<PlayerInventory>().Contains(_item) && _collection.Find(_draft.Id, out _) == null) return;
         Close();
     }
-    private void OnDestroy() { Close(); _closeAction?.Dispose(); _undoAction?.Dispose(); }
+    private void OnDestroy() => Close();
+    private void OnCancelAction(InputAction.CallbackContext context) => RequestClose();
+    private void OnUndoAction(InputAction.CallbackContext context) => Undo();
     private void OnDied(GameObject source) => Close();
     private void OnDisable() { if (IsOpen) Close(); }
     public void RequestClose()
@@ -115,7 +114,7 @@ public class TalismanDrawingPanel : MonoBehaviour
     {
         if (!IsOpen) return;
         IsOpen = false; _drawingCanvas.EndDrawing(); _draft = null;
-        _closeAction?.Disable(); _undoAction?.Disable();
+        if (_actions != null) { _actions.UI.Cancel.performed -= OnCancelAction; _actions.Drawing.Undo.performed -= OnUndoAction; }
         if (_collection != null) _collection.SelectionChanged -= ValidateInstance;
         if (_health != null) _health.Died -= OnDied;
         if (_input != null) { _input.enabled = true; _input.SetGameplayInputBlocked(_previousInputBlock); }

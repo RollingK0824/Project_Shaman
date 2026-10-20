@@ -21,9 +21,7 @@ public class InventoryUIController : MonoBehaviour
             return;
         }
 
-        _inputReader.InventoryPressed +=
-            ToggleInventory;
-
+        // Inventory is a notebook page now; there is no separate I key.
         _inputReader.CancelPressed +=
             HandleCancel;
     }
@@ -39,9 +37,6 @@ public class InventoryUIController : MonoBehaviour
     {
         if (_inputReader != null)
         {
-            _inputReader.InventoryPressed -=
-                ToggleInventory;
-
             _inputReader.CancelPressed -=
                 HandleCancel;
         }
@@ -56,15 +51,6 @@ public class InventoryUIController : MonoBehaviour
     // =========================================================
     // Input
     // =========================================================
-
-    private void ToggleInventory()
-    {
-        if (!IsOpen && _inputReader != null && (!_inputReader.isActiveAndEnabled || _inputReader.GameplayInputBlocked)) return;
-        SetInventoryOpen(
-            !IsOpen
-        );
-    }
-
 
     private void HandleCancel()
     {
