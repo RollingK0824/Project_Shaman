@@ -31,17 +31,24 @@ public class PlayerInputReader : MonoBehaviour
     private bool WorldInputBlocked => GameplayInputBlocked || (_health != null && _health.IsDead);
     // InputManager가 소유하는 공용 액션 (Enable/Disable/Dispose는 InputManager가 담당)
     private ShamanInput _input;
+    private InputAction _cycleSlot;
+    private float _nextScrollTime;
+    private PlayerInventory _inventory;
+    private PlayerItemController _items;
 
 
     private void Awake()
     {
         _health = GetComponent<PlayerHealth>();
+        _inventory = GetComponent<PlayerInventory>();
+        _items = GetComponent<PlayerItemController>();
     }
 
 
     private void OnEnable()
     {
         _input = InputManager.Instance.Actions;
+        _cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
 
         _input.Spectator.Previous.performed += OnSpectatePrevious;
         _input.Spectator.Next.performed += OnSpectateNext;
@@ -75,6 +82,9 @@ public class PlayerInputReader : MonoBehaviour
 
             return;
         }
+
+        if (_cycleSlot != null && _cycleSlot.enabled)
+            CycleQuickSlot(_cycleSlot.ReadValue<float>());
 
         MoveInput =
             _input.Player.Move.ReadValue<Vector2>();
@@ -149,7 +159,7 @@ public class PlayerInputReader : MonoBehaviour
     // General
     // =========================================================
 
-    private bool CanUseSpectatorInput => !GameplayInputBlocked && _health != null && _health.IsDead;
+    private bool CanUseSpectatorInput => isActiveAndEnabled && PlayerLocalPresentation.IsLocal(gameObject) && !GameplayInputBlocked && _health != null && _health.IsDead;
     private void OnSpectatePrevious(InputAction.CallbackContext context)
     {
         if (CanUseSpectatorInput) PreviousSpectateTargetPressed?.Invoke();
@@ -287,6 +297,26 @@ public class PlayerInputReader : MonoBehaviour
         SelectSlot(5);
     }
 
+
+    // Reuse SlotSelected so item equip and HUD selection follow the number-key path.
+    public void CycleQuickSlot(float scroll)
+    {
+        if (!isActiveAndEnabled || GameplayInputBlocked || !PlayerLocalPresentation.IsLocal(gameObject) ||
+            float.IsNaN(scroll) || float.IsInfinity(scroll) || Mathf.Abs(scroll) < .01f || Time.unscaledTime < _nextScrollTime) return;
+        _nextScrollTime = Time.unscaledTime + .12f;
+        if (CanUseSpectatorInput)
+        {
+            if (scroll > 0) PreviousSpectateTargetPressed?.Invoke();
+            else NextSpectateTargetPressed?.Invoke();
+            return;
+        }
+        if (WorldInputBlocked || _inventory == null || _items == null || !_items.CanUseItems) return;
+        int count = _inventory.QuickSlotCount;
+        if (count == 0) return;
+        int current = _items.SelectedSlotIndex;
+        int next = current < 0 ? (scroll > 0 ? count - 1 : 0) : (current + (scroll > 0 ? -1 : 1) + count) % count;
+        SelectSlot(next);
+    }
 
     private void SelectSlot(
         int slotIndex)

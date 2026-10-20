@@ -8,6 +8,10 @@ public class TalismanDrawingCanvas : MonoBehaviour, IPointerDownHandler, IDragHa
     private bool _drawing;
     private bool _segment;
     public bool Eraser { get; set; }
+    public int PenRadius { get; set; } = 1;
+    public int EraserRadius { get; set; } = 6;
+    public int BrushStyle { get; set; }
+    private bool BeginStroke(Vector2 uv) => _data.BeginStroke(uv, Eraser, Eraser ? EraserRadius : PenRadius, BrushStyle);
     public void Bind(TalismanDrawingData data) { EndDrawing(); _data = data; }
     public bool TryGetPoint(Vector2 screenPoint, Camera camera, out Vector2 uv)
     {
@@ -20,13 +24,13 @@ public class TalismanDrawingCanvas : MonoBehaviour, IPointerDownHandler, IDragHa
     {
         if (e.button != PointerEventData.InputButton.Left || _data == null) return;
         _drawing = true;
-        _segment = TryGetPoint(e.position, e.pressEventCamera, out var uv) && _data.BeginStroke(uv, Eraser);
+        _segment = TryGetPoint(e.position, e.pressEventCamera, out var uv) && BeginStroke(uv);
     }
     public void OnDrag(PointerEventData e)
     {
         if (!_drawing || _data == null) return;
         if (!TryGetPoint(e.position, e.pressEventCamera, out var uv)) { _data.EndStroke(); _segment = false; return; }
-        if (!_segment) _segment = _data.BeginStroke(uv, Eraser);
+        if (!_segment) _segment = BeginStroke(uv);
         else _data.AppendPoint(uv);
     }
     public void OnPointerUp(PointerEventData e) { if (e.button == PointerEventData.InputButton.Left) EndDrawing(); }

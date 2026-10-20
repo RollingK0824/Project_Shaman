@@ -1414,9 +1414,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::PlayerDeathVisual
   _characterVisual: {fileID: 2548410948630468512}
   _animator: {fileID: 3115732516773978692}
-  _deathState: 
+  _deathState: Base Layer.Death
   _deathLayer: 0
-  _hideAfterSeconds: 3
+  _hideAfterSeconds: 5.2
 --- !u!114 &5441777072776636764
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1821,6 +1821,14 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 8b5706643c3d17242970b67537929a9c, type: 2}
+    - target: {fileID: 5507822796601697115, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: 7044f8805a4a4bd4dbb94f8ec554eef8, type: 2}
+    - target: {fileID: 8060787082339184816, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: e33231161399a954a8820bf576589575, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

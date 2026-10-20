@@ -32,12 +32,70 @@ public class TalismanDrawingPanel : MonoBehaviour
     public TalismanDrawingData CurrentDrawing => _draft;
     private void Awake()
     {
+        BuildBrushControls();
         _clearButton.onClick.AddListener(ClearDrawing);
         _closeButton.onClick.AddListener(RequestClose);
         if (_nextButton != null) _nextButton.gameObject.SetActive(false);
         _nameInput.characterLimit = TalismanDrawingData.MaxNameLength;
         _nameInput.onValueChanged.AddListener(_ => RefreshSaveButton());
         if (_effectDropdown != null) _effectDropdown.onValueChanged.AddListener(_ => RefreshSaveButton());
+    }
+    // Keep tools outside the paper; dialogs stay above them and block input as before.
+    private void BuildBrushControls()
+    {
+        var parent = _clearButton.transform.parent;
+        var style = Instantiate(_clearButton, parent);
+        style.name = "BrushTexture";
+        var rect = (RectTransform)style.transform;
+        rect.anchoredPosition = new Vector2(270, 180);
+        rect.sizeDelta = new Vector2(190, 44);
+        var label = style.GetComponentInChildren<TMP_Text>();
+        label.rectTransform.sizeDelta = rect.sizeDelta;
+        string[] names = { "질감: 기본", "질감: 먹붓", "질감: 거친 붓" };
+        label.text = names[_drawingCanvas.BrushStyle];
+        style.onClick = new Button.ButtonClickedEvent();
+        style.onClick.AddListener(() =>
+        {
+            _drawingCanvas.EndDrawing();
+            _drawingCanvas.BrushStyle = (_drawingCanvas.BrushStyle + 1) % names.Length;
+            label.text = names[_drawingCanvas.BrushStyle];
+        });
+        CreateSizeSlider(parent, "펜 크기", 85, _drawingCanvas.PenRadius, 8,
+            value => { _drawingCanvas.EndDrawing(); _drawingCanvas.PenRadius = value; });
+        CreateSizeSlider(parent, "지우개 크기", -15, _drawingCanvas.EraserRadius, 16,
+            value => { _drawingCanvas.EndDrawing(); _drawingCanvas.EraserRadius = value; });
+        style.transform.SetSiblingIndex(_clearButton.transform.GetSiblingIndex() + 1);
+    }
+    private void CreateSizeSlider(Transform parent, string title, float y, int initial, int maximum, System.Action<int> changed)
+    {
+        var label = Instantiate(_clearButton.GetComponentInChildren<TMP_Text>(), parent);
+        label.name = title + " Label";
+        label.raycastTarget = false;
+        var lr = label.rectTransform;
+        lr.anchorMin = lr.anchorMax = new Vector2(.5f, .5f);
+        lr.anchoredPosition = new Vector2(270, y + 30);
+        lr.sizeDelta = new Vector2(200, 36);
+        label.text = title + ": " + initial;
+        var go = new GameObject(title, typeof(RectTransform), typeof(Image), typeof(Slider));
+        go.transform.SetParent(parent, false);
+        var rect = (RectTransform)go.transform;
+        rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
+        rect.anchoredPosition = new Vector2(270, y);
+        rect.sizeDelta = new Vector2(180, 24);
+        go.GetComponent<Image>().color = new Color(.25f, .20f, .16f, .95f);
+        var handle = new GameObject("Handle", typeof(RectTransform), typeof(Image));
+        handle.transform.SetParent(go.transform, false);
+        var hr = (RectTransform)handle.transform;
+        hr.sizeDelta = new Vector2(18, 6);
+        handle.GetComponent<Image>().color = new Color(.88f, .72f, .43f);
+        var slider = go.GetComponent<Slider>();
+        slider.handleRect = hr;
+        slider.targetGraphic = handle.GetComponent<Image>();
+        slider.minValue = 1; slider.maxValue = maximum; slider.wholeNumbers = true;
+        slider.SetValueWithoutNotify(initial);
+        slider.onValueChanged.AddListener(value => { changed((int)value); label.text = title + ": " + (int)value; });
+        label.transform.SetSiblingIndex(_clearButton.transform.GetSiblingIndex() + 1);
+        go.transform.SetSiblingIndex(_clearButton.transform.GetSiblingIndex() + 1);
     }
     public bool Open(GameObject owner, PlayerTalismanCollection collection, TalismanItemData item)
     {
