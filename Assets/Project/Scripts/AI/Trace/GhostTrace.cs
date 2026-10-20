@@ -147,7 +147,7 @@ namespace ProjectShaman.AI.Trace
             }
 
             OnWitnessed?.Invoke(this, context.VillagerId, detailed);
-            return new InteractionResult(InteractableId, InteractionKind.GhostTrace, response, true, detailed, stress);
+            return new InteractionResult(InteractableId, InteractionKind.GhostTrace, response, true, detailed, stress, null, _placeId, LookPoint);
         }
 
         private void OnDrawGizmosSelected()
