@@ -1,0 +1,862 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &-3256616585355147725
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b27bb6d9a2c8d540a10dff10acc543e, type: 3}
+  m_Name: BT_Ghost Debug Info
+  m_EditorClassIdentifier: Unity.Behavior::Unity.Behavior.BehaviorGraphDebugInfo
+  m_CodeBreakPointsList: []
+--- !u!114 &-3154708526051755897
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2dd922ae02c94c87a66e46a10a7319b9, type: 3}
+  m_Name: BT_Ghost Blackboard
+  m_EditorClassIdentifier: Unity.Behavior.Authoring::Unity.Behavior.BehaviorBlackboardAuthoringAsset
+  AssetID:
+    m_Value0: 14148036065786276359
+    m_Value1: 18196460153201324202
+  m_Variables:
+  - rid: 8252087049812967532
+  - rid: 8252087210307748294
+  m_VersionTimestamp: 639262748248326984
+  m_CommandBuffer:
+    m_Commands: []
+  m_RuntimeBlackboardAsset: {fileID: 3043931220131730131}
+  references:
+    version: 2
+    RefIds:
+    - rid: 8252087049812967532
+      type: {class: 'TypedVariableModel`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 1
+          m_Value1: 0
+        Name: Self
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: {fileID: 0}
+    - rid: 8252087210307748294
+      type: {class: 'TypedVariableModel`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 10622910413875129080
+          m_Value1: 15244181108792041164
+        Name: Target
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: {fileID: 0}
+--- !u!114 &-2491687810601241370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c02bb70996b49eba31d0c206e28da24, type: 3}
+  m_Name: BT_Ghost Blackboard
+  m_EditorClassIdentifier: Unity.Behavior::Unity.Behavior.RuntimeBlackboardAsset
+  VersionTimestamp: 639275091242600980
+  AssetID:
+    m_Value0: 14148036065786276359
+    m_Value1: 18196460153201324202
+  m_Blackboard:
+    m_Variables:
+    - rid: 1610884886393782646
+    - rid: 1610884886393782656
+    - rid: 1610884886393782664
+    - rid: 1610884886393782686
+    - rid: 1610884886393782700
+  m_SharedBlackboardVariableGuids: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 1610884886393782646
+      type: {class: 'BlackboardVariable`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 1
+          m_Value1: 0
+        Name: Self
+        m_Value: {fileID: 0}
+    - rid: 1610884886393782656
+      type: {class: 'BlackboardVariable`1[[System.Int32, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 16209952914059838048
+          m_Value1: 1709317246502368293
+        Name: CommandSerial
+        m_Value: 0
+    - rid: 1610884886393782664
+      type: {class: 'BlackboardVariable`1[[ProjectShaman.AI.Defines.GhostActionShape, Project.Runtime]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 925211488196323637
+          m_Value1: 14752798710131892541
+        Name: ActionShape
+        m_Value: 0
+    - rid: 1610884886393782686
+      type: {class: 'BlackboardVariable`1[[UnityEngine.Vector3, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 9821019969930824852
+          m_Value1: 17646393550103280824
+        Name: MovePosition
+        m_Value: {x: 0, y: 0, z: 0}
+    - rid: 1610884886393782700
+      type: {class: 'BlackboardVariable`1[[System.Single, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 8701180522587285678
+          m_Value1: 17194709080082950856
+        Name: ArriveDistance
+        m_Value: 0
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bad8f2220607dac4db5082ff333fafb8, type: 3}
+  m_Name: BT_Ghost
+  m_EditorClassIdentifier: Unity.Behavior.Authoring::Unity.Behavior.BehaviorAuthoringGraph
+  Blackboard: {fileID: 4875275011174071654}
+  m_Description: 
+  m_Nodes:
+  - rid: 1610884886393782647
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  - rid: -2
+  m_VersionTimestamp: 639277792195763696
+  m_SerializedVersion: 3
+  m_DebugInfo: {fileID: 8550933370859899965}
+  m_RuntimeGraph: {fileID: 2498929253948616485}
+  AssetID:
+    m_Value0: 14148036065786276359
+    m_Value1: 18196460153201324202
+  Story:
+    Story: 
+    StoryVariableNames: []
+    Variables: []
+  m_NodeModelsInfo: []
+  m_Blackboards: []
+  m_MainBlackboardAuthoringAsset: {fileID: 4875275011174071654}
+  m_CommandBuffer:
+    m_Commands: []
+  m_SubgraphsInfo: []
+  m_BlackboardMissingManagedRef: 0
+  m_GraphMissingManagedRef: 0
+  m_HasMissingTypeInManagedRef: 0
+  m_EnumDependencyCache:
+    Entries:
+    - EnumTypeId: ProjectShaman.AI.Defines.GhostActionShape, Project.Runtime
+      SignatureHash: 1da7c30445910b831481d95f605dcb26
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 1610884886393782647
+      type: {class: StartNodeModel, ns: Unity.Behavior, asm: Unity.Behavior.Authoring}
+      data:
+        Position: {x: 0, y: 0}
+        ID:
+          m_Value0: 5468279656385090246
+          m_Value1: 4115300673023589590
+        Parents: []
+        PortModels: []
+        NodeType:
+          m_SerializableType: 
+        NodeTypeID:
+          m_Value0: 0
+          m_Value1: 0
+        m_FieldValues: []
+        Repeat: 0
+        AllowMultipleRepeatsPerTick: 0
+--- !u!114 &2498929253948616485
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db920e62f70f420bb33c771449926fa4, type: 3}
+  m_Name: BT_Ghost
+  m_EditorClassIdentifier: Unity.Behavior::Unity.Behavior.BehaviorGraph
+  Graphs:
+  - rid: 1610884886393782649
+  m_DebugInfo: {fileID: 8550933370859899965}
+  m_WasCompileWithPlaceholderNode: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 1610884886393782649
+      type: {class: BehaviorGraphModule, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        AuthoringAssetID:
+          m_Value0: 14148036065786276359
+          m_Value1: 18196460153201324202
+        m_DebugInfo: {fileID: 8550933370859899965}
+        BlackboardReference:
+          rid: 1610884886393782650
+        BlackboardGroupReferences: []
+        Root:
+          rid: 1610884892623634663
+        m_VersionTimestamp: 639277792195763696
+    - rid: 1610884886393782650
+      type: {class: BlackboardReference, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        m_Blackboard:
+          rid: 1610884886393782652
+        m_Source: {fileID: -2491687810601241370}
+    - rid: 1610884886393782652
+      type: {class: Blackboard, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        m_Variables:
+        - rid: 1610884892623634665
+        - rid: 1610884892623634666
+        - rid: 1610884892623634667
+        - rid: 1610884892623634668
+        - rid: 1610884892623634669
+    - rid: 1610884886393782948
+      type: {class: 'BlackboardVariable`1[[System.Single, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 0
+          m_Value1: 0
+        Name: 
+        m_Value: 0.25
+    - rid: 1610884892623634573
+      type: {class: 'BlackboardVariable`1[[System.Single, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 0
+          m_Value1: 0
+        Name: 
+        m_Value: 0.5
+    - rid: 1610884892623634663
+      type: {class: Start, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 5468279656385090246
+          m_Value1: 4115300673023589590
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: -2
+        m_Child:
+          rid: 1610884892623634664
+        Repeat: 1
+        AllowMultipleRepeatsPerTick: 0
+    - rid: 1610884892623634664
+      type: {class: RestartModifier, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 13636856414769743317
+          m_Value1: 9165725305914053367
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634663
+        m_Child:
+          rid: 1610884892623634670
+        m_Conditions:
+        - rid: 1610884892623634671
+        m_RequiresAllConditions: 0
+        m_ObserverType: 0
+    - rid: 1610884892623634665
+      type: {class: 'BlackboardVariable`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 1
+          m_Value1: 0
+        Name: Self
+        m_Value: {fileID: 0}
+    - rid: 1610884892623634666
+      type: {class: 'BlackboardVariable`1[[System.Int32, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 16209952914059838048
+          m_Value1: 1709317246502368293
+        Name: CommandSerial
+        m_Value: 0
+    - rid: 1610884892623634667
+      type: {class: 'BlackboardVariable`1[[ProjectShaman.AI.Defines.GhostActionShape, Project.Runtime]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 925211488196323637
+          m_Value1: 14752798710131892541
+        Name: ActionShape
+        m_Value: 0
+    - rid: 1610884892623634668
+      type: {class: 'BlackboardVariable`1[[UnityEngine.Vector3, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 9821019969930824852
+          m_Value1: 17646393550103280824
+        Name: MovePosition
+        m_Value: {x: 0, y: 0, z: 0}
+    - rid: 1610884892623634669
+      type: {class: 'BlackboardVariable`1[[System.Single, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 8701180522587285678
+          m_Value1: 17194709080082950856
+        Name: ArriveDistance
+        m_Value: 0
+    - rid: 1610884892623634670
+      type: {class: SwitchComposite, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 12420808175951588614
+          m_Value1: 15662741476956363574
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634664
+        m_Children:
+        - rid: 1610884892623634672
+        - rid: 1610884892623634673
+        - rid: 1610884892623634674
+        m_RegisteredObservers: []
+        EnumVariable:
+          rid: 1610884892623634667
+    - rid: 1610884892623634671
+      type: {class: VariableValueChangedCondition, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        Graph:
+          rid: 1610884886393782649
+        Variable:
+          rid: 1610884892623634666
+    - rid: 1610884892623634672
+      type: {class: WaitAction, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 12334455954090579275
+          m_Value1: 10487234127256569495
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634670
+        SecondsToWait:
+          rid: 1610884886393782948
+    - rid: 1610884892623634673
+      type: {class: SequenceComposite, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 9903461903873877886
+          m_Value1: 218304908069000574
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634670
+        m_Children:
+        - rid: 1610884892623634675
+        - rid: 1610884892623634676
+        - rid: 1610884892623634677
+        m_RegisteredObservers: []
+    - rid: 1610884892623634674
+      type: {class: SequenceComposite, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 11589339096792854293
+          m_Value1: 2573866559068887046
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634670
+        m_Children:
+        - rid: 1610884892623634678
+        - rid: 1610884892623634679
+        - rid: 1610884892623634680
+        - rid: 1610884892623634681
+        - rid: 1610884892623634682
+        m_RegisteredObservers: []
+    - rid: 1610884892623634675
+      type: {class: RestartModifier, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 10264277087988271229
+          m_Value1: 2177933452406147662
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634673
+        m_Child:
+          rid: 1610884892623634683
+        m_Conditions:
+        - rid: 1610884892623634684
+        m_RequiresAllConditions: 0
+        m_ObserverType: 0
+    - rid: 1610884892623634676
+      type: {class: ChannelGhostActionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 14583283330263231764
+          m_Value1: 14578365506950652086
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634673
+        Agent:
+          rid: 1610884892623634665
+    - rid: 1610884892623634677
+      type: {class: CompleteGhostActionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 7741122428968438240
+          m_Value1: 17874756832633162950
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634673
+        Agent:
+          rid: 1610884892623634665
+    - rid: 1610884892623634678
+      type: {class: RestartModifier, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 15265256106614342727
+          m_Value1: 1158093435566529205
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634674
+        m_Child:
+          rid: 1610884892623634685
+        m_Conditions:
+        - rid: 1610884892623634686
+        m_RequiresAllConditions: 0
+        m_ObserverType: 0
+    - rid: 1610884892623634679
+      type: {class: PickUpGhostCarriableAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 8895725884101414965
+          m_Value1: 12463192344559298845
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634674
+        Agent:
+          rid: 1610884892623634665
+    - rid: 1610884892623634680
+      type: {class: MoveToPositionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 13287323788933695075
+          m_Value1: 6298870216573074858
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634674
+        Agent:
+          rid: 1610884892623634665
+        TargetPosition:
+          rid: 1610884892623634668
+        ArriveDistance:
+          rid: 1610884892623634573
+    - rid: 1610884892623634681
+      type: {class: ChannelGhostActionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 13856079630096647196
+          m_Value1: 2985460919757750215
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634674
+        Agent:
+          rid: 1610884892623634665
+    - rid: 1610884892623634682
+      type: {class: CompleteGhostActionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 17628096305491718286
+          m_Value1: 17247678704085963501
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634674
+        Agent:
+          rid: 1610884892623634665
+    - rid: 1610884892623634683
+      type: {class: MoveToPositionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 14959556808548628905
+          m_Value1: 6012308501386049992
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634675
+        Agent:
+          rid: 1610884892623634665
+        TargetPosition:
+          rid: 1610884892623634668
+        ArriveDistance:
+          rid: 1610884892623634669
+    - rid: 1610884892623634684
+      type: {class: VariableValueChangedCondition, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        Graph:
+          rid: 1610884886393782649
+        Variable:
+          rid: 1610884892623634668
+    - rid: 1610884892623634685
+      type: {class: MoveToPositionAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 8421835270000713655
+          m_Value1: 9691074286973149364
+        Graph:
+          rid: 1610884886393782649
+        m_Parent:
+          rid: 1610884892623634678
+        Agent:
+          rid: 1610884892623634665
+        TargetPosition:
+          rid: 1610884892623634668
+        ArriveDistance:
+          rid: 1610884892623634669
+    - rid: 1610884892623634686
+      type: {class: VariableValueChangedCondition, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        Graph:
+          rid: 1610884886393782649
+        Variable:
+          rid: 1610884892623634668
+--- !u!114 &3043931220131730131
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5c02bb70996b49eba31d0c206e28da24, type: 3}
+  m_Name: BT_Ghost Blackboard
+  m_EditorClassIdentifier: Unity.Behavior::Unity.Behavior.RuntimeBlackboardAsset
+  VersionTimestamp: 639262748248326984
+  AssetID:
+    m_Value0: 14148036065786276359
+    m_Value1: 18196460153201324202
+  m_Blackboard:
+    m_Variables:
+    - rid: 8252087049812967535
+    - rid: 8252087210307748295
+  m_SharedBlackboardVariableGuids: []
+  references:
+    version: 2
+    RefIds:
+    - rid: 8252087049812967535
+      type: {class: 'BlackboardVariable`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 1
+          m_Value1: 0
+        Name: Self
+        m_Value: {fileID: 0}
+    - rid: 8252087210307748295
+      type: {class: 'BlackboardVariable`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 10622910413875129080
+          m_Value1: 15244181108792041164
+        Name: Target
+        m_Value: {fileID: 0}
+--- !u!114 &4864512149426693739
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db920e62f70f420bb33c771449926fa4, type: 3}
+  m_Name: BT_Ghost
+  m_EditorClassIdentifier: Unity.Behavior::Unity.Behavior.BehaviorGraph
+  Graphs:
+  - rid: 8252087049812967536
+  m_DebugInfo: {fileID: -3256616585355147725}
+  m_WasCompileWithPlaceholderNode: 0
+  references:
+    version: 2
+    RefIds:
+    - rid: -2
+      type: {class: , ns: , asm: }
+    - rid: 8252087049812967536
+      type: {class: BehaviorGraphModule, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        AuthoringAssetID:
+          m_Value0: 14148036065786276359
+          m_Value1: 18196460153201324202
+        m_DebugInfo: {fileID: -3256616585355147725}
+        BlackboardReference:
+          rid: 8252087049812967537
+        BlackboardGroupReferences: []
+        Root:
+          rid: 8252087210307748387
+        m_VersionTimestamp: 639262748367791137
+    - rid: 8252087049812967537
+      type: {class: BlackboardReference, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        m_Blackboard:
+          rid: 8252087049812967539
+        m_Source: {fileID: 3043931220131730131}
+    - rid: 8252087049812967539
+      type: {class: Blackboard, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        m_Variables:
+        - rid: 8252087210307748389
+        - rid: 8252087210307748390
+    - rid: 8252087210307748322
+      type: {class: 'BlackboardVariable`1[[System.Single, mscorlib]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 0
+          m_Value1: 0
+        Name: 
+        m_Value: 1
+    - rid: 8252087210307748387
+      type: {class: Start, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 8733688498062231663
+          m_Value1: 7074646564538102559
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: -2
+        m_Child:
+          rid: 8252087210307748388
+        Repeat: 1
+        AllowMultipleRepeatsPerTick: 0
+    - rid: 8252087210307748388
+      type: {class: SelectorComposite, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 12175531897318409914
+          m_Value1: 16161412191225800546
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: 8252087210307748387
+        m_Children:
+        - rid: 8252087210307748391
+        - rid: 8252087210307748392
+        m_RegisteredObservers: []
+    - rid: 8252087210307748389
+      type: {class: 'BlackboardVariable`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 1
+          m_Value1: 0
+        Name: Self
+        m_Value: {fileID: 0}
+    - rid: 8252087210307748390
+      type: {class: 'BlackboardVariable`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        GUID:
+          m_Value0: 10622910413875129080
+          m_Value1: 15244181108792041164
+        Name: Target
+        m_Value: {fileID: 0}
+    - rid: 8252087210307748391
+      type: {class: SequenceComposite, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 9614325460711548043
+          m_Value1: 14455349373920437718
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: 8252087210307748388
+        m_Children:
+        - rid: 8252087210307748393
+        - rid: 8252087210307748394
+        - rid: 8252087210307748395
+        m_RegisteredObservers: []
+    - rid: 8252087210307748392
+      type: {class: WaitAction, ns: Unity.Behavior, asm: Unity.Behavior}
+      data:
+        ID:
+          m_Value0: 11105740186925565071
+          m_Value1: 6842505163768574837
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: 8252087210307748388
+        SecondsToWait:
+          rid: 8252087210307748322
+    - rid: 8252087210307748393
+      type: {class: SelectHuntTargetAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 14642465118987367964
+          m_Value1: 16178389915611127515
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: 8252087210307748391
+        Agent:
+          rid: 8252087210307748389
+        Target:
+          rid: 8252087210307748390
+    - rid: 8252087210307748394
+      type: {class: ChaseTargetAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 15754475472217803417
+          m_Value1: 9235753917270007343
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: 8252087210307748391
+        Agent:
+          rid: 8252087210307748389
+        Target:
+          rid: 8252087210307748390
+    - rid: 8252087210307748395
+      type: {class: KillTargetAction, ns: ProjectShaman.AI.BehaviorTree.Actions, asm: Project.Runtime}
+      data:
+        ID:
+          m_Value0: 13683578925705669411
+          m_Value1: 5429601083798589157
+        Graph:
+          rid: 8252087049812967536
+        m_Parent:
+          rid: 8252087210307748391
+        Agent:
+          rid: 8252087210307748389
+        Target:
+          rid: 8252087210307748390
+--- !u!114 &4875275011174071654
+MonoBehaviour:
+  m_ObjectHideFlags: 1
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2dd922ae02c94c87a66e46a10a7319b9, type: 3}
+  m_Name: BT_Ghost Blackboard
+  m_EditorClassIdentifier: Unity.Behavior.Authoring::Unity.Behavior.BehaviorBlackboardAuthoringAsset
+  AssetID:
+    m_Value0: 14148036065786276359
+    m_Value1: 18196460153201324202
+  m_Variables:
+  - rid: 1610884886393782654
+  - rid: 1610884886393782655
+  - rid: 1610884886393782663
+  - rid: 1610884886393782685
+  - rid: 1610884886393782699
+  m_VersionTimestamp: 639275091242600980
+  m_CommandBuffer:
+    m_Commands: []
+  m_RuntimeBlackboardAsset: {fileID: -2491687810601241370}
+  references:
+    version: 2
+    RefIds:
+    - rid: 1610884886393782654
+      type: {class: 'TypedVariableModel`1[[UnityEngine.GameObject, UnityEngine.CoreModule]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 1
+          m_Value1: 0
+        Name: Self
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: {fileID: 0}
+    - rid: 1610884886393782655
+      type: {class: 'TypedVariableModel`1[[System.Int32, mscorlib]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 16209952914059838048
+          m_Value1: 1709317246502368293
+        Name: CommandSerial
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: 0
+    - rid: 1610884886393782663
+      type: {class: 'TypedVariableModel`1[[ProjectShaman.AI.Defines.GhostActionShape, Project.Runtime]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 925211488196323637
+          m_Value1: 14752798710131892541
+        Name: ActionShape
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: 0
+    - rid: 1610884886393782685
+      type: {class: 'TypedVariableModel`1[[UnityEngine.Vector3, UnityEngine.CoreModule]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 9821019969930824852
+          m_Value1: 17646393550103280824
+        Name: MovePosition
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: {x: 0, y: 0, z: 0}
+    - rid: 1610884886393782699
+      type: {class: 'TypedVariableModel`1[[System.Single, mscorlib]]', ns: Unity.Behavior.GraphFramework, asm: Unity.Behavior.GraphFramework}
+      data:
+        ID:
+          m_Value0: 8701180522587285678
+          m_Value1: 17194709080082950856
+        Name: ArriveDistance
+        IsExposed: 1
+        m_IsShared: 0
+        m_Value: 0
+--- !u!114 &8550933370859899965
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b27bb6d9a2c8d540a10dff10acc543e, type: 3}
+  m_Name: BT_Ghost Debug Info
+  m_EditorClassIdentifier: Unity.Behavior::Unity.Behavior.BehaviorGraphDebugInfo
+  m_CodeBreakPointsList: []
