@@ -6,6 +6,7 @@ using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Routine;
+using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.World;
 using ProjectShaman.AI.Work;
 
@@ -109,6 +110,7 @@ namespace ProjectShaman.AI.Core
                     villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
                     core.OnRoutineFailed += villager.RoutineFailedHandler;
                     SubscribeDeath(villager);
+                    AttachStress(villager);
 
                     foreach (IAIConfigurable configurable in core.GetComponents<IAIConfigurable>())
                     {
@@ -184,6 +186,7 @@ namespace ProjectShaman.AI.Core
                 villager.SetToday(blocks, CalculateHomeReturnTime(villager, dayCount));
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
                 PlanCorruption(villager, dayCount);
+                villager.Stress?.ApplyMorningDecay();
                 AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s)");
             }
         }
@@ -372,6 +375,16 @@ namespace ProjectShaman.AI.Core
             status.OnDied += villager.DiedHandler;
         }
 
+        private void AttachStress(VillagerRuntime villager)
+        {
+            if (!villager.Core.TryGetComponent(out AI_Stress stress))
+            {
+                stress = villager.Core.gameObject.AddComponent<AI_Stress>();
+            }
+
+            villager.Stress = stress;
+        }
+
         private void UnsubscribeDeath(VillagerRuntime villager)
         {
             if (villager.Status != null)
@@ -475,6 +488,7 @@ namespace ProjectShaman.AI.Core
             public AI_ToolHandler ToolHandler { get; }
             public System.Action<string> RoutineFailedHandler { get; set; }
             public AI_Status Status { get; set; }
+            public AI_Stress Stress { get; set; }
             public System.Action<AI_Status, GameObject> DiedHandler { get; set; }
             public VillagerProfile Profile => Core.Profile;
             public string Id { get; }
