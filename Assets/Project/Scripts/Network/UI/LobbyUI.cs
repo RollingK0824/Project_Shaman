@@ -18,6 +18,11 @@ public class LobbyUI : MonoBehaviour
     [SerializeField] private GameObject _notEnoughPlayerCount;
     [SerializeField] private float _dispalyTime = 2f;
 
+    [SerializeField] private Button _inviteButton;
+
+    [SerializeField] private FriendInvitePanel _friendInvitePanel;
+
+
 
 
     private Coroutine _warningCoroutine;
@@ -33,6 +38,9 @@ public class LobbyUI : MonoBehaviour
         RoomPlayer.NotEnoughPlayers += ShowNotification;
         RoomPlayer.LobbyChanged += RequestRefresh;
         RequestRefresh();
+
+        bool canInvite = NetworkServer.active && NetworkManager.singleton is RoomManager room && room.IsUsingSteam;
+        if (_inviteButton != null) _inviteButton.gameObject.SetActive(canInvite);
     }
 
     private void OnDisable()
@@ -135,6 +143,18 @@ public class LobbyUI : MonoBehaviour
         {
             _localRoomPlayer.CmdChangeReadyState(!_localRoomPlayer.readyToBegin);
         }
+    }
+
+    // 친구 초대 버튼에 연결
+    public void OnClickInviteButton()
+    {
+        if (_friendInvitePanel == null)
+        {
+            Debug.LogWarning("[LobbyUI] FriendInvitePanel이 연결되지 않았습니다.");
+            return;
+        }
+
+        _friendInvitePanel.Open();
     }
 
     public void ShowNotification()

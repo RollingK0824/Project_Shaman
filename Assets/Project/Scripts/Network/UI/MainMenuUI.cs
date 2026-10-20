@@ -11,7 +11,10 @@ public class MainMenuUI : MonoBehaviour
     [Header("화면")]
     [SerializeField] private GameObject _lanUI;     // 기존 OnlineUI
     [SerializeField] private GameObject _steamUI;   // 새롭게 생성
+    [SerializeField] private GameObject[] _closeOnInvite;  // 초대를 받게 되면 닫을 화면
 
+    private void Awake() => SteamLobbyService.InviteReady += OpenSteamScreenForInvite;
+    private void OnDestroy() => SteamLobbyService.InviteReady -= OpenSteamScreenForInvite;
     private void Start()
     {
         _noticePanel.SetActive(false);
@@ -35,6 +38,20 @@ public class MainMenuUI : MonoBehaviour
         yield return new WaitForSeconds(_noticeDuration);
 
         _noticePanel.SetActive(false);
+    }
+
+    private void OpenSteamScreenForInvite()
+    {
+        if (_steamUI == null || _steamUI.activeSelf) return;
+        if (!SelectedMode(RoomManager.NetworkMode.Steam)) return;
+
+        if (_lanUI != null) _lanUI.SetActive(false);
+        foreach (GameObject screen in _closeOnInvite)
+        {
+            if (screen != null) screen.SetActive(false);
+        }
+
+        OpenScreen(_steamUI);
     }
 
     public void OnClickLanButton()
