@@ -8,6 +8,7 @@ public class UIManager : SceneSingleton<UIManager>
 {
     private readonly List<UIPanel> _openPanels = new List<UIPanel>();
     private NetworkIdentity _trackedPlayer;
+    private ShamanInput _actions;
 
     public bool IsMenuOpen => _openPanels.Count > 0;
     public bool IsOpen(UIPanel panel) => _openPanels.Contains(panel);
@@ -40,13 +41,29 @@ public class UIManager : SceneSingleton<UIManager>
         RefreshInputState();
     }
 
-    private void Update()
+    private void OnEnable()
     {
-        if (IsMenuOpen && Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame)
+        _actions = InputManager.Instance.Actions;
+        _actions.UI.Cancel.performed += OnCancel;
+    }
+
+    private void OnDisable()
+    {
+        // 종료 중 InputManager가 새로 생기지 않도록 캐시된 _actions 사용
+        if (_actions != null) _actions.UI.Cancel.performed -= OnCancel;
+    }
+
+    // Esc(UI.Cancel)는 맨 위 패널만 닫는다
+    private void OnCancel(InputAction.CallbackContext context)
+    {
+        if (IsMenuOpen)
         {
             Close(_openPanels[_openPanels.Count - 1]);
         }
+    }
 
+    private void Update()
+    {
         NetworkIdentity localPlayer = NetworkClient.localPlayer;
         if (localPlayer != _trackedPlayer)
         {
