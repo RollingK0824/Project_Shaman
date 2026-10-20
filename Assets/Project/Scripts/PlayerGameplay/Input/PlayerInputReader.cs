@@ -7,66 +7,51 @@ public class PlayerInputReader : MonoBehaviour
     public Vector2 MoveInput { get; private set; }
     public Vector2 LookInput { get; private set; }
     public bool SprintHeld { get; private set; }
-    [Header("Crouch Input")]
-    [SerializeField] private InputAction _crouch = new InputAction("Crouch", InputActionType.Button, "<Keyboard>/leftCtrl");
-    public bool CrouchHeld => isActiveAndEnabled && !WorldInputBlocked && _crouch.IsPressed();
+    public bool CrouchHeld => isActiveAndEnabled && !WorldInputBlocked && _input.Player.Crouch.IsPressed();
 
     public bool GameplayInputBlocked { get; private set; }
 
     public event Action InteractPressed;
     public event Action CancelPressed;
     public event Action NotebookPressed;
-    public event Action InventoryPressed;
     public event Action JumpPressed;
+    public event Action ViewTogglePressed;
 
     public event Action UseItemStarted;
     public event Action UseItemCanceled;
 
     public event Action<int> SlotSelected;
 
-    [Header("Spectator Input")]
-    [SerializeField] private InputAction _spectateUp = new InputAction("SpectateUp", InputActionType.Button, "<Keyboard>/space");
-    [SerializeField] private InputAction _spectateDown = new InputAction("SpectateDown", InputActionType.Button, "<Keyboard>/leftCtrl");
-    [SerializeField] private InputAction _spectatePrevious = new InputAction("SpectatePrevious", InputActionType.Button, "<Keyboard>/leftBracket");
-    [SerializeField] private InputAction _spectateNext = new InputAction("SpectateNext", InputActionType.Button, "<Keyboard>/rightBracket");
-    [SerializeField] private InputAction _spectateToggle = new InputAction("SpectateToggle", InputActionType.Button, "<Keyboard>/backquote");
-    public float SpectatorVerticalInput => GameplayInputBlocked ? 0f :
-        (_spectateUp.IsPressed() ? 1f : 0f) - (_spectateDown.IsPressed() ? 1f : 0f);
+    public float SpectatorVerticalInput => !isActiveAndEnabled || GameplayInputBlocked ? 0f :
+        (_input.Spectator.Up.IsPressed() ? 1f : 0f) - (_input.Spectator.Down.IsPressed() ? 1f : 0f);
     public event Action PreviousSpectateTargetPressed;
     public event Action NextSpectateTargetPressed;
     public event Action ToggleSpectateModePressed;
     private PlayerHealth _health;
     private bool WorldInputBlocked => GameplayInputBlocked || (_health != null && _health.IsDead);
+    // InputManager가 소유하는 공용 액션 (Enable/Disable/Dispose는 InputManager가 담당)
     private ShamanInput _input;
 
 
     private void Awake()
     {
-        _input = new ShamanInput();
         _health = GetComponent<PlayerHealth>();
     }
 
 
     private void OnEnable()
     {
-        _input.Player.Enable();
-        // Inventory is now a notebook page; the legacy I action no longer opens a separate menu.
-        _input.Player.Inventory.Disable();
-        _crouch.Enable();
-        _spectateUp.Enable();
-        _spectateDown.Enable();
-        _spectatePrevious.Enable();
-        _spectateNext.Enable();
-        _spectateToggle.Enable();
-        _spectatePrevious.performed += OnSpectatePrevious;
-        _spectateNext.performed += OnSpectateNext;
-        _spectateToggle.performed += OnSpectateToggle;
+        _input = InputManager.Instance.Actions;
+
+        _input.Spectator.Previous.performed += OnSpectatePrevious;
+        _input.Spectator.Next.performed += OnSpectateNext;
+        _input.Spectator.ToggleMode.performed += OnSpectateToggle;
 
         _input.Player.Interact.performed += OnInteract;
-        _input.Player.Cancel.performed += OnCancel;
-        _input.Player.Notebook.performed += OnNotebook;
-        _input.Player.Inventory.performed += OnInventory;
+        _input.UI.Cancel.performed += OnCancel;
+        _input.UI.Notebook.performed += OnNotebook;
         _input.Player.Jump.performed += OnJump;
+        _input.Player.ViewToggle.performed += OnViewToggle;
 
         _input.Player.UseItem.started += OnUseItemStarted;
         _input.Player.UseItem.canceled += OnUseItemCanceled;
@@ -104,16 +89,17 @@ public class PlayerInputReader : MonoBehaviour
 
     private void OnDisable()
     {
+        // 종료 중 InputManager가 새로 생기지 않도록 Instance 대신 캐시된 _input 사용
         if (_input == null)
         {
             return;
         }
 
         _input.Player.Interact.performed -= OnInteract;
-        _input.Player.Cancel.performed -= OnCancel;
-        _input.Player.Notebook.performed -= OnNotebook;
-        _input.Player.Inventory.performed -= OnInventory;
+        _input.UI.Cancel.performed -= OnCancel;
+        _input.UI.Notebook.performed -= OnNotebook;
         _input.Player.Jump.performed -= OnJump;
+        _input.Player.ViewToggle.performed -= OnViewToggle;
 
         _input.Player.UseItem.started -= OnUseItemStarted;
         _input.Player.UseItem.canceled -= OnUseItemCanceled;
@@ -125,34 +111,15 @@ public class PlayerInputReader : MonoBehaviour
         _input.Player.Slot5.performed -= OnSlot5;
         _input.Player.Slot6.performed -= OnSlot6;
 
-        _input.Player.Disable();
-        _crouch.Disable();
-        _spectateUp.Disable();
-        _spectateDown.Disable();
-        _spectatePrevious.Disable();
-        _spectateNext.Disable();
-        _spectateToggle.Disable();
-        _spectatePrevious.performed -= OnSpectatePrevious;
-        _spectateNext.performed -= OnSpectateNext;
-        _spectateToggle.performed -= OnSpectateToggle;
+        _input.Spectator.Previous.performed -= OnSpectatePrevious;
+        _input.Spectator.Next.performed -= OnSpectateNext;
+        _input.Spectator.ToggleMode.performed -= OnSpectateToggle;
 
         MoveInput = Vector2.zero;
         LookInput = Vector2.zero;
         SprintHeld = false;
 
         GameplayInputBlocked = false;
-    }
-
-
-    private void OnDestroy()
-    {
-        _input?.Dispose();
-        _crouch.Dispose();
-        _spectateUp.Dispose();
-        _spectateDown.Dispose();
-        _spectatePrevious.Dispose();
-        _spectateNext.Dispose();
-        _spectateToggle.Dispose();
     }
 
 
@@ -225,14 +192,6 @@ public class PlayerInputReader : MonoBehaviour
     }
 
 
-    private void OnInventory(
-        InputAction.CallbackContext context)
-    {
-        // 인벤토리 자체를 다시 닫을 수 있어야 하므로
-        // Block 상태에서도 허용한다.
-        InventoryPressed?.Invoke();
-    }
-
     private void OnJump(
     InputAction.CallbackContext context)
     {
@@ -242,6 +201,17 @@ public class PlayerInputReader : MonoBehaviour
         }
 
         JumpPressed?.Invoke();
+    }
+
+    private void OnViewToggle(
+        InputAction.CallbackContext context)
+    {
+        if (WorldInputBlocked)
+        {
+            return;
+        }
+
+        ViewTogglePressed?.Invoke();
     }
 
     // =========================================================

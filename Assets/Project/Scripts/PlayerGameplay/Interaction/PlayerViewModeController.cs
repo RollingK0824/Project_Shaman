@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerController))]
@@ -82,6 +81,7 @@ public class PlayerViewModeController : MonoBehaviour
     private void OnEnable()
     {
         if (_inputReader != null) _inputReader.CancelPressed += EndCurrentMode;
+        if (_inputReader != null) _inputReader.ViewTogglePressed += HandleViewToggle;
     }
 
     private void Start()
@@ -94,7 +94,6 @@ public class PlayerViewModeController : MonoBehaviour
     private void Update()
     {
         if (!PlayerActionGuard.CanAct(gameObject)) return;
-        HandleViewToggle();
 
         if (IsInspecting && _inspectTransform != null)
         {
@@ -117,6 +116,7 @@ public class PlayerViewModeController : MonoBehaviour
     private void OnDisable()
     {
         if (_inputReader != null) _inputReader.CancelPressed -= EndCurrentMode;
+        if (_inputReader != null) _inputReader.ViewTogglePressed -= HandleViewToggle;
         EndCurrentMode();
         if (_playerBodyRenderers != null)
             foreach (var body in _playerBodyRenderers) if (body != null) body.forceRenderingOff = false;
@@ -126,19 +126,15 @@ public class PlayerViewModeController : MonoBehaviour
     // View Mode
     // =========================================================
 
+    // PlayerInputReader.ViewTogglePressed (V, rebindable); the reader already skips it while a menu is open or dead
     private void HandleViewToggle()
     {
+        if (!PlayerActionGuard.CanAct(gameObject))
+        {
+            return;
+        }
+
         if (IsBusy)
-        {
-            return;
-        }
-
-        if (Keyboard.current == null)
-        {
-            return;
-        }
-
-        if (!Keyboard.current.vKey.wasPressedThisFrame)
         {
             return;
         }

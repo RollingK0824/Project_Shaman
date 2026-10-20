@@ -29,33 +29,43 @@ public class DisplaySettingsUI : MonoBehaviour
 
     private void OnEnable()
     {
-        _fullscreenToggle.SetIsOnWithoutNotify(GameSettings.IsFullscreen);
+        bool fullscreen = GameSettings.IsFullscreen;
+        _fullscreenToggle.SetIsOnWithoutNotify(fullscreen);
 
-        List<Vector2Int> resolutions = GameSettings.GetResolutions();
         List<string> options = new List<string>();
-        int current = resolutions.Count - 1;
-
-        for (int i = 0; i < resolutions.Count; i++)
+        foreach (Vector2Int r in GameSettings.GetResolutions())
         {
-            Vector2Int r = resolutions[i];
             options.Add($"{r.x} x {r.y}");
-
-            if (r.x == Screen.width && r.y == Screen.height)
-            {
-                current = i;
-            }
         }
 
         _resolutionDropdown.ClearOptions();
         _resolutionDropdown.AddOptions(options);
-        _resolutionDropdown.SetValueWithoutNotify(current);
+
+        // Borderless fullscreen always uses the monitor's size, so the dropdown only works in windowed mode
+        SelectResolution(fullscreen ? GameSettings.NativeResolution : new Vector2Int(Screen.width, Screen.height));
+        _resolutionDropdown.interactable = !fullscreen;
 
         RefreshFrameRate();
     }
 
+    // Selects the matching entry, or the largest if the size isn't in the list
+    private void SelectResolution(Vector2Int size)
+    {
+        List<Vector2Int> resolutions = GameSettings.GetResolutions();
+        int index = resolutions.IndexOf(size);
+        if (index == -1)
+        {
+            index = resolutions.Count - 1;
+        }
+
+        _resolutionDropdown.SetValueWithoutNotify(index);
+    }
+
     private void HandleFullscreen(bool on)
     {
-        GameSettings.SetFullscreen(on);
+        Vector2Int size = GameSettings.SetFullscreen(on);
+        SelectResolution(size);
+        _resolutionDropdown.interactable = !on;
     }
 
     private void HandleResolution(int index)

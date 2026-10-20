@@ -1,4 +1,5 @@
 using UnityEngine;
+using ProjectShaman.AI.Ghost;
 
 // [판정 전용] 소금 전방 접촉 공격
 
@@ -33,7 +34,7 @@ public class SaltUseAction : ItemUseAction
         float reach = GetReach(ray, context.Owner.transform);
         if (reach <= 0f) return false;
 
-        var attack = new ItemAttackSession(context.Owner, _damageAmount, default, ItemReactionFallback.Salt, _targetMask, _contactDuration);
+        var attack = new ItemAttackSession(context.Owner, _damageAmount, default, ItemReactionFallback.Salt, _targetMask, _contactDuration, CanHitGhost);
 
         // 맞는 시점은 Execute보다 늦을 수 있음(Trigger 접촉 0.15초) → 콜백으로 소모
         // in 파라미터는 람다에서 쓸 수 없으므로 지역 변수로 복사
@@ -53,6 +54,15 @@ public class SaltUseAction : ItemUseAction
         // Report the resolved spray once; delayed/multiple hits must not count as additional uses.
         // Execute success is reported once by LocalGameplayJudge / NetPlayerItemUse.
         return true;
+    }
+
+    private static bool CanHitGhost(Collider other)
+    {
+        // IDamageable is also implemented by players and ordinary NPCs. IGhostTarget
+        // identifies a ghost's prey, not a ghost. Only manifested ghost entities qualify.
+        if (other.GetComponentInParent<PlayerHealth>() != null) return false;
+        var ghost = other.GetComponentInParent<AI_GhostEntity>();
+        return ghost != null && ghost.isActiveAndEnabled;
     }
 
     private float GetReach(Ray ray, Transform owner)
