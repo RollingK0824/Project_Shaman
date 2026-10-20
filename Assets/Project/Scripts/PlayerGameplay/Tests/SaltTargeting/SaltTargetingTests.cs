@@ -1,0 +1,220 @@
+using System.Collections;
+using System.Collections.Generic;
+using System.Reflection;
+using NUnit.Framework;
+using ProjectShaman.AI.Ghost;
+using UnityEngine;
+using UnityEngine.TestTools;
+
+public class SaltTargetingTests
+{
+    private readonly List<GameObject> _objects = new();
+    private readonly Vector3 _origin = new(1000, 1000, 1000);
+    private GameObject _owner;
+    private SaltUseAction _action;
+    private ItemData _data;
+    private int _requests, _consumed;
+
+    [SetUp]
+    public void SetUp()
+    {
+        _requests = 0;
+        _consumed = 0;
+        _owner = Create("Salt user", 0);
+        _action = ScriptableObject.CreateInstance<SaltUseAction>();
+        _data = ScriptableObject.CreateInstance<ItemData>();
+        Set("_consumeOnSuccessfulUse", true);
+        PlayerEvents.DamageRequested += Damage;
+    }
+
+    private void Set(string name, object value) => typeof(SaltUseAction)
+        .GetField(name, BindingFlags.NonPublic | BindingFlags.Instance).SetValue(_action, value);
+
+    private GameObject Create(string name, float forward)
+    {
+        var go = new GameObject(name);
+        go.transform.position = _origin + Vector3.forward * forward;
+        _objects.Add(go);
+        return go;
+    }
+
+    private Collider Hitbox(GameObject parent)
+    {
+        var child = Create("Child hitbox", 0);
+        child.transform.SetParent(parent.transform, false);
+        child.transform.localPosition = Vector3.zero;
+        return child.AddComponent<BoxCollider>();
+    }
+
+    private GameObject Ghost()
+    {
+        var ghost = Create("Manifested ghost", 1);
+        ghost.SetActive(false);
+        var identity = ghost.AddComponent<AI_GhostEntity>();
+        // The test exercises identity and hit contracts, not AI simulation/NavMesh.
+        foreach (var behaviour in ghost.GetComponents<Behaviour>())
+            if (behaviour != identity) behaviour.enabled = false;
+        ghost.SetActive(true);
+        return ghost;
+    }
+
+    private void Damage(IDamageable target, float amount, GameObject source)
+    {
+        if (source != _owner) return;
+        _requests++;
+        target.ReceiveDamage(amount, source);
+    }
+
+    private bool Spray()
+    {
+        Physics.SyncTransforms();
+        return _action.Execute(new ItemUseContext(_owner, _data, _origin, Vector3.forward,
+            amount => _consumed += amount));
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        PlayerEvents.DamageRequested -= Damage;
+        foreach (var volume in Object.FindObjectsByType<DamageTrigger>(FindObjectsSortMode.None))
+            if (Vector3.Distance(volume.transform.position, _origin) < 10)
+                Object.DestroyImmediate(volume.gameObject);
+        for (int i = _objects.Count - 1; i >= 0; i--)
+            if (_objects[i]) Object.DestroyImmediate(_objects[i]);
+        _objects.Clear();
+        Object.DestroyImmediate(_action);
+        Object.DestroyImmediate(_data);
+    }
+
+    [Test]
+    public void OtherPlayerIsNotDamagedOrCountedAsHit()
+    {
+        var player = Create("Other player", 1);
+        var health = player.AddComponent<PlayerHealth>();
+        Hitbox(player); Hitbox(player);
+        float before = health.CurrentHealth;
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(before, health.CurrentHealth);
+        Assert.AreEqual(0, _consumed);
+    }
+
+    [Test]
+    public void OrdinaryDamageableAndLegacyNpcAreExcluded()
+    {
+        var npc = Create("Ordinary NPC", 1);
+        var receiver = npc.AddComponent<SaltTestReceiver>();
+        Hitbox(npc);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0, receiver.Reactions);
+        Assert.AreEqual(0, _consumed);
+    }
+
+    [Test]
+    public void GhostReceivesDamageOnceAcrossChildColliders()
+    {
+        var ghost = Ghost();
+        var receiver = ghost.AddComponent<SaltTestReceiver>();
+        var first = Hitbox(ghost); var second = Hitbox(ghost);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(1, _requests, "Initial overlap must resolve the ghost hit");
+        var volume = Object.FindFirstObjectByType<DamageTrigger>();
+        volume.SendMessage("OnTriggerEnter", first);
+        volume.SendMessage("OnTriggerExit", first);
+        volume.SendMessage("OnTriggerEnter", second);
+        Assert.AreEqual(1, _requests);
+        Assert.AreEqual(10f, receiver.Damage);
+        Assert.AreEqual(0, receiver.Reactions, "Common and legacy must not both apply");
+        Assert.AreEqual(1, _consumed);
+    }
+
+    [Test]
+    public void LegacyGhostReactionIsStillSupported()
+    {
+        var ghost = Ghost();
+        var receiver = ghost.AddComponent<SaltTestLegacyReceiver>();
+        Hitbox(ghost);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(1, receiver.Reactions);
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(1, _consumed);
+    }
+
+    [Test]
+    public void DisabledGhostAndDeadGhostCannotBeHit()
+    {
+        var ghost = Ghost();
+        var receiver = ghost.AddComponent<SaltTestReceiver>();
+        Hitbox(ghost);
+        ghost.GetComponent<AI_GhostEntity>().enabled = false;
+        Assert.IsTrue(Spray());
+        ghost.GetComponent<AI_GhostEntity>().enabled = true;
+        receiver.Dead = true;
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0, _consumed);
+    }
+
+    [Test]
+    public void PlayerHealthTakesPrecedenceOverGhostIdentity()
+    {
+        var ghost = Ghost();
+        var health = ghost.AddComponent<PlayerHealth>();
+        Hitbox(ghost);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(health.MaxHealth, health.CurrentHealth);
+    }
+
+    [Test]
+    public void OtherAttacksCanStillDamagePlayers()
+    {
+        var player = Create("Other player", 1);
+        var health = player.AddComponent<PlayerHealth>();
+        var hitbox = Hitbox(player);
+        float before = health.CurrentHealth;
+        var attack = new ItemAttackSession(_owner, 7, default, ItemReactionFallback.None, ~0, 1);
+        Assert.IsTrue(attack.TryHit(hitbox));
+        Assert.AreEqual(before - 7, health.CurrentHealth);
+    }
+
+    [UnityTest]
+    public IEnumerator LateTriggerContactsAlsoRejectPlayersAndAcceptGhostsOnce()
+    {
+        Set("_contactDuration", 2f);
+        var player = Create("Entering player", 8);
+        var health = player.AddComponent<PlayerHealth>(); Hitbox(player);
+        var ghost = Ghost(); ghost.transform.position = _origin + Vector3.forward * 8;
+        var receiver = ghost.AddComponent<SaltTestReceiver>(); Hitbox(ghost); Hitbox(ghost);
+        float before = health.CurrentHealth;
+        Assert.IsTrue(Spray()); Assert.AreEqual(0, _requests);
+        player.transform.position = _origin + Vector3.forward;
+        Physics.SyncTransforms();
+        yield return new WaitForFixedUpdate(); yield return new WaitForFixedUpdate();
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(before, health.CurrentHealth);
+        ghost.transform.position = _origin + Vector3.forward * 2;
+        Physics.SyncTransforms();
+        yield return new WaitForFixedUpdate(); yield return new WaitForFixedUpdate();
+        Assert.AreEqual(1, _requests);
+        Assert.AreEqual(10f, receiver.Damage);
+        Assert.AreEqual(1, _consumed);
+    }
+}
+
+public class SaltTestReceiver : MonoBehaviour, IDamageable, ISaltReactable
+{
+    public bool Dead;
+    public bool IsDead => Dead;
+    public float Damage;
+    public int Reactions;
+    public void ReceiveDamage(float amount, GameObject source = null) => Damage += amount;
+    public bool ReactToSalt(GameObject user) { Reactions++; return true; }
+}
+
+public class SaltTestLegacyReceiver : MonoBehaviour, ISaltReactable
+{
+    public int Reactions;
+    public bool ReactToSalt(GameObject user) { Reactions++; return true; }
+}

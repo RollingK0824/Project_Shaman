@@ -22,6 +22,14 @@ public class TalismanEffectDefinition : ScriptableObject
     public float Duration => _duration;
     public TalismanStackPolicy StackPolicy => _stackPolicy;
     public bool ConsumeOnUse => _consumeOnUse;
+    // Read from the same Inspector values used by gameplay so descriptions cannot drift.
+    public string ModifierDescription => _effectType switch
+    {
+        TalismanEffectType.MovementSpeed => $"이동속도 ×{_magnitude:0.##}",
+        TalismanEffectType.StressGain => $"받는 스트레스 ×{_magnitude:0.##}",
+        TalismanEffectType.StressRecovery => $"스트레스 회복량 ×{_magnitude:0.##}",
+        _ => _displayName
+    };
     public bool IsValid => !string.IsNullOrWhiteSpace(_effectId) && _effectId.Length <= 64 &&
         !float.IsNaN(_magnitude) && !float.IsInfinity(_magnitude) && _magnitude >= 0f && _magnitude <= 10f &&
         !float.IsNaN(_duration) && !float.IsInfinity(_duration) && _duration > 0f &&
