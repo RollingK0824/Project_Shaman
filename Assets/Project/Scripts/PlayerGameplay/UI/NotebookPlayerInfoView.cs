@@ -9,6 +9,10 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
     private PlayerStressController _stress;
     private PlayerInventory _inventory;
     private NetPlayerStatus _identity;
+    private PlayerTalismanEffectController _effects;
+    private PlayerTalismanCollection _talismans;
+    private TMP_Text _effectStatus;
+    private readonly System.Text.StringBuilder _effectText = new();
     private TMP_Text _name, _hp, _stressValue, _condition, _items;
     private RectTransform _hpFill, _stressFill;
     private float _nextRefresh;
@@ -17,6 +21,8 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
     {
         _health = player.GetComponent<PlayerHealth>(); _stress = player.GetComponent<PlayerStressController>();
         _inventory = player.GetComponent<PlayerInventory>(); _identity = player.GetComponent<NetPlayerStatus>();
+        _effects = player.GetComponent<PlayerTalismanEffectController>();
+        _talismans = player.GetComponent<PlayerTalismanCollection>();
         PlayerItemUIStyle.NotebookLabel(transform, font, "PlayerHeading", "플레이어 정보", 20, 16, 440, 42, 30);
         _name = PlayerItemUIStyle.NotebookLabel(transform, font, "PlayerName", "플레이어", 20, 90, 440, 52, 32);
         _condition = PlayerItemUIStyle.NotebookLabel(transform, font, "Condition", "", 20, 148, 440, 32, 20);
@@ -29,8 +35,9 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
         _stressValue.alignment = TextAlignmentOptions.Right;
         _stressFill = Bar("StressBar", 366, new Color(.60f, .32f, .17f, 1));
         _items = PlayerItemUIStyle.NotebookLabel(transform, font, "Possessions", "", 20, 430, 440, 74, 22);
+        _effectStatus = PlayerItemUIStyle.NotebookLabel(transform, font, "ActiveTalismanEffects", "", 20, 504, 440, 90, 18);
         var hint = PlayerItemUIStyle.NotebookLabel(transform, font, "InventoryHint",
-            "오른쪽에서 개인 소지품을 확인하세요.\n아이템 선택 후 퀵슬롯에 등록할 수 있습니다.\n공용 재료는 아이템 제작 탭에서 확인합니다.", 20, 530, 440, 100, 18);
+            "오른쪽 소지품에서 퀵슬롯 등록 · 공용 재료는 제작 탭", 20, 602, 440, 30, 16);
         hint.color = PlayerItemUIStyle.NotebookMuted;
         Refresh();
     }
@@ -65,5 +72,26 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
         var talismans = _inventory != null ? _inventory.GetComponent<PlayerTalismanCollection>() : null;
         count += talismans != null ? talismans.DrawnEffectCount : 0;
         _items.text = $"개인 소지품  {count}개\n퀵슬롯  1 ~ 6";
+        RefreshEffects();
+    }
+
+    private void RefreshEffects()
+    {
+        _effectText.Clear();
+        if (_effects != null && PlayerActionGuard.CanAct(_effects.gameObject))
+        {
+            foreach (var state in _effects.ExportState())
+            {
+                TalismanEffectDefinition definition = null;
+                if (_talismans != null)
+                    foreach (var item in _talismans.ItemTypes)
+                        if ((definition = item.FindEffect(state.EffectId)) != null) break;
+                if (definition == null) continue;
+                if (_effectText.Length > 0) _effectText.AppendLine();
+                _effectText.Append(definition.ModifierDescription).Append(" · ")
+                    .Append(Mathf.CeilToInt(state.RemainingDuration)).Append("초 남음");
+            }
+        }
+        _effectStatus.text = _effectText.Length > 0 ? _effectText.ToString() : "적용 중인 부적 효과 없음";
     }
 }
