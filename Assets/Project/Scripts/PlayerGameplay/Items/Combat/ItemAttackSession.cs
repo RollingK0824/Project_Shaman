@@ -14,18 +14,20 @@ public sealed class ItemAttackSession
     private readonly ItemReactionFallback _fallback;
     private readonly int _targetMask;
     private readonly float _expiresAt;
+    private readonly Predicate<Collider> _canHit;
     private bool _ended;
     public int AppliedTargetCount { get; private set; }
     public event Action<GameObject> HitApplied;
 
     public ItemAttackSession(GameObject owner, float damage, ItemControlEffect control,
-        ItemReactionFallback fallback, int targetMask, float lifetime)
+        ItemReactionFallback fallback, int targetMask, float lifetime, Predicate<Collider> canHit = null)
     {
         _owner = owner;
         _damage = float.IsNaN(damage) || float.IsInfinity(damage) ? 0f : Mathf.Max(0f, damage);
         _control = control; _fallback = fallback; _targetMask = targetMask;
         float duration = float.IsNaN(lifetime) || float.IsInfinity(lifetime) ? 0f : Mathf.Max(0f, lifetime);
         _expiresAt = Time.time + duration;
+        _canHit = canHit;
     }
     public void End() => _ended = true;
 
@@ -34,6 +36,9 @@ public sealed class ItemAttackSession
         if (_ended || Time.time >= _expiresAt || !ItemAttackAuthority.CanResolve(_owner) ||
             other == null || !other.enabled || !other.gameObject.activeInHierarchy ||
             (_targetMask & (1 << other.gameObject.layer)) == 0 || other.transform.IsChildOf(_owner.transform)) return false;
+        // Apply item-specific targeting to both initial overlaps and later trigger contacts,
+        // before damage requests, legacy reactions or success/consumption callbacks.
+        if (_canHit != null && !_canHit(other)) return false;
         var health = other.GetComponentInParent<IDamageable>();
         var control = other.GetComponentInParent<IItemControlReceiver>();
         if (health != null && (!Active(health) || health.IsDead)) return false;

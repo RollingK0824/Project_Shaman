@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using UnityEditor;
 using UnityEngine;
 
 public static class GameSettings
@@ -33,10 +32,31 @@ public static class GameSettings
 
     // Screen Resolution & Fullscreen
     public static bool IsFullscreen => Screen.fullScreenMode != FullScreenMode.Windowed;
+    public static Vector2Int NativeResolution => new Vector2Int(Display.main.systemWidth, Display.main.systemHeight);
 
-    public static void SetFullscreen(bool on)
+    // Returns the size it applied, because Screen.width only updates at the end of the frame
+    public static Vector2Int SetFullscreen(bool on)
     {
-        Screen.fullScreenMode = on ? FullScreenMode.FullScreenWindow : FullScreenMode.Windowed;
+        Vector2Int native = NativeResolution;
+
+        if (on)
+        {
+            Screen.SetResolution(native.x, native.y, FullScreenMode.FullScreenWindow);
+            return native;
+        }
+
+        // Largest size smaller than the monitor, so the window's title bar and edges stay visible
+        Vector2Int windowed = native;
+        foreach (Vector2Int r in GetResolutions())
+        {
+            if (r.x < native.x && r.y < native.y)
+            {
+                windowed = r;
+            }
+        }
+
+        Screen.SetResolution(windowed.x, windowed.y, FullScreenMode.Windowed);
+        return windowed;
     }
 
     public static List<Vector2Int> GetResolutions()
