@@ -59,6 +59,11 @@ GameObject:
   - component: {fileID: 5949884775646949015}
   - component: {fileID: 5688143873855738353}
   - component: {fileID: 5279425667210753810}
+  - component: {fileID: 2625257546283293818}
+  - component: {fileID: 5310847261938475016}
+  - component: {fileID: 6201938475610293847}
+  - component: {fileID: 7302948516720394851}
+  - component: {fileID: 8403957162839405721}
   m_Layer: 0
   m_Name: Temp_Villager
   m_TagString: Untagged
@@ -461,6 +466,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_GhostReactionReceiver
   _isMarked: 0
   _paralyzedNight: -1
+--- !u!114 &2625257546283293818
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 33c0c90c457d1724880216289eef6f05, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Interaction.AI_Interaction
+  _activeDebug: 
+  _seenDebug: []
 --- !u!1001 &8466507210631905825
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -556,3 +575,71 @@ Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 36078ab0369161e49a29d349ae3e0739, type: 3}
   m_PrefabInstance: {fileID: 8466507210631905825}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &5310847261938475016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1c660ae5f60d432d93cef91a095bd1c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Interaction.AI_Conversation
+  _profile: {fileID: 11400000, guid: 07bb00573609470d9adda0b04be21e0f, type: 2}
+  _sessionDebug: 
+  _conversationsThisRoutine: 0
+--- !u!114 &6201938475610293847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: be8a45c4716a48279421ca4ba30e93b2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_SpeechBubble
+  _font: {fileID: 11400000, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
+  _height: 2.4
+  _fontSize: 4
+  _maxWidth: 6
+  _showSeconds: 2.3
+  _hearingDistance: 0
+  _textColor: {r: 1, g: 1, b: 1, a: 1}
+  _outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  _outlineWidth: 0.25
+--- !u!114 &7302948516720394851
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 91e42ba3518141ad98c7d5b2475843fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_AIConversation
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &8403957162839405721
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d5cf1850813045bc90ea5552b26082ee, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_VillagerTalk
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _interactionPrompt: 말 걸기
+  _maxTalkDistance: 4
