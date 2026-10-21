@@ -2,6 +2,7 @@ using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
+using ProjectShaman.AI.Memory;
 
 namespace ProjectShaman.AI
 {
@@ -14,6 +15,7 @@ namespace ProjectShaman.AI
         [SerializeField] private int _paralyzedNight = -1;
 
         private AI_Core _core;
+        private AI_Memory _memory;
 
         public GhostTargetKind Kind => GhostTargetKind.Villager;
         public bool IsMarked => _isMarked;
@@ -21,6 +23,7 @@ namespace ProjectShaman.AI
         private void Awake()
         {
             _core = GetComponent<AI_Core>();
+            _memory = GetComponent<AI_Memory>();
         }
 
         private void OnEnable()
@@ -72,6 +75,11 @@ namespace ProjectShaman.AI
                 {
                     context.Ledger.ScheduleDayEffect(villagerId, context.Action.DayEffect);
                 }
+            }
+
+            if (_memory != null)
+            {
+                _memory.RecordSleepParalysis(context.ActionId);
             }
 
             AILog.Log(AILog.GHOST, context.GhostId, $"Sleep paralysis on {villagerId}");

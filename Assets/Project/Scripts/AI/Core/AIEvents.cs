@@ -15,7 +15,7 @@ namespace ProjectShaman.AI.Core
 
         public static void RaiseStress(string villagerId, string reason, float amount)
         {
-            AILog.Log(AILog.EVENT, villagerId, $"[Stub] Stress +{amount} ({reason})");
+            AILog.Log(AILog.EVENT, villagerId, $"Stress {amount:+0.#;-0.#} ({reason})");
             OnVillagerStress?.Invoke(villagerId, reason, amount);
         }
 

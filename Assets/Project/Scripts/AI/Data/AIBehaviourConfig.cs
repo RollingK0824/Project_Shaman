@@ -110,6 +110,16 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _traceNeglectStressPerDay = 0.5f;
         [SerializeField, Min(1f)] private float _traceNeglectStressMax = 3f;
 
+        [Header("Memory")]
+        [SerializeField, Min(1)] private int _memoryDays = 2;
+        [SerializeField, Min(1)] private int _memoryEntriesPerKind = 10;
+
+        [Header("Villager Stress")]
+        [SerializeField, Min(1f)] private float _villagerStressMax = 100f;
+        [SerializeField, Min(0f)] private float _villagerStressAnxious = 50f;
+        [SerializeField, Min(0f)] private float _villagerStressLimit = 100f;
+        [SerializeField, Min(0f)] private float _villagerStressMorningDecay = 5f;
+
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
@@ -180,6 +190,12 @@ namespace ProjectShaman.AI.Data
         public int TraceMaxPerKind => Mathf.Max(1, _traceMaxPerKind);
         public float TraceNeglectStressPerDay => Mathf.Max(0f, _traceNeglectStressPerDay);
         public float TraceNeglectStressMax => Mathf.Max(1f, _traceNeglectStressMax);
+        public int MemoryDays => Mathf.Max(1, _memoryDays);
+        public int MemoryEntriesPerKind => Mathf.Max(1, _memoryEntriesPerKind);
+        public float VillagerStressMax => Mathf.Max(1f, _villagerStressMax);
+        public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
+        public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
+        public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
 
         public int GetInterruptResistance(VillagerActivity activity)
         {
