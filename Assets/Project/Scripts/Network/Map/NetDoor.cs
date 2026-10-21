@@ -1,7 +1,6 @@
 using UnityEngine;
 using Mirror;
-using Steamworks;
-using System.Runtime.CompilerServices;
+using UnityEngine.AI;
 
 //  씬에 배치된 문짝 하나. 열림 상태는 서버가 정하고 SyncVar로 모든 클라에 동기화
 [RequireComponent(typeof(NetworkIdentity), typeof(MeshFilter))]
@@ -20,6 +19,13 @@ public class NetDoor : NetworkBehaviour, IInteractable
     [SerializeField] private float _maxUseDistance = 4f;
     [SerializeField] private float _cooldown = 0.4f;
 
+    [Header("NPC Auto Open")]
+    [SerializeField] private float _npcOpenRadius = 1.5f;
+    [SerializeField] private float _npcCloseDelay = 1.5f;
+
+    private const float NpcCheckInterval = 0.2f;
+    private static readonly Collider[] _overlapBuffer = new Collider[32];
+
     // [서버 -> 모든 클라] 0 = 닫힘, +1 / -1 : 열린 방향
     [SyncVar] private int _openSign;
 
@@ -30,6 +36,10 @@ public class NetDoor : NetworkBehaviour, IInteractable
     private Vector3 _slideWorld;
     private float _progress;
     private double _nextUseTime;
+
+    private bool _openedByNpc;
+    private double _nextNpcCheckTime;
+    private double _npcLastSeenTime;
 
     public bool IsOpen => _openSign != 0;
     public string InteractionPrompt => IsOpen ? "문 닫기" : "문 열기";
@@ -61,6 +71,8 @@ public class NetDoor : NetworkBehaviour, IInteractable
 
     private void Update()
     {
+        if (isServer) ServerCheckNpc();
+
         if (Mathf.Approximately(_progress, _openSign)) return;
 
         _progress = Mathf.MoveTowards(_progress, _openSign, _speed * Time.deltaTime);
@@ -105,16 +117,68 @@ public class NetDoor : NetworkBehaviour, IInteractable
         if (Vector3.Distance(player.transform.position, _centerWorld) > _maxUseDistance) return;
 
         _nextUseTime = NetworkTime.time + _cooldown;
+        _openedByNpc = false; // 플레이어가 만진 문은 자동으로 닫지 않음
 
-        if (IsOpen)
+        _openSign = IsOpen ? 0 : GetOpenSignAwayFrom(player.transform.position);
+
+        //_nextUseTime = NetworkTime.time + _cooldown;
+        //
+        //if (IsOpen)
+        //{
+        //    _openSign = 0;
+        //    return;
+        //}
+        //
+        //// +각도로 돌 때 문 중심이 움직이는 방향이 플레이어 쪽이면 반대로 열기
+        //Vector3 swingDir = Vector3.Cross(_closedRot * Vector3.up, _centerWorld - _hingeWorld);
+        //Vector3 toPlayer = player.transform.position - _centerWorld;
+        //_openSign = Vector3.Dot(swingDir, toPlayer) > 0f ? -1 : 1;
+    }
+
+
+    // [서버] 주변에 NPC가 있으면 열고, NPC가 연 문은 떠난 뒤 닫음
+    [Server]
+    private void ServerCheckNpc()
+    {
+        if (NetworkTime.time < _nextNpcCheckTime) return;
+        _nextNpcCheckTime = NetworkTime.time + NpcCheckInterval;
+
+        Transform npc = FindNearbyNpc();
+        if (npc != null)
         {
-            _openSign = 0;
+            _npcLastSeenTime = NetworkTime.time;
+            if (!IsOpen)
+            {
+                _openedByNpc = true;
+                _openSign = GetOpenSignAwayFrom(npc.position);
+            }
             return;
         }
 
-        // +각도로 돌 때 문 중심이 움직이는 방향이 플레이어 쪽이면 반대로 열기
+        if (_openedByNpc && IsOpen && NetworkTime.time - _npcLastSeenTime >= _npcCloseDelay)
+        {
+            _openedByNpc = false;
+            _openSign = 0;
+        }
+    }
+
+    // [서버] 문 중심 반경 안에서 NavMeshAgent가 달린 콜라이더 찾기
+    private Transform FindNearbyNpc()
+    {
+        int count = Physics.OverlapSphereNonAlloc(_centerWorld, _npcOpenRadius, _overlapBuffer, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < count; i++)
+        {
+            NavMeshAgent agent = _overlapBuffer[i].GetComponentInParent<NavMeshAgent>();
+            if (agent != null) return agent.transform;
+        }
+        return null;
+    }
+
+
+    // +각도로 돌때 문 중심이 움직이는 방향이 대상 쪽이면 반대로 열기
+    private int GetOpenSignAwayFrom(Vector3 position)
+    {
         Vector3 swingDir = Vector3.Cross(_closedRot * Vector3.up, _centerWorld - _hingeWorld);
-        Vector3 toPlayer = player.transform.position - _centerWorld;
-        _openSign = Vector3.Dot(swingDir, toPlayer) > 0f ? -1 : 1;
+        return Vector3.Dot(swingDir, position - _centerWorld) > 0f ? -1 : 1;
     }
 }
