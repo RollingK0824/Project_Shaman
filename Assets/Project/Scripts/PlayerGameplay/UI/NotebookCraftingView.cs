@@ -36,16 +36,17 @@ public sealed class NotebookCraftingView : MonoBehaviour
         _tools = PlayerItemUIStyle.NotebookScroll(transform, "Tools", 20, 100, 440, 246, out _);
         Label(transform, "DescriptionHeading", "도구 설명", 20, 370, 440, 36, 25);
         _preview = Icon(transform, "ResultIcon", 20, 420, 78, 78);
-        _result = Label(transform, "ResultName", "", 116, 420, 344, 60, 25);
+        _result = Label(transform, "ResultName", "", 116, 420, 344, 80, 25);
+        _result.textWrappingMode = TextWrappingModes.Normal;
         _description = Label(transform, "Description", "", 20, 510, 440, 90, 20);
         _description.textWrappingMode = TextWrappingModes.Normal;
         Label(transform, "ResultDestination", "완성품은 개인 소지품에 보관됩니다.", 20, 608, 440, 26, 17).color = PlayerItemUIStyle.NotebookMuted;
 
         Label(transform, "RecipeHeading", "레시피", 540, 16, 440, 42, 30);
         _recipeHint = Label(transform, "RecipeHint", "재료별 보유 / 필요 수량", 540, 62, 440, 28, 18);
-        _requirements = PlayerItemUIStyle.NotebookScroll(transform, "Requirements", 540, 100, 440, 170, out _requirementScroll);
-        Label(transform, "MaterialsHeading", "재료 소지품 · 공용", 540, 292, 440, 36, 25);
-        _materials = PlayerItemUIStyle.NotebookScroll(transform, "SharedMaterials", 540, 340, 440, 186, out _);
+        _requirements = PlayerItemUIStyle.NotebookScroll(transform, "Requirements", 540, 100, 440, 226, out _requirementScroll);
+        Label(transform, "MaterialsHeading", "재료 소지품 · 공용", 540, 348, 440, 36, 25);
+        _materials = PlayerItemUIStyle.NotebookScroll(transform, "SharedMaterials", 540, 396, 440, 130, out _);
         _empty = Label(_materials, "Empty", "보유한 공용 재료가 없습니다.", 18, 52, 404, 70, 21);
         _status = Label(transform, "CraftStatus", "", 540, 550, 270, 80, 18);
         _status.textWrappingMode = TextWrappingModes.Normal;
@@ -105,7 +106,10 @@ public sealed class NotebookCraftingView : MonoBehaviour
             row.Background.color = recipe == selected ? new Color(.53f, .30f, .12f, .24f) : Color.clear;
             row.Name.text = recipe.ResultItem != null ? recipe.ResultItem.DisplayName : recipe.DisplayName;
             int count = CraftableCount(recipe, inventory);
-            row.Count.text = count > 0 ? $"재료 충분 · {count}회 제작 가능" : "재료를 모아주세요";
+            bool ownedUnique = crafting != null && crafting.AlreadyOwnsUniqueResult(recipe);
+            if (ownedUnique) count = 0;
+            else if (recipe.ResultItem != null && recipe.ResultItem.IsUnique) count = Mathf.Min(count, 1);
+            row.Count.text = ownedUnique ? "이미 보유 중 · 추가 제작 불가" : count > 0 ? $"재료 충분 · {count}회 제작 가능" : "재료를 모아주세요";
             row.Count.color = count > 0 ? Ready : PlayerItemUIStyle.NotebookMuted;
             Sprite(row.Icon, recipe.Icon);
         }
@@ -114,6 +118,7 @@ public sealed class NotebookCraftingView : MonoBehaviour
         if (_lastRecipe != selected) { _requirementScroll.verticalNormalizedPosition = 1; _lastRecipe = selected; }
         Sprite(_preview, selected != null ? selected.Icon : null);
         _result.text = valid ? $"{selected.ResultItem.DisplayName}  ×{selected.ResultAmount}" : "제작할 도구가 없습니다";
+        if (valid && selected.ResultItem.IsPermanent) _result.text += "\n영구 장비";
         _description.text = selected != null ? selected.Description : "등록된 레시피가 없습니다.";
         _recipeHint.text = valid ? $"1회 제작 기준 · 결과 {selected.ResultAmount}개 · 보유 / 필요" : "레시피를 선택하세요";
         ResizeRows(_costRows, _costs.Count, _requirements, "Ingredient", 56);
@@ -121,7 +126,7 @@ public sealed class NotebookCraftingView : MonoBehaviour
         foreach (var cost in _costs)
         {
             var row = _costRows[n++]; int owned = inventory != null ? inventory.GetItemCount(cost.Key) : 0;
-            row.Name.text = cost.Key.DisplayName + (cost.Key.Category == ItemCategory.Material ? " · 공용" : " · 개인");
+            row.Name.text = (cost.Key.Category == ItemCategory.Material ? "[공용] " : "[개인] ") + CraftingPanelUI.IngredientName(cost.Key);
             row.Name.fontSize = 19; row.Count.fontSize = 17;
             row.Name.rectTransform.anchoredPosition = new Vector2(66, -3);
             row.Count.rectTransform.anchoredPosition = new Vector2(66, -29);
@@ -159,7 +164,7 @@ public sealed class NotebookCraftingView : MonoBehaviour
             row.Name.text = item.DisplayName; row.Count.text = "×" + store.GetCount(item); Sprite(row.Icon, item.Icon);
             row.Background.color = _costs.ContainsKey(item) ? new Color(.53f, .30f, .12f, .15f) : Color.clear;
         }
-        _materials.sizeDelta = new Vector2(440, Mathf.Max(186, Mathf.CeilToInt(_materialItems.Count / 3f) * 94));
+        _materials.sizeDelta = new Vector2(440, Mathf.Max(130, Mathf.CeilToInt(_materialItems.Count / 3f) * 94));
         _empty.gameObject.SetActive(_materialItems.Count == 0);
         _empty.text = store == null ? "공용 재료를 불러오는 중입니다." : "보유한 공용 재료가 없습니다.";
     }

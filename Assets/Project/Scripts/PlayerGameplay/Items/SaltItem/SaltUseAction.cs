@@ -1,6 +1,6 @@
+using UnityEngine;
 using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Minion;
-using UnityEngine;
 
 // [판정 전용] 소금 전방 접촉 공격
 
@@ -60,12 +60,10 @@ public class SaltUseAction : ItemUseAction
     private static bool CanHitGhost(Collider other)
     {
         // IDamageable is also implemented by players and ordinary NPCs. IGhostTarget
-        // identifies a ghost's prey, not a ghost. Only manifested ghost entities qualify.
+        // identifies a ghost's prey, not a ghost. Allow manifested ghosts and minions.
         if (other.GetComponentInParent<PlayerHealth>() != null) return false;
-
         var ghost = other.GetComponentInParent<AI_GhostEntity>();
-        if (ghost != null) return ghost.isActiveAndEnabled;
-
+        if (ghost != null && ghost.isActiveAndEnabled) return true;
         var minion = other.GetComponentInParent<AI_Minion>();
         return minion != null && minion.isActiveAndEnabled;
     }
