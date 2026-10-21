@@ -4,6 +4,7 @@ using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interfaces;
+using ProjectShaman.AI.Trace;
 
 namespace ProjectShaman.AI.Ghost
 {
@@ -27,8 +28,7 @@ namespace ProjectShaman.AI.Ghost
         private readonly AIBehaviourConfig _config;
         private readonly List<StressEntry> _stress = new List<StressEntry>();
         private readonly List<DayEffectEntry> _dayEffects = new List<DayEffectEntry>();
-        private readonly List<GameObject> _tonightTraces = new List<GameObject>();
-        private readonly List<GameObject> _previousTraces = new List<GameObject>();
+        private readonly List<GameObject> _traces = new List<GameObject>();
 
         public NightOutcomeLedger(AIManager manager, ISpawnHandler spawnHandler, AIBehaviourConfig config)
         {
@@ -119,15 +119,59 @@ namespace ProjectShaman.AI.Ghost
             }
 
             GameObject instance = Object.Instantiate(prefab, position, rotation);
+            GhostTrace trace = instance.GetComponent<GhostTrace>();
+
+            if (trace != null)
+            {
+                trace.Initialize(_config, NightDay, null);
+                trace.OnResolved += HandleTraceResolved;
+            }
+            else
+            {
+                AILog.Warn(AILog.GHOST, $"Trace prefab {prefab.name} has no GhostTrace, kept until game end");
+            }
 
             if (_spawnHandler != null)
             {
                 _spawnHandler.Spawn(instance);
             }
 
-            _tonightTraces.Add(instance);
+            _traces.Add(instance);
             AILog.Log(AILog.GHOST, $"Trace {prefab.name} spawned at {position}");
+
+            if (trace != null)
+            {
+                EnforceTraceCap(trace);
+            }
+
             return instance;
+        }
+
+        private void EnforceTraceCap(GhostTrace added)
+        {
+            int cap = _config != null ? _config.TraceMaxPerKind : int.MaxValue;
+
+            while (GhostTraceRegistry.CountActive(added.Kind) > cap)
+            {
+                GhostTrace oldest = GhostTraceRegistry.FindOldestActive(added.Kind, added);
+                if (oldest == null)
+                {
+                    break;
+                }
+
+                oldest.Resolve(TraceResolveReason.Capped);
+            }
+        }
+
+        private void HandleTraceResolved(GhostTrace trace, TraceResolveReason reason)
+        {
+            trace.OnResolved -= HandleTraceResolved;
+            _traces.Remove(trace.gameObject);
+
+            if (_spawnHandler != null)
+            {
+                _spawnHandler.Despawn(trace.gameObject);
+            }
         }
 
         public void ScheduleDayEffect(string villagerId, GhostDayEffect effect)
@@ -138,10 +182,6 @@ namespace ProjectShaman.AI.Ghost
 
         public void FlushMorning(int dayCount)
         {
-            DespawnTraces(_previousTraces);
-            _previousTraces.AddRange(_tonightTraces);
-            _tonightTraces.Clear();
-
             foreach (StressEntry entry in _stress)
             {
                 if (IsAlive(entry.VillagerId))
@@ -158,7 +198,7 @@ namespace ProjectShaman.AI.Ghost
                 }
             }
 
-            AILog.Log(AILog.GHOST, $"Morning outcomes Day{dayCount}: victimStress={_stress.Count}, dayEffects={_dayEffects.Count}, traces={_previousTraces.Count}");
+            AILog.Log(AILog.GHOST, $"Morning outcomes Day{dayCount}: victimStress={_stress.Count}, dayEffects={_dayEffects.Count}, traces={_traces.Count}");
 
             _stress.Clear();
             _dayEffects.Clear();
@@ -168,21 +208,26 @@ namespace ProjectShaman.AI.Ghost
         {
             _stress.Clear();
             _dayEffects.Clear();
-            DespawnTraces(_tonightTraces);
-            DespawnTraces(_previousTraces);
-        }
 
-        private void DespawnTraces(List<GameObject> traces)
-        {
-            foreach (GameObject trace in traces)
+            foreach (GameObject instance in _traces.ToArray())
             {
-                if (trace != null && _spawnHandler != null)
+                if (instance == null)
                 {
-                    _spawnHandler.Despawn(trace);
+                    continue;
+                }
+
+                GhostTrace trace = instance.GetComponent<GhostTrace>();
+                if (trace != null && trace.IsActive)
+                {
+                    trace.Resolve(TraceResolveReason.GameEnd);
+                }
+                else if (_spawnHandler != null)
+                {
+                    _spawnHandler.Despawn(instance);
                 }
             }
 
-            traces.Clear();
+            _traces.Clear();
         }
 
         private bool IsAlive(string villagerId)

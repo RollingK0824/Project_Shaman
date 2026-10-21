@@ -193,9 +193,14 @@ namespace ProjectShaman.AI
         {
             if (btAgent != null && btAgent.BlackboardReference != null)
             {
-                btAgent.BlackboardReference.SetVariableValue(variableName, value);
+                if (!btAgent.BlackboardReference.SetVariableValue(variableName, value) && _missingBlackboardWarned.Add(variableName))
+                {
+                    AILog.Warn(AILog.CORE, $"[{LogId}] Blackboard variable '{variableName}' ({typeof(T).Name}) not found on behavior graph, value dropped");
+                }
             }
         }
+
+        private readonly System.Collections.Generic.HashSet<string> _missingBlackboardWarned = new System.Collections.Generic.HashSet<string>();
 
         public bool TryGetBlackboardVariable<T>(string variableName, out T value)
         {

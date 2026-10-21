@@ -3,11 +3,12 @@ using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Interfaces;
 
 namespace ProjectShaman.AI.Interaction
 {
     [RequireComponent(typeof(AI_Core), typeof(AI_Interaction))]
-    public class AI_Conversation : MonoBehaviour, IVillagerInteractable
+    public class AI_Conversation : MonoBehaviour, IVillagerInteractable, IAIConfigurable
     {
         private const float LOOK_HEIGHT = 1.6f;
         private static readonly string[] BUSY_BARKS = { "지금 바빠유!", "이따 다시 와주시겠소" };
@@ -22,6 +23,7 @@ namespace ProjectShaman.AI.Interaction
 
         private AI_Core _core;
         private AI_Interaction _interaction;
+        private AIRuntimeContext _context;
         private int _countedRoutineSerial = -1;
         private int _joinedRoutineSerial;
 
@@ -32,6 +34,7 @@ namespace ProjectShaman.AI.Interaction
         public ConversationSession Session { get; private set; }
         public int JoinedInteractionSerial { get; private set; }
         public bool IsInSession => Session != null;
+        public float HearingDistance => _context != null && _context.Config != null ? _context.Config.HearingDistance : 0f;
 
         public string InteractableId => VillagerId;
         public InteractionProfile Profile => _profile;
@@ -43,6 +46,11 @@ namespace ProjectShaman.AI.Interaction
         {
             _core = GetComponent<AI_Core>();
             _interaction = GetComponent<AI_Interaction>();
+        }
+
+        public void Configure(AIRuntimeContext context)
+        {
+            _context = context;
         }
 
         public int CountThisRoutine()
@@ -143,13 +151,19 @@ namespace ProjectShaman.AI.Interaction
             string playerName = player != null ? player.name : "(test)";
             VillagerActivity activity = CurrentActivity();
 
+            if (IsInSession || activity == VillagerActivity.Conversation)
+            {
+                AILog.Log(AILog.INTERACTION, VillagerId, $"Ignored {playerName} (already in conversation)");
+                return;
+            }
+
             if (activity == VillagerActivity.ReturningHome)
             {
                 Bark(HOME_BARKS, $"refused {playerName} (going home)");
                 return;
             }
 
-            if (activity != VillagerActivity.Rest || _interaction.IsInteracting || IsInSession)
+            if (activity != VillagerActivity.Rest || _interaction.IsInteracting)
             {
                 Bark(BUSY_BARKS, $"refused {playerName} ({activity})");
                 return;

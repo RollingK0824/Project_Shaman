@@ -29,8 +29,12 @@ namespace ProjectShaman.AI.Interaction
         public readonly bool Witnessed;
         public readonly bool Detailed;
         public readonly float Stress;
+        public readonly string Subject;
+        public readonly string PlaceId;
+        public readonly Vector3 Position;
 
-        public InteractionResult(string interactableId, InteractionKind kind, InteractionResponse response, bool witnessed, bool detailed, float stress)
+        public InteractionResult(string interactableId, InteractionKind kind, InteractionResponse response, bool witnessed, bool detailed, float stress,
+            string subject = null, string placeId = null, Vector3 position = default)
         {
             InteractableId = interactableId;
             Kind = kind;
@@ -38,6 +42,9 @@ namespace ProjectShaman.AI.Interaction
             Witnessed = witnessed;
             Detailed = detailed;
             Stress = stress;
+            Subject = string.IsNullOrEmpty(subject) ? interactableId : subject;
+            PlaceId = placeId;
+            Position = position;
         }
 
         public static InteractionResult None(string interactableId, InteractionKind kind, InteractionResponse response)

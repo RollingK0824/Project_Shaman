@@ -160,6 +160,7 @@ namespace ProjectShaman.AI.Work
             AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (checked {Mathf.Max(0, CandidateIndex + 1)}/{_candidates.Count}, {(Now > _deadline ? "time over" : "no more candidates")})");
             AILog.Log(AILog.STUB, Id, $"Inquiry to nearby villagers for '{RequiredToolType}' skipped (interaction branch)");
             AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", Config.ToolSearchFailedStress);
+            _owner.Memory.RecordToolLost(RequiredToolType);
             AIEvents.RaiseRequest(Id, "FindTool", RequiredToolType);
             Cancel();
             _owner.Core.FailCurrentRoutine($"tool '{RequiredToolType}' not found");
