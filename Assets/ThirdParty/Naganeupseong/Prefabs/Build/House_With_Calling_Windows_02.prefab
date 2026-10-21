@@ -125,12 +125,14 @@ GameObject:
   - component: {fileID: 339248282181578550}
   - component: {fileID: 339248282181578545}
   - component: {fileID: 2815954343751669272}
+  - component: {fileID: 4382359253496309319}
+  - component: {fileID: 2905938948666031617}
   m_Layer: 0
   m_Name: SM_Door01i_02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &339248282181578551
 Transform:
@@ -226,6 +228,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000000961711797732701608, type: 3}
+--- !u!114 &4382359253496309319
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 339248282181578548}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &2905938948666031617
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 339248282181578548}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &422099791962622154
 GameObject:
   m_ObjectHideFlags: 0
@@ -1032,12 +1072,14 @@ GameObject:
   - component: {fileID: 1281001828009199200}
   - component: {fileID: 1281001828009199201}
   - component: {fileID: 7281210293653059543}
+  - component: {fileID: 2705096404620631805}
+  - component: {fileID: 8425931754535327457}
   m_Layer: 0
   m_Name: SM_Door01i_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &1281001828009199207
 Transform:
@@ -1133,6 +1175,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000007782214612037787001, type: 3}
+--- !u!114 &2705096404620631805
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281001828009199206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &8425931754535327457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281001828009199206}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &1352376531028536314
 GameObject:
   m_ObjectHideFlags: 0
@@ -1824,12 +1904,14 @@ GameObject:
   - component: {fileID: 1826854746101448037}
   - component: {fileID: 1826854746101448036}
   - component: {fileID: 7607414472202743450}
+  - component: {fileID: 5860485962847412751}
+  - component: {fileID: 184577900239775682}
   m_Layer: 0
   m_Name: SM_Door01i_03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &1826854746101448038
 Transform:
@@ -1925,6 +2007,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000018408203829731786755, type: 3}
+--- !u!114 &5860485962847412751
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1826854746101448039}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &184577900239775682
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1826854746101448039}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &1991393317817498456
 GameObject:
   m_ObjectHideFlags: 0
@@ -4658,12 +4778,14 @@ GameObject:
   - component: {fileID: 4913125449731600839}
   - component: {fileID: 4913125449731600838}
   - component: {fileID: 885216372601635251}
+  - component: {fileID: 1311913109055362404}
+  - component: {fileID: 185881146598326696}
   m_Layer: 0
   m_Name: SM_Door01b_02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &4913125449731600856
 Transform:
@@ -4759,6 +4881,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000012470244442245488807, type: 3}
+--- !u!114 &1311913109055362404
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4913125449731600857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &185881146598326696
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4913125449731600857}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &5113171105228587918
 GameObject:
   m_ObjectHideFlags: 0
@@ -4884,12 +5044,14 @@ GameObject:
   - component: {fileID: 5174921426950158788}
   - component: {fileID: 5174921426950158789}
   - component: {fileID: 7150453480154392966}
+  - component: {fileID: 2471757487132666299}
+  - component: {fileID: 3072866249954501747}
   m_Layer: 0
   m_Name: SM_Door01b_02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &5174921426950158811
 Transform:
@@ -4985,6 +5147,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000012470244442245488807, type: 3}
+--- !u!114 &2471757487132666299
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5174921426950158810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &3072866249954501747
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5174921426950158810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &5184410555020305606
 GameObject:
   m_ObjectHideFlags: 0
@@ -5110,12 +5310,14 @@ GameObject:
   - component: {fileID: 5237312841768831022}
   - component: {fileID: 5237312841768831023}
   - component: {fileID: 6706761498660667679}
+  - component: {fileID: 4380126425754470932}
+  - component: {fileID: 9037243640552675431}
   m_Layer: 0
   m_Name: SM_Door01i_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &5237312841768831017
 Transform:
@@ -5211,6 +5413,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000007782214612037787001, type: 3}
+--- !u!114 &4380126425754470932
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5237312841768831016}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &9037243640552675431
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5237312841768831016}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &5385078318726405999
 GameObject:
   m_ObjectHideFlags: 0
@@ -5450,12 +5690,14 @@ GameObject:
   - component: {fileID: 5626606299192391202}
   - component: {fileID: 5626606299192391213}
   - component: {fileID: 4301631695308580610}
+  - component: {fileID: 174507050168058866}
+  - component: {fileID: 8462818753079423190}
   m_Layer: 0
   m_Name: SM_Door01b_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &5626606299192391203
 Transform:
@@ -5551,6 +5793,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000002480961287185338122, type: 3}
+--- !u!114 &174507050168058866
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5626606299192391200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &8462818753079423190
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5626606299192391200}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &5646292728475620090
 GameObject:
   m_ObjectHideFlags: 0
@@ -5676,12 +5956,14 @@ GameObject:
   - component: {fileID: 5662971687614324053}
   - component: {fileID: 5662971687614324042}
   - component: {fileID: 5560367702898286843}
+  - component: {fileID: 6475559700316998456}
+  - component: {fileID: 2562931367412742026}
   m_Layer: 0
   m_Name: SM_Door01g
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &5662971687614324052
 Transform:
@@ -5777,6 +6059,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000018157021192627905963, type: 3}
+--- !u!114 &6475559700316998456
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5662971687614324055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &2562931367412742026
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5662971687614324055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &5844902178294162086
 GameObject:
   m_ObjectHideFlags: 0
@@ -5803,8 +6123,8 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
+  m_LocalScale: {x: 2, y: 2, z: 2}
+  m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 7556300629541044956}
   - {fileID: 4603398927012472721}
@@ -5907,12 +6227,14 @@ GameObject:
   - component: {fileID: 5901718975387644244}
   - component: {fileID: 5901718975387644243}
   - component: {fileID: 1986394542115784724}
+  - component: {fileID: 6756571357250214481}
+  - component: {fileID: 2999833333927351772}
   m_Layer: 0
   m_Name: SM_Door01i_02
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &5901718975387644245
 Transform:
@@ -6008,6 +6330,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000000961711797732701608, type: 3}
+--- !u!114 &6756571357250214481
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5901718975387644246}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &2999833333927351772
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5901718975387644246}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &5940638396810654300
 GameObject:
   m_ObjectHideFlags: 0
@@ -6246,12 +6606,14 @@ GameObject:
   - component: {fileID: 6742096087841200387}
   - component: {fileID: 6742096087841200396}
   - component: {fileID: 8339335010684220446}
+  - component: {fileID: 6950880713820378745}
+  - component: {fileID: 4090522895996440585}
   m_Layer: 0
   m_Name: SM_Door01b_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &6742096087841200386
 Transform:
@@ -6347,6 +6709,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000002480961287185338122, type: 3}
+--- !u!114 &6950880713820378745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6742096087841200385}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &4090522895996440585
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6742096087841200385}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &6749705955143142335
 GameObject:
   m_ObjectHideFlags: 0
@@ -6698,12 +7098,14 @@ GameObject:
   - component: {fileID: 6956698792536303707}
   - component: {fileID: 6956698792536303684}
   - component: {fileID: 2201437003832533614}
+  - component: {fileID: 4192718252549184941}
+  - component: {fileID: 2031218829517951763}
   m_Layer: 0
   m_Name: SM_Door01g
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &6956698792536303706
 Transform:
@@ -6799,6 +7201,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000018157021192627905963, type: 3}
+--- !u!114 &4192718252549184941
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6956698792536303705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &2031218829517951763
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6956698792536303705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &7112745642944253173
 GameObject:
   m_ObjectHideFlags: 0
@@ -7155,12 +7595,14 @@ GameObject:
   - component: {fileID: 7363385825855721570}
   - component: {fileID: 7363385825855721571}
   - component: {fileID: 3802231511562549930}
+  - component: {fileID: 2253245935942416607}
+  - component: {fileID: 1282260016051838534}
   m_Layer: 0
   m_Name: SM_Door02i
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &7363385825855721565
 Transform:
@@ -7256,6 +7698,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000003732348849142762314, type: 3}
+--- !u!114 &2253245935942416607
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7363385825855721564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &1282260016051838534
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 7363385825855721564}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &7395099116882556058
 GameObject:
   m_ObjectHideFlags: 0
@@ -9545,12 +10025,14 @@ GameObject:
   - component: {fileID: 8899282519779535444}
   - component: {fileID: 8899282519779535445}
   - component: {fileID: 7485053312294238890}
+  - component: {fileID: 7538553529502181874}
+  - component: {fileID: 3692222193372173898}
   m_Layer: 0
   m_Name: SM_Door01i_03
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
-  m_StaticEditorFlags: 2147483647
+  m_StaticEditorFlags: 2147483625
   m_IsActive: 1
 --- !u!4 &8899282519779535447
 Transform:
@@ -9646,6 +10128,44 @@ MeshCollider:
   m_Convex: 1
   m_CookingOptions: 30
   m_Mesh: {fileID: 4300000, guid: abc00000000018408203829731786755, type: 3}
+--- !u!114 &7538553529502181874
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8899282519779535446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 1863765608
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &3692222193372173898
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8899282519779535446}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 772947754f51e8944a16051c4c495b45, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDoor
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _mode: 0
+  _hingeAtMax: 0
+  _openAngle: 100
+  _speed: 3
+  _maxUseDistance: 4
+  _cooldown: 0.4
 --- !u!1 &8943716889761773554
 GameObject:
   m_ObjectHideFlags: 0
