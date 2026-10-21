@@ -46,10 +46,10 @@ public class PlayerCameraController : MonoBehaviour
         Vector2 lookInput = _inputReader.LookInput;
 
         float yawDelta =
-            lookInput.x * _mouseSensitivity;
+            lookInput.x * _mouseSensitivity * GameSettings.MouseSensitivity;
 
         float pitchDelta =
-            lookInput.y * _mouseSensitivity;
+            lookInput.y * _mouseSensitivity * GameSettings.MouseSensitivity * (GameSettings.InvertY ? -1f : 1f);
 
         _pitch -= pitchDelta;
 

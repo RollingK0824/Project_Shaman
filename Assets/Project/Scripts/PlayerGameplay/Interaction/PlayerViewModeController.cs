@@ -186,6 +186,8 @@ public class PlayerViewModeController : MonoBehaviour
             return;
         }
 
+        _playerCamera.fieldOfView = GameSettings.FieldOfView;
+
         Vector3 targetPosition =
             CurrentViewMode == ViewMode.FirstPerson
                 ? _firstPersonCameraLocalPosition
