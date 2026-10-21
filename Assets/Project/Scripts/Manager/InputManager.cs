@@ -74,10 +74,14 @@ public class InputManager : GlobalSingleton<InputManager>
     private InputActionRebindingExtensions.RebindingOperation _rebind;
     public bool IsRebinding { get; private set; }
 
+    // true if the last rebind was undone because the key was already used (false for Esc / busy)
+    public bool LastRebindRejected { get; private set; }
+
     public void StartRebind(InputAction action, int bindingIndex, Action<bool> onDone)
     {
         if (IsRebinding)
         {
+            LastRebindRejected = false;
             onDone?.Invoke(false);
             return;
         }
@@ -97,6 +101,12 @@ public class InputManager : GlobalSingleton<InputManager>
         .Start();
     }
 
+    // Goes through OnCancel → Finish, so the row refreshes as usual
+    public void CancelRebind()
+    {
+        _rebind?.Cancel();
+    }
+
     private void Finish(InputAction action, int bindingIndex, string oldOverride, bool changed, Action<bool> onDone)
     {
         _rebind.Dispose();
@@ -104,10 +114,12 @@ public class InputManager : GlobalSingleton<InputManager>
         action.Enable();
         Actions.UI.Enable();
         IsRebinding = false;
+        LastRebindRejected = false;
 
         // 4. Check
         if (changed && HasConflict(action, bindingIndex))
         {
+            LastRebindRejected = true;
             // put the old key back
             if (string.IsNullOrEmpty(oldOverride)) action.RemoveBindingOverride(bindingIndex);
             else action.ApplyBindingOverride(bindingIndex, oldOverride);
