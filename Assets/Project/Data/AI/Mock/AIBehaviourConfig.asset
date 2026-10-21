@@ -18,7 +18,7 @@ MonoBehaviour:
   _routineHours: 6
   _maxStartDelayHours: 2
   _minRemainingRatio: 0.17
-  _homeReturnMarginSeconds: 10
+  _homeReturnMarginSeconds: 20
   _toolTidySecondsEstimate: 5
   _walkSpeedEstimate: 3.5
   _toolSightRadius: 8
@@ -56,8 +56,8 @@ MonoBehaviour:
     Kills: 4
     ChasePlayer: 1
   _ghostHuntTimeoutSeconds: 90
-  _huntRadiusMin: 10
-  _huntRadiusMax: 60
+  _huntRadiusMin: 60
+  _huntRadiusMax: 300
   _ghostSpawnDelaySeconds: 3
   _toolMissingStress: 5
   _toolSearchFailedStress: 10
@@ -100,3 +100,9 @@ MonoBehaviour:
   _traceMaxPerKind: 5
   _traceNeglectStressPerDay: 0.5
   _traceNeglectStressMax: 3
+  _memoryDays: 2
+  _memoryEntriesPerKind: 10
+  _villagerStressMax: 100
+  _villagerStressAnxious: 50
+  _villagerStressLimit: 100
+  _villagerStressMorningDecay: 5
