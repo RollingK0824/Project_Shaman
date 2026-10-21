@@ -16,7 +16,7 @@ public class NetworkTestTrigger : MonoBehaviour
     private NetItemSpawner _itemSpawner;
 
     private GameManager _gameManager;
-    private GUIStyle _resultStyle;
+    //private GUIStyle _resultStyle;
 
     // 테스트 패널 (F1)
     private bool _panelOpen;
