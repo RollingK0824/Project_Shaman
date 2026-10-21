@@ -572,6 +572,7 @@ GameObject:
   - component: {fileID: 8138632703156585854}
   - component: {fileID: 8299054508780920671}
   - component: {fileID: 4851121491699357251}
+  - component: {fileID: 6806520525206389558}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -682,6 +683,11 @@ MonoBehaviour:
   _viewTransitionSpeed: 12
   _playerBodyRenderers: []
   _hideBodyInFirstPerson: 1
+  _firstPersonNearClip: 0.05
+  _cameraWallPadding: 0.015
+  _cameraObstructionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   _inspectRotationSensitivity: 0.2
   _focusFov: 35
   _focusRotationSpeed: 12
@@ -989,6 +995,7 @@ MonoBehaviour:
   _animator: {fileID: 0}
   _blendTime: 0.12
   _turnDeadZone: 15
+  _stressWalkBlendTime: 0.3
 --- !u!114 &3905228220614721933
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1323,6 +1330,18 @@ MonoBehaviour:
   _craftSuccess: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanSave: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanUse: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
+--- !u!114 &6806520525206389558
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66c536aabbff81549bf09e28285f8008, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::PlayerGhostTarget
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0
