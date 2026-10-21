@@ -7,7 +7,7 @@ using ProjectShaman.AI.Defines;
 namespace ProjectShaman.AI.Minion
 {
     [RequireComponent(typeof(AI_Movement), typeof(AI_Status))]
-    public class AI_Minion : MonoBehaviour
+    public class AI_Minion : MonoBehaviour, IItemControlReceiver
     {
         private const float RANGE_TOLERANCE = 0.3f;
         private const float REPATH_MOVE_DISTANCE = 0.5f;
@@ -32,11 +32,18 @@ namespace ProjectShaman.AI.Minion
         private float _nextRepathTime;
         private float _nextAttackTime;
         private float _attackHitTime;
+        private float _staggerUntil;
+        private float _slowUntil;
+        private float _slowMultiplier = 1f;
+        private float _blindUntil;
 
         public MinionState State => _state;
         public MinionData Data => _data;
 
         public event Action<AI_Minion> OnRemoved;
+        public event Action<AI_Minion> OnAttackStarted;
+        public event Action<AI_Minion, bool> OnAttackResolved;
+        public event Action<AI_Minion, ItemControlEffect> OnControlApplied;
 
         private void Awake()
         {
@@ -98,6 +105,11 @@ namespace ProjectShaman.AI.Minion
 
             _distanceToObjective = MinionBattlefield.FlatDistance(transform.position, _battlefield.Objective.position);
 
+            if (Time.time < _staggerUntil)
+            {
+                return;
+            }
+
             switch (_state)
             {
                 case MinionState.MoveToObjective:
@@ -122,7 +134,7 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
-            if (Time.time >= _nextAggroCheckTime)
+            if (Time.time >= _nextAggroCheckTime && Time.time >= _blindUntil)
             {
                 _nextAggroCheckTime = Time.time + _data.AggroCheckInterval;
 
@@ -155,6 +167,13 @@ namespace ProjectShaman.AI.Minion
         {
             if (!_player.IsValid)
             {
+                EnterMoveToObjective();
+                return;
+            }
+
+            if (Time.time < _blindUntil)
+            {
+                AILog.Log(AILog.MINION, name, $"Chase on {_targetName} dropped (senses blocked), back to objective");
                 EnterMoveToObjective();
                 return;
             }
@@ -215,7 +234,9 @@ namespace ProjectShaman.AI.Minion
             float distance = MinionBattlefield.FlatDistance(transform.position, playerPosition);
             _nextAttackTime = Time.time + _data.AttackInterval;
 
-            if (distance <= _data.AttackRange + RANGE_TOLERANCE)
+            bool hit = distance <= _data.AttackRange + RANGE_TOLERANCE;
+
+            if (hit)
             {
                 _player.Damageable.ReceiveDamage(_data.AttackDamage, gameObject);
                 AILog.Log(AILog.MINION, name, $"Attack {_targetName} damage={_data.AttackDamage:F1} ({DamageTypeTag.Resolve(gameObject)})");
@@ -226,6 +247,7 @@ namespace ProjectShaman.AI.Minion
             }
 
             _state = MinionState.ChasePlayer;
+            OnAttackResolved?.Invoke(this, hit);
         }
 
         private void HitObjective()
@@ -268,6 +290,51 @@ namespace ProjectShaman.AI.Minion
         {
             _state = MinionState.Attack;
             _attackHitTime = Time.time + _data.AttackWindup;
+            OnAttackStarted?.Invoke(this);
+        }
+
+        public bool TryApplyItemControl(ItemControlEffect effect, GameObject source)
+        {
+            if (!_isSimulating || _state == MinionState.Dead || !effect.IsValid)
+            {
+                return false;
+            }
+
+            float until = Time.time + effect.Duration;
+            string sourceName = source != null ? source.name : "unknown";
+
+            switch (effect.Kind)
+            {
+                case ItemControlKind.Stagger:
+                    _staggerUntil = Mathf.Max(_staggerUntil, until);
+                    _movement.Stop();
+
+                    if (_state == MinionState.Attack)
+                    {
+                        _state = MinionState.ChasePlayer;
+                        _nextAttackTime = Mathf.Max(_nextAttackTime, _staggerUntil);
+                    }
+
+                    _nextRepathTime = 0f;
+                    break;
+
+                case ItemControlKind.Slow:
+                    _slowMultiplier = Time.time < _slowUntil ? Mathf.Min(_slowMultiplier, effect.SpeedMultiplier) : effect.SpeedMultiplier;
+                    _slowUntil = Mathf.Max(_slowUntil, until);
+                    _nextRepathTime = 0f;
+                    break;
+
+                case ItemControlKind.SensoryInterference:
+                    _blindUntil = Mathf.Max(_blindUntil, until);
+                    break;
+
+                default:
+                    return false;
+            }
+
+            AILog.Log(AILog.MINION, name, $"Item control {effect.Kind} {effect.Duration:F1}s by {sourceName}");
+            OnControlApplied?.Invoke(this, effect);
+            return true;
         }
 
         private void MoveToward(Vector3 destination, float speed)
@@ -279,7 +346,7 @@ namespace ProjectShaman.AI.Minion
 
             _nextRepathTime = Time.time + _data.RepathInterval;
             _lastDestination = destination;
-            _movement.SetSpeed(speed);
+            _movement.SetSpeed(Time.time < _slowUntil ? speed * _slowMultiplier : speed);
             _movement.MoveTo(destination);
         }
 
