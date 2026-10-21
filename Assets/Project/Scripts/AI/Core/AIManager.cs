@@ -5,7 +5,9 @@ using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
+using ProjectShaman.AI.Memory;
 using ProjectShaman.AI.Routine;
+using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.World;
 using ProjectShaman.AI.Work;
 
@@ -109,6 +111,7 @@ namespace ProjectShaman.AI.Core
                     villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
                     core.OnRoutineFailed += villager.RoutineFailedHandler;
                     SubscribeDeath(villager);
+                    AttachStress(villager);
 
                     foreach (IAIConfigurable configurable in core.GetComponents<IAIConfigurable>())
                     {
@@ -184,6 +187,16 @@ namespace ProjectShaman.AI.Core
                 villager.SetToday(blocks, CalculateHomeReturnTime(villager, dayCount));
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
                 PlanCorruption(villager, dayCount);
+
+                if (villager.Memory != null)
+                {
+                    villager.Memory.BeginDay(dayCount);
+                }
+
+                if (villager.Stress != null)
+                {
+                    villager.Stress.ApplyMorningDecay();
+                }
                 AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s)");
             }
         }
@@ -372,6 +385,16 @@ namespace ProjectShaman.AI.Core
             status.OnDied += villager.DiedHandler;
         }
 
+        private void AttachStress(VillagerRuntime villager)
+        {
+            if (!villager.Core.TryGetComponent(out AI_Stress stress))
+            {
+                stress = villager.Core.gameObject.AddComponent<AI_Stress>();
+            }
+
+            villager.Stress = stress;
+        }
+
         private void UnsubscribeDeath(VillagerRuntime villager)
         {
             if (villager.Status != null)
@@ -463,7 +486,10 @@ namespace ProjectShaman.AI.Core
 
         private void RecordMemory(VillagerRuntime villager, ResolvedRoutine resolved)
         {
-            AILog.Log(AILog.STUB, villager.Id, $"RecordMemory skipped (memory branch) #{resolved.Serial}");
+            if (villager.Memory != null)
+            {
+                villager.Memory.RecordRoutine(resolved);
+            }
         }
 
         public class VillagerRuntime
@@ -473,8 +499,10 @@ namespace ProjectShaman.AI.Core
 
             public AI_Core Core { get; }
             public AI_ToolHandler ToolHandler { get; }
+            public AI_Memory Memory { get; }
             public System.Action<string> RoutineFailedHandler { get; set; }
             public AI_Status Status { get; set; }
+            public AI_Stress Stress { get; set; }
             public System.Action<AI_Status, GameObject> DiedHandler { get; set; }
             public VillagerProfile Profile => Core.Profile;
             public string Id { get; }
@@ -490,6 +518,7 @@ namespace ProjectShaman.AI.Core
                 Core = core;
                 Id = core.LogId;
                 ToolHandler = core.GetComponent<AI_ToolHandler>();
+                Memory = core.GetComponent<AI_Memory>();
             }
 
             public int NextSerial()

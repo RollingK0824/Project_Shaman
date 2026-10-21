@@ -10,7 +10,6 @@ namespace ProjectShaman.AI
         [SerializeField] private float _fontSize = 4f;
         [SerializeField] private float _maxWidth = 6f;
         [SerializeField] private float _showSeconds = 2.3f;
-        [SerializeField] private float _hearingDistance = 0f;
         [SerializeField] private Color _textColor = Color.white;
         [SerializeField] private Color _outlineColor = Color.black;
         [SerializeField, Range(0f, 1f)] private float _outlineWidth = 0.25f;
@@ -52,8 +51,6 @@ namespace ProjectShaman.AI
                 return;
             }
 
-            bool inRange = _hearingDistance <= 0f || (viewer.transform.position - transform.position).sqrMagnitude <= _hearingDistance * _hearingDistance;
-            _text.enabled = inRange;
             _text.transform.position = transform.position + Vector3.up * _height;
             _text.transform.rotation = viewer.transform.rotation;
         }
