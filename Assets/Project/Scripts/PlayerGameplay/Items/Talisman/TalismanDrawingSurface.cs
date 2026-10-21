@@ -87,10 +87,10 @@ public class TalismanDrawingSurface : MonoBehaviour, IItemVisualContext
         if (_data != null)
             foreach (var stroke in _data.Strokes)
                 for (int i = 0; i < stroke.Points.Count; i++)
-                    Line(stroke.Points[Mathf.Max(0, i - 1)], stroke.Points[i], stroke.Eraser);
+                    Line(stroke.Points[Mathf.Max(0, i - 1)], stroke.Points[i], stroke);
         _texture.SetPixels32(_pixels); _texture.Apply(false, false);
     }
-    private void Line(Vector2 a, Vector2 b, bool eraser)
+    private void Line(Vector2 a, Vector2 b, TalismanStroke stroke)
     {
         a = _drawingRegion.min + Vector2.Scale(a, _drawingRegion.size);
         b = _drawingRegion.min + Vector2.Scale(b, _drawingRegion.size);
@@ -101,13 +101,13 @@ public class TalismanDrawingSurface : MonoBehaviour, IItemVisualContext
         {
             var v = Vector2.Lerp(p, q, i / (float)steps);
             int x = Mathf.RoundToInt(v.x), y = Mathf.RoundToInt(v.y);
-            int radius = eraser ? 6 : 1;
+            int radius = stroke.Radius;
             for (int dy = -radius; dy <= radius; dy++) for (int dx = -radius; dx <= radius; dx++)
-                if (dx * dx + dy * dy <= radius * radius && x + dx >= 0 && x + dx < Width && y + dy >= 0 && y + dy < Height &&
+                if (stroke.CoversPixel(dx, dy, x + dx, y + dy) && x + dx >= 0 && x + dx < Width && y + dy >= 0 && y + dy < Height &&
                     _drawingRegion.Contains(new Vector2((x + dx) / (float)(Width - 1), (y + dy) / (float)(Height - 1))))
                 {
                     int index = (y + dy) * Width + x + dx;
-                    _pixels[index] = eraser ? _background[index] : (Color32)_inkColor;
+                    _pixels[index] = stroke.Eraser ? _background[index] : (Color32)_inkColor;
                 }
         }
     }

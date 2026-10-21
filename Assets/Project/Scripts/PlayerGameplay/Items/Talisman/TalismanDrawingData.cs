@@ -7,8 +7,23 @@ public class TalismanStroke
 {
     [SerializeField] private List<Vector2> _points = new();
     [SerializeField] private bool _eraser;
+    [SerializeField] private int _radius;
+    [SerializeField] private int _brushStyle;
+    // Zero is the legacy format: old drawings retain their original widths.
+    public int Radius => _radius == 0 ? (_eraser ? 6 : 1) : Mathf.Clamp(_radius, 1, 16);
+    public int BrushStyle => _brushStyle;
+    public bool HasValidBrush => _radius >= 0 && _radius <= 16 && _brushStyle >= 0 && _brushStyle <= 2;
     public bool Eraser => _eraser;
-    public TalismanStroke(bool eraser = false) { _eraser = eraser; }
+    public bool CoversPixel(int dx, int dy, int x, int y)
+    {
+        if (dx * dx + dy * dy > Radius * Radius) return false;
+        if (_eraser || _brushStyle == 0) return true;
+        // Paper-space grain is deterministic across redraws, thumbnails and saved instances.
+        uint grain = unchecked((uint)(x * 374761393 + y * 668265263));
+        grain = (grain ^ (grain >> 13)) * 1274126177u;
+        return grain % 100 >= (_brushStyle == 1 ? 12u : 35u);
+    }
+    public TalismanStroke(bool eraser = false, int radius = 0, int brushStyle = 0) { _eraser = eraser; _radius = Mathf.Clamp(radius, 0, 16); _brushStyle = Mathf.Clamp(brushStyle, 0, 2); }
     public IReadOnlyList<Vector2> Points => _points;
     internal void Add(Vector2 point) => _points.Add(point);
 }
@@ -59,7 +74,7 @@ public class TalismanDrawingData
         int count = 0;
         foreach (var stroke in _strokes)
         {
-            if (stroke == null || stroke.Points == null) return false;
+            if (stroke == null || stroke.Points == null || !stroke.HasValidBrush) return false;
             foreach (var point in stroke.Points) if (!Inside(point) || ++count > MaxPoints) return false;
         }
         return HasDrawing && HasVisibleInk();
@@ -75,13 +90,13 @@ public class TalismanDrawingData
                 Vector2 a = region.min + Vector2.Scale(stroke.Points[Mathf.Max(0, i - 1)], region.size);
                 Vector2 b = region.min + Vector2.Scale(stroke.Points[i], region.size);
                 a = Vector2.Scale(a, new Vector2(width - 1, height - 1)); b = Vector2.Scale(b, new Vector2(width - 1, height - 1));
-                int steps = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(a, b))), radius = stroke.Eraser ? 6 : 1;
+                int steps = Mathf.Max(1, Mathf.CeilToInt(Vector2.Distance(a, b))), radius = stroke.Radius;
                 for (int step = 0; step <= steps; step++)
                 {
                     Vector2 p = Vector2.Lerp(a, b, step / (float)steps);
                     int x = Mathf.RoundToInt(p.x), y = Mathf.RoundToInt(p.y);
                     for (int dy = -radius; dy <= radius; dy++) for (int dx = -radius; dx <= radius; dx++)
-                        if (dx * dx + dy * dy <= radius * radius && x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height &&
+                        if (stroke.CoversPixel(dx, dy, x + dx, y + dy) && x + dx >= 0 && x + dx < width && y + dy >= 0 && y + dy < height &&
                             region.Contains(new Vector2((x + dx) / (float)(width - 1), (y + dy) / (float)(height - 1))))
                             ink[(y + dy) * width + x + dx] = !stroke.Eraser;
                 }
@@ -99,12 +114,12 @@ public class TalismanDrawingData
     public int PointCount => _pointCount;
     public IReadOnlyList<TalismanStroke> Strokes => _strokes;
     public event Action Changed;
-    public bool BeginStroke(Vector2 point, bool eraser = false)
+    public bool BeginStroke(Vector2 point, bool eraser = false, int radius = 0, int brushStyle = 0)
     {
         EndStroke();
         if (!Inside(point) || _strokes.Count >= MaxStrokes || _pointCount >= MaxPoints) return false;
         Remember();
-        _active = new TalismanStroke(eraser);
+        _active = new TalismanStroke(eraser, radius, brushStyle);
         _strokes.Add(_active);
         return AppendPoint(point);
     }

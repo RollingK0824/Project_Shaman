@@ -1,5 +1,7 @@
 using UnityEngine;
 
+// Resolve camera obstruction after the camera pivot and hit/stress feedback have moved.
+[DefaultExecutionOrder(100)]
 [RequireComponent(typeof(PlayerInputReader))]
 [RequireComponent(typeof(PlayerController))]
 [RequireComponent(typeof(PlayerCameraController))]
@@ -33,6 +35,16 @@ public class PlayerViewModeController : MonoBehaviour
     [SerializeField] private Renderer[] _playerBodyRenderers;
 
     [SerializeField] private bool _hideBodyInFirstPerson = true;
+
+    [Header("First Person Wall Protection")]
+    [SerializeField, Range(.01f, .1f)] private float _firstPersonNearClip = .05f;
+    [SerializeField, Min(0f)] private float _cameraWallPadding = .015f;
+    [SerializeField] private LayerMask _cameraObstructionMask = ~0;
+    private CharacterController _bodyCollider;
+    private float _previousNearClip;
+    private bool _nearClipOverridden;
+    private readonly Vector3[] _nearPlaneCorners = new Vector3[4];
+    private readonly RaycastHit[] _cameraHits = new RaycastHit[32];
 
     [Header("Inspect")]
     [SerializeField] private float _inspectRotationSensitivity = 0.2f;
@@ -72,6 +84,7 @@ public class PlayerViewModeController : MonoBehaviour
         _cameraController = GetComponent<PlayerCameraController>();
         _playerInteractor = GetComponent<PlayerInteractor>();
         _playerHealth = GetComponent<PlayerHealth>();
+        _bodyCollider = GetComponent<CharacterController>();
         // Resolve the current character, including PL_1 replacements and inactive renderers.
         var character = transform.Find("CharacterVisual");
         if (character != null) _playerBodyRenderers = character.GetComponentsInChildren<Renderer>(true);
@@ -80,7 +93,7 @@ public class PlayerViewModeController : MonoBehaviour
 
     private void OnEnable()
     {
-        if (_inputReader != null) _inputReader.CancelPressed += EndCurrentMode;
+        if (_inputReader != null) _inputReader.CancelPressed += HandleCancel;
         if (_inputReader != null) _inputReader.ViewTogglePressed += HandleViewToggle;
     }
 
@@ -107,17 +120,20 @@ public class PlayerViewModeController : MonoBehaviour
         if (IsObserving)
         {
             UpdateObservationFocus();
-            return;
         }
-
-        UpdateCameraViewPosition();
+        else
+        {
+            UpdateCameraViewPosition();
+        }
+        ProtectFirstPersonCamera();
     }
 
     private void OnDisable()
     {
-        if (_inputReader != null) _inputReader.CancelPressed -= EndCurrentMode;
+        if (_inputReader != null) _inputReader.CancelPressed -= HandleCancel;
         if (_inputReader != null) _inputReader.ViewTogglePressed -= HandleViewToggle;
         EndCurrentMode();
+        RestoreNearClip();
         if (_playerBodyRenderers != null)
             foreach (var body in _playerBodyRenderers) if (body != null) body.forceRenderingOff = false;
     }
@@ -156,6 +172,7 @@ public class PlayerViewModeController : MonoBehaviour
         }
 
         ApplyBodyVisibility();
+        UpdateNearClip();
 
         Debug.Log(
             $"[ViewMode] {CurrentViewMode}"
@@ -195,6 +212,75 @@ public class PlayerViewModeController : MonoBehaviour
                 : _thirdPersonCameraLocalPosition;
 
         ApplyBodyVisibility();
+        ProtectFirstPersonCamera();
+    }
+
+    private void UpdateNearClip()
+    {
+        if (_playerCamera == null || !PlayerLocalPresentation.IsLocal(gameObject)) return;
+        if (CurrentViewMode != ViewMode.FirstPerson)
+        {
+            RestoreNearClip();
+            return;
+        }
+        if (!_nearClipOverridden)
+        {
+            _previousNearClip = _playerCamera.nearClipPlane;
+            _nearClipOverridden = true;
+        }
+        // Preserve an already smaller project-specific clip distance.
+        _playerCamera.nearClipPlane = Mathf.Min(_previousNearClip, Mathf.Clamp(_firstPersonNearClip, .01f, .1f));
+    }
+
+    private void RestoreNearClip()
+    {
+        if (_nearClipOverridden && _playerCamera != null) _playerCamera.nearClipPlane = _previousNearClip;
+        _nearClipOverridden = false;
+    }
+
+    private void ProtectFirstPersonCamera()
+    {
+        UpdateNearClip();
+        if (CurrentViewMode != ViewMode.FirstPerson || _playerCamera == null ||
+            !_playerCamera.isActiveAndEnabled || !PlayerLocalPresentation.IsLocal(gameObject) ||
+            _bodyCollider == null || !_bodyCollider.enabled) return;
+
+        // Protect the near-plane corners as well as the optical centre when looking sideways.
+        _playerCamera.CalculateFrustumCorners(new Rect(0f, 0f, 1f, 1f), _playerCamera.nearClipPlane,
+            Camera.MonoOrStereoscopicEye.Mono, _nearPlaneCorners);
+        float radius = 0f;
+        foreach (var corner in _nearPlaneCorners) radius = Mathf.Max(radius, corner.magnitude);
+        radius += Mathf.Max(0f, _cameraWallPadding);
+
+        // Start inside the player's collision capsule, not at the offset/shaking camera pivot.
+        // Clamp along the capsule axis so crouching and overhead obstacles also use a safe origin.
+        var bodyTransform = _bodyCollider.transform;
+        var scale = bodyTransform.lossyScale;
+        float bodyRadius = _bodyCollider.radius * Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.z));
+        float halfAxis = Mathf.Max(0f, _bodyCollider.height * Mathf.Abs(scale.y) * .5f - bodyRadius);
+        var centre = bodyTransform.TransformPoint(_bodyCollider.center);
+        var desired = _playerCamera.transform.position;
+        var origin = centre + bodyTransform.up * Mathf.Clamp(Vector3.Dot(desired - centre, bodyTransform.up), -halfAxis, halfAxis);
+        var delta = desired - origin;
+        float distance = delta.magnitude;
+        if (distance <= .0001f) return;
+        var direction = delta / distance;
+        int count = Physics.SphereCastNonAlloc(origin, radius, direction, _cameraHits, distance,
+            _cameraObstructionMask, QueryTriggerInteraction.Ignore);
+        // A dense scene must not silently drop the nearest wall when the buffer fills.
+        var hits = count == _cameraHits.Length
+            ? Physics.SphereCastAll(origin, radius, direction, distance, _cameraObstructionMask, QueryTriggerInteraction.Ignore)
+            : _cameraHits;
+        if (hits != _cameraHits) count = hits.Length;
+        float allowed = distance;
+        for (int i = 0; i < count; i++)
+        {
+            var hit = hits[i];
+            if (hit.collider == null || hit.collider.transform.IsChildOf(transform)) continue;
+            allowed = Mathf.Min(allowed, Mathf.Max(0f, hit.distance - .001f));
+        }
+        // Correct immediately toward the body; lerping through a wall would expose the other side.
+        if (allowed < distance) _playerCamera.transform.position = origin + direction * allowed;
     }
 
     private void ApplyBodyVisibility()
@@ -479,6 +565,16 @@ public class PlayerViewModeController : MonoBehaviour
     // =========================================================
     // Common
     // =========================================================
+
+    private void HandleCancel()
+    {
+        if (!IsBusy || GameMenuUI.IsOpen ||
+            (_inputReader != null && _inputReader.IsCancelReservedForUI)) return;
+        var drawing = GetComponent<PlayerTalismanDrawingController>();
+        if (drawing != null && drawing.IsDrawing) return;
+        _inputReader?.MarkCancelHandled();
+        EndCurrentMode();
+    }
 
     public void EndCurrentMode()
     {

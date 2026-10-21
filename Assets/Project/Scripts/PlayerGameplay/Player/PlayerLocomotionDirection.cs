@@ -9,6 +9,11 @@ public class PlayerLocomotionDirection : MonoBehaviour
     [SerializeField] private Animator _animator;
     [SerializeField, Min(0f)] private float _blendTime = .12f;
     [SerializeField, Min(0f)] private float _turnDeadZone = 15f;
+    [Header("Stress Walk")]
+    [Tooltip("Uses PlayerStressController's High Threshold (default 70), including replicated High level on remote players.")]
+    [SerializeField, Min(.01f)] private float _stressWalkBlendTime = .3f;
+    private PlayerStressController _stress;
+    private bool _hasStressWalk;
     private CharacterController _controller;
     private PlayerController _player;
     private PlayerCrouch _crouch;
@@ -18,14 +23,18 @@ public class PlayerLocomotionDirection : MonoBehaviour
     private static readonly int MoveY = Animator.StringToHash("MoveY");
     private static readonly int Turn = Animator.StringToHash("Turn");
     private static readonly int Crouch = Animator.StringToHash("Crouch");
+    private static readonly int StressWalk = Animator.StringToHash("StressWalk");
 
     private void Awake()
     {
         _controller = GetComponent<CharacterController>();
         _player = GetComponent<PlayerController>();
         _crouch = GetComponent<PlayerCrouch>();
+        _stress = GetComponent<PlayerStressController>();
         if (_animator == null) _animator = transform.Find("CharacterVisual")?.GetComponentInChildren<Animator>(true);
         if (_animator != null) foreach (var p in _animator.parameters) if (p.nameHash == Crouch) _hasCrouch = true;
+        if (_animator != null) foreach (var p in _animator.parameters)
+            if (p.nameHash == StressWalk && p.type == AnimatorControllerParameterType.Float) _hasStressWalk = true;
     }
     private void OnEnable() => _previousYaw = transform.eulerAngles.y;
     private void LateUpdate()
@@ -34,7 +43,12 @@ public class PlayerLocomotionDirection : MonoBehaviour
         float delta = Mathf.DeltaAngle(_previousYaw, yaw);
         _previousYaw = yaw;
         if (_animator == null || !_animator.isActiveAndEnabled || Time.deltaTime <= 0f) return;
-        // Remote parameters belong to the existing NetworkAnimator, not local inference.
+        // High level is already replicated to remote players by NetPlayerStatus.
+        // Exact stress is owner-only, so never infer remote stress from CurrentStress.
+        if (_hasStressWalk)
+            _animator.SetFloat(StressWalk, _stress != null && _stress.CurrentLevel == PlayerStressController.StressLevel.High ? 1f : 0f,
+                _stressWalkBlendTime, Time.deltaTime);
+        // Remote movement parameters belong to the existing network adapter.
         if ((NetworkClient.active || NetworkServer.active) && (_player == null || !_player.isLocalPlayer)) return;
         bool canMove = _player != null && _player.CanMove && PlayerActionGuard.CanAct(gameObject);
         Vector3 velocity = canMove && _controller != null && _controller.enabled

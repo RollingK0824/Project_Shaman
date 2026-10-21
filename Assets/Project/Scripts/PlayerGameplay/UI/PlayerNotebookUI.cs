@@ -27,6 +27,7 @@ public class PlayerNotebookUI : MonoBehaviour
     private readonly List<GameObject> _pageRoots = new();
     private readonly List<GameObject> _hiddenPlaceholders = new();
     private bool _claimedInput;
+    private bool _listensForCancel;
     private bool _previousCursorVisible;
     private CursorLockMode _previousCursorLock;
     public bool IsBound => _owner != null;
@@ -52,9 +53,32 @@ public class PlayerNotebookUI : MonoBehaviour
         _notebook = owner.GetComponent<PlayerNotebook>();
         _health = owner.GetComponent<PlayerHealth>();
         _panel.gameObject.SetActive(false);
-        if (_input != null) { _input.NotebookPressed += Toggle; _input.CancelPressed += Close; }
+        if (_input != null) _input.NotebookPressed += Toggle;
+        RefreshCancelSubscription();
         if (_notebook != null) _notebook.NotebookOpenRequested += Open;
         if (_health != null) _health.Died += HandleDeath;
+    }
+
+    private void RefreshCancelSubscription()
+    {
+        var manager = UIManager.Existing;
+        bool listen = _input != null && (manager == null || !manager.isActiveAndEnabled);
+        if (_listensForCancel == listen) return;
+        if (_input != null)
+        {
+            if (listen) _input.CancelPressed += HandleFallbackCancel;
+            else _input.CancelPressed -= HandleFallbackCancel;
+        }
+        _listensForCancel = listen;
+    }
+
+    private void HandleFallbackCancel()
+    {
+        // Also guard a manager created earlier in this input frame.
+        var manager = UIManager.Existing;
+        if (!IsOpen || (manager != null && manager.isActiveAndEnabled)) return;
+        _input?.MarkCancelHandled();
+        Close();
     }
 
     private void EnsurePages()
@@ -115,6 +139,8 @@ public class PlayerNotebookUI : MonoBehaviour
         if (_owner == null || _input == null || !_input.isActiveAndEnabled ||
             _input.GameplayInputBlocked || !PlayerActionGuard.CanAct(_owner.gameObject) ||
             !PlayerLocalPresentation.IsLocal(_owner.gameObject)) return;
+        var view = _owner.GetComponent<PlayerViewModeController>();
+        if ((view != null && view.IsBusy) || GameMenuUI.IsOpen) return;
         var manager = UIManager.Existing;
         if (manager != null && manager.IsMenuOpen) return;
         _previousCursorVisible = Cursor.visible; _previousCursorLock = Cursor.lockState;
@@ -151,6 +177,7 @@ public class PlayerNotebookUI : MonoBehaviour
     private void LateUpdate()
     {
         if (!IsBound) return;
+        RefreshCancelSubscription();
         UpdateShortcut();
         if (IsOpen && (_input == null || !_input.isActiveAndEnabled ||
             !PlayerActionGuard.CanAct(_owner.gameObject) || !PlayerLocalPresentation.IsLocal(_owner.gameObject))) Close();
@@ -278,7 +305,8 @@ public class PlayerNotebookUI : MonoBehaviour
     public void Unbind()
     {
         Close();
-        if (_input != null) { _input.NotebookPressed -= Toggle; _input.CancelPressed -= Close; }
+        if (_input != null) { _input.NotebookPressed -= Toggle; _input.CancelPressed -= HandleFallbackCancel; }
+        _listensForCancel = false;
         if (_notebook != null) _notebook.NotebookOpenRequested -= Open;
         if (_health != null) _health.Died -= HandleDeath;
         _inventory?.Bind(null); _crafting?.Bind(null);

@@ -39,17 +39,40 @@ public class QuickSlotUI : MonoBehaviour
     public PlayerInventory BoundInventory => _inventory;
 
     private int _selectedIndex = -1;
+    private float _nextBindingCheck;
     private readonly TalismanDrawingSurface[] _drawings = new TalismanDrawingSurface[6];
     private readonly Image[] _selectionFrames = new Image[6];
 
     private void LateUpdate()
     {
+        ResolveLocalPlayer();
         var rect = transform as RectTransform;
         if (rect == null || rect.rect.width <= 0f) return;
         float unit = PlayerItemUIStyle.ViewportUnit(rect);
         rect.localScale = Vector3.one * (560f / rect.rect.width) * unit;
         rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
         rect.anchoredPosition = new Vector2(0f, 62f * unit);
+    }
+
+    private void ResolveLocalPlayer()
+    {
+        if (_inventory != null && _inventory.gameObject.activeInHierarchy &&
+            PlayerLocalPresentation.IsLocal(_inventory.gameObject) && _inputReader != null) return;
+        if (Time.unscaledTime < _nextBindingCheck) return;
+        _nextBindingCheck = Time.unscaledTime + .5f;
+
+        // Scene HUDs can outlive a player or start without serialized player references.
+        // Never guess between multiple offline players or bind another client's inventory.
+        PlayerInventory candidate = null;
+        foreach (var inventory in FindObjectsByType<PlayerInventory>(FindObjectsSortMode.None))
+        {
+            if (!PlayerLocalPresentation.IsLocal(inventory.gameObject) ||
+                inventory.GetComponent<PlayerInputReader>() == null) continue;
+            if (candidate != null) { candidate = null; break; }
+            candidate = inventory;
+        }
+        if (candidate != null) Bind(candidate, candidate.GetComponent<PlayerInputReader>());
+        else if (_inventory != null) Bind(null, null);
     }
 
     public void Bind(PlayerInventory inventory, PlayerInputReader inputReader)

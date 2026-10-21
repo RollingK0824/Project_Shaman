@@ -103,6 +103,7 @@ public class PlayerSpectatorController : MonoBehaviour
         IsSpectating = true;
         SpectatorModeEntered?.Invoke();
         RefreshTargets();
+        NextTarget();
     }
 
     public void ExitSpectatorMode()

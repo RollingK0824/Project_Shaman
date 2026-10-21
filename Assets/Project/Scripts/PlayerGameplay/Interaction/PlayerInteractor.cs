@@ -41,6 +41,7 @@ public class PlayerInteractor : MonoBehaviour
 
     private void OnDisable()
     {
+        SetCurrentTarget(null);
         if (_inputReader != null)
         {
             _inputReader.InteractPressed -=
@@ -50,7 +51,7 @@ public class PlayerInteractor : MonoBehaviour
 
     private void UpdateTarget()
     {
-        if (!CanInteract || !PlayerActionGuard.CanAct(gameObject))
+        if (!CanInteract || _inputReader.GameplayInputBlocked || !PlayerActionGuard.CanAct(gameObject))
         {
             SetCurrentTarget(null);
             return;

@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public class InventoryUIController : MonoBehaviour
 {
@@ -14,19 +14,6 @@ public class InventoryUIController : MonoBehaviour
         (panel == _inventoryPanel.transform || panel.IsChildOf(_inventoryPanel.transform));
 
 
-    private void OnEnable()
-    {
-        if (_inputReader == null)
-        {
-            return;
-        }
-
-        // Inventory is a notebook page now; there is no separate I key.
-        _inputReader.CancelPressed +=
-            HandleCancel;
-    }
-
-
     private void Start()
     {
         SetInventoryOpen(false);
@@ -35,12 +22,6 @@ public class InventoryUIController : MonoBehaviour
 
     private void OnDisable()
     {
-        if (_inputReader != null)
-        {
-            _inputReader.CancelPressed -=
-                HandleCancel;
-        }
-
         if (IsOpen)
         {
             SetInventoryOpen(false);
@@ -48,23 +29,7 @@ public class InventoryUIController : MonoBehaviour
     }
 
 
-    // =========================================================
-    // Input
-    // =========================================================
-
-    private void HandleCancel()
-    {
-        if (!IsOpen)
-        {
-            return;
-        }
-
-        var panel = _inventoryPanel != null ? _inventoryPanel.GetComponentInChildren<InventoryPanelUI>(true) : null;
-        if (panel != null && panel.BackToMain()) return;
-        SetInventoryOpen(false);
-    }
-
-
+    // Legacy presentation API only; notebook/UIManager now own keyboard closing.
     // =========================================================
     // Open / Close
     // =========================================================
