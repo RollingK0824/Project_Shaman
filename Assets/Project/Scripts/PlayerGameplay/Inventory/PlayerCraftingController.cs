@@ -25,9 +25,19 @@ public class PlayerCraftingController : MonoBehaviour
         : NetworkServer.active && _authorityCheck != null && _authorityCheck();
     public bool CanRequestCraft(CraftingRecipeData recipe) => CanCraft(recipe) && (CanExecuteLocally || CraftRequested != null);
 
+    public bool AlreadyOwnsUniqueResult(CraftingRecipeData recipe)
+    {
+        var result = recipe != null ? recipe.ResultItem : null;
+        if (_inventory == null || result == null || !result.IsUnique) return false;
+        if (_inventory.Contains(result)) return true;
+        for (int i = 0; i < _inventory.QuickSlotCount; i++)
+            if (_inventory.GetQuickSlotItem(i) == result) return true;
+        return GetComponent<PlayerItemController>()?.EquippedItemData == result;
+    }
+
     public bool CanCraft(CraftingRecipeData recipe)
     {
-        if (_inventory == null || recipe == null || !PlayerActionGuard.CanAct(gameObject)) return false;
+        if (_inventory == null || recipe == null || !PlayerActionGuard.CanAct(gameObject) || AlreadyOwnsUniqueResult(recipe)) return false;
         var costs = new Dictionary<ItemData, int>();
         return recipe.TryGetCosts(costs) && _inventory.CanExchangeItems(costs, recipe.ResultItem, recipe.ResultAmount);
     }

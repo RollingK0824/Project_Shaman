@@ -166,10 +166,11 @@ public class CraftingPanelUI : MonoBehaviour
         if (!valid) return "등록된 레시피가 없습니다";
         if (_crafting == null || !_crafting.isActiveAndEnabled || _crafting.Inventory == null || !PlayerActionGuard.CanAct(_crafting.gameObject))
             return "현재 상태에서는 제작할 수 없습니다.";
+        if (_crafting.AlreadyOwnsUniqueResult(recipe)) return $"이미 {recipe.ResultItem.DisplayName}을 보유하고 있습니다.";
         var missing = new List<string>();
         foreach (var cost in _costs)
-            if (_crafting.Inventory.GetItemCount(cost.Key) < cost.Value) missing.Add(cost.Key.DisplayName);
-        if (missing.Count > 0) return string.Join(", ", missing) + " 부족";
+            if (_crafting.Inventory.GetItemCount(cost.Key) < cost.Value) missing.Add(IngredientName(cost.Key));
+        if (missing.Count > 0) return string.Join(", ", missing) + " 재료가 부족합니다.";
         if (!_crafting.CanCraft(recipe)) return "현재 상태에서는 제작할 수 없습니다. 소지품 수량을 확인해 주세요.";
         if (!_crafting.CanRequestCraft(recipe)) return "제작 권한이 없습니다.";
         if (_crafting.CanExecuteLocally && _crafting.Inventory.SharedMaterials != null && !_crafting.Inventory.SharedMaterials.CanMutate)
@@ -177,6 +178,9 @@ public class CraftingPanelUI : MonoBehaviour
                 if (cost.Key.Category == ItemCategory.Material) return "공용 재료를 사용할 권한이 없습니다.";
         return null;
     }
+
+    public static string IngredientName(ItemData item) => item is TalismanItemData talisman && talisman.IsEffectTalisman
+        ? "미사용 " + item.DisplayName : item.DisplayName;
 
     public void Refresh()
     {
@@ -192,7 +196,7 @@ public class CraftingPanelUI : MonoBehaviour
                 int owned = _crafting != null && _crafting.Inventory != null ? _crafting.Inventory.GetItemCount(cost.Key) : 0;
                 bool missing = owned < cost.Value;
                 if (missing) text.Append("<color=#FFA39A>");
-                text.Append($"{(cost.Key.Category == ItemCategory.Material ? "[공용] " : "")}{cost.Key.DisplayName}    {owned} / {cost.Value}");
+                text.Append($"{(cost.Key.Category == ItemCategory.Material ? "[공용] " : "[개인] ")}{IngredientName(cost.Key)}    {owned} / {cost.Value}");
                 if (missing) text.Append("  부족</color>");
                 text.AppendLine();
             }

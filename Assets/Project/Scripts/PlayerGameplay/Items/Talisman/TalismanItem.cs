@@ -17,11 +17,10 @@ public class TalismanItem : ItemBase
         if (!(Data is TalismanItemData talisman)) return;
         if (talisman.TalismanType == TalismanType.Barrier)
         {
-            var camera = Owner.GetComponentInChildren<Camera>();
-            if (!(Data.UseAction is BarrierTalismanUseAction action) || camera == null ||
-                !BarrierTalismanUseAction.IsEquipped(Owner, Data) ||
-                !action.TryGetPlacement(new ItemUseContext(Owner, Data, camera.transform.position, camera.transform.forward), out _, out _))
-            { Owner.GetComponent<PlayerItemFeedback>()?.Unavailable("가까운 벽이나 바닥을 바라보세요"); return; }
+            if (!(Data.UseAction is BarrierTalismanUseAction action) ||
+                !BarrierTalismanUseAction.IsEquipped(Owner, Data) || !action.CanActivate(Owner))
+            { Owner.GetComponent<PlayerItemFeedback>()?.Unavailable(BarrierWard.IsProtecting(Owner) ?
+                "이미 결계가 활성화되어 있습니다" : "결계를 사용할 수 없습니다"); return; }
             if (!TryBuildUseRequest(out var request)) return;
             // Compatibility notification only. The ItemUseRequested judge owns commit/ReportUse.
             UseRequested?.Invoke(this);

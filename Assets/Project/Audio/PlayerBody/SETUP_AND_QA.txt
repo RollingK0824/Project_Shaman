@@ -1,0 +1,98 @@
+Player 1~4 발소리 / 숨소리 / 심박 — 2026-10-21
+
+구현 결과
+- 새 Singleton/컴포넌트 없이 기존 PlayerAudioController를 확장했습니다.
+- PlayerFeedbackController는 기존 시각 효과를 유지하고, 오디오가 있을 때 호흡/심박 제어를 넘깁니다.
+- 기존 Heartbeat/Breathing AudioSource를 재사용하여 두 컴포넌트가 같은 소리를 중복 재생하지 않습니다.
+- SoundManager 및 MainMixer는 수정하지 않았습니다. 기존 SFX 그룹을 직접 연결합니다.
+
+수정 파일 (Assets/Project 기준)
+- Scripts/PlayerGameplay/Feedback/PlayerAudioController.cs
+- Scripts/PlayerGameplay/Feedback/PlayerFeedbackController.cs
+- Prefabs/Player/PlayerPrefabs/Player (1).prefab ~ Player (4).prefab
+  프리팹 변경은 PlayerAudioController의 새 오디오 설정 11개씩만 추가했습니다.
+
+추가 파일
+- Audio/PlayerBody/Heartbeat_Pulse_Placeholder.wav (+ meta)
+- Audio/PlayerBody/Breathing_Loop_Placeholder.wav (+ meta)
+- Audio/PlayerBody/SOURCES.txt / SETUP_AND_QA.txt (+ meta / 폴더 meta)
+
+발소리
+- 로컬: 실제 CharacterController.velocity + 프레임 간 수평 변위 + Grounded를 확인합니다.
+- Idle, 벽에 막힘, 공중, 사망, 관전, CharacterVisual 비활성, 순간이동은 걸음을 만들지 않습니다.
+- 특정 클립 이름/애니메이션 이벤트에 의존하지 않으므로 High 전용 걷기에서도 유지됩니다.
+- 기존 Starter Assets Player_Footstep_01~05.wav를 재사용합니다. 이전 클립 연속 선택을 피합니다.
+- 재사용 AudioSource.PlayOneShot, pitch 0.95~1.05, 음량 변동 ±5%.
+- Walk: 간격 0.48초 / 음량 0.40
+- Sprint: 간격 0.32초 / 음량 0.55
+- Crouch: 간격 0.68초 / 음량 0.18
+- 최소 수평 속도 0.15 m/s, Spatial Blend 1, Linear Rolloff, Min 1m / Max 14m, Doppler 0.
+- 위 수치는 Inspector에서 조정하는 테스트 기본값입니다.
+- 일관된 기존 표면 구분 API가 없어 기본 세트 하나만 사용합니다. 표면 시스템을 추가하지 않았습니다.
+
+호흡
+- Idle/Walk/Low/Mid + 달리기 피로 없음: Volume 0 + Stop.
+- 실제 지상 Sprint를 3초 이상 지속하면 피로 호흡이 시작됩니다.
+- 달리기를 멈추면 4초 동안 회복하며, 0.6초 강도 전환을 거쳐 Volume 0 + Stop이 됩니다.
+- HighThreshold 이상: 스트레스 정도에 따라 강도/속도를 높입니다.
+- 피로 강도와 스트레스 강도 중 큰 값 하나만 사용합니다. 호흡 Loop는 하나입니다.
+- 시작/종료는 Fade In/Out. 사망/관전/비활성화에서는 즉시 정지합니다.
+
+심박
+- Heartbeat Start Threshold=-1은 기존 PlayerStressController.HighThreshold를 따릅니다.
+- 양수로 지정해도 HighThreshold보다 낮은 단계에서 시작하지 않습니다.
+- 짧은 0.45초 단발음을 65~115 BPM, 음량 0.12~0.30으로 반복합니다.
+- pitch는 1을 유지합니다. 임계값 아래/사망/관전에서는 즉시 Stop.
+- 기존 긴 클립을 유지하는 프리팹에서는 클립 길이만큼 간격을 확보하여 중첩을 막습니다.
+
+로컬 / 원격
+- PlayerLocalPresentation.IsLocal (NetworkIdentity.isLocalPlayer)을 재사용합니다.
+- 호흡/심박은 로컬 2D 전용이며 원격 분기에서는 정지합니다. 전용 서버에서는 모든 재생을 생략합니다.
+- 원격 발소리는 기존 복제 위치 변위와 Animator Grounded/Jump/Crouch로 로컬 재생하는 경로를 유지합니다.
+- Footstep RPC/Animation Event를 동시에 호출하지 마세요. 중복 재생될 수 있습니다.
+
+음원 / 품질
+- 신규 외부 다운로드 없음. 발소리는 기존 Unity Starter Assets 음원입니다.
+- 호흡은 기존 자체 합성 Stress_Breathing을 48kHz로 변환한 임시 음원입니다.
+- 심박은 직접 합성한 두 펄스 단발 WAV입니다.
+- 두 신규 WAV는 Mono / 48kHz / PCM16이며 디지털 클리핑이 없습니다.
+- 호흡/심박은 최종 녹음 품질이 아닌 Placeholder입니다. 특히 호흡은 자연스러운 허가된 녹음으로 교체 필요.
+- 실제 Unity AudioListener 출력은 녹음 및 신호 검사를 했습니다. 사람이 청취한 자연스러움/공간감 평가는 미검증입니다.
+
+QA
+- 별도 임시 Play Mode 씬에서 실제 Player 1~4 프리팹을 각각 생성했습니다.
+- 가상 키보드로 기존 InputManager/PlayerInputReader → PlayerController → CharacterController 이동을 실행했습니다.
+- 첫 실행은 Editor 포커스로 가상 입력이 차단됐습니다. 테스트 전용 복제 InputSettings로 보완하고 재검증했습니다.
+- 심박은 단발음의 쉬는 구간이 있어 isPlaying 한 시점 대신 구간 내 재생 및 박동 횟수로 확인했습니다.
+- 벽 검증 중 첫 Player가 초기 마우스 입력으로 회전해 벽을 따라 1.48m/s로 실제 이동하는 경우가 있었습니다.
+  테스트 입력을 활성화 전에 격리하고 벽을 이동 방향에 수직 배치해 실제 정지 조건을 검증했습니다. 게임 코드는 변경하지 않았습니다.
+- 최종 106 PASS / 0 FAIL.
+- 각 Player: Idle / Walk / Sprint / Crouch / 벽 / Jump-Air / 착지 / High 전용 걷기 검증.
+- 각 Player: 짧은 Sprint 무호흡 / 긴 Sprint 호흡 / 회복 Fade+Stop / Mid 무음 / High 호흡+심박 검증.
+- 각 Player: Sprint+High 호흡 중복 없음 / High→Low 정지 / Disable / CharacterVisual 비활성 검증.
+- 각 Player: 실제 PlayerHealth 피해→사망→Spectator 및 오브젝트 제거 후 소스 정리 확인.
+- 원격 Body 정지는 분기 시뮬레이션 테스트입니다. 실제 Host/Client 테스트 완료를 의미하지 않습니다.
+- 입력/이동/Animator/HP/Stress 수치/Authority는 프로덕션에서 변경하지 않았습니다.
+- Play 테스트 인스턴스에서만 관련 없는 Notebook/Local UI/Sight scanning/자동 Stress HP 피해를 비활성화했습니다.
+- 기존 NetworkAnimator.Animator 미할당 오류가 테스트 중 관찰됐으며 이번 작업에서는 수정하지 않았습니다.
+- 전체 기존 408 회귀 테스트는 실행하지 않았습니다.
+- Assets/Project/Tests/PlayMode/StressSystemTests.cs의
+  FeedbackScalesAndRecoversWithoutLosingHitFeedback은 Mid=50에서 오디오 재생을 기대합니다.
+  최신 요구사항은 Mid 무음 / High 재생이므로 기준 갱신이 필요합니다. 허용 범위 밖이라 수정하지 않았습니다.
+
+Network 담당 인계
+1. NetPlayer_Base / NetPlayer1~4의 기존 PlayerAudioController를 유지하고 로컬 전용 비활성 목록에 넣지 마세요.
+2. 선택된 CharacterVisual의 Animator 연결과 NetPlayerAnimator의 Grounded / Jump / Crouch 동기화를 확인해주세요.
+   원격 이동 위치가 연속적으로 복제돼야 발소리 간격이 안정적입니다.
+3. Player 1~4의 새 PlayerAudioController 설정을 Network 프리팹에도 동일하게 적용해주세요.
+   Breathing Clip / Heartbeat Clip에 Audio/PlayerBody의 두 WAV를 연결합니다.
+   기존 PlayerFeedbackController의 Heartbeat/Breathing Source 참조와 SFX Mixer 연결도 유지합니다.
+4. 호흡/심박 RPC는 필요 없습니다. 원격 발소리용 별도 RPC도 현재 경로와 중복 추가하지 마세요.
+5. Host/Client에서 원격 걷기·공중·웅크리기·정지 및 본인에게만 호흡/심박이 들리는지 확인 필요.
+
+범위
+Network / NetPlayer 프리팹 / Manager / Core / AI / 팀원 Scene 변경 없음.
+임시 테스트 스크립트와 씬은 검증 후 프로젝트 밖에 보관합니다.
+표면별 사운드 / Sound Propagation / Occlusion / Ghost 청각 AI는 구현하지 않았습니다.
+
+최종 컴파일: Project.Runtime 빌드 오류 0 / 기존 경고 5. 임시 테스트 제거 후 재확인 완료.

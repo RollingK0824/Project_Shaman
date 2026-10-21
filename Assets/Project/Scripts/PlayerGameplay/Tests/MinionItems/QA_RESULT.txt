@@ -1,0 +1,56 @@
+미니언 아이템 효과 검증 — 2026-10-21
+
+프로덕션 변경
+Assets/Project/Data/Items/UseActions/GongUseAction.asset
+_senses: -1 -> 3 (Vision | Hearing).
+기존 -1은 ItemControlEffect.IsValid에서 지원하지 않는 비트를 포함해 거부되었습니다.
+AI / Network / Core / 프리팹 / 씬 변경 없음. 기존 사용자 변경 유지.
+
+테스트 환경 및 경계
+Unity Editor PlayMode Test Runner에서 실행.
+실제 Temp_Minion.prefab + MinionSpawner.BeginDefense / Update + LocalSpawnHandler.Spawn 사용.
+실제 NavMesh에서 이동하며 Initialize / AI_Status 활성화 / AI_Minion 활성화 확인.
+별도 런타임 테스트 공간을 사용했으며 팀 씬과 NavMesh 에셋은 저장하지 않음.
+테스트 준비에서 AIFactory의 SpawnHandler를 기존 LocalSpawnHandler로 지정하고,
+웨이브 설정 복사본만 1회/1마리/즉시 스폰으로 설정. 실제 AI 상태나 CC 타이머 강제 설정 없음.
+공격자는 PlayerHealth / PlayerGhostTarget / LocalGameplayJudge 실컴포넌트를 가진 테스트 오브젝트.
+기존 ItemData.UseAction.Execute로 판정 실행. 입력/UI/장착 연출 및 실제 Player prefab 통합은 이번 테스트 범위 밖.
+팥쑥은 실제 Rigidbody 투척물과 Trigger 충돌을 거쳐 판정.
+Host/Client 네트워크 세션은 실행하지 않았음. 로컬 판정 검증과 멀티플레이 검증은 구분 필요.
+
+결과: 19 PASS / 0 FAIL
+새 SpawnedMinionItemTests 5개 + 기존 SaltTargetingTests 14개.
+
+1. 소금
+- 정상 스폰된 미니언에 HP 피해 적용. 현재 프리팹 최대 HP=1 -> 0으로 사망.
+- 원래 피해 설정 10은 유지. 밸런스 수치 변경 없음.
+- 추가 자식 Collider 및 초기 Overlap/Trigger가 함께 있어도 피해 이벤트 1회.
+- 함께 배치한 다른 PlayerHealth 대상의 HP는 감소하지 않음.
+
+2. 재령 방울
+- 실제 Attack 상태에서 사용하면 ChasePlayer로 전환되고 공격 취소.
+- 0.5초 경직, 경직 중 피해 없음. 종료 후 이동 재개.
+- CC 수신 1회, 미니언 HP 피해 0.
+
+3. 팥/쑥 타래
+- 실제 투척물 접촉으로 Slow 수신.
+- NavMeshAgent speed 2.5 -> 1.5 -> 2.5, 3초 종료 후 원복.
+- 투척 소모 1, CC 수신 1회, HP 피해 0.
+
+4. 경면주사 징
+- 실제 데이터의 Vision | Hearing=3 검증.
+- 실제 ChasePlayer에서 MoveToObjective로 복귀.
+- 효과 중 가까운 플레이어를 재추격하지 않음.
+- 3초 종료 후 재탐지하여 ChasePlayer 복귀.
+- CC 수신 1회, HP 피해 0.
+- 기존 미니언 동작대로 깃발 이동은 계속됨. 감각 방해를 경직으로 바꾸지 않음.
+
+5. 사망한 사용자는 네 아이템 모두 Execute 거부, 피해/CC/소모 0.
+
+검증 코드
+SpawnedMinionItemTests.cs / Player.MinionItems.Tests.asmdef
+Unity Test Runner > PlayMode > Player.MinionItems.Tests에서 재실행 가능.
+테스트의 경로/웨이브 설정 Reflection은 테스트 준비에만 사용하며 프로덕션 API를 추가하지 않음.
+
+최종 Project.Runtime dotnet build: 오류 0. 기존 408 전체 QA는 이번에 실행하지 않음.
+별도 자동 실행 도구는 검증 후 Assets 밖으로 이동하여 프로젝트에 남기지 않음.

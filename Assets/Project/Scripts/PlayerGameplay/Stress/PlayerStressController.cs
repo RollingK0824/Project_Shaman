@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
 
 public class PlayerStressController : MonoBehaviour, IStressReceiver
@@ -15,6 +16,9 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     [SerializeField, Range(1f, 98f)] private float _midThreshold = 35f;
     [SerializeField, Range(2f, 99f)] private float _highThreshold = 70f;
     [SerializeField] private bool _logStressEvents;
+    [Header("Night Exposure")]
+    [Tooltip("Passive stress per second at night. Safe zones and the personal barrier suppress this exposure.")]
+    [SerializeField, Min(0f)] private float _nightStressPerSecond = .25f;
 
     public bool UseExternalAuthority { get; set; }
     public float CurrentStress => _currentStress;
@@ -44,7 +48,8 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     private void Update()
     {
         if (!PlayerActionGuard.CanAct(gameObject)) return;
-        float increase = 0f;
+        float nightRate = NightStressRate;
+        float increase = nightRate;
         float recovery = 0f;
         _expiredSources.Clear();
         foreach (var source in _sourceRates)
@@ -59,8 +64,24 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
         float rate = recovery < 0f ? recovery : increase;
         rate = ModifyDelta(rate);
         if (rate == 0f) return;
-        if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, rate * Time.deltaTime, StressCause.Other, gameObject);
+        var cause = nightRate > 0f && recovery == 0f && Mathf.Approximately(increase, nightRate)
+            ? StressCause.NightExposure : StressCause.Other;
+        if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, rate * Time.deltaTime, cause, gameObject);
         else SetStress(_currentStress + rate * Time.deltaTime);
+    }
+
+    // Online: only the server contributes this rate; existing StressRequested owns game-state approval.
+    // Existing avoids creating a TimeManager in isolated scenes or the lobby.
+    public float NightStressRate
+    {
+        get
+        {
+            var time = TimeManager.Existing;
+            if (!isActiveAndEnabled || !PlayerActionGuard.CanAct(gameObject) ||
+                (NetworkClient.active && !NetworkServer.active) || time == null || !time.isActiveAndEnabled ||
+                !time.IsRunning || time.CurrentTimePhase != TimeOfDay.Night || BarrierWard.IsProtecting(gameObject)) return 0f;
+            return _nightStressPerSecond;
+        }
     }
 
     public void SetSourceRate(UnityEngine.Object source, float stressPerSecond)
@@ -136,6 +157,7 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     private void ValidateSettings()
     {
         _maxStress = StressLimit;
+        _nightStressPerSecond = IsFinite(_nightStressPerSecond) ? Mathf.Max(0f, _nightStressPerSecond) : .25f;
         _midThreshold = Mathf.Clamp(IsFinite(_midThreshold) ? _midThreshold : 35f, 1f, 98f);
         _highThreshold = Mathf.Clamp(IsFinite(_highThreshold) ? _highThreshold : 70f, _midThreshold + 1f, 99f);
         _currentStress = Mathf.Clamp(IsFinite(_currentStress) ? _currentStress : 0f, 0f, StressLimit);

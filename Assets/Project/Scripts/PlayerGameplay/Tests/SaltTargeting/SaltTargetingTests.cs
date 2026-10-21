@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using ProjectShaman.AI.Ghost;
+using ProjectShaman.AI;
+using ProjectShaman.AI.Minion;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -46,11 +48,11 @@ public class SaltTargetingTests
         return child.AddComponent<BoxCollider>();
     }
 
-    private GameObject Ghost()
+    private GameObject Ghost(bool isMinion = false)
     {
         var ghost = Create("Manifested ghost", 1);
         ghost.SetActive(false);
-        var identity = ghost.AddComponent<AI_GhostEntity>();
+        Behaviour identity = isMinion ? (Behaviour)ghost.AddComponent<AI_Minion>() : ghost.AddComponent<AI_GhostEntity>();
         // The test exercises identity and hit contracts, not AI simulation/NavMesh.
         foreach (var behaviour in ghost.GetComponents<Behaviour>())
             if (behaviour != identity) behaviour.enabled = false;
@@ -111,10 +113,11 @@ public class SaltTargetingTests
         Assert.AreEqual(0, _consumed);
     }
 
-    [Test]
-    public void GhostReceivesDamageOnceAcrossChildColliders()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void GhostReceivesDamageOnceAcrossChildColliders(bool isMinion)
     {
-        var ghost = Ghost();
+        var ghost = Ghost(isMinion);
         var receiver = ghost.AddComponent<SaltTestReceiver>();
         var first = Hitbox(ghost); var second = Hitbox(ghost);
         Assert.IsTrue(Spray());
@@ -129,10 +132,11 @@ public class SaltTargetingTests
         Assert.AreEqual(1, _consumed);
     }
 
-    [Test]
-    public void LegacyGhostReactionIsStillSupported()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void LegacyGhostReactionIsStillSupported(bool isMinion)
     {
-        var ghost = Ghost();
+        var ghost = Ghost(isMinion);
         var receiver = ghost.AddComponent<SaltTestLegacyReceiver>();
         Hitbox(ghost);
         Assert.IsTrue(Spray());
@@ -141,25 +145,28 @@ public class SaltTargetingTests
         Assert.AreEqual(1, _consumed);
     }
 
-    [Test]
-    public void DisabledGhostAndDeadGhostCannotBeHit()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void DisabledGhostAndDeadGhostCannotBeHit(bool isMinion)
     {
-        var ghost = Ghost();
+        var ghost = Ghost(isMinion);
         var receiver = ghost.AddComponent<SaltTestReceiver>();
         Hitbox(ghost);
-        ghost.GetComponent<AI_GhostEntity>().enabled = false;
+        Behaviour identity = isMinion ? (Behaviour)ghost.GetComponent<AI_Minion>() : ghost.GetComponent<AI_GhostEntity>();
+        identity.enabled = false;
         Assert.IsTrue(Spray());
-        ghost.GetComponent<AI_GhostEntity>().enabled = true;
+        identity.enabled = true;
         receiver.Dead = true;
         Assert.IsTrue(Spray());
         Assert.AreEqual(0, _requests);
         Assert.AreEqual(0, _consumed);
     }
 
-    [Test]
-    public void PlayerHealthTakesPrecedenceOverGhostIdentity()
+    [TestCase(false)]
+    [TestCase(true)]
+    public void PlayerHealthTakesPrecedenceOverGhostIdentity(bool isMinion)
     {
-        var ghost = Ghost();
+        var ghost = Ghost(isMinion);
         var health = ghost.AddComponent<PlayerHealth>();
         Hitbox(ghost);
         Assert.IsTrue(Spray());
@@ -181,11 +188,18 @@ public class SaltTargetingTests
 
     [UnityTest]
     public IEnumerator LateTriggerContactsAlsoRejectPlayersAndAcceptGhostsOnce()
+        => LateTriggerContacts(false);
+
+    [UnityTest]
+    public IEnumerator LateTriggerContactsAlsoRejectPlayersAndAcceptMinionsOnce()
+        => LateTriggerContacts(true);
+
+    private IEnumerator LateTriggerContacts(bool isMinion)
     {
         Set("_contactDuration", 2f);
         var player = Create("Entering player", 8);
         var health = player.AddComponent<PlayerHealth>(); Hitbox(player);
-        var ghost = Ghost(); ghost.transform.position = _origin + Vector3.forward * 8;
+        var ghost = Ghost(isMinion); ghost.transform.position = _origin + Vector3.forward * 8;
         var receiver = ghost.AddComponent<SaltTestReceiver>(); Hitbox(ghost); Hitbox(ghost);
         float before = health.CurrentHealth;
         Assert.IsTrue(Spray()); Assert.AreEqual(0, _requests);
@@ -201,6 +215,33 @@ public class SaltTargetingTests
         Assert.AreEqual(10f, receiver.Damage);
         Assert.AreEqual(1, _consumed);
     }
+
+#if UNITY_EDITOR
+    [Test]
+    public void ActualMinionPrefabReceivesDamageThroughExistingReceiver()
+    {
+        var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/AI/Temp_Minion.prefab");
+        Assert.IsNotNull(prefab);
+        var parent = Create("Inactive test parent", 0);
+        parent.SetActive(false);
+        var minion = Object.Instantiate(prefab, parent.transform);
+        _objects.Add(minion);
+        minion.transform.position = _origin + Vector3.forward;
+        // Use the real prefab's receiver/status. Network and NavMesh simulation are not under test.
+        foreach (var behaviour in minion.GetComponentsInChildren<Behaviour>(true))
+            behaviour.enabled = behaviour is AI_Minion || behaviour is AI_Status || behaviour is AI_DamageReceiver;
+        parent.SetActive(true);
+        var status = minion.GetComponent<AI_Status>();
+        Assert.IsNotNull(minion.GetComponent<AI_DamageReceiver>());
+        status.SetSimulationActive(true);
+        float before = status.Health;
+        Assert.Greater(before, 0f);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(1, _requests);
+        Assert.AreEqual(Mathf.Max(0f, before - 10f), status.Health);
+        Assert.AreEqual(1, _consumed);
+    }
+#endif
 }
 
 public class SaltTestReceiver : MonoBehaviour, IDamageable, ISaltReactable
