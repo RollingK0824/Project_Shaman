@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using UnityEngine;
 using ProjectShaman.AI;
@@ -10,9 +11,20 @@ namespace ProjectShaman.Network.AI
     {
         [SerializeField] private bool _acceptRequestedDamage;
 
+        [SyncVar(hook = nameof(OnHealthSynced))] private float _health;
+        [SyncVar] private bool _isDead;
+
         private AI_Status _status;
         private AI_DamageReceiver _receiver;
         private bool _isRelaying;
+
+        public float Health => _health;
+        public float MaxHealth => _status.MaxHealth;
+        public bool IsDead => _isDead;
+
+        public event Action<float, float> ClientHealthChanged;
+        public event Action<float> ClientDamaged;
+        public event Action ClientDied;
 
         private void Awake()
         {
@@ -24,6 +36,10 @@ namespace ProjectShaman.Network.AI
         {
             base.OnStartServer();
             _status.SetSimulationActive(true);
+            _health = _status.Health;
+            _isDead = _status.IsDead;
+            _status.OnDamaged += HandleServerDamaged;
+            _status.OnDied += HandleServerDied;
             AILog.Log(AILog.NET, name, "Status OnStartServer → judgement enabled");
 
             if (_acceptRequestedDamage && _receiver != null)
@@ -41,6 +57,8 @@ namespace ProjectShaman.Network.AI
                 _isRelaying = false;
             }
 
+            _status.OnDamaged -= HandleServerDamaged;
+            _status.OnDied -= HandleServerDied;
             _status.SetSimulationActive(false);
             base.OnStopServer();
         }
@@ -64,6 +82,36 @@ namespace ProjectShaman.Network.AI
             }
 
             _receiver.ReceiveDamage(amount, source);
+        }
+
+        private void HandleServerDamaged(AI_Status status, float amount, GameObject source)
+        {
+            _health = status.Health;
+            RpcDamaged(amount);
+        }
+
+        private void HandleServerDied(AI_Status status, GameObject source)
+        {
+            _health = 0f;
+            _isDead = true;
+            RpcDied();
+        }
+
+        [ClientRpc]
+        private void RpcDamaged(float amount)
+        {
+            ClientDamaged?.Invoke(amount);
+        }
+
+        private void OnHealthSynced(float oldValue, float newValue)
+        {
+            ClientHealthChanged?.Invoke(newValue, MaxHealth);
+        }
+
+        [ClientRpc]
+        private void RpcDied()
+        {
+            ClientDied?.Invoke();
         }
     }
 }
