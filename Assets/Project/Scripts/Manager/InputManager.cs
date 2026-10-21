@@ -101,6 +101,12 @@ public class InputManager : GlobalSingleton<InputManager>
         .Start();
     }
 
+    // Goes through OnCancel → Finish, so the row refreshes as usual
+    public void CancelRebind()
+    {
+        _rebind?.Cancel();
+    }
+
     private void Finish(InputAction action, int bindingIndex, string oldOverride, bool changed, Action<bool> onDone)
     {
         _rebind.Dispose();

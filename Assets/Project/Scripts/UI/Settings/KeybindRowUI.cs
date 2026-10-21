@@ -126,7 +126,7 @@ public class KeybindRowUI : MonoBehaviour
             return;
         }
 
-        _keyText.text = "키를 누르세요… (Esc: 취소)";
+        _keyText.text = "키를 누르세요…";
         _input.StartRebind(Action, BindingIndex, HandleRebindDone);
     }
 
