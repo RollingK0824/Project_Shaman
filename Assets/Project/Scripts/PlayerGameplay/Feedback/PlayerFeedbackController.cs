@@ -49,6 +49,10 @@ public class PlayerFeedbackController : MonoBehaviour
     private float _stressVolumeWeight;
 
     public float StressFeedbackIntensity => _stressIntensity;
+    // The existing audio presentation component owns these reusable sources when present.
+    internal AudioSource HeartbeatSource => _heartbeatSource;
+    internal AudioSource BreathingSource => _breathingSource;
+    private bool HasAudioController => GetComponent<PlayerAudioController>() != null;
 
     private void Awake()
     {
@@ -192,8 +196,11 @@ public class PlayerFeedbackController : MonoBehaviour
         _stressVolumeWeight = Mathf.MoveTowards(_stressVolumeWeight, high, _stressBlendSpeed * Time.deltaTime);
         if (_stressVolume != null) _stressVolume.weight = _stressVolumeWeight;
 
-        UpdateLoop(_heartbeatSource, _heartbeatVolume, _heartbeatPitch);
-        UpdateLoop(_breathingSource, _breathingVolume, _breathingPitch);
+        if (!HasAudioController)
+        {
+            UpdateLoop(_heartbeatSource, _heartbeatVolume, _heartbeatPitch);
+            UpdateLoop(_breathingSource, _breathingVolume, _breathingPitch);
+        }
         if (_handFeedbackPivot == null) return;
         float time = Time.time * _stressShakeSpeed;
         Vector3 noise = new Vector3(
@@ -217,9 +224,12 @@ public class PlayerFeedbackController : MonoBehaviour
     private void UpdateLoop(AudioSource source, float volume, Vector2 pitch)
     {
         if (source == null || source.clip == null) return;
-        source.volume = Mathf.Clamp01(volume * _stressIntensity);
-        source.pitch = Mathf.Lerp(pitch.x, pitch.y, _stressIntensity);
-        if (_stressIntensity > 0.001f)
+        float intensity = PlayerLocalPresentation.IsLocal(gameObject) && !_playerHealth.IsDead &&
+            _stressController != null && _stressController.CurrentStress >= _stressController.HighThreshold
+            ? Mathf.Lerp(.35f, 1f, _stressController.HighIntensity) : 0f;
+        source.volume = Mathf.Clamp01(volume * intensity);
+        source.pitch = Mathf.Lerp(pitch.x, pitch.y, intensity);
+        if (intensity > 0.001f)
         {
             if (!source.isPlaying) source.Play();
         }
@@ -249,8 +259,11 @@ public class PlayerFeedbackController : MonoBehaviour
         _stressIntensity = 0f;
         _stressVolumeWeight = 0f;
         if (_stressVolume != null) _stressVolume.weight = 0f;
-        StopLoop(_heartbeatSource);
-        StopLoop(_breathingSource);
+        if (!HasAudioController)
+        {
+            StopLoop(_heartbeatSource);
+            StopLoop(_breathingSource);
+        }
         if (_handFeedbackPivot != null)
         {
             _handFeedbackPivot.localPosition = _handBasePosition;

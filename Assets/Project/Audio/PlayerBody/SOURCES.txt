@@ -1,0 +1,15 @@
+Player Body Audio — source notes
+
+Footsteps: reuse existing five Unity Starter Assets ThirdPersonController WAVs.
+Source assets and importer settings were not changed. These are existing licensed project assets;
+retain the Unity Asset Store/Starter Assets license when distributing the game. No new web downloads.
+
+Heartbeat_Pulse_Placeholder.wav: original procedural synthesis (two damped low-frequency pulses).
+Breathing_Loop_Placeholder.wav: 48 kHz interpolation of the project's original synthesized
+Stress_Breathing.wav (documented in PlayerGameplay/Stress/README.md); not a human recording.
+Both are mono 48 kHz 16-bit PCM, without clipping. No third-party audio was used for synthesis.
+Both body clips are PLACEHOLDERS. In particular, replace synthetic breathing with an authorized
+human recording for natural final quality. Regenerating/resampling does not make it a recording.
+
+SoundManager/MainMixer are unchanged. PlayerAudioController routes persistent sources to SFX.
+Ground types are not classified consistently; a single footstep set is used, without a new framework.
