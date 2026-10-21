@@ -22,6 +22,14 @@ public class SettingsPanelUI : UIPanel
         _keybindPanel.gameObject.SetActive(false);
     }
 
+    private void OnDisable()
+    {
+        if (Current == this)
+        {
+            Current = null;
+        }
+    }
+
     private void Update()
     {
         if (_closeOnEsc && InputManager.Instance.Actions.UI.Cancel.WasPerformedThisFrame())
@@ -30,13 +38,15 @@ public class SettingsPanelUI : UIPanel
         }
     }
 
+    // Esc / ✕: closes the keybind panel first, then the settings panel
     public void Back()
     {
-        if (_keybindPanel == null)
+        if (_keybindPanel != null && _keybindPanel.gameObject.activeSelf)
         {
+            _keybindPanel.Close();
             return;
         }
 
-        _keybindPanel.Close();
+        Close();
     }
 }
