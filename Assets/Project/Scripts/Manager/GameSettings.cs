@@ -5,8 +5,8 @@ public static class GameSettings
 {
     // Mouse sensitivity
     private const string SENSITIVITY_KEY = "MouseSensitivity";
-    private const float MIN_SENSITIVITY = 0.2f;
-    private const float MAX_SENSITIVITY = 3f;
+    public const float MIN_SENSITIVITY = 0.2f;
+    public const float MAX_SENSITIVITY = 3f;
     private static float? _mouseSensitivity;
 
     public static float MouseSensitivity
@@ -113,5 +113,54 @@ public static class GameSettings
     private static void ApplyOnStartup()
     {
         ApplyFrameRate();
+    }
+
+
+    private const string INVERT_Y_KEY = "InvertY";
+    private static bool? _invertY = false;
+
+    public static bool InvertY
+    {
+        get
+        {
+            // Cached like sensitivity: the camera reads this every frame
+            if (_invertY == null)
+            {
+                _invertY = PlayerPrefs.GetInt(INVERT_Y_KEY, 0) == 1;
+            }
+            return _invertY.Value;
+        }
+    }
+
+    public static void SetInvertY(bool on)
+    {
+        _invertY = on;
+        PlayerPrefs.SetInt(INVERT_Y_KEY, on ? 1 : 0);
+    }
+
+
+    private const string FOV_KEY = "FieldOfView";
+    public const float MIN_FOV = 50;
+    public const float MAX_FOV = 80;
+
+    private static float? _fieldOfView;
+
+    public static float FieldOfView
+    {
+        get
+        {
+            if (_fieldOfView == null)
+            {
+                _fieldOfView = PlayerPrefs.GetFloat(FOV_KEY, 60);
+            }
+            return _fieldOfView.Value;
+        }
+    }
+
+    public static void SetFieldOfView(float v)
+    {
+        v = Mathf.Clamp(v, MIN_FOV, MAX_FOV);
+        _fieldOfView = v;
+        PlayerPrefs.SetFloat(FOV_KEY, v);
     }
 }
