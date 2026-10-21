@@ -15,7 +15,20 @@ public class TalismanItem : ItemBase
     {
         if (!PlayerActionGuard.CanAct(Owner) || IsDrawing) return;
         if (!(Data is TalismanItemData talisman)) return;
-        if (!talisman.AllowDrawing) { UseRequested?.Invoke(this); Debug.Log("[Talisman] 결계 부적 사용 요청 (판정 연동 대기)", this); return; }
+        if (talisman.TalismanType == TalismanType.Barrier)
+        {
+            var camera = Owner.GetComponentInChildren<Camera>();
+            if (!(Data.UseAction is BarrierTalismanUseAction action) || camera == null ||
+                !BarrierTalismanUseAction.IsEquipped(Owner, Data) ||
+                !action.TryGetPlacement(new ItemUseContext(Owner, Data, camera.transform.position, camera.transform.forward), out _, out _))
+            { Owner.GetComponent<PlayerItemFeedback>()?.Unavailable("가까운 벽이나 바닥을 바라보세요"); return; }
+            if (!TryBuildUseRequest(out var request)) return;
+            // Compatibility notification only. The ItemUseRequested judge owns commit/ReportUse.
+            UseRequested?.Invoke(this);
+            PlayerEvents.RaiseItemUseRequested(request);
+            return;
+        }
+        if (!talisman.AllowDrawing) return;
         var items = Owner.GetComponent<PlayerItemController>();
         string id = items != null ? items.EquippedTalismanInstanceId : null;
         if (!string.IsNullOrEmpty(id))

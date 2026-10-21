@@ -103,6 +103,7 @@ public class PlayerSpectatorController : MonoBehaviour
         IsSpectating = true;
         SpectatorModeEntered?.Invoke();
         RefreshTargets();
+        NextTarget();
     }
 
     public void ExitSpectatorMode()
@@ -133,6 +134,8 @@ public class PlayerSpectatorController : MonoBehaviour
         // Also covers a late-joining owner whose replicated death predates OnEnable.
         if (!IsSpectating && _health.IsDead) EnterSpectatorMode();
         if (!IsSpectating || _spectatorCamera == null || _input.GameplayInputBlocked) return;
+        // The spectator camera copies the player camera only once (CopyFrom), so keep it on the setting
+        _spectatorCamera.fieldOfView = GameSettings.FieldOfView;
         if (_target != null)
         {
             if (!_target.isActiveAndEnabled || _target.IsDead) { RefreshTargets(); return; }
@@ -146,8 +149,9 @@ public class PlayerSpectatorController : MonoBehaviour
         }
 
         Vector2 look = _input.LookInput;
-        _yaw += look.x * _lookSensitivity;
-        _pitch = Mathf.Clamp(_pitch - look.y * _lookSensitivity, -85f, 85f);
+        float sensitivity = _lookSensitivity * GameSettings.MouseSensitivity;
+        _yaw += look.x * sensitivity;
+        _pitch = Mathf.Clamp(_pitch - look.y * sensitivity * (GameSettings.InvertY ? -1f : 1f), -85f, 85f);
         var camera = _spectatorCamera.transform;
         camera.rotation = Quaternion.Euler(_pitch, _yaw, 0f);
         Vector2 move = _input.MoveInput;

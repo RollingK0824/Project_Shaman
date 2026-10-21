@@ -145,6 +145,15 @@
                     "interactions": "",
                     "initialStateCheck": false,
                     "priority": 0
+                },
+                {
+                    "name": "CycleSlot",
+                    "type": "Value",
+                    "id": "331518e4-a7b7-4164-b5fe-b09f294b6031",
+                    "expectedControlType": "Axis",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -345,6 +354,17 @@
                     "action": "ViewToggle",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "f40ed7a9-081b-49b5-b9a4-2553864d907c",
+                    "path": "<Mouse>/scroll/y",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "CycleSlot",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },
@@ -506,6 +526,50 @@
                     "processors": "",
                     "groups": "",
                     "action": "ToggleMode",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "1e8aa730-e430-43a6-b23f-48b7f70a3f5c",
+                    "path": "<Keyboard>/leftArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Previous",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "e3bc9051-e04e-4a1d-989f-6248cf68a5b7",
+                    "path": "<Keyboard>/rightArrow",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Next",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "01ab569e-3444-4fb6-a4d7-bc4a6e7fbbc0",
+                    "path": "<Mouse>/leftButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Previous",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "3435146c-877b-4c08-a756-b531af1a4470",
+                    "path": "<Mouse>/rightButton",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Next",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

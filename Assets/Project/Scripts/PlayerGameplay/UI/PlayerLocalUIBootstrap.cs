@@ -88,7 +88,7 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
                     _input != null && _input.isActiveAndEnabled && !_input.GameplayInputBlocked;
         if (show && _crosshair == null && _crosshairPrefab != null) _crosshair = Instantiate(_crosshairPrefab);
         if (_crosshair != null && _crosshair.gameObject.activeSelf != show) _crosshair.gameObject.SetActive(show);
-        if (show && _crosshair != null) _crosshair.SetHighlighted(_interactor != null && _interactor.CanInteract && _interactor.CurrentTarget != null);
+        if (show && _crosshair != null) _crosshair.SetHighlighted(_interactor != null && _interactor.CanInteract && _interactor.CurrentTarget != null && _interactor.CurrentTarget.CanInteract(gameObject));
     }
 
     private void ReleaseNotebook()

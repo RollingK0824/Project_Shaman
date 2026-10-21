@@ -5,6 +5,10 @@ using UnityEngine.UI;
 // Read-only player summary on the left page; inventory keeps ownership of the right page.
 public sealed class NotebookPlayerInfoView : MonoBehaviour
 {
+    private GameObject _player;
+    private NotebookPlayerPortraits _portraits;
+    private RawImage _portrait;
+    private TMP_Text _portraitFallback;
     private PlayerHealth _health;
     private PlayerStressController _stress;
     private PlayerInventory _inventory;
@@ -19,13 +23,22 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
 
     public void Bind(GameObject player, TMP_FontAsset font)
     {
+        _player = player;
+        _portraits = Resources.Load<NotebookPlayerPortraits>("NotebookPlayerPortraits");
         _health = player.GetComponent<PlayerHealth>(); _stress = player.GetComponent<PlayerStressController>();
         _inventory = player.GetComponent<PlayerInventory>(); _identity = player.GetComponent<NetPlayerStatus>();
         _effects = player.GetComponent<PlayerTalismanEffectController>();
         _talismans = player.GetComponent<PlayerTalismanCollection>();
-        PlayerItemUIStyle.NotebookLabel(transform, font, "PlayerHeading", "플레이어 정보", 20, 16, 440, 42, 30);
-        _name = PlayerItemUIStyle.NotebookLabel(transform, font, "PlayerName", "플레이어", 20, 90, 440, 52, 32);
-        _condition = PlayerItemUIStyle.NotebookLabel(transform, font, "Condition", "", 20, 148, 440, 32, 20);
+        PlayerItemUIStyle.NotebookLabel(transform, font, "PlayerHeading", "플레이어 정보", 20, 16, 260, 42, 30);
+        _name = PlayerItemUIStyle.NotebookLabel(transform, font, "PlayerName", "플레이어", 20, 84, 260, 62, 32);
+        _condition = PlayerItemUIStyle.NotebookLabel(transform, font, "Condition", "", 20, 150, 260, 40, 20);
+        _name.enableAutoSizing = true; _name.fontSizeMin = 18; _name.fontSizeMax = 32;
+        var frame = PlayerItemUIStyle.NotebookRect(transform, "PortraitFrame", 300, 12, 160, 180);
+        var border = frame.gameObject.AddComponent<Image>(); border.color = PlayerItemUIStyle.NotebookCard; border.raycastTarget = false;
+        var photo = PlayerItemUIStyle.NotebookRect(frame, "Portrait", 3, 3, 154, 174);
+        _portrait = photo.gameObject.AddComponent<RawImage>(); _portrait.raycastTarget = false;
+        _portraitFallback = PlayerItemUIStyle.NotebookLabel(frame, font, "PortraitFallback", "초상화 없음", 4, 70, 152, 36, 18);
+        _portraitFallback.alignment = TextAlignmentOptions.Center;
         PlayerItemUIStyle.NotebookLabel(transform, font, "HealthHeading", "체력", 20, 210, 210, 36, 24);
         _hp = PlayerItemUIStyle.NotebookLabel(transform, font, "HealthValue", "", 236, 210, 224, 36, 23);
         _hp.alignment = TextAlignmentOptions.Right;
@@ -59,7 +72,10 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
     public void Refresh()
     {
         if (_name == null) return;
-        _name.text = _identity != null && !string.IsNullOrWhiteSpace(_identity.PlayerName) ? _identity.PlayerName : "플레이어";
+        _name.text = ResolvePlayerName(_player, _identity);
+        var portrait = _portraits != null ? _portraits.Find(_player) : null;
+        if (_portrait != null) { _portrait.texture = portrait; _portrait.enabled = portrait != null; }
+        if (_portraitFallback != null) _portraitFallback.gameObject.SetActive(portrait == null);
         _hp.text = _health != null ? $"{_health.CurrentHealth:0} / {_health.MaxHealth:0}" : "—";
         _stressValue.text = _stress != null ? $"{_stress.CurrentStress:0} / {_stress.MaxStress:0}" : "—";
         _hpFill.sizeDelta = new Vector2(440 * (_health != null ? Mathf.Clamp01(_health.NormalizedHealth) : 0), 14);
@@ -73,6 +89,16 @@ public sealed class NotebookPlayerInfoView : MonoBehaviour
         count += talismans != null ? talismans.DrawnEffectCount : 0;
         _items.text = $"개인 소지품  {count}개\n퀵슬롯  1 ~ 6";
         RefreshEffects();
+    }
+
+    public static string ResolvePlayerName(GameObject player, NetPlayerStatus identity)
+    {
+        if (identity != null && !string.IsNullOrWhiteSpace(identity.PlayerName)) return identity.PlayerName.Trim();
+        // SteamLobbyUI already puts the Steam persona name here; OnlineUI supplies the LAN name.
+        // Never substitute this machine's name for a remote player awaiting replication.
+        if (player != null && PlayerLocalPresentation.IsLocal(player) && !string.IsNullOrWhiteSpace(UserData.Nickname))
+            return UserData.Nickname.Trim();
+        return "플레이어";
     }
 
     private void RefreshEffects()

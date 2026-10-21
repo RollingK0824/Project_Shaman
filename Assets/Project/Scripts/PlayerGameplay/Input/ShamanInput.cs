@@ -231,6 +231,16 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""initialStateCheck"": false,
                     ""priority"": 0
+                },
+                {
+                    ""name"": ""CycleSlot"",
+                    ""type"": ""Value"",
+                    ""id"": ""331518e4-a7b7-4164-b5fe-b09f294b6031"",
+                    ""expectedControlType"": ""Axis"",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": true,
+                    ""priority"": 0
                 }
             ],
             ""bindings"": [
@@ -431,6 +441,17 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""action"": ""ViewToggle"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""f40ed7a9-081b-49b5-b9a4-2553864d907c"",
+                    ""path"": ""<Mouse>/scroll/y"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""CycleSlot"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -594,6 +615,50 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""action"": ""ToggleMode"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""1e8aa730-e430-43a6-b23f-48b7f70a3f5c"",
+                    ""path"": ""<Keyboard>/leftArrow"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Previous"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""e3bc9051-e04e-4a1d-989f-6248cf68a5b7"",
+                    ""path"": ""<Keyboard>/rightArrow"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Next"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""01ab569e-3444-4fb6-a4d7-bc4a6e7fbbc0"",
+                    ""path"": ""<Mouse>/leftButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Previous"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""3435146c-877b-4c08-a756-b531af1a4470"",
+                    ""path"": ""<Mouse>/rightButton"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""Next"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -667,6 +732,7 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         m_Player_Slot6 = m_Player.FindAction("Slot6", throwIfNotFound: true);
         m_Player_Crouch = m_Player.FindAction("Crouch", throwIfNotFound: true);
         m_Player_ViewToggle = m_Player.FindAction("ViewToggle", throwIfNotFound: true);
+        m_Player_CycleSlot = m_Player.FindAction("CycleSlot", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Notebook = m_UI.FindAction("Notebook", throwIfNotFound: true);
@@ -778,6 +844,7 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Slot6;
     private readonly InputAction m_Player_Crouch;
     private readonly InputAction m_Player_ViewToggle;
+    private readonly InputAction m_Player_CycleSlot;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -846,6 +913,10 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @ViewToggle => m_Wrapper.m_Player_ViewToggle;
         /// <summary>
+        /// Provides access to the underlying input action "Player/CycleSlot".
+        /// </summary>
+        public InputAction @CycleSlot => m_Wrapper.m_Player_CycleSlot;
+        /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
         public InputActionMap Get() { return m_Wrapper.m_Player; }
@@ -913,6 +984,9 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
             @ViewToggle.started += instance.OnViewToggle;
             @ViewToggle.performed += instance.OnViewToggle;
             @ViewToggle.canceled += instance.OnViewToggle;
+            @CycleSlot.started += instance.OnCycleSlot;
+            @CycleSlot.performed += instance.OnCycleSlot;
+            @CycleSlot.canceled += instance.OnCycleSlot;
         }
 
         /// <summary>
@@ -966,6 +1040,9 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
             @ViewToggle.started -= instance.OnViewToggle;
             @ViewToggle.performed -= instance.OnViewToggle;
             @ViewToggle.canceled -= instance.OnViewToggle;
+            @CycleSlot.started -= instance.OnCycleSlot;
+            @CycleSlot.performed -= instance.OnCycleSlot;
+            @CycleSlot.canceled -= instance.OnCycleSlot;
         }
 
         /// <summary>
@@ -1447,6 +1524,13 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnViewToggle(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "CycleSlot" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnCycleSlot(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

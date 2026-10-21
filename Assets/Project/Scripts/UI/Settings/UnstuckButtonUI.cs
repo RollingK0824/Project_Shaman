@@ -51,6 +51,11 @@ public class UnstuckButtonUI : MonoBehaviour
 
     private void Update()
     {
+        if (_button == null || _label == null)
+        {
+            return;
+        }
+
         _button.interactable = IsReady;
         _label.SetText(IsReady ? "끼임 탈출" : $"({Mathf.CeilToInt(Remaining)}초)");
     }
