@@ -31,6 +31,9 @@ public class RoomManager : NetworkRoomManager
     [Header("로딩 화면")]
     [SerializeField] private LoadingScreen _loadingScreen;
 
+    [Header("캐릭터")]
+    [SerializeField] private GameObject[] _characterPrefabs;
+
     public static DisconnectNotice PendingNotice { get; private set;  }
 
 
@@ -299,8 +302,17 @@ public class RoomManager : NetworkRoomManager
             spawnRot = startPos != null ? startPos.rotation : Quaternion.identity;
         }
 
-        // 2. 게임 플레이어 생성
-        GameObject gamePlayerObj = Instantiate(playerPrefab, spawnPos, spawnRot);
+        // 2. 게임 플레이어 생성 - 로비에서 고른 캐릭터 프리팹, 없으면 playerPrefab
+        GameObject prefab = playerPrefab;
+        int characterId = roomPlayerComp != null ? roomPlayerComp.characterId : -1;
+
+        if (_characterPrefabs != null && characterId >= 0 && characterId < _characterPrefabs.Length
+            && _characterPrefabs[characterId] != null)
+        {
+            prefab = _characterPrefabs[characterId];
+        }
+
+        GameObject gamePlayerObj = Instantiate(prefab, spawnPos, spawnRot);
 
         // 3. 로비의 닉네임을 게임 플레이어의 공개 상태로 전달
         var status = gamePlayerObj.GetComponent<NetPlayerStatus>();
