@@ -5,5 +5,6 @@
     AnomalySight,
     Damage,
     Darkness,
-    Other
+    Other,
+    NightExposure
 }
