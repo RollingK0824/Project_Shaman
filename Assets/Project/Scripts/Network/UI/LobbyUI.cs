@@ -22,6 +22,11 @@ public class LobbyUI : MonoBehaviour
 
     [SerializeField] private FriendInvitePanel _friendInvitePanel;
 
+    [Header("캐릭터 선택")]
+    [SerializeField] private Button[] _characterButtons; // NetPlayer1~4
+
+    [SerializeField] private LobbyCharacterPreview _characterPreview;
+
 
 
 
@@ -35,6 +40,9 @@ public class LobbyUI : MonoBehaviour
 
     private void OnEnable()
     {
+        // Canvas Lobby는 프리팹이라 씬의 촬영장을 직접 연결할 수 없어 씬에서 찾음
+        if (_characterPreview == null) _characterPreview = FindFirstObjectByType<LobbyCharacterPreview>();
+
         RoomPlayer.NotEnoughPlayers += ShowNotification;
         RoomPlayer.LobbyChanged += RequestRefresh;
         RequestRefresh();
@@ -104,8 +112,8 @@ public class LobbyUI : MonoBehaviour
 
         _localRoomPlayer = roomManager.roomSlots.OfType<RoomPlayer>()
             .FirstOrDefault(player => player != null && player.isLocalPlayer);
-        
 
+        UpdateCharacterButtons();
         UpdateReadyButton(roomManager);
     }
     private void UpdateReadyButton(NetworkRoomManager roomManager)
@@ -133,6 +141,30 @@ public class LobbyUI : MonoBehaviour
             _readyButtonText.text = _localRoomPlayer.readyToBegin ? "취소" : "준비";
             _readyButton.interactable = true;
         }
+    }
+
+    private void UpdateCharacterButtons()
+    {
+        for (int i = 0; i < _characterButtons.Length; i++)
+        {
+            bool canPick = _localRoomPlayer != null
+                && !_localRoomPlayer.readyToBegin
+                && _localRoomPlayer.characterId != i
+                && !_localRoomPlayer.IsTakenByOther(i);
+
+            _characterButtons[i].interactable = canPick;
+        }
+
+        if (_characterPreview != null)
+        {
+            _characterPreview.Show(_localRoomPlayer != null ? _localRoomPlayer.characterId : -1);
+        }
+    }
+
+    // 캐릭터 버튼 OnClick 연결
+    public void OnClickCharacter(int id)
+    {
+        if (_localRoomPlayer != null) _localRoomPlayer.CmdSelectCharacter(id);
     }
 
     // Ready 버튼에 연결
