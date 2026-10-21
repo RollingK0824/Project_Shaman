@@ -40,6 +40,13 @@ public class GameMenuUI : MonoBehaviour
             return;
         }
 
+        // 설정 패널이 열려 있으면 ESC는 설정(키바인딩 → 설정 순)만 닫음
+        if (SettingsPanelUI.Current != null)
+        {
+            SettingsPanelUI.Current.Back();
+            return;
+        }
+
         // 게임 중에는 관전상태에서만 열 수 있음 (닫기는 항상 허용)
         if (!_menuPanel.activeSelf && !CanOpenMenu()) return;
 
