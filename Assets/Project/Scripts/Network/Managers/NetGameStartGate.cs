@@ -30,6 +30,8 @@ public class NetGameStartGate : NetworkBehaviour
     public int ExpectedCount => _expectedCount;
     public bool IsStartScheduled => _startTime > 0;
 
+    public double StartTime => _startTime;
+
     // 이미 시작했으면 바로 실행, 아니면 시작할 때 한 번 실행
     public static void WhenStarted(Action action)
     {
