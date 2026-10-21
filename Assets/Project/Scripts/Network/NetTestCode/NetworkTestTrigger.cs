@@ -16,7 +16,7 @@ public class NetworkTestTrigger : MonoBehaviour
     private NetItemSpawner _itemSpawner;
 
     private GameManager _gameManager;
-    private GUIStyle _resultStyle;
+    //private GUIStyle _resultStyle;
 
     // 테스트 패널 (F1)
     private bool _panelOpen;
@@ -157,7 +157,7 @@ public class NetworkTestTrigger : MonoBehaviour
 
     void OnGUI()
     {
-        DrawResult();
+        //DrawResult();
 
         if (!Debug.isDebugBuild) return;
 
@@ -235,29 +235,29 @@ public class NetworkTestTrigger : MonoBehaviour
     }
 
     // [테스트] 승패가 나면 모든 PC 화면에 결과롸 로비 복귀 카운트다운 포시.. 정식 결과 화면이 생기면 추후에 삭제
-    private void DrawResult()
-    {
-        if (_gameManager == null || !_gameManager.IsGameOver) return;
-
-        if (_resultStyle == null)
-        {
-            _resultStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = 48,
-                alignment = TextAnchor.MiddleCenter
-            };
-        }
-
-        string result = _gameManager.CurrentGameState == GameState.Win ? "승리" : "패배";
-
-        double remaining = 0;
-        if (GameNetwork != null && GameNetwork.ReturnToLobbyTime > 0)
-        {
-            remaining = System.Math.Max(0, GameNetwork.ReturnToLobbyTime - NetworkTime.time);
-        }
-
-        GUI.Label(new Rect(0, Screen.height * 0.35f, Screen.width, 140), $"{result}\n{System.Math.Ceiling(remaining):0}초 후 로비로 돌아갑니다.", _resultStyle);
-    }
+    //private void DrawResult()
+    //{
+    //    if (_gameManager == null || !_gameManager.IsGameOver) return;
+    //
+    //    if (_resultStyle == null)
+    //    {
+    //        _resultStyle = new GUIStyle(GUI.skin.label)
+    //        {
+    //            fontSize = 48,
+    //            alignment = TextAnchor.MiddleCenter
+    //        };
+    //    }
+    //
+    //    string result = _gameManager.CurrentGameState == GameState.Win ? "승리" : "패배";
+    //
+    //    double remaining = 0;
+    //    if (GameNetwork != null && GameNetwork.ReturnToLobbyTime > 0)
+    //    {
+    //        remaining = System.Math.Max(0, GameNetwork.ReturnToLobbyTime - NetworkTime.time);
+    //    }
+    //
+    //    GUI.Label(new Rect(0, Screen.height * 0.35f, Screen.width, 140), $"{result}\n{System.Math.Ceiling(remaining):0}초 후 로비로 돌아갑니다.", _resultStyle);
+    //}
 
     private void OnTestSelfDamage(NetworkConnectionToClient conn, TestSelfDamageMessage msg)
     {
