@@ -24,7 +24,8 @@ public class GameMenuUI : MonoBehaviour
 
     private void Update()
     {
-        if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        //if (!Input.GetKeyDown(KeyCode.Escape)) return;
+        if (!InputManager.Instance.Actions.UI.Cancel.WasPerformedThisFrame()) return;
 
         // 로딩 화면 뒤에서 메뉴가 열리지 않도록
         if (NetworkManager.singleton is RoomManager roomManager && roomManager.IsLoadingGame) return;
@@ -35,6 +36,9 @@ public class GameMenuUI : MonoBehaviour
             LobbyBoardFocus.Current.Unfocus();
             return;
         }
+
+        // 게임 중에는 관전상태에서만 열 수 있음 (닫기는 항상 허용)
+        if (!_menuPanel.activeSelf && !CanOpenMenu()) return;
 
         SetMenuOpen(!_menuPanel.activeSelf);
     }
@@ -50,6 +54,7 @@ public class GameMenuUI : MonoBehaviour
 
         PlayerCameraController look = FindLocalLook();
         PlayerHealth health = look != null ? look.GetComponent<PlayerHealth>() : null;
+        PlayerInputReader input = look != null ? look.GetComponent<PlayerInputReader>() : null;
 
         if (open)
         {
@@ -59,6 +64,7 @@ public class GameMenuUI : MonoBehaviour
                 look.CanLook = false;
             }
 
+            if (input != null) input.SetGameplayInputBlocked(true);
             Cursor.lockState = CursorLockMode.None;
             Cursor.visible = true;
         }
@@ -67,6 +73,7 @@ public class GameMenuUI : MonoBehaviour
             // 메뉴를 연 사이에 죽었으면 시점 회전을 다시 켜지 않음
             if (look != null) look.CanLook = _lookBeforeMenu && (health == null || !health.IsDead);
 
+            if (input != null) input.SetGameplayInputBlocked(false);
             Cursor.lockState = CursorLockMode.Locked;
             Cursor.visible = false;
         }
@@ -80,6 +87,16 @@ public class GameMenuUI : MonoBehaviour
 
         LobbyWalker walker = FindFirstObjectByType<LobbyWalker>();
         return walker != null ? walker.GetComponent<PlayerCameraController>() : null;
+    }
+
+    // 게임 : 관전 중일 때만 메뉴 허옹 (살아 있을 땐 ESC가 수첩,UI 닫기 담당)
+    // 로비 : 로컬 플레이어가 RoomPlayer라 관전 컨포넌트가 없음 --> 항상 허용
+    private static bool CanOpenMenu()
+    {
+        NetworkIdentity local = NetworkClient.localPlayer;
+        if (local == null || !local.TryGetComponent(out PlayerSpectatorController spectator)) return true;
+
+        return spectator.IsSpectating;
     }
 
     // 메뉴를 연 채로 씬이 바뀌어도 상태가 남지 않도록
