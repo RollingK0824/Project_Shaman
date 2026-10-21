@@ -33,12 +33,12 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     }
     private static bool Supported(ItemData item) => item != null &&
         (item.UseAction is BellUseAction || item.UseAction is SaltUseAction ||
-         item.UseAction is BeanMugwortUseAction || item.UseAction is GongUseAction);
+         item.UseAction is BeanMugwortUseAction || item.UseAction is GongUseAction || item.UseAction is BarrierTalismanUseAction);
     public void PlayRemoteAudio(ItemData item)
     {
         if (!Supported(item) || !PlayerActionGuard.CanAct(gameObject)) return;
         var clip=item.UseAction is BellUseAction ? _bell : item.UseAction is SaltUseAction ? _salt :
-            item.UseAction is BeanMugwortUseAction ? _throw : _gong;
+            item.UseAction is BeanMugwortUseAction ? _throw : item.UseAction is GongUseAction ? _gong : null;
         GetComponent<PlayerAudioController>()?.PlayRemoteItem(clip, _volume);
     }
     public void Play(ItemData item)
@@ -46,7 +46,7 @@ public sealed class PlayerItemFeedback : MonoBehaviour
         if (!PlayerLocalPresentation.IsLocal(gameObject) || !Supported(item)) return;
         _started=Time.time; _message="사용 중"; _messageUntil=Time.time+.45f;
         var clip=item.UseAction is BellUseAction ? _bell : item.UseAction is SaltUseAction ? _salt :
-            item.UseAction is BeanMugwortUseAction ? _throw : _gong;
+            item.UseAction is BeanMugwortUseAction ? _throw : item.UseAction is GongUseAction ? _gong : null;
         if (clip == null) return;
         GetComponent<PlayerAudioController>()?.PlayLocalItem(clip, _volume);
     }

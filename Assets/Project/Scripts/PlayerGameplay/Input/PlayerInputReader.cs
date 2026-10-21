@@ -35,6 +35,45 @@ public class PlayerInputReader : MonoBehaviour
     private float _nextScrollTime;
     private PlayerInventory _inventory;
     private PlayerItemController _items;
+    private UIManager _cancelUIManager;
+    private bool _menuWasOpen;
+    private int _menuClosedFrame = -1;
+    private int _cancelHandledFrame = -1;
+
+    // UIManager may close its last panel before our Cancel callback runs.
+    public bool IsCancelReservedForUI
+    {
+        get
+        {
+            TrackCancelUIManager();
+            return (_cancelUIManager != null && _cancelUIManager.IsMenuOpen) ||
+                _menuClosedFrame == Time.frameCount;
+        }
+    }
+    public bool CancelHandledThisFrame => _cancelHandledFrame == Time.frameCount;
+    public void MarkCancelHandled() => _cancelHandledFrame = Time.frameCount;
+
+    private void TrackCancelUIManager()
+    {
+        var manager = UIManager.Existing;
+        if (manager != null && !manager.isActiveAndEnabled) manager = null;
+        if (_cancelUIManager == manager) return;
+        if (_cancelUIManager != null) _cancelUIManager.MenuOpenChanged -= OnMenuOpenChanged;
+        _cancelUIManager = manager;
+        _menuWasOpen = manager != null && manager.IsMenuOpen;
+        if (manager != null) manager.MenuOpenChanged += OnMenuOpenChanged;
+    }
+
+    private void OnMenuOpenChanged(bool open)
+    {
+        if (_menuWasOpen && !open) _menuClosedFrame = Time.frameCount;
+        _menuWasOpen = open;
+    }
+
+    private void OnDestroy()
+    {
+        if (_cancelUIManager != null) _cancelUIManager.MenuOpenChanged -= OnMenuOpenChanged;
+    }
 
 
     private void Awake()
@@ -47,6 +86,7 @@ public class PlayerInputReader : MonoBehaviour
 
     private void OnEnable()
     {
+        TrackCancelUIManager();
         _input = InputManager.Instance.Actions;
         _cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
 
@@ -74,6 +114,7 @@ public class PlayerInputReader : MonoBehaviour
 
     private void Update()
     {
+        TrackCancelUIManager();
         if (GameplayInputBlocked)
         {
             MoveInput = Vector2.zero;
@@ -188,8 +229,13 @@ public class PlayerInputReader : MonoBehaviour
     private void OnCancel(
         InputAction.CallbackContext context)
     {
-        // 메뉴를 닫아야 하므로
-        // Block 상태에서도 Cancel은 허용한다.
+        if (!PlayerLocalPresentation.IsLocal(gameObject)) return;
+        if (IsCancelReservedForUI)
+        {
+            MarkCancelHandled();
+            return;
+        }
+        // Non-UIPanel modes still need Cancel while gameplay input is blocked.
         CancelPressed?.Invoke();
     }
 

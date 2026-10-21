@@ -132,7 +132,12 @@ public class TalismanDrawingPanel : MonoBehaviour
         Close();
     }
     private void OnDestroy() => Close();
-    private void OnCancelAction(InputAction.CallbackContext context) => RequestClose();
+    private void OnCancelAction(InputAction.CallbackContext context)
+    {
+        if (!IsOpen || GameMenuUI.IsOpen || (_input != null && _input.IsCancelReservedForUI)) return;
+        _input?.MarkCancelHandled();
+        RequestClose();
+    }
     private void OnUndoAction(InputAction.CallbackContext context) => Undo();
     private void OnDied(GameObject source) => Close();
     private void OnDisable() { if (IsOpen) Close(); }
