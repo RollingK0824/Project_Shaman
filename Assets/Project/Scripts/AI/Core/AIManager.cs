@@ -31,6 +31,8 @@ namespace ProjectShaman.AI.Core
         private VillagerRequestRouter _requests;
         private ObservationService _observation;
         private AbsenceTracker _absence;
+        private readonly List<VillagerProfile> _profiles = new List<VillagerProfile>();
+        private readonly Dictionary<string, int> _visitedDay = new Dictionary<string, int>();
 
         private bool _isRunning;
         private bool _isDayActive;
@@ -102,6 +104,9 @@ namespace ProjectShaman.AI.Core
             _observation = null;
             _absence?.Clear();
             _absence = null;
+            _profiles.Clear();
+            _visitedDay.Clear();
+            HouseVisitPoint.ClearAll();
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -123,6 +128,7 @@ namespace ProjectShaman.AI.Core
                 if (core != null && core.Profile != null)
                 {
                     VillagerRuntime villager = new VillagerRuntime(core);
+                    _profiles.Add(core.Profile);
                     villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
                     core.OnRoutineFailed += villager.RoutineFailedHandler;
                     SubscribeDeath(villager);
@@ -516,6 +522,49 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, villager.Id, $"Tidy zone {zone} (distance to home {distance:F1}m)");
             AILog.Log(AILog.MANAGER, villager.Id, $"GoHome ordered at {DayClock.ToHour(GetDayElapsed()):F1}h ({GetDayElapsed():F1}s)");
             villager.Core.SetMustGoHome(true);
+            TryLookInOnNeighbour(villager);
+        }
+
+        // On the way home: a neighbour (same home-point group) this villager has not seen all day
+        // gets a look-in. Inside the house the normal trace scan sees what is there (a body included).
+        private void TryLookInOnNeighbour(VillagerRuntime villager)
+        {
+            if (_observation == null || !_isDayActive || villager.Memory == null || villager.Interaction == null
+                || string.IsNullOrEmpty(villager.Profile.NeighborhoodId)
+                || (_visitedDay.TryGetValue(villager.Id, out int day) && day == _time.DayCount))
+            {
+                return;
+            }
+
+            VillagerProfile target = null;
+            float best = float.MaxValue;
+
+            foreach (VillagerProfile neighbour in _profiles)
+            {
+                if (neighbour == villager.Profile || neighbour.NeighborhoodId != villager.Profile.NeighborhoodId || villager.Memory.HasSeenToday(neighbour.VillagerId))
+                {
+                    continue;
+                }
+
+                float distance = (neighbour.HomePosition - villager.Profile.HomePosition).sqrMagnitude;
+                if (distance < best)
+                {
+                    best = distance;
+                    target = neighbour;
+                }
+            }
+
+            if (target == null)
+            {
+                return;
+            }
+
+            HouseVisitPoint point = HouseVisitPoint.For(target.VillagerId, target.HomePosition);
+            if (villager.Interaction.TryBegin(point, InteractionResponse.Approach, _behaviourConfig.NeighbourVisitLingerSeconds))
+            {
+                _visitedDay[villager.Id] = _time.DayCount;
+                AILog.Log(AILog.MANAGER, villager.Id, $"Looking in on {target.VillagerId} on the way home (not seen today)");
+            }
         }
 
         private int GetBlockSeed(VillagerRuntime villager, int dayCount)

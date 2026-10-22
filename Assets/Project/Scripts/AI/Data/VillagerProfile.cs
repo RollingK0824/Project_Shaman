@@ -28,6 +28,8 @@ namespace ProjectShaman.AI.Data
 
         public int HouseIndex = -1;
         public Vector3 HomePosition;
+        // Home points that share a parent object in the scene are one neighbourhood (set once at creation)
+        public string NeighborhoodId;
         public VillagerSchedule Schedule;
         public bool IsPossessed;
         public string GhostId;

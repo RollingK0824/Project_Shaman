@@ -295,12 +295,25 @@ namespace ProjectShaman.AI.Core
 
         private void AssignHouses(List<VillagerProfile> profiles)
         {
+            Dictionary<string, int> groups = new Dictionary<string, int>();
+
             foreach (VillagerProfile profile in profiles)
             {
-                profile.HomePosition = GetTestPoint(_testHomePoints, profile.Index);
+                Transform point = GetTestPointTransform(_testHomePoints, profile.Index);
+                profile.HomePosition = point != null ? point.position : transform.position;
+                profile.NeighborhoodId = point != null && point.parent != null ? $"{point.parent.name}#{point.parent.GetInstanceID()}" : null;
+
+                if (profile.NeighborhoodId != null)
+                {
+                    groups[profile.NeighborhoodId] = groups.TryGetValue(profile.NeighborhoodId, out int count) ? count + 1 : 1;
+                }
             }
 
-            AILog.Log(AILog.STUB, $"AssignHouses using test home points ({profiles.Count})");
+            AILog.Log(AILog.FACTORY, $"AssignHouses ({profiles.Count}) neighbourhoods: [{string.Join(", ", System.Linq.Enumerable.Select(groups, g => $"{g.Key.Split('#')[0]}={g.Value}"))}]");
+            if (groups.Count == 1 && profiles.Count > 4)
+            {
+                AILog.Warn(AILog.FACTORY, "All home points share one parent: the whole village counts as neighbours. Group home points under one parent per neighbourhood");
+            }
         }
 
         private void AssignGhosts(List<VillagerProfile> profiles)
@@ -332,6 +345,11 @@ namespace ProjectShaman.AI.Core
             AI_Possession possession = core.gameObject.AddComponent<AI_Possession>();
             possession.Initialize(profile.GhostId, _random.Next(), Mathf.Min(_behaviourConfig.InitialYin, _behaviourConfig.MaxYin));
             profile.Possession = possession;
+        }
+
+        private static Transform GetTestPointTransform(Transform[] points, int index)
+        {
+            return points == null || points.Length == 0 ? null : points[index % points.Length];
         }
 
         private Vector3 GetTestPoint(Transform[] points, int index)
