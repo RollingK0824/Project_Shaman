@@ -19,6 +19,7 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private string _syncVillagerId;
         [SyncVar] private string _syncDisplayName;
         [SyncVar] private string _syncJobId;
+        [SyncVar] private string _syncJobName;
         [SyncVar] private VillagerGender _syncGender;
         [SyncVar] private VillagerSocialClass _syncSocialClass;
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
@@ -135,6 +136,7 @@ namespace ProjectShaman.Network.AI
             _syncVillagerId = info.VillagerId;
             _syncDisplayName = info.DisplayName;
             _syncJobId = info.JobId;
+            _syncJobName = info.JobName;
             _syncGender = info.Gender;
             _syncSocialClass = info.SocialClass;
             _syncAgeGroup = info.AgeGroup;
@@ -185,6 +187,7 @@ namespace ProjectShaman.Network.AI
                 VillagerId = _syncVillagerId,
                 DisplayName = _syncDisplayName,
                 JobId = _syncJobId,
+                JobName = _syncJobName,
                 Gender = _syncGender,
                 SocialClass = _syncSocialClass,
                 AgeGroup = _syncAgeGroup,

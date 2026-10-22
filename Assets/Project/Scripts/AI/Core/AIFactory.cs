@@ -230,6 +230,7 @@ namespace ProjectShaman.AI.Core
                 }
 
                 info.JobId = job.JobId;
+                info.JobName = job.DisplayName;
 
                 if (!_scheduleBuilder.TryBuild(info, out VillagerSchedule schedule))
                 {

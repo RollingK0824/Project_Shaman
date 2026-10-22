@@ -8,6 +8,7 @@ namespace ProjectShaman.AI.Interfaces
         string VillagerId { get; }
         string DisplayName { get; }
         string JobId { get; }
+        string JobName { get; }
         VillagerGender Gender { get; }
         VillagerSocialClass SocialClass { get; }
         VillagerAgeGroup AgeGroup { get; }

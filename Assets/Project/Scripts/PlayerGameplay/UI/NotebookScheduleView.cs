@@ -9,7 +9,8 @@ using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.Map;
 
-// Villager schedule spread: villagers on the left page, the chosen villager's day as a timetable on the right.
+// Villager schedule spread: villagers on the left page as a small register (이름·직업·신분·성별·나이),
+// the chosen villager's day as a timetable on the right.
 // Drawn in ink on the notebook paper: one row per half sijin (초/정) of the day, each routine a brush wash
 // spanning its rows. Night is the same for everyone and is left out. Only the planned schedule is shown.
 public sealed class NotebookScheduleView : MonoBehaviour
@@ -19,7 +20,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private const int FIRST_SIJIN_ZODIAC = 3;   // 묘시 is the fourth animal after 자·축·인
     private const float ZODIAC_SIZE = 46f;
 
-    private const float LIST_X = 30f, LIST_Y = 104f, LIST_WIDTH = 420f, LIST_HEIGHT = 500f, LIST_ROW_HEIGHT = 42f;
+    private const float LIST_X = 30f, LIST_Y = 136f, LIST_WIDTH = 420f, LIST_HEIGHT = 470f, LIST_ROW_HEIGHT = 42f;
+    private const float HEADER_Y = 100f, SCROLLBAR_WIDTH = 6f, ROW_WIDTH = LIST_WIDTH - SCROLLBAR_WIDTH - 8f;
+    // Register columns: x and width inside a row, name first
+    private static readonly string[] COLUMN_TITLES = { "이름", "직업", "신분", "성별", "나이" };
+    private static readonly float[] COLUMN_X = { 16f, 148f, 250f, 308f, 350f };
+    private static readonly float[] COLUMN_WIDTH = { 128f, 98f, 56f, 40f, 52f };
     private const float TABLE_X = 548f, TABLE_Y = 104f, TABLE_WIDTH = 424f;
     private const float TIME_WIDTH = 126f, HOUR_HEIGHT = 31f, BLOCK_INSET = 3f;
 
@@ -29,9 +35,11 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private static readonly Color WORK_WASH = new(.38f, .32f, .25f, .42f);
     private static readonly Color REST_WASH = new(.66f, .26f, .17f, .34f);
     private static readonly Color SELECT_WASH = new(.59f, .20f, .14f, .40f);
+    private static readonly Color SCROLL_TRACK = new(.20f, .14f, .10f, .12f);
+    private static readonly Color SCROLL_HANDLE = new(.20f, .14f, .10f, .55f);
 
     private readonly List<Button> _rows = new();
-    private readonly List<TMP_Text> _rowLabels = new();
+    private readonly List<TMP_Text[]> _rowCells = new();
     private readonly List<Image> _rowMarks = new();
     private readonly List<(Image wash, TMP_Text label)> _blocks = new();
     // Last block hours seen per villager, kept when their object is gone so a hidden death changes nothing here
@@ -60,8 +68,11 @@ public sealed class NotebookScheduleView : MonoBehaviour
         Heading("ScheduleHeading", "주민 일과표", 20);
         _dayLabel = Text(transform, "Day", "", 300, 66, 150, 26, 18, TextAlignmentOptions.Right);
         _dayLabel.color = PlayerItemUIStyle.NotebookMuted;
-        _listContent = PlayerItemUIStyle.NotebookScroll(transform, "VillagerList", LIST_X, LIST_Y, LIST_WIDTH, LIST_HEIGHT, out _);
+        BuildListHeader();
+        _listContent = PlayerItemUIStyle.NotebookScroll(transform, "VillagerList", LIST_X, LIST_Y, LIST_WIDTH, LIST_HEIGHT, out ScrollRect listScroll);
         _listContent.parent.parent.GetComponent<Image>().color = Color.clear;
+        listScroll.scrollSensitivity = LIST_ROW_HEIGHT;
+        AddScrollbar(listScroll);
 
         // Right page: the chosen villager's day
         _title = Heading("VillagerDay", "주민을 고르세요", 540);
@@ -81,6 +92,38 @@ public sealed class NotebookScheduleView : MonoBehaviour
             line.preserveAspect = true;
         }
         return label;
+    }
+
+    // Column titles over the villager register, with an ink rule under them
+    private void BuildListHeader()
+    {
+        var header = PlayerItemUIStyle.NotebookRect(transform, "VillagerListHeader", LIST_X, HEADER_Y, ROW_WIDTH, LIST_Y - HEADER_Y);
+        for (int i = 0; i < COLUMN_TITLES.Length; i++)
+        {
+            var title = Text(header, "Column" + i, COLUMN_TITLES[i], COLUMN_X[i], 0, COLUMN_WIDTH[i], LIST_Y - HEADER_Y - 6, 16,
+                i == 0 ? TextAlignmentOptions.Left : TextAlignmentOptions.Center);
+            title.color = PlayerItemUIStyle.NotebookMuted;
+        }
+        Rule(header, "HeaderRule", _rule, RULE, 0, LIST_Y - HEADER_Y - 3, ROW_WIDTH, 8);
+    }
+
+    // Thin ink bar on the list's right edge so it is clear how far the list has moved; hidden when everyone fits
+    private void AddScrollbar(ScrollRect scroll)
+    {
+        var track = PlayerItemUIStyle.NotebookRect(scroll.transform, "Scrollbar", LIST_WIDTH - SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH, LIST_HEIGHT);
+        track.gameObject.AddComponent<Image>().color = SCROLL_TRACK;
+
+        var area = PlayerItemUIStyle.NotebookRect(track, "SlidingArea", 0, 0, SCROLLBAR_WIDTH, LIST_HEIGHT);
+        area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one; area.offsetMin = area.offsetMax = Vector2.zero;
+        var handle = PlayerItemUIStyle.NotebookRect(area, "Handle", 0, 0, SCROLLBAR_WIDTH, LIST_HEIGHT);
+        handle.pivot = new Vector2(.5f, .5f); handle.anchoredPosition = Vector2.zero; handle.sizeDelta = Vector2.zero;
+        var handleImage = handle.gameObject.AddComponent<Image>(); handleImage.color = SCROLL_HANDLE;
+
+        var bar = track.gameObject.AddComponent<Scrollbar>();
+        bar.handleRect = handle; bar.targetGraphic = handleImage; bar.transition = Selectable.Transition.None;
+        bar.direction = Scrollbar.Direction.BottomToTop;
+        scroll.verticalScrollbar = bar;
+        scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
     }
 
     // Time column with each sijin's animal and name, ink rules at the sijin edges, and an empty field for the brush washes
@@ -165,11 +208,16 @@ public sealed class NotebookScheduleView : MonoBehaviour
             bool selected = villager.VillagerId == _selectedId;
             _rows[i].gameObject.SetActive(true);
             _rowMarks[i].enabled = selected && _select != null;
-            _rowLabels[i].text = villager.IsDeathKnown ? $"{villager.DisplayName}  <size=70%>고인</size>" : villager.DisplayName;
-            _rowLabels[i].color = villager.IsDeathKnown ? PlayerItemUIStyle.NotebookMuted : INK;
+            TMP_Text[] cells = _rowCells[i];
+            cells[0].text = villager.IsDeathKnown ? $"{villager.DisplayName} <size=70%>고인</size>" : villager.DisplayName;
+            cells[1].text = string.IsNullOrEmpty(villager.JobName) ? "-" : villager.JobName;
+            cells[2].text = SocialClassName(villager.SocialClass);
+            cells[3].text = villager.Gender == VillagerGender.Female ? "여" : "남";
+            cells[4].text = AgeGroupName(villager.AgeGroup);
+            foreach (TMP_Text cell in cells) cell.color = villager.IsDeathKnown ? PlayerItemUIStyle.NotebookMuted : INK;
         }
         for (int i = count; i < _rows.Count; i++) _rows[i].gameObject.SetActive(false);
-        _listContent.sizeDelta = new Vector2(LIST_WIDTH, Mathf.Max(LIST_HEIGHT, count * LIST_ROW_HEIGHT));
+        _listContent.sizeDelta = new Vector2(ROW_WIDTH, Mathf.Max(LIST_HEIGHT, count * LIST_ROW_HEIGHT));
 
         IVillagerView chosen = null;
         if (registry != null && !string.IsNullOrEmpty(_selectedId)) registry.TryGet(_selectedId, out chosen);
@@ -251,16 +299,37 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private void AddRow()
     {
         int index = _rows.Count;
-        var rect = PlayerItemUIStyle.NotebookRect(_listContent, "Villager" + index, 0, index * LIST_ROW_HEIGHT, LIST_WIDTH, LIST_ROW_HEIGHT);
+        var rect = PlayerItemUIStyle.NotebookRect(_listContent, "Villager" + index, 0, index * LIST_ROW_HEIGHT, ROW_WIDTH, LIST_ROW_HEIGHT);
         var hit = rect.gameObject.AddComponent<Image>(); hit.color = Color.clear;
         var button = rect.gameObject.AddComponent<Button>(); button.targetGraphic = hit; button.transition = Selectable.Transition.None;
         button.onClick.AddListener(() => Select(index));
-        var mark = Picture(rect, "Selected", _select, SELECT_WASH, 4, 3, 240, LIST_ROW_HEIGHT - 6, Image.Type.Sliced);
+        var mark = Picture(rect, "Selected", _select, SELECT_WASH, 4, 3, ROW_WIDTH - 8, LIST_ROW_HEIGHT - 6, Image.Type.Sliced);
         mark.pixelsPerUnitMultiplier = 2f;
-        var label = Text(rect, "Label", "", 24, 4, LIST_WIDTH - 40, LIST_ROW_HEIGHT - 8, 22, TextAlignmentOptions.Left);
-        label.richText = true;
-        _rows.Add(button); _rowLabels.Add(label); _rowMarks.Add(mark);
+        var cells = new TMP_Text[COLUMN_TITLES.Length];
+        for (int i = 0; i < cells.Length; i++)
+        {
+            bool name = i == 0;
+            cells[i] = Text(rect, "Cell" + i, "", COLUMN_X[i], 4, COLUMN_WIDTH[i], LIST_ROW_HEIGHT - 8, name ? 22 : 18,
+                name ? TextAlignmentOptions.Left : TextAlignmentOptions.Center);
+            cells[i].richText = true; cells[i].enableAutoSizing = true; cells[i].fontSizeMin = 13; cells[i].fontSizeMax = name ? 22 : 18;
+        }
+        if (index > 0) Rule(rect, "RowRule", _ruleThin, SCROLL_TRACK, 8, 0, ROW_WIDTH - 16, 4);
+        _rows.Add(button); _rowCells.Add(cells); _rowMarks.Add(mark);
     }
+
+    private static string SocialClassName(VillagerSocialClass socialClass) => socialClass switch
+    {
+        VillagerSocialClass.Yangban => "양반",
+        VillagerSocialClass.Cheonmin => "천민",
+        _ => "상민"
+    };
+
+    private static string AgeGroupName(VillagerAgeGroup ageGroup) => ageGroup switch
+    {
+        VillagerAgeGroup.Elder => "노인",
+        VillagerAgeGroup.Child => "아이",
+        _ => "어른"
+    };
 
     private void Select(int index)
     {

@@ -11,6 +11,7 @@ namespace ProjectShaman.AI.Data
         public string VillagerId;
         public string DisplayName;
         public string JobId;
+        public string JobName;
         public VillagerGender Gender;
         public VillagerSocialClass SocialClass;
         public VillagerAgeGroup AgeGroup;

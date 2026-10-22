@@ -125,6 +125,7 @@ namespace ProjectShaman.AI.Core
             public string VillagerId { get; }
             public string DisplayName { get; }
             public string JobId { get; }
+            public string JobName { get; }
             public VillagerGender Gender { get; }
             public VillagerSocialClass SocialClass { get; }
             public VillagerAgeGroup AgeGroup { get; }
@@ -137,6 +138,7 @@ namespace ProjectShaman.AI.Core
                 VillagerId = info.VillagerId;
                 DisplayName = info.DisplayName;
                 JobId = info.JobId;
+                JobName = info.JobName;
                 Gender = info.Gender;
                 SocialClass = info.SocialClass;
                 AgeGroup = info.AgeGroup;
