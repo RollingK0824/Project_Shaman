@@ -10,13 +10,14 @@ namespace ProjectShaman.AI.Memory
         public string InstanceId;
         public string TypeId;
         public Vector3 Position;
+        public string AreaId;
         public string HolderId;
         public int DayCount;
         public float SeenTime;
 
         public override string ToString()
         {
-            string where = string.IsNullOrEmpty(HolderId) ? Position.ToString("F1") : $"held by {HolderId}";
+            string where = !string.IsNullOrEmpty(HolderId) ? $"held by {HolderId}" : string.IsNullOrEmpty(AreaId) ? Position.ToString("F1") : $"{AreaId} {Position:F1}";
             return $"{TypeId}:{InstanceId} @ {where} (Day{DayCount} {SeenTime:F0}s)";
         }
     }

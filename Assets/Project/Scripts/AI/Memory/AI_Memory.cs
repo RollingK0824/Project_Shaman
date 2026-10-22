@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
+using ProjectShaman.Map;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
@@ -86,6 +87,7 @@ namespace ProjectShaman.AI.Memory
                 InstanceId = tool.InstanceId,
                 TypeId = tool.TypeId,
                 Position = tool.Position,
+                AreaId = MapAreaRegistry.ResolveId(tool.Position),
                 HolderId = tool.HolderId,
                 DayCount = _core.CurrentRoutine.DayCount,
                 SeenTime = _context.GameNow

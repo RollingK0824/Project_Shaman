@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Interfaces;
+using ProjectShaman.Map;
 
 // Fills quest text placeholders from ids, so only ids cross the network and every peer formats locally.
 // {giver} {target} {context} → display name of that id, {area} → area the context id sits in.
@@ -67,9 +68,19 @@ public static class QuestText
         return Resolve(_nameResolvers, id) ?? id;
     }
 
+    // Quest target → area around its position, area id → that area's name, otherwise registered resolvers
     public static string AreaOf(string contextId)
     {
-        return Resolve(_areaResolvers, contextId) ?? "어딘가";
+        if (QuestTargets.TryGet(contextId, out IQuestTarget target))
+        {
+            string around = MapAreaRegistry.Describe(target.Position);
+            if (!string.IsNullOrEmpty(around))
+            {
+                return around;
+            }
+        }
+
+        return MapAreaRegistry.NameOf(contextId) ?? Resolve(_areaResolvers, contextId) ?? "어딘가";
     }
 
     public static string Format(string template, IQuestView quest)

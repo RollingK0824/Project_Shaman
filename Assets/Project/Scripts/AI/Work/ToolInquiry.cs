@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
+using ProjectShaman.Map;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
@@ -217,9 +218,11 @@ namespace ProjectShaman.AI.Work
                 return $"{holder}{AIDisplayNames.Josa(holder, "이", "가")} {tool}{AIDisplayNames.Josa(tool, "을", "를")} 들고 있더구먼";
             }
 
-            if (PlaceRegistry.TryFindContaining(sighting.Position, out PlaceArea place))
+            // The area remembered at sighting time, else wherever that spot reads now
+            string where = MapAreaRegistry.NameOf(sighting.AreaId) ?? MapAreaRegistry.Describe(sighting.Position);
+            if (!string.IsNullOrEmpty(where))
             {
-                return $"{place.DisplayName} 쪽에 {tool}{AIDisplayNames.Josa(tool, "이", "가")} 놓여 있더구먼";
+                return $"{where} 쪽에 {tool}{AIDisplayNames.Josa(tool, "이", "가")} 놓여 있더구먼";
             }
 
             return $"저짝에 {tool}{AIDisplayNames.Josa(tool, "이", "가")} 떨어져 있던디";

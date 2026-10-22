@@ -2,10 +2,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.Map;
 
 namespace ProjectShaman.AI.World
 {
-    public class PlaceArea : MonoBehaviour
+    // Work/rest places are map areas too, so positions inside them resolve to the place name
+    public class PlaceArea : MonoBehaviour, IMapArea
     {
         private const float NAVMESH_SAMPLE_DISTANCE = 3f;
         private const int RANDOM_POINT_ATTEMPTS = 12;
@@ -24,6 +26,11 @@ namespace ProjectShaman.AI.World
         public PlaceType Type => _placeType;
         public int MaxPeople => _maxPeople;
         public Vector3 Center => transform.position;
+        public string AreaId => _placeId;
+        public float Footprint => _shape == PlaceShape.Sphere ? Mathf.PI * _radius * _radius : Mathf.Abs(_boxSize.x * _boxSize.z);
+        public int Depth => _depth >= 0 ? _depth : (_depth = MapArea.CountParents(transform));
+
+        private int _depth = -1;
 
         private WorkStation[] _stations;
 
@@ -77,12 +84,15 @@ namespace ProjectShaman.AI.World
 
         private void OnEnable()
         {
+            _depth = -1;
             PlaceRegistry.Register(this);
+            MapAreaRegistry.Register(this);
         }
 
         private void OnDisable()
         {
             PlaceRegistry.Unregister(this);
+            MapAreaRegistry.Unregister(this);
         }
 
         public Vector3 GetRandomPoint(System.Random random)
