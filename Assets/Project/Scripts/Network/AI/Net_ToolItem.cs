@@ -18,12 +18,10 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private float _maxPickUpDistance = 4f;
 
         private ToolItem _tool;
-        private Collider _collider;
         private GameObject _carrier;
         private string _carrierId;
 
         [SyncVar(hook = nameof(OnHeldChanged))] private bool _isHeld;
-        [SyncVar(hook = nameof(OnCarriedChanged))] private bool _isCarriedByPlayer;
 
         public ToolItem Tool => _tool;
         public GameObject Carrier => _carrier;
@@ -38,7 +36,12 @@ namespace ProjectShaman.Network.AI
         private void Awake()
         {
             _tool = GetComponent<ToolItem>();
-            _collider = GetComponent<Collider>();
+        }
+
+        // SyncVar hooks do not run for the state a late joiner receives on spawn
+        public override void OnStartClient()
+        {
+            ApplyHeldOnClient();
         }
 
         public override void OnStartServer()
@@ -120,8 +123,6 @@ namespace ProjectShaman.Network.AI
             _carrier = player;
             _carrierId = carrierId;
             _carried.Add(this);
-            _isCarriedByPlayer = true;
-            ApplyCollider();
             AILog.Log(AILog.TOOL, carrierId, $"Picked up {_tool.InstanceId}({_tool.TypeId}) by player {player.name}");
         }
 
@@ -138,8 +139,6 @@ namespace ProjectShaman.Network.AI
             _carried.Remove(this);
             _carrier = null;
             _carrierId = null;
-            _isCarriedByPlayer = false;
-            ApplyCollider();
         }
 
         [ServerCallback]
@@ -174,20 +173,15 @@ namespace ProjectShaman.Network.AI
 
         private void OnHeldChanged(bool oldValue, bool newValue)
         {
-            ApplyCollider();
+            ApplyHeldOnClient();
         }
 
-        private void OnCarriedChanged(bool oldValue, bool newValue)
+        // The server's ToolItem already applied it on pick up and drop
+        private void ApplyHeldOnClient()
         {
-            ApplyCollider();
-        }
-
-        // A carried tool sits in front of the player and must not catch their interaction ray
-        private void ApplyCollider()
-        {
-            if (_collider != null)
+            if (!isServer)
             {
-                _collider.enabled = !_isCarriedByPlayer;
+                _tool.ApplyHeldState(_isHeld);
             }
         }
 
