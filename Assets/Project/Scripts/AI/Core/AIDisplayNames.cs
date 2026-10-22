@@ -27,6 +27,10 @@ namespace ProjectShaman.AI.Core
             { nameof(GhostTraceKind.ShadowSpot), "음습한 그늘" }
         };
 
+        private static List<string> _toolTypes;
+
+        public static IReadOnlyList<string> ToolTypes => _toolTypes ?? (_toolTypes = new List<string>(TOOLS.Keys));
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
         private static void RegisterQuestNames()
         {

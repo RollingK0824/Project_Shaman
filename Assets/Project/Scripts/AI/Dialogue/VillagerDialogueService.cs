@@ -96,17 +96,17 @@ namespace ProjectShaman.AI.Dialogue
             switch (kind)
             {
                 case ASK_ANOMALY:
-                    return AnswerFact(memory, day, f => f.IsAnomalous, true) ?? DialogueLibrary.Line("answer.none", _random);
+                    return AnswerFact(villager, memory, day, f => f.IsAnomalous, true) ?? DialogueLibrary.Line("answer.none", _random);
                 case ASK_RUMOR:
-                    return AnswerFact(memory, day, f => f.Source == MemorySource.Heard, false) ?? DialogueLibrary.Line("rumor.none", _random);
+                    return AnswerFact(villager, memory, day, f => f.Source == MemorySource.Heard, false) ?? DialogueLibrary.Line("rumor.none", _random);
                 case ASK_TODAY:
                     return AnswerToday(memory);
                 case ASK_TOOL:
-                    return AnswerTool(memory, arg);
+                    return AnswerTool(villager, memory, arg);
                 case ASK_TRACE:
-                    return AnswerFact(memory, day, f => f.Kind == MemoryKind.TraceWitness && f.SubjectId == arg, true) ?? DialogueLibrary.Line("trace.ask.none", _random);
+                    return AnswerFact(villager, memory, day, f => f.Kind == MemoryKind.TraceWitness && f.SubjectId == arg, true) ?? DialogueLibrary.Line("trace.ask.none", _random);
                 case ASK_PERSON:
-                    return AnswerFact(memory, day, f => f.ActorId == arg && f.Kind == MemoryKind.Absent, true)
+                    return AnswerFact(villager, memory, day, f => f.ActorId == arg && f.Kind == MemoryKind.Absent, true)
                         ?? DialogueComposer.Fill(DialogueLibrary.Line("person.none", _random), "person", DialogueComposer.NameOf(arg));
                 default:
                     return DialogueLibrary.Line("answer.none", _random);
@@ -157,7 +157,8 @@ namespace ProjectShaman.AI.Dialogue
             }
         }
 
-        private static string AnswerFact(AI_Memory memory, int day, System.Predicate<MemoryEntry> match, bool preferSeen)
+        // The host and stressed villagers twist one detail of what they say (AnswerDistortion)
+        private static string AnswerFact(AI_Conversation speaker, AI_Memory memory, int day, System.Predicate<MemoryEntry> match, bool preferSeen)
         {
             if (memory == null || memory.Events == null)
             {
@@ -181,7 +182,7 @@ namespace ProjectShaman.AI.Dialogue
             }
 
             _facts.Clear();
-            return best.HasValue ? DialogueComposer.DescribeFact(best.Value, day, _random) : null;
+            return best.HasValue ? DialogueComposer.DescribeFact(AnswerDistortion.Apply(speaker, best.Value), day, _random) : null;
         }
 
         private static string AnswerToday(AI_Memory memory)
@@ -200,7 +201,7 @@ namespace ProjectShaman.AI.Dialogue
             return DialogueLibrary.Line("today.none", _random);
         }
 
-        private static string AnswerTool(AI_Memory memory, string toolType)
+        private static string AnswerTool(AI_Conversation speaker, AI_Memory memory, string toolType)
         {
             if (memory != null && memory.ToolSightings != null)
             {
@@ -215,7 +216,7 @@ namespace ProjectShaman.AI.Dialogue
 
                 if (latest.HasValue)
                 {
-                    return DialogueComposer.DescribeToolSighting(latest.Value, _random);
+                    return DialogueComposer.DescribeToolSighting(AnswerDistortion.Apply(speaker, latest.Value), _random);
                 }
             }
 
