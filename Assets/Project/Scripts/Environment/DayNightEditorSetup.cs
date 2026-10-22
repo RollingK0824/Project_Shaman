@@ -4,7 +4,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-[InitializeOnLoad]
+// 메뉴(Tools/Day-Night Cycle)로만 실행한다. 씬을 열거나 에디터를 켤 때 자동 실행하면 씬을 덮어써 저장해 버린다.
 public static class DayNightEditorSetup
 {
     private const string ShaderName = "Custom/DayNightCubemapSkybox";
@@ -12,46 +12,6 @@ public static class DayNightEditorSetup
     private const string MaterialPath = "Assets/Project/Visuals/Materials/Environment/Skybox/DayNightSkybox.mat";
     private const string DayCubemapPath = "Assets/ThirdParty/AllSkyFree/Cold Sunset/Cold Sunset Equirect.png";
     private const string NightCubemapPath = "Assets/ThirdParty/AllSkyFree/Cold Night/Cold Night Equirect.png";
-    private const string SessionKey = "ProjectShaman_DayNightTestAutoSetup_v6";
-
-    static DayNightEditorSetup()
-    {
-        EditorApplication.delayCall += TryAutoSetupOnce;
-        EditorSceneManager.sceneOpened += OnSceneOpened;
-    }
-
-    private static void OnSceneOpened(Scene scene, OpenSceneMode mode)
-    {
-        if (!Application.isPlaying && !string.IsNullOrEmpty(scene.path) && !scene.path.StartsWith("Assets/ThirdParty"))
-        {
-            if (scene.name == "Scene_SkyboxTest" || Object.FindFirstObjectByType<DayNightCycleController>() != null)
-            {
-                SetupCurrentSceneInternal();
-            }
-        }
-    }
-
-    private static void TryAutoSetupOnce()
-    {
-        if (Application.isPlaying)
-        {
-            return;
-        }
-
-        Scene activeScene = SceneManager.GetActiveScene();
-        if (!string.IsNullOrEmpty(activeScene.path) && activeScene.path.StartsWith("Assets/ThirdParty"))
-        {
-            return;
-        }
-
-        if (!SessionState.GetBool(SessionKey, false) || activeScene.name == "Scene_SkyboxTest")
-        {
-            if (SetupCurrentSceneInternal())
-            {
-                SessionState.SetBool(SessionKey, true);
-            }
-        }
-    }
 
     [MenuItem("Tools/Day-Night Cycle/Setup Test in Current Scene")]
     public static void SetupCurrentScene()
