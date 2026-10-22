@@ -4,6 +4,7 @@ namespace ProjectShaman.AI.Core
     {
         public static event System.Action<string, string, float> OnVillagerStress;
         public static event System.Action<string, string, string> OnVillagerRequest;
+        public static event System.Action<string, string> OnVillagerToolRecovered;
 
         public static event System.Action<string, string> OnVillagerDied;
         public static event System.Action<string> OnVillagerDeathKnown;
@@ -30,6 +31,12 @@ namespace ProjectShaman.AI.Core
         {
             AILog.Log(AILog.EVENT, villagerId, $"[Stub] Request '{requestType}' ({detail})");
             OnVillagerRequest?.Invoke(villagerId, requestType, detail);
+        }
+
+        // The villager found a tool of this kind by its own search (not handed over by a player)
+        public static void RaiseToolRecovered(string villagerId, string toolTypeId)
+        {
+            OnVillagerToolRecovered?.Invoke(villagerId, toolTypeId);
         }
     }
 }

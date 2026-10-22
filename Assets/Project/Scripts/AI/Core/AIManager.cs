@@ -269,6 +269,23 @@ namespace ProjectShaman.AI.Core
             AIEvents.RaiseDeathKnown(victimId);
         }
 
+        // Server: a won exorcism frees the host. With no possession the ghost has no entity, hunt, corruption or symptoms from now on.
+        public void Exorcise(string villagerId)
+        {
+            VillagerRuntime villager = _villagers.Find(v => v.Id == villagerId);
+            AI_Possession possession = villager != null ? villager.Profile.Possession : null;
+            if (possession == null)
+            {
+                AILog.Warn(AILog.DEFENSE, $"{villagerId} exorcise requested but not possessed, ignored");
+                return;
+            }
+
+            string ghostId = possession.GhostId;
+            villager.Profile.Possession = null;
+            Destroy(possession);
+            AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager");
+        }
+
         public bool TryGetHomePosition(string villagerId, out Vector3 home)
         {
             foreach (VillagerProfile profile in _profiles)

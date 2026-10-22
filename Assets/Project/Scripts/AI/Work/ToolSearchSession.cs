@@ -155,6 +155,7 @@ namespace ProjectShaman.AI.Work
             }
 
             IsActive = false;
+            AIEvents.RaiseToolRecovered(Id, tool.TypeId);
             return true;
         }
 

@@ -20,6 +20,7 @@ namespace ProjectShaman.AI.Request
 
         private sealed class RequestOrigin
         {
+            public string GiverId;
             public string Kind;
             public string Detail;
             public string TargetId;
@@ -58,6 +59,7 @@ namespace ProjectShaman.AI.Request
             _quests.QuestOffered += HandleQuestOffered;
             _quests.QuestEnded += HandleQuestEnded;
             AIEvents.OnVillagerRequest += HandleRequest;
+            AIEvents.OnVillagerToolRecovered += HandleToolRecovered;
             GhostTraceRegistry.OnTraceAdded += WatchTrace;
             GhostTraceRegistry.OnTraceResolved += HandleTraceResolved;
 
@@ -84,6 +86,7 @@ namespace ProjectShaman.AI.Request
             _quests.QuestOffered -= HandleQuestOffered;
             _quests.QuestEnded -= HandleQuestEnded;
             AIEvents.OnVillagerRequest -= HandleRequest;
+            AIEvents.OnVillagerToolRecovered -= HandleToolRecovered;
             GhostTraceRegistry.OnTraceAdded -= WatchTrace;
             GhostTraceRegistry.OnTraceResolved -= HandleTraceResolved;
 
@@ -132,6 +135,26 @@ namespace ProjectShaman.AI.Request
             else if (requestType == CHECK_ON)
             {
                 OfferCheckOn(villagerId, detail);
+            }
+        }
+
+        // The giver found the tool by itself: the request is withdrawn (FindTool's context is the giver)
+        private void HandleToolRecovered(string villagerId, string toolTypeId)
+        {
+            bool hasRequest = false;
+            foreach (RequestOrigin origin in _origins.Values)
+            {
+                if (origin.Kind == FIND_TOOL && origin.GiverId == villagerId && origin.TargetId == toolTypeId)
+                {
+                    hasRequest = true;
+                    break;
+                }
+            }
+
+            if (hasRequest)
+            {
+                AILog.Log(AILog.REQUEST, villagerId, $"Found the {toolTypeId} by itself, request withdrawn");
+                _quests.CancelByContext(villagerId);
             }
         }
 
@@ -284,6 +307,7 @@ namespace ProjectShaman.AI.Request
                 return false;
             }
 
+            origin.GiverId = giverId;
             _pending = origin;
             bool offered = _quests.TryOffer(giverId, questId, origin.TargetId, origin.ContextId);
             _pending = null;
