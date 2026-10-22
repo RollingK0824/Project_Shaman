@@ -1,7 +1,12 @@
 using Mirror;
 using TMPro;
 using UnityEngine;
+using ProjectShaman.AI;
 using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Data;
+using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Dialogue;
+using System.Collections.Generic;
 using ProjectShaman.AI.Interaction;
 
 namespace ProjectShaman.Network.AI
@@ -17,7 +22,17 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private float _markerFontSize = 6f;
         [SerializeField] private Color _markerColor = new Color(1f, 0.85f, 0.2f);
 
+        [Header("Dialogue")]
+        [SerializeField] private float _dialogueHoldSeconds = 60f;
+        [SerializeField] private float _dialogueIdleTimeout = 40f;
+        [SerializeField] private float _dialogueLeaveDistance = 6f;
+
         private AI_Conversation _conversation;
+        private AI_Interaction _interaction;
+        private NetworkConnectionToClient _dialogueConnection;
+        private GameObject _dialoguePlayer;
+        private int _holdSerial;
+        private float _dialogueDeadline;
         private TextMeshPro _marker;
         private QuestManager _subscribedQuests;
 
@@ -28,6 +43,7 @@ namespace ProjectShaman.Network.AI
         private void Awake()
         {
             _conversation = GetComponent<AI_Conversation>();
+            _interaction = GetComponent<AI_Interaction>();
         }
 
         public override void OnStartServer()
@@ -46,6 +62,8 @@ namespace ProjectShaman.Network.AI
 
         public override void OnStopServer()
         {
+            EndDialogue(null);
+
             if (_subscribedQuests == null)
             {
                 return;
@@ -162,12 +180,156 @@ namespace ProjectShaman.Network.AI
                     _conversation.Say("지금은 더 맡기기 어렵겠소", "quest refused (limit or no target)");
                 }
             }
-            else
+            else if (_dialogueConnection != null && _dialogueConnection != sender)
+            {
+                _conversation.Say("다른 분이랑 얘기 중이오", "dialogue busy");
+            }
+            else if (!TryStartDialogue(sender, player))
             {
                 _conversation.RespondToPlayer(player);
             }
 
-            GameplayEvents.RaiseActionDone(playerId, "Talk", villagerId);
+            GameplayEvents.RaiseActionDone(playerId, QuestActions.TALK, villagerId);
+        }
+
+        // ----- Player dialogue (server) -----
+
+        private bool TryStartDialogue(NetworkConnectionToClient sender, GameObject player)
+        {
+            AIBehaviourConfig config = _conversation.Config;
+            if (_interaction == null || config == null || !_conversation.CanTalkWithPlayer())
+            {
+                return false;
+            }
+
+            if (_conversation.IsInSession)
+            {
+                _conversation.Leave("player came to talk");
+            }
+
+            if (!_interaction.TryBegin(PlayerTalkTarget.For(player), InteractionResponse.Stop, _dialogueHoldSeconds))
+            {
+                return false;
+            }
+
+            _dialogueConnection = sender;
+            _dialoguePlayer = player;
+            _holdSerial = _interaction.Serial;
+            _dialogueDeadline = Time.time + _dialogueIdleTimeout;
+
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
+            AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
+            TargetOpenDialogue(sender, _conversation.DisplayName, VillagerDialogueService.Greeting(), ids, labels);
+            return true;
+        }
+
+        [Command(requiresAuthority = false)]
+        private void CmdAsk(string topicId, NetworkConnectionToClient sender = null)
+        {
+            if (sender == null || sender != _dialogueConnection)
+            {
+                return;
+            }
+
+            AIBehaviourConfig config = _conversation.Config;
+            string answer = VillagerDialogueService.Answer(_conversation, topicId, config, out bool ends);
+            AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Asked {topicId}: {answer}");
+
+            if (ends)
+            {
+                TargetFinal(sender, answer);
+                EndDialogue("finished");
+                return;
+            }
+
+            _dialogueDeadline = Time.time + _dialogueIdleTimeout;
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
+            TargetAnswer(sender, answer, ids, labels);
+        }
+
+        [Command(requiresAuthority = false)]
+        private void CmdCloseDialogue(NetworkConnectionToClient sender = null)
+        {
+            if (sender != null && sender == _dialogueConnection)
+            {
+                EndDialogue("closed by player");
+            }
+        }
+
+        [ServerCallback]
+        private void Update()
+        {
+            if (_dialogueConnection == null)
+            {
+                return;
+            }
+
+            bool lost = _dialoguePlayer == null || !_interaction.IsInteracting || _interaction.Serial != _holdSerial;
+            bool far = !lost && (_dialoguePlayer.transform.position - transform.position).sqrMagnitude > _dialogueLeaveDistance * _dialogueLeaveDistance;
+
+            if (lost || far || Time.time > _dialogueDeadline)
+            {
+                if (_dialogueConnection.identity != null)
+                {
+                    TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : "살펴 가시오.");
+                }
+
+                EndDialogue(lost ? "villager called away" : far ? "player walked off" : "idle");
+            }
+        }
+
+        private void EndDialogue(string reason)
+        {
+            if (_dialogueConnection == null)
+            {
+                return;
+            }
+
+            if (_interaction != null)
+            {
+                _interaction.CompleteActive(_holdSerial);
+            }
+
+            if (reason != null)
+            {
+                AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue ended ({reason})");
+            }
+
+            _dialogueConnection = null;
+            _dialoguePlayer = null;
+        }
+
+        private static void SplitTopics(List<DialogueTopic> topics, out string[] ids, out string[] labels)
+        {
+            ids = new string[topics.Count];
+            labels = new string[topics.Count];
+
+            for (int i = 0; i < topics.Count; i++)
+            {
+                ids[i] = topics[i].Id;
+                labels[i] = topics[i].Label;
+            }
+        }
+
+        // ----- Player dialogue (owning client) -----
+
+        [TargetRpc]
+        private void TargetOpenDialogue(NetworkConnectionToClient target, string speaker, string line, string[] ids, string[] labels)
+        {
+            AI_SpeechBubble bubble = GetComponent<AI_SpeechBubble>();
+            VillagerDialoguePanel.Show(bubble != null ? bubble.Font : null, speaker, line, ids, labels, topicId => CmdAsk(topicId), () => CmdCloseDialogue());
+        }
+
+        [TargetRpc]
+        private void TargetAnswer(NetworkConnectionToClient target, string line, string[] ids, string[] labels)
+        {
+            VillagerDialoguePanel.UpdateContent(line, ids, labels);
+        }
+
+        [TargetRpc]
+        private void TargetFinal(NetworkConnectionToClient target, string line)
+        {
+            VillagerDialoguePanel.ShowFinal(line);
         }
 
         private static IQuestView FindOffer(QuestManager quests, string giverId)

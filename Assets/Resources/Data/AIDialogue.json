@@ -1,0 +1,85 @@
+{
+  "lines": [
+    { "id": "greet", "text": "무슨 일이오?" },
+    { "id": "greet", "text": "어서 오시오. 뭘 알고 싶소?" },
+    { "id": "greet", "text": "그래, 무슨 일로 왔소?" },
+
+    { "id": "testimony.seen", "text": "{when} {area}에서 웬 {actor:이} {verb} 걸 봤소." },
+    { "id": "testimony.seen", "text": "{when} {area}에서 웬 {actor:이} {verb} 걸 봤는디, 영 꺼림칙하더구먼." },
+    { "id": "testimony.heard", "text": "{source}한테 들었는디, {when} {area}에서 웬 {actor:이} {verb} 걸 봤다더구먼." },
+    { "id": "testimony.rumor", "text": "누가 그러는디, {area}에서 {actor:이} {verb} 걸 봤다는 소문이 있소." },
+
+    { "id": "trace.seen", "text": "{when} {area}에서 {object:을} 봤소. 아이고, 끔찍하더구먼." },
+    { "id": "trace.heard", "text": "{source}한테 들었는디, {area}에 {object:이} 있다더구먼." },
+    { "id": "trace.rumor", "text": "{area}에 {object:이} 있다는 소문이 돌더구먼." },
+
+    { "id": "absent.seen", "text": "{actor:이} 아침부터 통 안 보이오. 무슨 일이 있는 건 아닌지…" },
+    { "id": "absent.heard", "text": "{source} 말이, {actor:이} 아침부터 안 보인다더구먼." },
+    { "id": "absent.rumor", "text": "{actor:이} 안 보인다는 말이 돌더구먼." },
+
+    { "id": "answer.none", "text": "글쎄, 별다른 건 못 봤소." },
+    { "id": "answer.none", "text": "딱히 이상한 건 없었소." },
+    { "id": "rumor.none", "text": "요즘은 별 소문 없소." },
+    { "id": "today", "text": "오늘은 {area}에서 일했소." },
+    { "id": "today.none", "text": "그냥 이것저것 했소." },
+
+    { "id": "tool.held", "text": "{holder:이} {tool:을} 들고 있더구먼." },
+    { "id": "tool.place", "text": "{area} 쪽에 {tool:이} 놓여 있더구먼." },
+    { "id": "tool.near", "text": "저짝에 {tool:이} 떨어져 있던디." },
+    { "id": "tool.none", "text": "{tool}? 못 봤는디유." },
+
+    { "id": "trace.ask.none", "text": "그건 잘 모르겠소." },
+    { "id": "person.none", "text": "{person}? 요 며칠 못 봤소." },
+
+    { "id": "budget", "text": "이제 그만 물어보시오. 할 일이 많소." },
+    { "id": "bye", "text": "살펴 가시오." },
+
+    { "id": "smalltalk.rest", "text": "오늘 날이 덥구먼." },
+    { "id": "smalltalk.rest", "text": "요즘 밤마다 뒤숭숭하오." },
+    { "id": "smalltalk.rest", "text": "올해 농사는 어떨지 모르겠소." },
+    { "id": "smalltalk.rest", "text": "주막 막걸리가 그립구먼." },
+    { "id": "smalltalk.work", "text": "허리가 끊어지겄네." },
+    { "id": "smalltalk.work", "text": "이거 오늘 안에 끝내야 하는디." },
+    { "id": "smalltalk.work", "text": "손 좀 빨리 놀리게." },
+
+    { "id": "ask.anomaly", "text": "요즘 이상한 걸 본 적 없소?" },
+    { "id": "ask.rumor", "text": "도는 소문 있소?" },
+    { "id": "ask.today", "text": "오늘 뭐 했소?" },
+    { "id": "ask.tool", "text": "{tool:을} 본 적 있소?" },
+    { "id": "ask.trace", "text": "{area}의 {object}에 대해 아는 게 있소?" },
+    { "id": "ask.person", "text": "{person:을} 본 적 있소?" },
+    { "id": "ask.bye", "text": "그만 가 보겠소." }
+  ],
+  "verbs": [
+    { "id": "tremble", "text": "부들부들 떠는" },
+    { "id": "stare_void", "text": "허공을 멍하니 쳐다보는" },
+    { "id": "talk_nonsense", "text": "혼자 알 수 없는 소리를 중얼거리는" },
+    { "id": "walk_grotesque", "text": "괴상하게 몸을 꺾으며 걷는" },
+    { "id": "empty_hand_work", "text": "빈손으로 연장질을 하는" },
+    { "id": "work_wrong_tool", "text": "{object:으로} 일을 하는" },
+    { "id": "work_wrong_action", "text": "하던 일과 딴판인 짓을 하는" },
+    { "id": "work_wrong_place", "text": "제 일터도 아닌 데서 일을 하는" },
+    { "id": "stand_still", "text": "넋 나간 듯 한참을 서 있는" }
+  ],
+  "nouns": [
+    { "id": "person.Elder.Male", "text": "영감" },
+    { "id": "person.Elder.Female", "text": "노파" },
+    { "id": "person.Adult.Male", "text": "남정네" },
+    { "id": "person.Adult.Female", "text": "아낙" },
+    { "id": "person.Child.Male", "text": "사내아이" },
+    { "id": "person.Child.Female", "text": "계집아이" },
+    { "id": "person.Elder", "text": "노인" },
+    { "id": "person.Adult", "text": "어른" },
+    { "id": "person.Child", "text": "아이" },
+    { "id": "person.Male", "text": "사내" },
+    { "id": "person.Female", "text": "여인" },
+    { "id": "person.any", "text": "사람" },
+    { "id": "class.Yangban", "text": "양반" },
+    { "id": "class.Sangmin", "text": "상민" },
+    { "id": "class.Cheonmin", "text": "천민" },
+    { "id": "place.unknown", "text": "마을 어귀" },
+    { "id": "when.0", "text": "오늘" },
+    { "id": "when.1", "text": "어제" },
+    { "id": "when.n", "text": "며칠 전" }
+  ]
+}

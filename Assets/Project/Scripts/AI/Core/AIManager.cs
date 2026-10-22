@@ -123,7 +123,7 @@ namespace ProjectShaman.AI.Core
 
             _resolver = new RoutineResolver(new System.Random(_factory.Seed + 1), _behaviourConfig);
             AIRuntimeContext context = new AIRuntimeContext(_behaviourConfig, GetGameClock, BuildToolUsePlaces());
-            _conversations = new ConversationService(context, _factory.Seed + 2);
+            _conversations = new ConversationService(context, _factory.Seed + 2, new Dialogue.FactConversationContent(_behaviourConfig, _factory.Seed + 5));
 
             foreach (AI_Core core in cores)
             {

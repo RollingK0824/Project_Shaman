@@ -15,6 +15,8 @@ namespace ProjectShaman.AI
         [SerializeField, Range(0f, 1f)] private float _outlineWidth = 0.25f;
 
         private TextMeshPro _text;
+
+        public TMP_FontAsset Font => _font;
         private float _hideTime;
 
         public void Show(string line)

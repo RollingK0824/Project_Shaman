@@ -37,6 +37,7 @@ namespace ProjectShaman.AI.Interaction
         public int JoinedInteractionSerial { get; private set; }
         public bool IsInSession => Session != null;
         public float HearingDistance => _context != null && _context.Config != null ? _context.Config.HearingDistance : 0f;
+        public AIBehaviourConfig Config => _context != null ? _context.Config : null;
 
         public string InteractableId => VillagerId;
         public InteractionProfile Profile => _profile;
@@ -167,6 +168,23 @@ namespace ProjectShaman.AI.Interaction
         {
             AILog.Log(AILog.INTERACTION, VillagerId, $"Say #{session.Serial} {session.Kind}: {line.Text}");
             OnLineSpoken?.Invoke(session, line);
+        }
+
+        // Resting (alone or in a rest chat) and not heading home: a player can sit down and talk
+        public bool CanTalkWithPlayer()
+        {
+            if (_core == null || !_core.IsSimulating || !_core.HasRoutine || _context == null)
+            {
+                return false;
+            }
+
+            VillagerActivity activity = CurrentActivity();
+            if (IsInSession)
+            {
+                return Session.Kind == ConversationKind.RestTalk;
+            }
+
+            return activity == VillagerActivity.Rest && !_interaction.IsInteracting;
         }
 
         public void RespondToPlayer(GameObject player)
