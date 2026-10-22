@@ -4,28 +4,38 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // Local-only window for talking to a resting villager: the villager's line plus question buttons.
-// Built in code (no prefab); opened through UIManager so gameplay input is blocked and the cursor freed.
+// Placed in the game scene (inactive) and shown with SetActive through UIManager, so it goes away with the scene.
+// Opened through UIManager so gameplay input is blocked and the cursor freed.
 // Closing it (Esc, the bye question, or the server) reports back through onClosed.
 public class VillagerDialoguePanel : UIPanel
 {
     private const float WIDTH = 820f;
     private const float BUTTON_HEIGHT = 46f;
 
+    [SerializeField] private TMP_Text _speaker;
+    [SerializeField] private TMP_Text _line;
+    [SerializeField] private RectTransform _buttons;
+    [SerializeField, Tooltip("Inactive question button under Buttons, copied for each question")]
+    private Button _questionTemplate;
+
     private static VillagerDialoguePanel _instance;
 
-    private TMP_Text _speaker;
-    private TMP_Text _line;
-    private RectTransform _buttons;
-    private TMP_FontAsset _font;
     private Action<string> _onPick;
     private Action _onClosed;
     private bool _closingQuietly;
 
-    public static bool IsShowing => _instance != null && _instance.gameObject.activeSelf;
+    public static bool IsShowing => Find() != null && _instance.gameObject.activeSelf;
 
-    public static void Show(TMP_FontAsset font, string speaker, string line, string[] topicIds, string[] labels, Action<string> onPick, Action onClosed)
+    public static void Show(string speaker, string line, string[] topicIds, string[] labels, Action<string> onPick, Action onClosed)
     {
-        VillagerDialoguePanel panel = Ensure(font);
+        VillagerDialoguePanel panel = Find();
+        if (panel == null)
+        {
+            Debug.LogWarning("[VillagerDialoguePanel] No VillagerDialoguePanel in the scene: place one (inactive) under the game UI");
+            onClosed?.Invoke();
+            return;
+        }
+
         panel._onPick = onPick;
         panel._onClosed = onClosed;
         panel.Fill(speaker, line, topicIds, labels);
@@ -66,6 +76,17 @@ public class VillagerDialoguePanel : UIPanel
         }
     }
 
+    // The panel starts inactive, so Awake never runs before the first talk: look it up in the loaded scene instead
+    private static VillagerDialoguePanel Find()
+    {
+        if (_instance == null)
+        {
+            _instance = FindFirstObjectByType<VillagerDialoguePanel>(FindObjectsInactive.Include);
+        }
+
+        return _instance;
+    }
+
     private void OnDisable()
     {
         Action closed = _onClosed;
@@ -80,6 +101,14 @@ public class VillagerDialoguePanel : UIPanel
         _closingQuietly = false;
     }
 
+    private void OnDestroy()
+    {
+        if (_instance == this)
+        {
+            _instance = null;
+        }
+    }
+
     private void Fill(string speaker, string line, string[] topicIds, string[] labels)
     {
         if (speaker != null)
@@ -91,7 +120,10 @@ public class VillagerDialoguePanel : UIPanel
 
         foreach (Transform child in _buttons)
         {
-            Destroy(child.gameObject);
+            if (child != _questionTemplate.transform)
+            {
+                Destroy(child.gameObject);
+            }
         }
 
         int count = topicIds != null && labels != null ? Mathf.Min(topicIds.Length, labels.Length) : 0;
@@ -102,39 +134,39 @@ public class VillagerDialoguePanel : UIPanel
         }
     }
 
-    private static VillagerDialoguePanel Ensure(TMP_FontAsset font)
+    private void CreateButton(string label, Action onClick)
     {
-        if (_instance != null)
+        Button button = Instantiate(_questionTemplate, _buttons);
+        button.gameObject.SetActive(true);
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(() => onClick());
+
+        TMP_Text text = button.GetComponentInChildren<TMP_Text>(true);
+        if (text != null)
         {
-            if (font != null)
-            {
-                _instance._font = font;
-            }
-
-            return _instance;
+            text.text = label;
         }
-
-        GameObject root = new GameObject("VillagerDialoguePanel", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
-        root.SetActive(false);
-        DontDestroyOnLoad(root);
-
-        Canvas canvas = root.GetComponent<Canvas>();
-        canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        canvas.sortingOrder = 60;
-        CanvasScaler scaler = root.GetComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-
-        VillagerDialoguePanel panel = root.AddComponent<VillagerDialoguePanel>();
-        panel._font = font;
-        panel.Build(root.transform);
-        _instance = panel;
-        return panel;
     }
 
-    private void Build(Transform root)
+#if UNITY_EDITOR
+    private const string LAYOUT_FONT_PATH = "Assets/ThirdParty/Font/ChosunCentennial_ttf SDF.asset";
+
+    // One-time scene setup: builds the default layout under this object and wires the fields. Restyle freely afterwards.
+    [ContextMenu("Build Default Layout")]
+    private void BuildDefaultLayout()
     {
-        RectTransform box = NewRect("Box", root);
+        if (GetComponentInParent<Canvas>(true) == null)
+        {
+            Canvas canvas = gameObject.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 60;
+            CanvasScaler scaler = gameObject.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            gameObject.AddComponent<GraphicRaycaster>();
+        }
+
+        RectTransform box = NewRect("Box", transform);
         box.anchorMin = box.anchorMax = new Vector2(0.5f, 0f);
         box.pivot = new Vector2(0.5f, 0f);
         box.anchoredPosition = new Vector2(0f, 60f);
@@ -158,38 +190,35 @@ public class VillagerDialoguePanel : UIPanel
         buttonLayout.childControlHeight = true;
         buttonLayout.childControlWidth = true;
         buttonLayout.childForceExpandHeight = false;
-    }
 
-    private void CreateButton(string label, Action onClick)
-    {
-        RectTransform rect = NewRect("Question", _buttons);
-        rect.gameObject.AddComponent<LayoutElement>().minHeight = BUTTON_HEIGHT;
-        Image image = rect.gameObject.AddComponent<Image>();
-        image.color = new Color(0.25f, 0.2f, 0.15f, 1f);
-
-        Button button = rect.gameObject.AddComponent<Button>();
-        ColorBlock colors = button.colors;
+        RectTransform question = NewRect("QuestionTemplate", _buttons);
+        question.gameObject.AddComponent<LayoutElement>().minHeight = BUTTON_HEIGHT;
+        question.gameObject.AddComponent<Image>().color = new Color(0.25f, 0.2f, 0.15f, 1f);
+        _questionTemplate = question.gameObject.AddComponent<Button>();
+        ColorBlock colors = _questionTemplate.colors;
         colors.highlightedColor = new Color(0.45f, 0.36f, 0.24f, 1f);
-        button.colors = colors;
-        button.onClick.AddListener(() => onClick());
+        _questionTemplate.colors = colors;
 
-        TMP_Text text = NewText("Label", rect, 22f, Color.white);
-        text.alignment = TextAlignmentOptions.MidlineLeft;
-        RectTransform textRect = text.rectTransform;
-        textRect.anchorMin = Vector2.zero;
-        textRect.anchorMax = Vector2.one;
-        textRect.offsetMin = new Vector2(16f, 0f);
-        textRect.offsetMax = new Vector2(-16f, 0f);
-        text.text = label;
+        TMP_Text label = NewText("Label", question, 22f, Color.white);
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.rectTransform.anchorMin = Vector2.zero;
+        label.rectTransform.anchorMax = Vector2.one;
+        label.rectTransform.offsetMin = new Vector2(16f, 0f);
+        label.rectTransform.offsetMax = new Vector2(-16f, 0f);
+        question.gameObject.SetActive(false);
+
+        gameObject.SetActive(false);
+        UnityEditor.EditorUtility.SetDirty(this);
     }
 
-    private TMP_Text NewText(string name, Transform parent, float size, Color color)
+    private static TMP_Text NewText(string name, Transform parent, float size, Color color)
     {
         RectTransform rect = NewRect(name, parent);
         TextMeshProUGUI text = rect.gameObject.AddComponent<TextMeshProUGUI>();
-        if (_font != null)
+        TMP_FontAsset font = UnityEditor.AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(LAYOUT_FONT_PATH);
+        if (font != null)
         {
-            text.font = _font;
+            text.font = font;
         }
 
         text.fontSize = size;
@@ -201,7 +230,9 @@ public class VillagerDialoguePanel : UIPanel
     private static RectTransform NewRect(string name, Transform parent)
     {
         GameObject go = new GameObject(name, typeof(RectTransform));
+        UnityEditor.Undo.RegisterCreatedObjectUndo(go, "Build Default Layout");
         go.transform.SetParent(parent, false);
         return (RectTransform)go.transform;
     }
+#endif
 }

@@ -17,8 +17,9 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private string _interactionPrompt = "말 걸기";
         [SerializeField] private float _maxTalkDistance = 4f;
 
+        private static readonly Vector3 MARKER_LOCAL_POSITION = new Vector3(0f, 2f, 0f);
+
         [Header("Quest marker")]
-        [SerializeField] private float _markerHeight = 2.9f;
         [SerializeField] private float _markerFontSize = 6f;
         [SerializeField] private Color _markerColor = new Color(1f, 0.85f, 0.2f);
 
@@ -104,7 +105,7 @@ namespace ProjectShaman.Network.AI
             {
                 GameObject markerObject = new GameObject("QuestMarker");
                 markerObject.transform.SetParent(transform, false);
-                markerObject.transform.localPosition = Vector3.up * _markerHeight;
+                markerObject.transform.localPosition = MARKER_LOCAL_POSITION;
                 _marker = markerObject.AddComponent<TextMeshPro>();
                 _marker.text = "!";
                 _marker.fontSize = _markerFontSize;
@@ -123,12 +124,13 @@ namespace ProjectShaman.Network.AI
 
         private void LateUpdate()
         {
-            if (_marker == null || !_marker.gameObject.activeSelf || Camera.main == null)
+            if (_marker == null || !_marker.gameObject.activeSelf)
             {
                 return;
             }
 
-            _marker.transform.rotation = Camera.main.transform.rotation;
+            _marker.transform.localPosition = MARKER_LOCAL_POSITION;
+            AI_ViewerCamera.Face(_marker.transform);
         }
 
         public bool CanInteract(GameObject interactor)
@@ -316,8 +318,7 @@ namespace ProjectShaman.Network.AI
         [TargetRpc]
         private void TargetOpenDialogue(NetworkConnectionToClient target, string speaker, string line, string[] ids, string[] labels)
         {
-            AI_SpeechBubble bubble = GetComponent<AI_SpeechBubble>();
-            VillagerDialoguePanel.Show(bubble != null ? bubble.Font : null, speaker, line, ids, labels, topicId => CmdAsk(topicId), () => CmdCloseDialogue());
+            VillagerDialoguePanel.Show(speaker, line, ids, labels, topicId => CmdAsk(topicId), () => CmdCloseDialogue());
         }
 
         [TargetRpc]
