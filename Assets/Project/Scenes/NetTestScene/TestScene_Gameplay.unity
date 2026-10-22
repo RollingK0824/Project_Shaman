@@ -15,18 +15,18 @@ RenderSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 10
   m_Fog: 0
-  m_FogColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+  m_FogColor: {r: 0.51, g: 0.54, b: 0.6, a: 1}
   m_FogMode: 3
   m_FogDensity: 0.01
   m_LinearFogStart: 0
   m_LinearFogEnd: 300
-  m_AmbientSkyColor: {r: 0.212, g: 0.227, b: 0.259, a: 1}
-  m_AmbientEquatorColor: {r: 0.114, g: 0.125, b: 0.133, a: 1}
-  m_AmbientGroundColor: {r: 0.047, g: 0.043, b: 0.035, a: 1}
+  m_AmbientSkyColor: {r: 0.24, g: 0.29, b: 0.4, a: 1}
+  m_AmbientEquatorColor: {r: 0.24, g: 0.29, b: 0.4, a: 1}
+  m_AmbientGroundColor: {r: 0.192, g: 0.232, b: 0.32000002, a: 0.8}
   m_AmbientIntensity: 1
   m_AmbientMode: 0
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
-  m_SkyboxMaterial: {fileID: 10304, guid: 0000000000000000f000000000000000, type: 0}
+  m_SkyboxMaterial: {fileID: 2100000, guid: 4f3279aeeec5bf44fae5430c2877d7c4, type: 2}
   m_HaloStrength: 0.5
   m_FlareStrength: 1
   m_FlareFadeSpeed: 3
@@ -73785,6 +73785,7 @@ GameObject:
   - component: {fileID: 2096961659}
   - component: {fileID: 2096961661}
   - component: {fileID: 2096961660}
+  - component: {fileID: 2096961662}
   m_Layer: 0
   m_Name: Directional Light
   m_TagString: Untagged
@@ -73800,7 +73801,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2096961658}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.40821788, y: -0.23456968, z: 0.10938163, w: 0.8754261}
+  m_LocalRotation: {x: 0.05901855, y: 0.9185124, z: -0.36096904, w: 0.15017706}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -73846,8 +73847,8 @@ Light:
   m_Enabled: 1
   serializedVersion: 12
   m_Type: 1
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
-  m_Intensity: 2
+  m_Color: {r: 0.95, g: 0.91, b: 0.85, a: 1}
+  m_Intensity: 1.1
   m_Range: 10
   m_SpotAngle: 30
   m_InnerSpotAngle: 21.80208
@@ -73901,6 +73902,37 @@ Light:
   m_LightUnit: 1
   m_LuxAtDistance: 1
   m_EnableSpotReflector: 1
+--- !u!114 &2096961662
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2096961658}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa58dbcd8eeb9144d97981440e8254d6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::DayNightCycleController
+  directionalLight: {fileID: 2096961661}
+  skyboxMaterial: {fileID: 2100000, guid: 4f3279aeeec5bf44fae5430c2877d7c4, type: 2}
+  cycleProgress: 0.15
+  autoSimulatePreview: 1
+  previewCycleDuration: 24
+  startAzimuthAngle: -65
+  endAzimuthAngle: 65
+  skyboxVerticalArcDegrees: 8
+  minLightElevation: 10
+  maxLightElevation: 48
+  dayLightColor: {r: 0.95, g: 0.91, b: 0.85, a: 1}
+  sunsetLightColor: {r: 0.95, g: 0.58, b: 0.38, a: 1}
+  nightLightColor: {r: 0.22, g: 0.35, b: 0.52, a: 1}
+  dayLightIntensity: 1.1
+  nightLightIntensity: 0.6
+  dayAmbientColor: {r: 0.24, g: 0.29, b: 0.4, a: 1}
+  nightAmbientColor: {r: 0.08, g: 0.12, b: 0.2, a: 1}
+  dayFogColor: {r: 0.51, g: 0.54, b: 0.6, a: 1}
+  nightFogColor: {r: 0.06, g: 0.09, b: 0.14, a: 1}
 --- !u!114 &2103153042
 MonoBehaviour:
   m_ObjectHideFlags: 0
