@@ -18,7 +18,10 @@ namespace ProjectShaman.AI.Dialogue
 
         public static string DescribeFact(in MemoryEntry fact, int currentDay, System.Random random)
         {
-            string prefix = fact.Kind == MemoryKind.TraceWitness ? "trace" : fact.Kind == MemoryKind.Absent ? "absent" : "testimony";
+            string prefix = fact.Kind == MemoryKind.TraceWitness ? "trace"
+                : fact.Kind == MemoryKind.Absent ? "absent"
+                : fact.Kind == MemoryKind.Death ? "death"
+                : "testimony";
             string mode = fact.Source == MemorySource.Direct ? "seen" : fact.Hops <= 1 ? "heard" : "rumor";
             string template = DialogueLibrary.Line($"{prefix}.{mode}", random);
             MemoryEntry copy = fact;
@@ -29,7 +32,7 @@ namespace ProjectShaman.AI.Dialogue
                 {
                     case "when": return When(copy.DayCount, currentDay);
                     case "area": return AreaName(copy.AreaId, copy.Position);
-                    case "actor": return copy.Kind == MemoryKind.Absent ? NameOf(copy.ActorId) : Person(copy.ActorId, copy.TraitMask);
+                    case "actor": return IsNamed(copy.Kind) ? NameOf(copy.ActorId) : Person(copy.ActorId, copy.TraitMask);
                     case "verb": return VerbPhrase(copy.VerbId, copy.ObjectId);
                     case "object": return copy.Kind == MemoryKind.TraceWitness && !string.IsNullOrEmpty(copy.ActorId)
                         ? $"{NameOf(copy.ActorId)}의 {ObjectName(copy.ObjectId)}"
@@ -38,6 +41,12 @@ namespace ProjectShaman.AI.Dialogue
                     default: return null;
                 }
             });
+        }
+
+        // Absence and death are told by name: neither is evidence of possession
+        public static bool IsNamed(MemoryKind kind)
+        {
+            return kind == MemoryKind.Absent || kind == MemoryKind.Death;
         }
 
         public static string DescribeToolSighting(in ToolSighting sighting, System.Random random)

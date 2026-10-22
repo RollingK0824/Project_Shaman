@@ -8,7 +8,8 @@ namespace ProjectShaman.AI.Defines
         ToolLost,
         SleepParalysis,
         Witness,
-        Absent
+        Absent,
+        Death
     }
 
     public enum MemorySource

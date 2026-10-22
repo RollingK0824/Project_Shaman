@@ -126,6 +126,14 @@ namespace ProjectShaman.AI.Observation
                         return true;
                     }
                 }
+
+                foreach (MemoryEntry fact in witness.Memory.Events.Get(MemoryKind.Death))
+                {
+                    if (fact.ActorId == missingId)
+                    {
+                        return true;
+                    }
+                }
             }
 
             return false;

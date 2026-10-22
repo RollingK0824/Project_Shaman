@@ -51,7 +51,7 @@ namespace ProjectShaman.AI.Dialogue
             bool selfBlame = possessed && fact.ActorId == speaker.VillagerId;
 
             _axes.Clear();
-            if (selfBlame || (!string.IsNullOrEmpty(fact.ActorId) && (fact.TraitMask != 0 || fact.Kind == MemoryKind.Absent)))
+            if (selfBlame || (!string.IsNullOrEmpty(fact.ActorId) && (fact.TraitMask != 0 || DialogueComposer.IsNamed(fact.Kind))))
             {
                 _axes.Add(Axis.Actor);
             }

@@ -185,6 +185,19 @@ namespace ProjectShaman.AI.Core
             _requests.Start();
         }
 
+        public string NeighborhoodOf(string villagerId)
+        {
+            foreach (VillagerProfile profile in _profiles)
+            {
+                if (profile.VillagerId == villagerId)
+                {
+                    return profile.NeighborhoodId;
+                }
+            }
+
+            return null;
+        }
+
         private static bool IsAuthority()
         {
             return !NetworkClient.active || NetworkServer.active;

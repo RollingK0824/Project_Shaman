@@ -106,7 +106,7 @@ namespace ProjectShaman.AI.Dialogue
                 case ASK_TRACE:
                     return AnswerFact(villager, memory, day, f => f.Kind == MemoryKind.TraceWitness && f.SubjectId == arg, true) ?? DialogueLibrary.Line("trace.ask.none", _random);
                 case ASK_PERSON:
-                    return AnswerFact(villager, memory, day, f => f.ActorId == arg && f.Kind == MemoryKind.Absent, true)
+                    return AnswerFact(villager, memory, day, f => f.ActorId == arg && DialogueComposer.IsNamed(f.Kind), true)
                         ?? DialogueComposer.Fill(DialogueLibrary.Line("person.none", _random), "person", DialogueComposer.NameOf(arg));
                 default:
                     return DialogueLibrary.Line("answer.none", _random);

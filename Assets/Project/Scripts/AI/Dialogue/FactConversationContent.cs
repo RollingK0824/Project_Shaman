@@ -68,7 +68,7 @@ namespace ProjectShaman.AI.Dialogue
                     heard.Source = MemorySource.Heard;
                     heard.SourceId = speaker.VillagerId;
                     heard.Hops = fact.Hops + 1;
-                    heard.TraitMask = fact.Kind == MemoryKind.Absent ? fact.TraitMask : DialogueComposer.BlurTraits(fact.TraitMask, heard.Hops, _random);
+                    heard.TraitMask = DialogueComposer.IsNamed(fact.Kind) ? fact.TraitMask : DialogueComposer.BlurTraits(fact.TraitMask, heard.Hops, _random);
                     heard.RecordedTime = fact.RecordedTime;
 
                     if (listenerMemory.RecordFact(heard))

@@ -343,10 +343,73 @@ namespace ProjectShaman.AI.Request
         // that happens inside QuestEnded, the completed quest has already left, and its bundle holds no other request.
         private void HandleTraceResolved(GhostTrace trace, TraceResolveReason reason)
         {
+            if (reason == TraceResolveReason.ClearedByPlayer && !string.IsNullOrEmpty(trace.VictimId))
+            {
+                AnnounceDeath(trace);
+            }
+
             if (reason != TraceResolveReason.Request)
             {
                 _quests.CancelByContext(trace.QuestContextId);
             }
+        }
+
+        // A player carried a body out: the victim's neighbours (or, without a neighbourhood, whoever is closest)
+        // now know the death. It is never "missing" again and spreads as a rumour.
+        private void AnnounceDeath(GhostTrace trace)
+        {
+            string victimId = trace.VictimId;
+            string neighborhood = AIManager.Existing != null ? AIManager.Existing.NeighborhoodOf(victimId) : null;
+            List<AI_Stress> learners = new List<AI_Stress>();
+            AI_Stress nearest = null;
+            float nearestSqr = float.MaxValue;
+
+            foreach (AI_Stress stress in _stresses)
+            {
+                if (stress == null || !stress.TryGetComponent(out AI_Core core) || core.LogId == victimId || core.Profile == null)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(neighborhood) && core.Profile.NeighborhoodId == neighborhood)
+                {
+                    learners.Add(stress);
+                }
+
+                float sqr = (core.transform.position - trace.Position).sqrMagnitude;
+                if (sqr < nearestSqr)
+                {
+                    nearestSqr = sqr;
+                    nearest = stress;
+                }
+            }
+
+            if (learners.Count == 0 && nearest != null)
+            {
+                learners.Add(nearest);
+            }
+
+            string areaId = ProjectShaman.Map.MapAreaRegistry.ResolveId(trace.Position);
+            foreach (AI_Stress learner in learners)
+            {
+                Memory.AI_Memory memory = learner.GetComponent<Memory.AI_Memory>();
+                memory?.RecordFact(new Memory.MemoryEntry
+                {
+                    Kind = MemoryKind.Death,
+                    Source = MemorySource.Direct,
+                    SubjectId = victimId,
+                    ActorId = victimId,
+                    VerbId = "died",
+                    AreaId = areaId,
+                    PlaceId = areaId,
+                    Position = trace.Position,
+                    TraitMask = 7,
+                    IsAnomalous = true,
+                    DayCount = memory.CurrentDay
+                });
+            }
+
+            AILog.Log(AILog.REQUEST, victimId, $"Body cleared by a player: {learners.Count} villager(s) now know of the death");
         }
 
         private void ResolveBundle(RequestOrigin origin)

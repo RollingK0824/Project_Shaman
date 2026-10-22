@@ -79,6 +79,7 @@ namespace ProjectShaman.AI.Memory
             results.AddRange(Get(MemoryKind.Witness));
             results.AddRange(Get(MemoryKind.TraceWitness));
             results.AddRange(Get(MemoryKind.Absent));
+            results.AddRange(Get(MemoryKind.Death));
             results.Sort((a, b) => b.RecordedTime.CompareTo(a.RecordedTime));
         }
 
