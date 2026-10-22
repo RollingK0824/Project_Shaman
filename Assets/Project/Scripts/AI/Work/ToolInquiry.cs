@@ -19,6 +19,7 @@ namespace ProjectShaman.AI.Work
         private const float APPROACH_TIMEOUT = 12f;
         private const float ARRIVE_MARGIN = 0.8f;
         private const float LINE_GAP = 1.6f;
+        private const float FALLBACK_HEARING = 4f;
 
         private static readonly Dictionary<string, string> TOOL_NAMES = new Dictionary<string, string>
         {
@@ -47,6 +48,9 @@ namespace ProjectShaman.AI.Work
         private float _approachDeadline;
         private bool _gotAnswer;
         private int _askedRoutineSerial = -1;
+        private Vector3 _meetPoint;
+        private int _askedDay = -1;
+        private readonly HashSet<string> _askedToday = new HashSet<string>();
 
         public bool IsActive => _phase != Phase.None;
         public string PartnerId => _partner != null ? _partner.VillagerId : null;
@@ -74,10 +78,11 @@ namespace ProjectShaman.AI.Work
                 return false;
             }
 
-            AI_Conversation partner = FindPartner();
+            RefreshAskedDay();
+            AI_Conversation partner = FindPartner(toolType);
             if (partner == null)
             {
-                AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' skipped (nobody within {INQUIRY_RADIUS:F0}m)");
+                AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' skipped (nobody within {INQUIRY_RADIUS:F0}m not yet asked today)");
                 return false;
             }
 
@@ -88,6 +93,8 @@ namespace ProjectShaman.AI.Work
             }
 
             _askedRoutineSerial = routineSerial;
+            _askedToday.Add(AskedKey(toolType, partner.VillagerId));
+            _meetPoint = partner.transform.position;
             _partner = partner;
             _toolType = toolType;
             _serial = _interaction.Serial;
@@ -144,15 +151,16 @@ namespace ProjectShaman.AI.Work
 
         private void TickApproach()
         {
-            Vector3 offset = _partner.transform.position - _owner.transform.position;
-            float flat = new Vector2(offset.x, offset.z).magnitude;
             float arrive = (_partner.Profile != null ? _partner.Profile.ApproachDistance : 2f) + ARRIVE_MARGIN;
+            float hearing = _partner.HearingDistance > 0f ? _partner.HearingDistance : FALLBACK_HEARING;
+            float toPartner = FlatDistance(_partner.transform.position);
+            bool atMeetPoint = FlatDistance(_meetPoint) <= arrive;
 
-            if (flat > arrive)
+            if (toPartner > arrive && !(atMeetPoint && toPartner <= hearing))
             {
-                if (Time.time > _approachDeadline)
+                if (atMeetPoint || Time.time > _approachDeadline)
                 {
-                    AILog.Log(AILog.TOOL, Id, $"Inquiry gave up reaching {_partner.VillagerId} ({flat:F1}m)");
+                    AILog.Log(AILog.TOOL, Id, $"Inquiry gave up reaching {_partner.VillagerId} ({toPartner:F1}m, {(atMeetPoint ? "partner moved away" : "timeout")})");
                     int serial = _serial;
                     Finish("could not reach");
                     _interaction.CompleteActive(serial);
@@ -248,7 +256,29 @@ namespace ProjectShaman.AI.Work
             return registry != null && registry.TryGet(villagerId, out IVillagerView view) && !string.IsNullOrEmpty(view.DisplayName) ? view.DisplayName : villagerId;
         }
 
-        private AI_Conversation FindPartner()
+        private float FlatDistance(Vector3 point)
+        {
+            Vector3 offset = point - _owner.transform.position;
+            return new Vector2(offset.x, offset.z).magnitude;
+        }
+
+        private static string AskedKey(string toolType, string partnerId)
+        {
+            return $"{toolType}:{partnerId}";
+        }
+
+        private void RefreshAskedDay()
+        {
+            int day = _owner.Core.CurrentRoutine.DayCount;
+            if (day != _askedDay)
+            {
+                _askedDay = day;
+                _askedToday.Clear();
+            }
+        }
+
+        // Nearest simulating villager not yet asked about this tool today
+        private AI_Conversation FindPartner(string toolType)
         {
             AI_Conversation best = null;
             float bestSqr = INQUIRY_RADIUS * INQUIRY_RADIUS;
@@ -256,7 +286,8 @@ namespace ProjectShaman.AI.Work
 
             foreach (AI_Conversation candidate in AI_Conversation.All)
             {
-                if (candidate == null || candidate == _conversation || candidate.Core == null || !candidate.Core.IsSimulating)
+                if (candidate == null || candidate == _conversation || candidate.Core == null || !candidate.Core.IsSimulating
+                    || _askedToday.Contains(AskedKey(toolType, candidate.VillagerId)))
                 {
                     continue;
                 }

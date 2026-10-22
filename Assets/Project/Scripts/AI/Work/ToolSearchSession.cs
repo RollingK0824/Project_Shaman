@@ -161,7 +161,7 @@ namespace ProjectShaman.AI.Work
         // Returns false when an inquiry started instead; the routine stays and the search is planned again afterwards
         public bool RaiseFailure()
         {
-            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (checked {Mathf.Max(0, CandidateIndex + 1)}/{_candidates.Count}, {(Now > _deadline ? "time over" : "no more candidates")})");
+            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (checked {Mathf.Clamp(CandidateIndex + 1, 0, _candidates.Count)}/{_candidates.Count}, {(Now > _deadline ? "time over" : "no more candidates")})");
 
             if (_owner.Inquiry.TryStart(RequiredToolType))
             {
@@ -169,9 +169,10 @@ namespace ProjectShaman.AI.Work
                 return false;
             }
 
-            AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", Config.ToolSearchFailedStress);
             _owner.Memory.RecordToolLost(RequiredToolType);
+            // Request first: the stress below may leave Calm and ask for a gut, and a giver holds one request at a time
             AIEvents.RaiseRequest(Id, "FindTool", RequiredToolType);
+            AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", Config.ToolSearchFailedStress);
             Cancel();
             _owner.Core.FailCurrentRoutine($"tool '{RequiredToolType}' not found");
             return true;
