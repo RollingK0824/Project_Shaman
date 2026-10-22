@@ -119,6 +119,11 @@ public class RoomManager : NetworkRoomManager
             string roomName = string.IsNullOrWhiteSpace(RoomName) ? $"{owner}'s room" : RoomName;
             _steamLobby.HostLobby(roomName, owner, maxConnections, SelectedGhostCount, HasPassword);
         }
+        else if (!IsUsingSteam && TryGetComponent(out LanDiscovery lan))
+        {
+            // [LAN] 같은 네트워크에 방 알림
+            lan.StartAdvertising();
+        }
     }
 
     // [Steam 로비] 접속하면 인원 갱신
@@ -179,6 +184,8 @@ public class RoomManager : NetworkRoomManager
     public override void OnStopHost()
     {
         if (_steamLobby != null) _steamLobby.CloseLobby();
+        if (TryGetComponent(out LanDiscovery lan)) lan.StopDiscovery();   // [LAN] 광고 중지
+
         base.OnStopHost();
     }
 
