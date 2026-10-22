@@ -102,7 +102,7 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
             AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
 
-            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.RestRatio, _random, GetPlaceCapacity);
+            _scheduleBuilder = new ScheduleBuilder(ExcludeMissingTools(_dataProvider.Routines), _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.RestRatio, _random, GetPlaceCapacity);
 
             List<VillagerProfile> profiles = GenerateProfiles();
 
@@ -180,6 +180,42 @@ namespace ProjectShaman.AI.Core
 
             AILog.Warn(AILog.ROUTINE, $"Place '{placeId}' not registered, routines using it are excluded");
             return 0;
+        }
+
+        // A routine whose tool kind is not in the scene can never be worked, and its failed search
+        // would end in a request no player can fulfil
+        private List<RoutineEntry> ExcludeMissingTools(IReadOnlyList<RoutineEntry> routines)
+        {
+            HashSet<string> present = new HashSet<string>();
+            foreach (ToolItem tool in ToolRegistry.All)
+            {
+                if (tool != null && !string.IsNullOrEmpty(tool.TypeId))
+                {
+                    present.Add(tool.TypeId);
+                }
+            }
+
+            List<RoutineEntry> result = new List<RoutineEntry>();
+            SortedDictionary<string, int> missing = new SortedDictionary<string, int>();
+
+            foreach (RoutineEntry routine in routines)
+            {
+                if (routine != null && !string.IsNullOrEmpty(routine.ToolId) && !present.Contains(routine.ToolId))
+                {
+                    missing.TryGetValue(routine.ToolId, out int count);
+                    missing[routine.ToolId] = count + 1;
+                    continue;
+                }
+
+                result.Add(routine);
+            }
+
+            foreach (KeyValuePair<string, int> pair in missing)
+            {
+                AILog.Warn(AILog.ROUTINE, $"Tool '{pair.Key}' not in scene, {pair.Value} routine(s) using it are excluded");
+            }
+
+            return result;
         }
 
         private List<VillagerProfile> GenerateProfiles()
