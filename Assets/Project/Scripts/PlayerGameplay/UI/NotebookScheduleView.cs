@@ -14,13 +14,14 @@ using ProjectShaman.Map;
 // spanning its rows. Night is the same for everyone and is left out. Only the planned schedule is shown.
 public sealed class NotebookScheduleView : MonoBehaviour
 {
-    private const string SPRITES = "NotebookSchedule/";
     // Day hours 05~20 start at 묘시 초; every sijin is two hours (초, 정)
     private static readonly string[] SIJIN = { "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시" };
+    private const int FIRST_SIJIN_ZODIAC = 3;   // 묘시 is the fourth animal after 자·축·인
+    private const float ZODIAC_SIZE = 46f;
 
     private const float LIST_X = 30f, LIST_Y = 104f, LIST_WIDTH = 420f, LIST_HEIGHT = 500f, LIST_ROW_HEIGHT = 42f;
     private const float TABLE_X = 548f, TABLE_Y = 104f, TABLE_WIDTH = 424f;
-    private const float TIME_WIDTH = 92f, HOUR_HEIGHT = 31f, BLOCK_INSET = 3f;
+    private const float TIME_WIDTH = 126f, HOUR_HEIGHT = 31f, BLOCK_INSET = 3f;
 
     private static readonly Color INK = PlayerItemUIStyle.NotebookInk;
     private static readonly Color RULE = new(.20f, .14f, .10f, .85f);
@@ -36,6 +37,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
     // Last block hours seen per villager, kept when their object is gone so a hidden death changes nothing here
     private readonly Dictionary<string, (int day, int[] hours)> _hours = new();
     private TMP_FontAsset _font;
+    private NotebookScheduleArt _art;
     private Sprite _wash, _rule, _ruleThin, _select, _underline;
     private RectTransform _listContent, _table;
     private TMP_Text _dayLabel, _title, _note;
@@ -47,11 +49,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
     public void Bind(TMP_FontAsset font)
     {
         _font = font;
-        _wash = Resources.Load<Sprite>(SPRITES + "ScheduleWash");
-        _rule = Resources.Load<Sprite>(SPRITES + "ScheduleRule");
-        _ruleThin = Resources.Load<Sprite>(SPRITES + "ScheduleRuleThin");
-        _select = Resources.Load<Sprite>(SPRITES + "ScheduleSelect");
-        _underline = Resources.Load<Sprite>(SPRITES + "ScheduleTitleUnderline");
+        _art = Resources.Load<NotebookScheduleArt>("NotebookScheduleArt");
+        if (_art != null)
+        {
+            _wash = _art.Wash; _rule = _art.Rule; _ruleThin = _art.RuleThin;
+            _select = _art.Select; _underline = _art.TitleUnderline;
+        }
 
         // Left page: heading and the villager list
         Heading("ScheduleHeading", "주민 일과표", 20);
@@ -80,7 +83,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
         return label;
     }
 
-    // Time column with the sijin names, ink rules at the sijin edges, and an empty field for the brush washes
+    // Time column with each sijin's animal and name, ink rules at the sijin edges, and an empty field for the brush washes
     private void BuildTable()
     {
         float height = DayHours * HOUR_HEIGHT;
@@ -90,7 +93,14 @@ public sealed class NotebookScheduleView : MonoBehaviour
         {
             int rows = Mathf.Min(2, DayHours - offset);
             float y = offset * HOUR_HEIGHT;
-            Text(_table, "Sijin" + offset / 2, SIJIN[offset / 2], 0, y, TIME_WIDTH - 26, rows * HOUR_HEIGHT, 21, TextAlignmentOptions.Center);
+            float icon = Mathf.Min(ZODIAC_SIZE, rows * HOUR_HEIGHT - 6);
+            Sprite animal = _art != null ? _art.Zodiac(FIRST_SIJIN_ZODIAC + offset / 2) : null;
+            if (animal != null)
+            {
+                var zodiac = Picture(_table, "Zodiac" + offset / 2, animal, Color.white, 4 + (ZODIAC_SIZE - icon) / 2, y + (rows * HOUR_HEIGHT - icon) / 2, icon, icon, Image.Type.Simple);
+                zodiac.preserveAspect = true;
+            }
+            Text(_table, "Sijin" + offset / 2, SIJIN[offset / 2], ZODIAC_SIZE + 6, y, TIME_WIDTH - 26 - ZODIAC_SIZE - 6, rows * HOUR_HEIGHT, 21, TextAlignmentOptions.Center);
             for (int half = 0; half < rows; half++)
             {
                 var mark = Text(_table, $"Half{offset + half}", half == 0 ? "초" : "정", TIME_WIDTH - 26, y + half * HOUR_HEIGHT, 22, HOUR_HEIGHT, 13, TextAlignmentOptions.Center);
