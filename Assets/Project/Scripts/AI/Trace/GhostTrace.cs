@@ -33,7 +33,7 @@ namespace ProjectShaman.AI.Trace
 
         public GhostTraceKind Kind => _kind;
         public string PlaceId => _placeId;
-        public string BundleKey => $"{_kind}@{(string.IsNullOrEmpty(_placeId) ? "-" : _placeId)}";
+        public string BundleKey => !string.IsNullOrEmpty(VictimId) ? $"Body@{VictimId}" : $"{_kind}@{(string.IsNullOrEmpty(_placeId) ? "-" : _placeId)}";
         public bool ClearableByHand => _clearableByHand;
         public bool IsActive => _isActive;
         public int Serial => _serial;
@@ -44,7 +44,7 @@ namespace ProjectShaman.AI.Trace
         public InteractionProfile Profile => _profile;
         public string QuestContextId => InteractableId;
         public string VictimId { get; private set; }
-        public string DisplayName => AIDisplayNames.Trace(_kind);
+        public string DisplayName => string.IsNullOrEmpty(VictimId) ? AIDisplayNames.Trace(_kind) : $"{VictimName()}의 {AIDisplayNames.Trace(_kind)}";
         public Vector3 Position => transform.position;
         public Vector3 LookPoint => _lookPoint != null ? _lookPoint.position : transform.position;
 
@@ -134,6 +134,13 @@ namespace ProjectShaman.AI.Trace
         public void SetVictim(string villagerId)
         {
             VictimId = villagerId;
+            AILog.Log(AILog.TRACE, InteractableId, $"Body of {villagerId} ({BundleKey})");
+        }
+
+        private string VictimName()
+        {
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            return registry != null && registry.TryGet(VictimId, out Interfaces.IVillagerView view) && !string.IsNullOrEmpty(view.DisplayName) ? view.DisplayName : VictimId;
         }
 
         public bool Accepts(string actionType, string actionId)

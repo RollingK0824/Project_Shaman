@@ -139,28 +139,7 @@ namespace ProjectShaman.AI.Ghost
             _traces.Add(instance);
             AILog.Log(AILog.GHOST, $"Trace {prefab.name} spawned at {position}");
 
-            if (trace != null)
-            {
-                EnforceTraceCap(trace);
-            }
-
             return instance;
-        }
-
-        private void EnforceTraceCap(GhostTrace added)
-        {
-            int cap = _config != null ? _config.TraceMaxPerKind : int.MaxValue;
-
-            while (GhostTraceRegistry.CountActive(added.Kind) > cap)
-            {
-                GhostTrace oldest = GhostTraceRegistry.FindOldestActive(added.Kind, added);
-                if (oldest == null)
-                {
-                    break;
-                }
-
-                oldest.Resolve(TraceResolveReason.Capped);
-            }
         }
 
         private void HandleTraceResolved(GhostTrace trace, TraceResolveReason reason)

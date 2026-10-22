@@ -106,7 +106,6 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _hearingDistance = 12f;
 
         [Header("Ghost Trace")]
-        [SerializeField, Min(1)] private int _traceMaxPerKind = 5;
         [SerializeField, Min(0f)] private float _traceNeglectStressPerDay = 0.5f;
         [SerializeField, Min(1f)] private float _traceNeglectStressMax = 3f;
 
@@ -219,7 +218,6 @@ namespace ProjectShaman.AI.Data
         public int ConversationGroupMax => Mathf.Max(2, _conversationGroupMax);
         public float ConversationPartnerCooldown => Mathf.Max(0f, _conversationPartnerCooldown);
         public float HearingDistance => Mathf.Max(0f, _hearingDistance);
-        public int TraceMaxPerKind => Mathf.Max(1, _traceMaxPerKind);
         public float TraceNeglectStressPerDay => Mathf.Max(0f, _traceNeglectStressPerDay);
         public float TraceNeglectStressMax => Mathf.Max(1f, _traceNeglectStressMax);
         public int MemoryDays => Mathf.Max(1, _memoryDays);

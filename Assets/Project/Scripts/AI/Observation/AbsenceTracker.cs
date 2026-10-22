@@ -52,6 +52,11 @@ namespace ProjectShaman.AI.Observation
                     }
                 }
 
+                if (!seenToday && BodyAlreadySeen(villagers, missingId))
+                {
+                    continue;
+                }
+
                 if (seenToday)
                 {
                     // Seen again: may be missed again on a later day
@@ -103,6 +108,27 @@ namespace ProjectShaman.AI.Observation
         {
             _reported.Clear();
             _pending.Clear();
+        }
+
+        private static bool BodyAlreadySeen(IReadOnlyList<AIManager.VillagerRuntime> villagers, string missingId)
+        {
+            foreach (AIManager.VillagerRuntime witness in villagers)
+            {
+                if (witness.Memory == null || witness.Memory.Events == null)
+                {
+                    continue;
+                }
+
+                foreach (MemoryEntry fact in witness.Memory.Events.Get(MemoryKind.TraceWitness))
+                {
+                    if (fact.ActorId == missingId)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         private bool AnySightingOn(IReadOnlyList<AIManager.VillagerRuntime> villagers, int day)

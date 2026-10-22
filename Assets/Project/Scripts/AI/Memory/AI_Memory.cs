@@ -217,7 +217,8 @@ namespace ProjectShaman.AI.Memory
         {
             if (result.Kind == InteractionKind.GhostTrace && result.Witnessed)
             {
-                string kind = QuestTargets.TryGet(result.Subject, out IQuestTarget target) && target is GhostTrace trace ? trace.Kind.ToString() : null;
+                GhostTrace trace = QuestTargets.TryGet(result.Subject, out IQuestTarget target) ? target as GhostTrace : null;
+                string kind = trace != null ? trace.Kind.ToString() : null;
                 string areaId = MapAreaRegistry.ResolveId(result.Position) ?? result.PlaceId;
                 RecordFact(new MemoryEntry
                 {
@@ -230,6 +231,7 @@ namespace ProjectShaman.AI.Memory
                     Detail = result.Detailed ? "detailed" : "glance",
                     VerbId = "trace",
                     ObjectId = kind,
+                    ActorId = trace != null ? trace.VictimId : null,
                     IsAnomalous = true,
                     DayCount = _currentDay,
                     RecordedTime = _context.GameNow

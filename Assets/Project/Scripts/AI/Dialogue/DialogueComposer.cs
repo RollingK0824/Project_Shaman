@@ -31,7 +31,9 @@ namespace ProjectShaman.AI.Dialogue
                     case "area": return AreaName(copy.AreaId, copy.Position);
                     case "actor": return copy.Kind == MemoryKind.Absent ? NameOf(copy.ActorId) : Person(copy.ActorId, copy.TraitMask);
                     case "verb": return VerbPhrase(copy.VerbId, copy.ObjectId);
-                    case "object": return ObjectName(copy.ObjectId);
+                    case "object": return copy.Kind == MemoryKind.TraceWitness && !string.IsNullOrEmpty(copy.ActorId)
+                        ? $"{NameOf(copy.ActorId)}의 {ObjectName(copy.ObjectId)}"
+                        : ObjectName(copy.ObjectId);
                     case "source": return NameOf(copy.SourceId);
                     default: return null;
                 }
