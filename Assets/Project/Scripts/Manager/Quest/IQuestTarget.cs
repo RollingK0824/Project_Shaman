@@ -19,6 +19,7 @@ public static class QuestActions
     public const string USE_ON = "UseOn";        // item used on a quest target
     public const string CLEAR = "Clear";         // target cleared by hand
     public const string PERFORM = "Perform";     // ritual action performed at a target (gut ...)
+    public const string INSPECT = "Inspect";     // player came to look at the target (check on a missing villager)
     public const string DELIVER = "Deliver";
     public const string TALK = "Talk";
 }

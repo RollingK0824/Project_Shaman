@@ -13,6 +13,7 @@ namespace ProjectShaman.AI.Request
         public const string FIND_TOOL = "FindTool";
         public const string TRACE = "Trace";
         public const string TRACE_CLEANSE = "TraceCleanse";
+        public const string CHECK_ON = "CheckOn";
         public const string GUT = "Gut";
 
         private sealed class RequestOrigin
@@ -121,6 +122,32 @@ namespace ProjectShaman.AI.Request
             {
                 Offer(villagerId, new RequestOrigin { Kind = FIND_TOOL, Detail = detail, TargetId = detail });
             }
+            else if (requestType == CHECK_ON)
+            {
+                OfferCheckOn(villagerId, detail);
+            }
+        }
+
+        // "OO hasn't shown up, would you look in on them?" → the request points at the body the hunt left
+        private void OfferCheckOn(string giverId, string missingId)
+        {
+            GhostTrace body = null;
+            foreach (GhostTrace trace in GhostTraceRegistry.Traces)
+            {
+                if (trace != null && trace.IsActive && trace.VictimId == missingId)
+                {
+                    body = trace;
+                    break;
+                }
+            }
+
+            if (body == null)
+            {
+                AILog.Log(AILog.REQUEST, giverId, $"Check-on for {missingId} skipped (no body left, already found or cleared)");
+                return;
+            }
+
+            Offer(giverId, new RequestOrigin { Kind = CHECK_ON, TargetId = missingId, ContextId = body.QuestContextId });
         }
 
         // One request per trace bundle (C37); the first witness becomes the giver

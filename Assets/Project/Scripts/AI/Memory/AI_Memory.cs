@@ -5,6 +5,8 @@ using ProjectShaman.Map;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
+using ProjectShaman.AI.Observation;
+using ProjectShaman.AI.Trace;
 using ProjectShaman.AI.Perception;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
@@ -25,6 +27,7 @@ namespace ProjectShaman.AI.Memory
         private int _currentDay;
 
         public ToolSightingStore ToolSightings { get; private set; }
+        public int CurrentDay => _currentDay;
         public EventMemoryStore Events { get; private set; }
 
         private void Awake()
@@ -141,11 +144,74 @@ namespace ProjectShaman.AI.Memory
             AILog.Log(AILog.MEMORY, _core.LogId, $"Remember {entry}");
         }
 
+        // Seen with our own eyes; the same act by the same actor counts once a day
+        public bool RecordWitness(Observable observable, int traitMask)
+        {
+            if (Events == null || observable == null)
+            {
+                return false;
+            }
+
+            MemoryEntry entry = new MemoryEntry
+            {
+                Kind = MemoryKind.Witness,
+                Source = MemorySource.Direct,
+                SubjectId = observable.ActorId,
+                ActorId = observable.ActorId,
+                VerbId = observable.VerbId,
+                ObjectId = observable.ObjectId,
+                Position = observable.Position,
+                AreaId = MapAreaRegistry.ResolveId(observable.Position),
+                TraitMask = traitMask,
+                IsAnomalous = observable.IsAnomalous,
+                DayCount = _currentDay,
+                RecordedTime = _context.GameNow
+            };
+            entry.PlaceId = entry.AreaId;
+
+            return RecordFact(entry);
+        }
+
+        // Witness/heard facts share one dedupe rule: a fact we already know (from anyone) is not stored twice
+        public bool RecordFact(MemoryEntry entry)
+        {
+            if (Events == null || Events.ContainsFact(entry.FactKey))
+            {
+                return false;
+            }
+
+            Events.Record(entry);
+            Events.WriteDebug(_eventsDebug);
+            AILog.Log(AILog.MEMORY, _core.LogId, $"Remember {entry}");
+            return true;
+        }
+
+        public bool Knows(in MemoryEntry fact)
+        {
+            return Events != null && Events.ContainsFact(fact.FactKey);
+        }
+
         private void RecordInteraction(InteractionResult result, InteractionEndReason reason)
         {
             if (result.Kind == InteractionKind.GhostTrace && result.Witnessed)
             {
-                Record(MemoryKind.TraceWitness, result.Subject, result.PlaceId, result.Position, result.Detailed ? "detailed" : "glance");
+                string kind = QuestTargets.TryGet(result.Subject, out IQuestTarget target) && target is GhostTrace trace ? trace.Kind.ToString() : null;
+                string areaId = MapAreaRegistry.ResolveId(result.Position) ?? result.PlaceId;
+                RecordFact(new MemoryEntry
+                {
+                    Kind = MemoryKind.TraceWitness,
+                    Source = MemorySource.Direct,
+                    SubjectId = result.Subject,
+                    PlaceId = areaId,
+                    AreaId = areaId,
+                    Position = result.Position,
+                    Detail = result.Detailed ? "detailed" : "glance",
+                    VerbId = "trace",
+                    ObjectId = kind,
+                    IsAnomalous = true,
+                    DayCount = _currentDay,
+                    RecordedTime = _context.GameNow
+                });
                 return;
             }
 

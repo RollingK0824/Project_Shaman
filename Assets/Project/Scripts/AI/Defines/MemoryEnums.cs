@@ -6,7 +6,9 @@ namespace ProjectShaman.AI.Defines
         TraceWitness,
         Conversation,
         ToolLost,
-        SleepParalysis
+        SleepParalysis,
+        Witness,
+        Absent
     }
 
     public enum MemorySource

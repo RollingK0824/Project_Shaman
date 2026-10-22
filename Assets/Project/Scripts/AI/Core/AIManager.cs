@@ -7,6 +7,8 @@ using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.Observation;
+using ProjectShaman.AI.Perception;
 using ProjectShaman.AI.Request;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Stress;
@@ -27,6 +29,17 @@ namespace ProjectShaman.AI.Core
         private RoutineResolver _resolver;
         private ConversationService _conversations;
         private VillagerRequestRouter _requests;
+        private ObservationService _observation;
+        private readonly List<DeathRecord> _deaths = new List<DeathRecord>();
+
+        private struct DeathRecord
+        {
+            public string VillagerId;
+            public Vector3 HomePosition;
+            public int Day;
+            public float NoticeTime;
+            public bool Noticed;
+        }
         private bool _isRunning;
         private bool _isDayActive;
 
@@ -93,6 +106,9 @@ namespace ProjectShaman.AI.Core
             _conversations = null;
             _requests?.Stop();
             _requests = null;
+            _observation?.Clear();
+            _observation = null;
+            _deaths.Clear();
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -129,6 +145,7 @@ namespace ProjectShaman.AI.Core
             }
 
             StartRequests();
+            _observation = IsAuthority() ? new ObservationService(_behaviourConfig, _factory.Seed + 4) : null;
 
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
 
@@ -150,7 +167,7 @@ namespace ProjectShaman.AI.Core
             _requests?.Stop();
             _requests = null;
 
-            if (NetworkClient.active && !NetworkServer.active)
+            if (!IsAuthority())
             {
                 return;
             }
@@ -166,6 +183,11 @@ namespace ProjectShaman.AI.Core
 
             _requests = new VillagerRequestRouter(_behaviourConfig, stresses);
             _requests.Start();
+        }
+
+        private static bool IsAuthority()
+        {
+            return !NetworkClient.active || NetworkServer.active;
         }
 
         private float GetGameClock()
@@ -246,6 +268,7 @@ namespace ProjectShaman.AI.Core
             }
 
             _isDayActive = true;
+            ScheduleAbsenceChecks();
         }
 
         private void HandleNightStart()
@@ -286,6 +309,8 @@ namespace ProjectShaman.AI.Core
             }
 
             _conversations?.Tick(_villagers);
+            _observation?.Tick(_villagers);
+            TickAbsenceChecks(now);
         }
 
         private void TickVillager(VillagerRuntime villager, float now)
@@ -331,6 +356,7 @@ namespace ProjectShaman.AI.Core
 
                 villager.Current = resolved;
                 villager.Core.ApplyRoutine(resolved);
+                _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
                 RecordMemory(villager, resolved);
             }
             else
@@ -378,6 +404,7 @@ namespace ProjectShaman.AI.Core
                 symptom.HasFired = true;
                 symptoms[i] = symptom;
                 villager.Core.TriggerSymptom(symptom.Type);
+                _observation?.OnSymptom(villager.Core, symptom.Type);
                 possession.RefreshDebug();
             }
         }
@@ -396,6 +423,8 @@ namespace ProjectShaman.AI.Core
             _villagers.Remove(villager);
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
+            _observation?.OnVillagerRemoved(villager.Id);
+            _deaths.Add(new DeathRecord { VillagerId = villager.Id, HomePosition = villager.Profile.HomePosition, Day = _time != null ? _time.DayCount : 0 });
             _factory.Registry?.MarkDead(villager.Id);
             AIEvents.RaiseVillagerDied(villager.Id, reason);
 
@@ -479,6 +508,81 @@ namespace ProjectShaman.AI.Core
             }
         }
 
+        // Somebody who died since yesterday does not show up: the nearest neighbour notices after a while
+        private void ScheduleAbsenceChecks()
+        {
+            for (int i = 0; i < _deaths.Count; i++)
+            {
+                DeathRecord record = _deaths[i];
+                if (!record.Noticed && record.Day >= _time.DayCount - 1)
+                {
+                    record.NoticeTime = _behaviourConfig.CheckOnDelaySeconds;
+                    _deaths[i] = record;
+                }
+            }
+        }
+
+        private void TickAbsenceChecks(float dayElapsed)
+        {
+            if (_observation == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < _deaths.Count; i++)
+            {
+                DeathRecord record = _deaths[i];
+                if (record.Noticed || record.NoticeTime <= 0f || dayElapsed < record.NoticeTime || record.Day < _time.DayCount - 1)
+                {
+                    continue;
+                }
+
+                record.Noticed = true;
+                _deaths[i] = record;
+                NoticeAbsence(record);
+            }
+        }
+
+        private void NoticeAbsence(DeathRecord record)
+        {
+            VillagerRuntime neighbour = null;
+            float best = float.MaxValue;
+
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                float distance = (villager.Profile.HomePosition - record.HomePosition).sqrMagnitude;
+                if (villager.Core != null && distance < best)
+                {
+                    best = distance;
+                    neighbour = villager;
+                }
+            }
+
+            if (neighbour == null)
+            {
+                return;
+            }
+
+            // The missing person is known by name: being absent is no evidence of possession
+            neighbour.Memory?.RecordFact(new MemoryEntry
+            {
+                Kind = MemoryKind.Absent,
+                Source = MemorySource.Direct,
+                SubjectId = record.VillagerId,
+                ActorId = record.VillagerId,
+                VerbId = ObservationVerbs.ABSENT,
+                Position = record.HomePosition,
+                AreaId = ProjectShaman.Map.MapAreaRegistry.ResolveId(record.HomePosition),
+                TraitMask = 7,
+                IsAnomalous = true,
+                DayCount = _time.DayCount,
+                RecordedTime = GetGameClock()
+            });
+
+            AILog.Log(AILog.MANAGER, neighbour.Id, $"Noticed {record.VillagerId} has not shown up");
+            AIEvents.RaiseRequest(neighbour.Id, VillagerRequestRouter.CHECK_ON, record.VillagerId);
+        }
+
         private void OrderGoHome(VillagerRuntime villager)
         {
             villager.IsHomeOrdered = true;
@@ -532,6 +636,9 @@ namespace ProjectShaman.AI.Core
             public AI_Core Core { get; }
             public AI_ToolHandler ToolHandler { get; }
             public AI_Memory Memory { get; }
+            public AI_Perception Perception { get; }
+            public AI_Interaction Interaction { get; }
+            public AI_Conversation Conversation { get; }
             public System.Action<string> RoutineFailedHandler { get; set; }
             public AI_Status Status { get; set; }
             public AI_Stress Stress { get; set; }
@@ -551,6 +658,9 @@ namespace ProjectShaman.AI.Core
                 Id = core.LogId;
                 ToolHandler = core.GetComponent<AI_ToolHandler>();
                 Memory = core.GetComponent<AI_Memory>();
+                Perception = core.GetComponent<AI_Perception>();
+                Interaction = core.GetComponent<AI_Interaction>();
+                Conversation = core.GetComponent<AI_Conversation>();
             }
 
             public int NextSerial()

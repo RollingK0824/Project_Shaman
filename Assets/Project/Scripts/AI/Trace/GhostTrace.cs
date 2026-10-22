@@ -43,6 +43,7 @@ namespace ProjectShaman.AI.Trace
         public string InteractableId => $"Trace_{_kind}_{_serial}";
         public InteractionProfile Profile => _profile;
         public string QuestContextId => InteractableId;
+        public string VictimId { get; private set; }
         public string DisplayName => AIDisplayNames.Trace(_kind);
         public Vector3 Position => transform.position;
         public Vector3 LookPoint => _lookPoint != null ? _lookPoint.position : transform.position;
@@ -129,11 +130,22 @@ namespace ProjectShaman.AI.Trace
             return Mathf.Min(_config.TraceNeglectStressMax, 1f + _config.TraceNeglectStressPerDay * neglectedDays);
         }
 
+        // Set by the night ledger when a hunt leaves a body, so a check-on request can point at it
+        public void SetVictim(string villagerId)
+        {
+            VictimId = villagerId;
+        }
+
         public bool Accepts(string actionType, string actionId)
         {
             if (!_isActive)
             {
                 return false;
+            }
+
+            if (actionType == QuestActions.INSPECT)
+            {
+                return actionId == (VictimId ?? _kind.ToString());
             }
 
             if (actionType == QuestActions.CLEAR)

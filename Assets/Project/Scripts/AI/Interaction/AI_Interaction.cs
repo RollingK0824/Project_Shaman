@@ -36,6 +36,7 @@ namespace ProjectShaman.AI.Interaction
         private AI_Core _core;
         private AI_ToolHandler _toolHandler;
         private AI_Status _status;
+        private Perception.AI_Perception _perception;
         private INetworkMovable _movable;
         private AIRuntimeContext _context;
 
@@ -61,6 +62,7 @@ namespace ProjectShaman.AI.Interaction
             _core = GetComponent<AI_Core>();
             _toolHandler = GetComponent<AI_ToolHandler>();
             _status = GetComponent<AI_Status>();
+            _perception = GetComponent<Perception.AI_Perception>();
             _movable = GetComponent<INetworkMovable>();
 
             _core.OnRoutineApplied += HandleRoutineApplied;
@@ -241,6 +243,11 @@ namespace ProjectShaman.AI.Interaction
             foreach (IVillagerInteractable candidate in _candidates)
             {
                 if (candidate == _active || candidate.gameObject == gameObject || _seenToday.Contains(candidate.InteractableId))
+                {
+                    continue;
+                }
+
+                if (_perception != null && !_perception.CanSee(candidate.LookPoint))
                 {
                     continue;
                 }

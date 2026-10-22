@@ -32,7 +32,7 @@ MonoBehaviour:
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +20"
   - Id: q_find_tool
     Title: "{target} \uCC3E\uAE30"
-    Objective: "{giver}\uC758 \uC783\uC5B4\uBC84\uB9B0 {target}\uC744(\uB97C) \uCC3E\uC544 \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
+    Objective: "{giver:\uC774} \uC783\uC5B4\uBC84\uB9B0 {target:\uC744} \uCC3E\uC544 \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
     ObjectiveType: Deliver
     TargetId: $target
     ContextId: $giver
@@ -49,7 +49,7 @@ MonoBehaviour:
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
   - Id: q_clear_trace
     Title: "{context} \uCE58\uC6B0\uAE30"
-    Objective: "{area}\uC5D0 \uC0DD\uAE34 {context}\uC744(\uB97C) \uCE58\uC6CC\uC8FC\uC138\uC694."
+    Objective: "{area}\uC5D0 \uC0DD\uAE34 {context:\uC744} \uCE58\uC6CC\uC8FC\uC138\uC694."
     ObjectiveType: Clear
     TargetId: $target
     ContextId: $context
@@ -83,7 +83,7 @@ MonoBehaviour:
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
   - Id: q_gut
     Title: "\uAD7F \uC62C\uB9AC\uAE30"
-    Objective: "{giver}\uC744(\uB97C) \uC704\uD574 \uC9D5\uC744 \uC138 \uBC88 \uC6B8\uB824\uC8FC\uC138\uC694."
+    Objective: "{giver:\uC744} \uC704\uD574 \uC9D5\uC744 \uC138 \uBC88 \uC6B8\uB824\uC8FC\uC138\uC694."
     ObjectiveType: Use
     TargetId: item_gong
     ContextId: 
@@ -98,3 +98,20 @@ MonoBehaviour:
       Id: 
       Amount: 15
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +15"
+  - Id: q_check_on
+    Title: "{target} \uCC3E\uC544\uBCF4\uAE30"
+    Objective: "{target:\uC774} \uC544\uCE68\uBD80\uD130 \uBCF4\uC774\uC9C0 \uC54A\uC18C. {area}\uC5D0 \uAC00\uC11C \uD655\uC778\uD574 \uC8FC\uC2DC\uACA0\uC18C?"
+    ObjectiveType: Inspect
+    TargetId: $target
+    ContextId: $context
+    RequiredAmount: 1
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 10
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"

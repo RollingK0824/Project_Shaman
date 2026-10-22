@@ -11,6 +11,10 @@ namespace ProjectShaman.Network.AI
     {
         [SerializeField] private string _interactionPrompt = "치우기";
         [SerializeField] private float _maxClearDistance = 4f;
+        [SerializeField] private float _inspectDistance = 3f;
+
+        private const float INSPECT_CHECK_INTERVAL = 0.5f;
+        private float _nextInspectCheck;
 
         private GhostTrace _trace;
 
@@ -19,6 +23,32 @@ namespace ProjectShaman.Network.AI
         private void Awake()
         {
             _trace = GetComponent<GhostTrace>();
+        }
+
+        [ServerCallback]
+        private void Update()
+        {
+            if (!_trace.IsActive || Time.time < _nextInspectCheck)
+            {
+                return;
+            }
+
+            _nextInspectCheck = Time.time + INSPECT_CHECK_INTERVAL;
+            string actionId = _trace.VictimId ?? _trace.Kind.ToString();
+            if (!_trace.Accepts(QuestActions.INSPECT, actionId))
+            {
+                return;
+            }
+
+            float sqr = _inspectDistance * _inspectDistance;
+            foreach (NetworkConnectionToClient connection in NetworkServer.connections.Values)
+            {
+                GameObject player = connection != null && connection.identity != null ? connection.identity.gameObject : null;
+                if (player != null && (player.transform.position - transform.position).sqrMagnitude <= sqr)
+                {
+                    QuestTargets.ReportAction(player, QuestActions.INSPECT, actionId, _trace);
+                }
+            }
         }
 
         public bool CanInteract(GameObject interactor)

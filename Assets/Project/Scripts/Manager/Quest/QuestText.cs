@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.Map;
@@ -90,20 +89,17 @@ public static class QuestText
             return template ?? string.Empty;
         }
 
-        StringBuilder builder = new StringBuilder(template);
-        Replace(builder, "{giver}", () => NameOf(quest.GiverId));
-        Replace(builder, "{target}", () => NameOf(quest.TargetId));
-        Replace(builder, "{context}", () => NameOf(quest.ContextId));
-        Replace(builder, "{area}", () => AreaOf(quest.ContextId));
-        return builder.ToString();
-    }
-
-    private static void Replace(StringBuilder builder, string token, Func<string> value)
-    {
-        if (builder.ToString().Contains(token))
+        return TextTemplate.Fill(template, key =>
         {
-            builder.Replace(token, value());
-        }
+            switch (key)
+            {
+                case "giver": return NameOf(quest.GiverId);
+                case "target": return NameOf(quest.TargetId);
+                case "context": return NameOf(quest.ContextId);
+                case "area": return AreaOf(quest.ContextId);
+                default: return null;
+            }
+        });
     }
 
     private static string Resolve(List<Func<string, string>> resolvers, string id)
