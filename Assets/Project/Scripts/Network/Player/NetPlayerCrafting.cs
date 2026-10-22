@@ -89,7 +89,7 @@ public class NetPlayerCrafting : NetworkBehaviour
 
         for (int i = 0; i < _bootstrap.CraftingRecipes.Count; i++)
         {
-            if (_bootstrap.CraftingRecipes[i] ==recipe) return 1;
+            if (_bootstrap.CraftingRecipes[i] ==recipe) return i;
         }
 
         return -1;
