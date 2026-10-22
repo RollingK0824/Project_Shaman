@@ -2,7 +2,7 @@ using System;
 using UnityEngine;
 
 // Sprites for the notebook villager schedule. Lives in Resources so the runtime-built page can find it;
-// the textures themselves stay under Visuals/Textures/NotebookSchedule.
+// the textures stay under Visuals/Textures/NotebookSchedule, the zodiac icons are slices of the ThirdParty Note sheet.
 [CreateAssetMenu(menuName = "Project Shaman/UI/Notebook Schedule Art")]
 public sealed class NotebookScheduleArt : ScriptableObject
 {
