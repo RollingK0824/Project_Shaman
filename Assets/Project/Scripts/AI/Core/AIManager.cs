@@ -269,6 +269,7 @@ namespace ProjectShaman.AI.Core
 
             _isDayActive = true;
             _absence?.OnDayStart(_villagers, _time.DayCount);
+            _requests?.OnDayStart();
         }
 
         private void HandleNightStart()

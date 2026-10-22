@@ -2,6 +2,8 @@ using System.Collections.Generic;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Dialogue;
+using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.Trace;
 
@@ -33,6 +35,9 @@ namespace ProjectShaman.AI.Request
         private readonly List<GhostTrace> _bundleBuffer = new List<GhostTrace>();
 
         private QuestManager _quests;
+        private readonly List<(string GiverId, RequestOrigin Origin)> _deferred = new List<(string, RequestOrigin)>();
+        private readonly HashSet<string> _deferredGivers = new HashSet<string>();
+        private readonly System.Random _random = new System.Random();
         private RequestOrigin _pending;
 
         public VillagerRequestRouter(AIBehaviourConfig config, List<AI_Stress> stresses)
@@ -101,6 +106,8 @@ namespace ProjectShaman.AI.Request
             _watchedTraces.Clear();
             _origins.Clear();
             _openBundles.Clear();
+            _deferred.Clear();
+            _deferredGivers.Clear();
             _quests = null;
         }
 
@@ -171,16 +178,98 @@ namespace ProjectShaman.AI.Request
                 ContextId = trace.QuestContextId,
                 BundleKey = trace.BundleKey
             };
+            bool isBody = !string.IsNullOrEmpty(trace.VictimId);
+            if (isBody)
+            {
+                Panic(villagerId);
+            }
+
+            // Found on the way home (a look-in): the villager runs home and asks next morning
+            if (IsHoming(villagerId))
+            {
+                _openBundles.Add(trace.BundleKey);
+                _deferred.Add((villagerId, origin));
+                _deferredGivers.Add(villagerId);
+                AILog.Log(AILog.REQUEST, villagerId, $"Saw {trace.DisplayName} on the way home, will ask tomorrow morning");
+                return;
+            }
+
             if (Offer(villagerId, origin))
             {
                 _openBundles.Add(trace.BundleKey);
             }
         }
 
+        // Next morning: requests held back from the evening, if the trace is still there
+        public void OnDayStart()
+        {
+            if (_quests == null)
+            {
+                return;
+            }
+
+            foreach ((string giverId, RequestOrigin origin) in _deferred)
+            {
+                _openBundles.Remove(origin.BundleKey);
+                if (QuestTargets.TryGet(origin.ContextId, out _) && Offer(giverId, origin))
+                {
+                    _openBundles.Add(origin.BundleKey);
+                }
+            }
+
+            _deferred.Clear();
+            _deferredGivers.Clear();
+        }
+
+        // A body is a shock: stress jumps to at least the anxious threshold and the villager cries out
+        private void Panic(string villagerId)
+        {
+            AI_Stress stress = FindStress(villagerId);
+            if (stress == null)
+            {
+                return;
+            }
+
+            AI_Conversation conversation = stress.GetComponent<AI_Conversation>();
+            conversation?.Say(DialogueLibrary.Line("panic.body", _random), "found a body");
+
+            float lift = _config.VillagerStressAnxious - stress.Value;
+            if (lift > 0f)
+            {
+                AIEvents.RaiseStress(villagerId, "found a body", lift);
+            }
+        }
+
+        private bool IsHoming(string villagerId)
+        {
+            AI_Stress stress = FindStress(villagerId);
+            return stress != null && stress.TryGetComponent(out AI_Core core)
+                && core.TryGetBlackboardVariable(AI_Core.BB_MUST_GO_HOME, out bool mustGoHome) && mustGoHome;
+        }
+
+        private AI_Stress FindStress(string villagerId)
+        {
+            foreach (AI_Stress stress in _stresses)
+            {
+                if (stress != null && stress.TryGetComponent(out AI_Core core) && core.LogId == villagerId)
+                {
+                    return stress;
+                }
+            }
+
+            return null;
+        }
+
         // Leaving Calm (to Anxious, or straight to Breaking) asks for a gut
         private void HandleStressState(AI_Stress stress, VillagerStressState previous, VillagerStressState next)
         {
             if (previous != VillagerStressState.Calm || next == VillagerStressState.Calm || !stress.TryGetComponent(out AI_Core core))
+            {
+                return;
+            }
+
+            // A villager holding a request for the morning keeps its one slot for it
+            if (_deferredGivers.Contains(core.LogId))
             {
                 return;
             }
