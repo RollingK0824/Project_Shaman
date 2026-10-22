@@ -574,6 +574,7 @@ GameObject:
   - component: {fileID: 4851121491699357251}
   - component: {fileID: 6806520525206389558}
   - component: {fileID: 6993644920240441871}
+  - component: {fileID: 3662518075650597335}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -1038,6 +1039,7 @@ MonoBehaviour:
   _craftingRecipes:
   - {fileID: 11400000, guid: 1f9fac9a75964bd18218fb69391a0c98, type: 2}
   - {fileID: 11400000, guid: 9b2d9d02739a4316b704aa517266d6f3, type: 2}
+  - {fileID: 11400000, guid: d7b5019fef20bf3439ee48f27da9dc8f, type: 2}
   _notebookPrefab: {fileID: 5696144593775532542, guid: a11c86512d125734aac3690f07214422, type: 3}
   _inventoryPanelPrefab: {fileID: 6802133810421929188, guid: 1ad70be8a0d1dbd4c995e85e069a69af, type: 3}
   _questItemCatalog: {fileID: 11400000, guid: 8921e668c98171a4d949aeff6493bfde, type: 2}
@@ -1201,6 +1203,9 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 1
   syncInterval: 0
+  _maxSightStressPerRequest: 40
+  _minSightRequestInterval: 0.5
+  _maxSightSourceDistance: 25
 --- !u!114 &447948307433319713
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1378,6 +1383,22 @@ MonoBehaviour:
   _sampleInterval: 0.1
   _candidateRefreshInterval: 1
   _ghostStressAmount: 20
+--- !u!114 &3662518075650597335
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 69034831783be9b49985111b65176c98, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerBarrier
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _wardPrefab: {fileID: 4485040634307117601, guid: 3ca46820f2b7bdd4286ee3f2ed82f895, type: 3}
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0

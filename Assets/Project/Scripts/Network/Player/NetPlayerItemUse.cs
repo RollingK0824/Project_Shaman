@@ -18,6 +18,8 @@ public class NetPlayerItemUse : NetworkBehaviour
     private NetPlayerStatus _status;
     private NetPlayerEquipment _equipment;
 
+    private NetPlayerBarrier _barrier;
+
     private ItemAttackAuthority _attackAuthority;
 
     private readonly Dictionary<int, double> _serverNextUseTime = new Dictionary<int, double>();
@@ -29,6 +31,7 @@ public class NetPlayerItemUse : NetworkBehaviour
         _status = GetComponent<NetPlayerStatus>();
         _attackAuthority = GetComponent<ItemAttackAuthority>();
         _equipment = GetComponent<NetPlayerEquipment>();
+        _barrier = GetComponent<NetPlayerBarrier>();
     }
 
     public override void OnStartServer()
@@ -77,6 +80,13 @@ public class NetPlayerItemUse : NetworkBehaviour
             return;
         }
 
+        // 클라에는 진짜 BarrierWard가 없어 플레이어 쪽 중복 확인이 통과됨 → 동기화된 상태로 대신 막음
+        if (context.Data.UseAction is BarrierTalismanUseAction && _barrier != null && _barrier.IsProtected)
+        {
+            GetComponent<PlayerItemFeedback>()?.Unavailable("이미 결계가 활성화되어 있습니다");
+            return;
+        }
+
         CmdUseItem(id, context.AimOrigin, context.AimDirection);
     }
 
@@ -100,7 +110,10 @@ public class NetPlayerItemUse : NetworkBehaviour
         var context = new ItemUseContext(gameObject, data, aimOrigin, aimDirection,
             amount => _netInventory.ServerConsume(data, amount));
 
-        if (!data.UseAction.Execute(context)) return;
+        // 보호막 부적은 온라인에서 Execute가 막혀 있음(fail closed) → 서버 어댑터로 판정
+        bool success = data.UseAction is BarrierTalismanUseAction barrierAction 
+            ? _barrier != null && _barrier.ServerTryActivate(barrierAction, context) : data.UseAction.Execute(context);
+        if (!success) return;
 
         _serverNextUseTime[itemId] = NetworkTime.time + System.Math.Max(0.0, data.UseAction.Cooldown - ServerCooldownTolerance);
         Debug.Log($"[NetPlayerItemUse] 사용 판정 : {name} -> {data.DisplayName}", this);
