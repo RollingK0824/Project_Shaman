@@ -98,7 +98,7 @@ public class DefenseHUD : MonoBehaviour
     private static string GetBannerMessage(RitualPhase phase) => phase switch
     {
         RitualPhase.NoRitual => "오늘 밤은 굿을 올릴 수 없습니다.",
-        RitualPhase.WaitingFlag => "원귀의 기운이 느껴집니다. 사당의 깃벨을 세워주세요.",
+        RitualPhase.WaitingFlag => "원귀의 기운이 느껴집니다. 사당의 깃발을 세워주세요.",
         RitualPhase.Countdown => "굿이 시작되었습니다. 잡귀가 몰려옵니다.",
         RitualPhase.Succeeded => "퇴마 성공!",
         RitualPhase.Failed => "퇴마 실패...",
