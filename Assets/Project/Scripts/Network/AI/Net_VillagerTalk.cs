@@ -18,6 +18,8 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private float _maxTalkDistance = 4f;
 
         private static readonly Vector3 MARKER_LOCAL_POSITION = new Vector3(0f, 2f, 0f);
+        private const string TOPIC_QUEST_ACCEPT = "quest.accept";
+        private const string TOPIC_QUEST_DECLINE = "quest.decline";
 
         [Header("Quest marker")]
         [SerializeField] private float _markerFontSize = 6f;
@@ -33,6 +35,8 @@ namespace ProjectShaman.Network.AI
         private NetworkConnectionToClient _dialogueConnection;
         private GameObject _dialoguePlayer;
         private int _holdSerial;
+        private bool _holdsVillager;
+        private bool _questOffer;
         private float _dialogueDeadline;
         private TextMeshPro _marker;
         private QuestManager _subscribedQuests;
@@ -167,24 +171,17 @@ namespace ProjectShaman.Network.AI
             uint playerId = player.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
             string villagerId = _conversation.VillagerId;
 
-            // A pending offer is answered by the quest hand-over instead of the usual greeting
+            // A pending offer opens the quest window (accept / decline) instead of the usual greeting
             QuestManager quests = QuestManager.Existing;
-            if (quests != null && quests.HasOffer(villagerId))
-            {
-                IQuestView offer = FindOffer(quests, villagerId);
+            IQuestView offer = quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
 
-                if (quests.TryAcceptQuest(playerId, villagerId))
-                {
-                    _conversation.Say(offer != null ? offer.ObjectiveText : "부탁 하나만 들어주시오", "quest accepted");
-                }
-                else
-                {
-                    _conversation.Say("지금은 더 맡기기 어렵겠소", "quest refused (limit or no target)");
-                }
-            }
-            else if (_dialogueConnection != null && _dialogueConnection != sender)
+            if (_dialogueConnection != null && _dialogueConnection != sender)
             {
                 _conversation.Say("다른 분이랑 얘기 중이오", "dialogue busy");
+            }
+            else if (offer != null)
+            {
+                StartQuestOffer(sender, player, offer);
             }
             else if (!TryStartDialogue(sender, player))
             {
@@ -217,6 +214,8 @@ namespace ProjectShaman.Network.AI
             _dialogueConnection = sender;
             _dialoguePlayer = player;
             _holdSerial = _interaction.Serial;
+            _holdsVillager = true;
+            _questOffer = false;
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
 
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
@@ -225,11 +224,72 @@ namespace ProjectShaman.Network.AI
             return true;
         }
 
+        // The quest window: what is asked and the reward, answered with accept or decline.
+        // The villager is held still while it is open when it can be (a working villager keeps working).
+        private void StartQuestOffer(NetworkConnectionToClient sender, GameObject player, IQuestView offer)
+        {
+            if (_conversation.IsInSession)
+            {
+                _conversation.Leave("player came about a request");
+            }
+
+            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.For(player), InteractionResponse.Stop, _dialogueHoldSeconds);
+            _holdSerial = _holdsVillager ? _interaction.Serial : -1;
+            _dialogueConnection = sender;
+            _dialoguePlayer = player;
+            _questOffer = true;
+            _dialogueDeadline = Time.time + _dialogueIdleTimeout;
+
+            AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer shown to {player.name}: #{offer.InstanceId} {offer.TitleText} (held={_holdsVillager})");
+            TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
+        }
+
+        private static string DescribeOffer(IQuestView offer)
+        {
+            string text = $"<b>{offer.TitleText}</b>\n{offer.ObjectiveText}";
+            QuestEffect reward = offer.Definition.Reward;
+            if (!string.IsNullOrEmpty(reward.Description))
+            {
+                text += $"\n<color=#E6C46A>보상: {reward.Description}</color>";
+            }
+
+            return text;
+        }
+
+        private void AnswerQuestOffer(NetworkConnectionToClient sender, string topicId)
+        {
+            QuestManager quests = QuestManager.Existing;
+            string villagerId = _conversation.VillagerId;
+            string line;
+
+            if (topicId == TOPIC_QUEST_ACCEPT)
+            {
+                uint playerId = _dialoguePlayer != null && _dialoguePlayer.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
+                bool accepted = quests != null && quests.TryAcceptQuest(playerId, villagerId);
+                line = accepted ? "고맙소, 잘 부탁하오." : "지금은 더 맡기기 어렵겠소.";
+                AILog.Log(AILog.INTERACTION, villagerId, accepted ? "Quest accepted" : "Quest accept refused (limit, taken or gone)");
+            }
+            else
+            {
+                line = "알겠소. 생각이 바뀌면 다시 오시오.";
+                AILog.Log(AILog.INTERACTION, villagerId, "Quest declined");
+            }
+
+            TargetFinal(sender, line);
+            EndDialogue(topicId == TOPIC_QUEST_ACCEPT ? "quest answered" : "quest declined");
+        }
+
         [Command(requiresAuthority = false)]
         private void CmdAsk(string topicId, NetworkConnectionToClient sender = null)
         {
             if (sender == null || sender != _dialogueConnection)
             {
+                return;
+            }
+
+            if (_questOffer)
+            {
+                AnswerQuestOffer(sender, topicId);
                 return;
             }
 
@@ -266,7 +326,7 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
-            bool lost = _dialoguePlayer == null || !_interaction.IsInteracting || _interaction.Serial != _holdSerial;
+            bool lost = _dialoguePlayer == null || (_holdsVillager && (!_interaction.IsInteracting || _interaction.Serial != _holdSerial));
             bool far = !lost && (_dialoguePlayer.transform.position - transform.position).sqrMagnitude > _dialogueLeaveDistance * _dialogueLeaveDistance;
 
             if (lost || far || Time.time > _dialogueDeadline)
@@ -287,10 +347,13 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
-            if (_interaction != null)
+            if (_interaction != null && _holdsVillager)
             {
                 _interaction.CompleteActive(_holdSerial);
             }
+
+            _holdsVillager = false;
+            _questOffer = false;
 
             if (reason != null)
             {
