@@ -7,7 +7,7 @@ using ProjectShaman.AI.World;
 namespace ProjectShaman.Network.AI
 {
     // A player can pick up a villager's tool (found for a FindTool request) and carry it to the giver.
-    // Holding is judged on the server; clients only see whether the tool is held, to hide the prompt.
+    // Holding is judged on the server; clients only see whether the tool is held or claimed, to hide the prompt.
     [RequireComponent(typeof(NetworkIdentity), typeof(ToolItem))]
     public class Net_ToolItem : NetworkBehaviour, IInteractable
     {
@@ -22,6 +22,7 @@ namespace ProjectShaman.Network.AI
         private string _carrierId;
 
         [SyncVar(hook = nameof(OnHeldChanged))] private bool _isHeld;
+        [SyncVar] private bool _isUnclaimed;
 
         public ToolItem Tool => _tool;
         public GameObject Carrier => _carrier;
@@ -78,7 +79,7 @@ namespace ProjectShaman.Network.AI
 
         public bool CanInteract(GameObject interactor)
         {
-            return isActiveAndEnabled && netId != 0 && !_isHeld && PlayerActionGuard.CanAct(interactor);
+            return isActiveAndEnabled && netId != 0 && _isUnclaimed && PlayerActionGuard.CanAct(interactor);
         }
 
         public void Interact(GameObject interactor)
@@ -145,6 +146,7 @@ namespace ProjectShaman.Network.AI
         private void Update()
         {
             _isHeld = _tool.IsHeld;
+            _isUnclaimed = _tool.IsUnclaimed;
 
             if (string.IsNullOrEmpty(_carrierId))
             {

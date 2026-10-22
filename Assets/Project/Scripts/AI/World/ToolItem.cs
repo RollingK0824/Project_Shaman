@@ -33,6 +33,8 @@ namespace ProjectShaman.AI.World
         public string ReservedBy => _reservedBy;
         public bool IsHeld => !string.IsNullOrEmpty(_holderId);
         public bool IsOnGround => !IsHeld;
+        // On the ground and not claimed by a villager walking over to pick it up
+        public bool IsUnclaimed => IsOnGround && string.IsNullOrEmpty(_reservedBy);
         public Vector3 Position => transform.position;
         public GhostTargetKind Kind => GhostTargetKind.Tool;
 
