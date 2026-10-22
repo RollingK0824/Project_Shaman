@@ -151,16 +151,33 @@ namespace ProjectShaman.AI.Core
 
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
 
-            if (_time.DayCount > 0)
-            {
-                AILog.Error(AILog.TIME_TO_AI, $"Day {_time.DayCount} already started before villagers were created, waiting for next day");
-            }
-
             UnsubscribeTime();
             _time.OnNewDay += HandleNewDay;
             _time.OnDayStart += HandleDayStart;
             _time.OnNightStart += HandleNightStart;
             _isRunning = true;
+
+            CatchUpStartedDay();
+        }
+
+        // Villagers created after the day began missed its NewDay/DayStart: plan only the hours still ahead
+        private void CatchUpStartedDay()
+        {
+            if (_time.DayCount <= 0)
+            {
+                return;
+            }
+
+            if (_time.CurrentTimePhase != TimeOfDay.Day)
+            {
+                AILog.Warn(AILog.TIME_TO_AI, $"Villagers created during night {_time.DayCount}, waiting for next day");
+                return;
+            }
+
+            float now = GetDayElapsed();
+            AILog.Log(AILog.TIME_TO_AI, $"Day {_time.DayCount} already started before villagers were created, planning from {DayClock.ToHour(now):F1}h ({now:F1}s)");
+            PlanDay(_time.DayCount, now);
+            HandleDayStart();
         }
 
         // Requests come from villager triggers and are judged on the server only
@@ -329,10 +346,16 @@ namespace ProjectShaman.AI.Core
         private void HandleNewDay(int dayCount)
         {
             AILog.Log(AILog.TIME_TO_AI, $"NewDay {dayCount} (cycleDay={(dayCount - 1) % _behaviourConfig.CycleDays})");
+            PlanDay(dayCount, 0f);
+        }
 
+        // Blocks already over at fromTime are dropped; the one in progress stays and TickVillager judges what is left of it
+        private void PlanDay(int dayCount, float fromTime)
+        {
             foreach (VillagerRuntime villager in _villagers)
             {
                 List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig);
+                blocks.RemoveAll(block => block.EndTime <= fromTime);
                 villager.SetToday(blocks, CalculateHomeReturnTime(villager, dayCount));
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
                 villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks));
@@ -372,6 +395,7 @@ namespace ProjectShaman.AI.Core
         {
             AILog.Log(AILog.TIME_TO_AI, $"NightStart Day {_time.DayCount}");
             _isDayActive = false;
+            LogVillagersOutside();
             _conversations?.EndAll("night");
             _absence?.OnNightStart(_villagers, _time.DayCount);
 
@@ -414,6 +438,7 @@ namespace ProjectShaman.AI.Core
         {
             if (villager.IsHomeOrdered)
             {
+                LogHomeArrival(villager, now);
                 return;
             }
 
@@ -460,6 +485,49 @@ namespace ProjectShaman.AI.Core
             {
                 SkipRoutine(villager, $"block {block.Index} resolve failed");
             }
+        }
+
+        // Validation only: "home" is the same radius sleep paralysis uses to count a villager as in the house
+        private void LogHomeArrival(VillagerRuntime villager, float now)
+        {
+            if (villager.HasArrivedHome || !IsAtHome(villager))
+            {
+                return;
+            }
+
+            villager.HasArrivedHome = true;
+            AILog.Log(AILog.MANAGER, villager.Id, $"Arrived home at {DayClock.ToHour(now):F1}h ({now:F1}s), {TimeManager.DAY_DURATION - now:F0}s before night");
+        }
+
+        private void LogVillagersOutside()
+        {
+            List<string> outside = new List<string>();
+
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Core != null && !IsAtHome(villager))
+                {
+                    float distance = Vector3.Distance(villager.Core.transform.position, villager.Profile.HomePosition);
+                    outside.Add($"{villager.Id}({distance:F1}m{(villager.IsHomeOrdered ? "" : ", not ordered")})");
+                }
+            }
+
+            if (outside.Count > 0)
+            {
+                AILog.Warn(AILog.MANAGER, $"Night start: {outside.Count} villager(s) still outside: {string.Join(", ", outside)}");
+            }
+            else
+            {
+                AILog.Log(AILog.MANAGER, $"Night start: all {_villagers.Count} villagers home");
+            }
+        }
+
+        private bool IsAtHome(VillagerRuntime villager)
+        {
+            Vector3 offset = villager.Core.transform.position - villager.Profile.HomePosition;
+            offset.y = 0f;
+            float radius = _behaviourConfig.SleepParalysisHomeDistance;
+            return offset.sqrMagnitude <= radius * radius;
         }
 
         private void PlanCorruption(VillagerRuntime villager, int dayCount)
@@ -767,6 +835,7 @@ namespace ProjectShaman.AI.Core
             public string Id { get; }
             public int LastBlockIndex { get; set; } = -1;
             public bool IsHomeOrdered { get; set; }
+            public bool HasArrivedHome { get; set; }
             public float HomeReturnTime { get; private set; }
             public IReadOnlyList<DailyBlock> TodayBlocks => _todayBlocks;
             public float NextStationRetryTime { get; set; }
@@ -799,6 +868,7 @@ namespace ProjectShaman.AI.Core
             {
                 LastBlockIndex = -1;
                 IsHomeOrdered = false;
+                HasArrivedHome = false;
             }
 
             public bool TryGetBlockAt(float time, out DailyBlock block)
