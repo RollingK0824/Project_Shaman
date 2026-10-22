@@ -26,6 +26,7 @@ namespace ProjectShaman.AI.Core
         public const string TRACE = "Trace";
         public const string STRESS = "Stress";
         public const string MEMORY = "Memory";
+        public const string REQUEST = "Request";
 
         public static bool IsEnabled = true;
         public static bool IsFileLogEnabled = true;

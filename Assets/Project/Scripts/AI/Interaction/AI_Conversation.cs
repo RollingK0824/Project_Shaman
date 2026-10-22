@@ -173,6 +173,18 @@ namespace ProjectShaman.AI.Interaction
             Bark(GREETING_BARKS, $"greeted {playerName}");
         }
 
+        // Server-side one-off line outside the random barks (quest hand-over etc.)
+        public void Say(string text, string reason)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            AILog.Log(AILog.INTERACTION, VillagerId, $"Say: {text} ({reason})");
+            OnLineSpoken?.Invoke(null, new ConversationLine(VillagerId, text));
+        }
+
         private void Bark(string[] lines, string reason)
         {
             string text = lines[UnityEngine.Random.Range(0, lines.Length)];

@@ -120,6 +120,16 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _villagerStressLimit = 100f;
         [SerializeField, Min(0f)] private float _villagerStressMorningDecay = 5f;
 
+        [Header("Villager Request")]
+        [SerializeField] private List<RequestQuestEntry> _requestQuests = new List<RequestQuestEntry>
+        {
+            new RequestQuestEntry("FindTool", "q_find_tool"),
+            new RequestQuestEntry("Trace", "q_clear_trace"),
+            new RequestQuestEntry("Gut", "q_gut")
+        };
+        [SerializeField, Min(0f)] private float _requestCompletedStressRelief = 30f;
+        [SerializeField, Min(0f)] private float _requestFailedStress = 10f;
+
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
@@ -196,6 +206,42 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
+        public float RequestCompletedStressRelief => _requestCompletedStressRelief;
+        public float RequestFailedStress => _requestFailedStress;
+
+        // "Kind:Detail" wins over "Kind", so one tool or trace kind can get its own quest
+        public bool TryGetRequestQuest(string kind, string detail, out string questId)
+        {
+            questId = null;
+
+            if (_requestQuests == null || string.IsNullOrEmpty(kind))
+            {
+                return false;
+            }
+
+            string exactKey = string.IsNullOrEmpty(detail) ? null : $"{kind}:{detail}";
+
+            foreach (RequestQuestEntry entry in _requestQuests)
+            {
+                if (string.IsNullOrEmpty(entry.QuestId))
+                {
+                    continue;
+                }
+
+                if (entry.RequestKey == exactKey)
+                {
+                    questId = entry.QuestId;
+                    return true;
+                }
+
+                if (entry.RequestKey == kind && questId == null)
+                {
+                    questId = entry.QuestId;
+                }
+            }
+
+            return questId != null;
+        }
 
         public int GetInterruptResistance(VillagerActivity activity)
         {

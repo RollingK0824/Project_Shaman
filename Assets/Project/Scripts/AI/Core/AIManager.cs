@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
@@ -6,6 +7,7 @@ using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.Request;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.World;
@@ -24,6 +26,7 @@ namespace ProjectShaman.AI.Core
         private TimeManager _time;
         private RoutineResolver _resolver;
         private ConversationService _conversations;
+        private VillagerRequestRouter _requests;
         private bool _isRunning;
         private bool _isDayActive;
 
@@ -49,6 +52,7 @@ namespace ProjectShaman.AI.Core
                 _factory.OnVillagersCleared -= HandleVillagersCleared;
             }
 
+            _requests?.Stop();
             UnsubscribeTime();
             base.OnDestroy();
         }
@@ -87,6 +91,8 @@ namespace ProjectShaman.AI.Core
             _resolver = null;
             _conversations?.Clear();
             _conversations = null;
+            _requests?.Stop();
+            _requests = null;
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -122,6 +128,8 @@ namespace ProjectShaman.AI.Core
                 }
             }
 
+            StartRequests();
+
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
 
             if (_time.DayCount > 0)
@@ -134,6 +142,30 @@ namespace ProjectShaman.AI.Core
             _time.OnDayStart += HandleDayStart;
             _time.OnNightStart += HandleNightStart;
             _isRunning = true;
+        }
+
+        // Requests come from villager triggers and are judged on the server only
+        private void StartRequests()
+        {
+            _requests?.Stop();
+            _requests = null;
+
+            if (NetworkClient.active && !NetworkServer.active)
+            {
+                return;
+            }
+
+            List<AI_Stress> stresses = new List<AI_Stress>();
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Stress != null)
+                {
+                    stresses.Add(villager.Stress);
+                }
+            }
+
+            _requests = new VillagerRequestRouter(_behaviourConfig, stresses);
+            _requests.Start();
         }
 
         private float GetGameClock()
