@@ -326,7 +326,7 @@ public class RoomManager : NetworkRoomManager
 
         if (roomPlayerComp != null && status != null)
         {
-            status.ServerInitialize(roomPlayerComp.nickname);
+            status.ServerInitialize(roomPlayerComp.nickname, roomPlayerComp.characterId);
         }
         else
         {
