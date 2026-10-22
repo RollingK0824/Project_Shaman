@@ -121,6 +121,7 @@ namespace ProjectShaman.AI.Observation
 
                 TickAnxious(villager, now);
                 Scan(villager);
+                ScanVillagers(villager, villagers);
             }
         }
 
@@ -149,6 +150,32 @@ namespace ProjectShaman.AI.Observation
                 }
 
                 villager.Memory.RecordWitness(observable, PickTraitMask());
+            }
+        }
+
+        private void ScanVillagers(AIManager.VillagerRuntime villager, IReadOnlyList<AIManager.VillagerRuntime> villagers)
+        {
+            AI_Perception perception = villager.Perception;
+            if (perception == null || villager.Memory == null)
+            {
+                return;
+            }
+
+            float radiusSqr = _config.ObservationRadius * _config.ObservationRadius;
+            Vector3 from = villager.Core.transform.position;
+
+            foreach (AIManager.VillagerRuntime other in villagers)
+            {
+                if (other == villager || other.Core == null || villager.Memory.HasSeenToday(other.Id))
+                {
+                    continue;
+                }
+
+                Vector3 position = other.Core.transform.position;
+                if ((position - from).sqrMagnitude <= radiusSqr && perception.CanSee(position + Vector3.up * ACTOR_EYE_OFFSET))
+                {
+                    villager.Memory.RecordSeenVillager(other.Id);
+                }
             }
         }
 

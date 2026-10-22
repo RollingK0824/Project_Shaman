@@ -141,13 +141,16 @@ namespace ProjectShaman.AI.Request
                 }
             }
 
-            if (body == null)
+            // Alive but unseen: meeting them completes it. Dead with the body already gone: nothing left to find
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            bool alive = registry != null && registry.TryGet(missingId, out Interfaces.IVillagerView view) && view.IsAlive;
+            if (body == null && !alive)
             {
-                AILog.Log(AILog.REQUEST, giverId, $"Check-on for {missingId} skipped (no body left, already found or cleared)");
+                AILog.Log(AILog.REQUEST, giverId, $"Check-on for {missingId} skipped (dead and body already found or cleared)");
                 return;
             }
 
-            Offer(giverId, new RequestOrigin { Kind = CHECK_ON, TargetId = missingId, ContextId = body.QuestContextId });
+            Offer(giverId, new RequestOrigin { Kind = CHECK_ON, TargetId = missingId, ContextId = body != null ? body.QuestContextId : missingId });
         }
 
         // One request per trace bundle (C37); the first witness becomes the giver

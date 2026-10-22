@@ -134,7 +134,6 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(1, 3)] private int _witnessTraitMax = 2;
         [SerializeField, Min(5f)] private float _anxiousMutterInterval = 30f;
         [SerializeField, Range(0f, 1f)] private float _anxiousMutterChance = 0.35f;
-        [SerializeField, Min(0f)] private float _checkOnDelaySeconds = 20f;
 
         [Header("Dialogue")]
         [SerializeField, Range(0f, 1f)] private float _rumorChance = 0.5f;
@@ -239,7 +238,6 @@ namespace ProjectShaman.AI.Data
         public int WitnessTraitMax => Mathf.Clamp(_witnessTraitMax, WitnessTraitMin, 3);
         public float AnxiousMutterInterval => _anxiousMutterInterval;
         public float AnxiousMutterChance => _anxiousMutterChance;
-        public float CheckOnDelaySeconds => _checkOnDelaySeconds;
         public float RumorChance => _rumorChance;
         public int RumorMaxHops => _rumorMaxHops;
         public int PlayerQuestionsPerDay => _playerQuestionsPerDay;

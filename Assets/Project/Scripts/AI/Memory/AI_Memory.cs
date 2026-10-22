@@ -25,6 +25,7 @@ namespace ProjectShaman.AI.Memory
         private AI_Interaction _interaction;
         private AIRuntimeContext _context;
         private int _currentDay;
+        private readonly Dictionary<string, (int Day, float Time)> _lastSeen = new Dictionary<string, (int, float)>();
 
         public ToolSightingStore ToolSightings { get; private set; }
         public int CurrentDay => _currentDay;
@@ -184,6 +185,27 @@ namespace ProjectShaman.AI.Memory
             Events.WriteDebug(_eventsDebug);
             AILog.Log(AILog.MEMORY, _core.LogId, $"Remember {entry}");
             return true;
+        }
+
+        public void RecordSeenVillager(string villagerId)
+        {
+            if (_context != null && !string.IsNullOrEmpty(villagerId))
+            {
+                _lastSeen[villagerId] = (_currentDay, _context.GameNow);
+            }
+        }
+
+        public bool HasSeenToday(string villagerId)
+        {
+            return _lastSeen.TryGetValue(villagerId, out (int Day, float Time) seen) && seen.Day == _currentDay;
+        }
+
+        public bool TryGetLastSeen(string villagerId, out int day, out float time)
+        {
+            bool found = _lastSeen.TryGetValue(villagerId, out (int Day, float Time) seen);
+            day = seen.Day;
+            time = seen.Time;
+            return found;
         }
 
         public bool Knows(in MemoryEntry fact)

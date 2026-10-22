@@ -30,16 +30,8 @@ namespace ProjectShaman.AI.Core
         private ConversationService _conversations;
         private VillagerRequestRouter _requests;
         private ObservationService _observation;
-        private readonly List<DeathRecord> _deaths = new List<DeathRecord>();
+        private AbsenceTracker _absence;
 
-        private struct DeathRecord
-        {
-            public string VillagerId;
-            public Vector3 HomePosition;
-            public int Day;
-            public float NoticeTime;
-            public bool Noticed;
-        }
         private bool _isRunning;
         private bool _isDayActive;
 
@@ -108,7 +100,8 @@ namespace ProjectShaman.AI.Core
             _requests = null;
             _observation?.Clear();
             _observation = null;
-            _deaths.Clear();
+            _absence?.Clear();
+            _absence = null;
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -146,6 +139,7 @@ namespace ProjectShaman.AI.Core
 
             StartRequests();
             _observation = IsAuthority() ? new ObservationService(_behaviourConfig, _factory.Seed + 4) : null;
+            _absence = IsAuthority() ? new AbsenceTracker(_factory.Registry) : null;
 
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
 
@@ -268,7 +262,7 @@ namespace ProjectShaman.AI.Core
             }
 
             _isDayActive = true;
-            ScheduleAbsenceChecks();
+            _absence?.OnDayStart(_villagers, _time.DayCount);
         }
 
         private void HandleNightStart()
@@ -276,6 +270,7 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.TIME_TO_AI, $"NightStart Day {_time.DayCount}");
             _isDayActive = false;
             _conversations?.EndAll("night");
+            _absence?.OnNightStart(_villagers, _time.DayCount);
 
             foreach (VillagerRuntime villager in _villagers)
             {
@@ -310,7 +305,6 @@ namespace ProjectShaman.AI.Core
 
             _conversations?.Tick(_villagers);
             _observation?.Tick(_villagers);
-            TickAbsenceChecks(now);
         }
 
         private void TickVillager(VillagerRuntime villager, float now)
@@ -424,7 +418,6 @@ namespace ProjectShaman.AI.Core
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
             _observation?.OnVillagerRemoved(villager.Id);
-            _deaths.Add(new DeathRecord { VillagerId = villager.Id, HomePosition = villager.Profile.HomePosition, Day = _time != null ? _time.DayCount : 0 });
             _factory.Registry?.MarkDead(villager.Id);
             AIEvents.RaiseVillagerDied(villager.Id, reason);
 
@@ -506,81 +499,6 @@ namespace ProjectShaman.AI.Core
                 current.Station = null;
                 villager.Current = current;
             }
-        }
-
-        // Somebody who died since yesterday does not show up: the nearest neighbour notices after a while
-        private void ScheduleAbsenceChecks()
-        {
-            for (int i = 0; i < _deaths.Count; i++)
-            {
-                DeathRecord record = _deaths[i];
-                if (!record.Noticed && record.Day >= _time.DayCount - 1)
-                {
-                    record.NoticeTime = _behaviourConfig.CheckOnDelaySeconds;
-                    _deaths[i] = record;
-                }
-            }
-        }
-
-        private void TickAbsenceChecks(float dayElapsed)
-        {
-            if (_observation == null)
-            {
-                return;
-            }
-
-            for (int i = 0; i < _deaths.Count; i++)
-            {
-                DeathRecord record = _deaths[i];
-                if (record.Noticed || record.NoticeTime <= 0f || dayElapsed < record.NoticeTime || record.Day < _time.DayCount - 1)
-                {
-                    continue;
-                }
-
-                record.Noticed = true;
-                _deaths[i] = record;
-                NoticeAbsence(record);
-            }
-        }
-
-        private void NoticeAbsence(DeathRecord record)
-        {
-            VillagerRuntime neighbour = null;
-            float best = float.MaxValue;
-
-            foreach (VillagerRuntime villager in _villagers)
-            {
-                float distance = (villager.Profile.HomePosition - record.HomePosition).sqrMagnitude;
-                if (villager.Core != null && distance < best)
-                {
-                    best = distance;
-                    neighbour = villager;
-                }
-            }
-
-            if (neighbour == null)
-            {
-                return;
-            }
-
-            // The missing person is known by name: being absent is no evidence of possession
-            neighbour.Memory?.RecordFact(new MemoryEntry
-            {
-                Kind = MemoryKind.Absent,
-                Source = MemorySource.Direct,
-                SubjectId = record.VillagerId,
-                ActorId = record.VillagerId,
-                VerbId = ObservationVerbs.ABSENT,
-                Position = record.HomePosition,
-                AreaId = ProjectShaman.Map.MapAreaRegistry.ResolveId(record.HomePosition),
-                TraitMask = 7,
-                IsAnomalous = true,
-                DayCount = _time.DayCount,
-                RecordedTime = GetGameClock()
-            });
-
-            AILog.Log(AILog.MANAGER, neighbour.Id, $"Noticed {record.VillagerId} has not shown up");
-            AIEvents.RaiseRequest(neighbour.Id, VillagerRequestRouter.CHECK_ON, record.VillagerId);
         }
 
         private void OrderGoHome(VillagerRuntime villager)
