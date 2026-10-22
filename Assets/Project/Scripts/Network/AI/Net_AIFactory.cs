@@ -25,6 +25,7 @@ namespace ProjectShaman.Network.AI
             AILog.Log(AILog.NET, "Server started → AIFactory.CreateVillagers");
             ValidateSpawnPrefabRegistration();
             AIEvents.OnVillagerDied += HandleVillagerDied;
+            AIEvents.OnVillagerDeathKnown += HandleDeathKnown;
             _factory.CreateVillagers(this);
             ServerBindQuests();
         }
@@ -47,6 +48,7 @@ namespace ProjectShaman.Network.AI
         public override void OnStopServer()
         {
             AIEvents.OnVillagerDied -= HandleVillagerDied;
+            AIEvents.OnVillagerDeathKnown -= HandleDeathKnown;
             ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
@@ -65,6 +67,20 @@ namespace ProjectShaman.Network.AI
             _factory.Registry?.Clear();
             ClientUnbindQuests();
             base.OnStopClient();
+        }
+
+        private void HandleDeathKnown(string villagerId)
+        {
+            RpcVillagerDeathKnown(villagerId);
+        }
+
+        [ClientRpc]
+        private void RpcVillagerDeathKnown(string villagerId)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.MarkDeathKnown(villagerId);
+            }
         }
 
         [ClientRpc]

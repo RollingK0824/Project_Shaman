@@ -185,6 +185,86 @@ namespace ProjectShaman.AI.Core
             _requests.Start();
         }
 
+        // Server: the village learns of a death. The victim's neighbours (or, without one, the villager nearest to where
+        // it came to light) remember it; it leaves vote lists and is never "missing" again.
+        public void RevealDeath(string victimId, Vector3 where, string reason)
+        {
+            VillagerRegistry registry = Registry;
+            if (registry == null || !registry.TryGet(victimId, out IVillagerView view) || view.IsAlive || view.IsDeathKnown)
+            {
+                return;
+            }
+
+            registry.MarkDeathKnown(victimId);
+
+            string neighborhood = NeighborhoodOf(victimId);
+            List<VillagerRuntime> learners = new List<VillagerRuntime>();
+            VillagerRuntime nearest = null;
+            float nearestSqr = float.MaxValue;
+
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Core == null || villager.Memory == null)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(neighborhood) && villager.Profile.NeighborhoodId == neighborhood)
+                {
+                    learners.Add(villager);
+                }
+
+                float sqr = (villager.Core.transform.position - where).sqrMagnitude;
+                if (sqr < nearestSqr)
+                {
+                    nearestSqr = sqr;
+                    nearest = villager;
+                }
+            }
+
+            if (learners.Count == 0 && nearest != null)
+            {
+                learners.Add(nearest);
+            }
+
+            string areaId = ProjectShaman.Map.MapAreaRegistry.ResolveId(where);
+            foreach (VillagerRuntime learner in learners)
+            {
+                learner.Memory.RecordFact(new MemoryEntry
+                {
+                    Kind = MemoryKind.Death,
+                    Source = MemorySource.Direct,
+                    SubjectId = victimId,
+                    ActorId = victimId,
+                    VerbId = "died",
+                    AreaId = areaId,
+                    PlaceId = areaId,
+                    Position = where,
+                    TraitMask = 7,
+                    IsAnomalous = true,
+                    DayCount = learner.Memory.CurrentDay
+                });
+            }
+
+            AILog.Log(AILog.MANAGER, victimId, $"Death revealed ({reason}), {learners.Count} villager(s) remember it");
+            AIEvents.RaiseDeathKnown(victimId);
+        }
+
+        public bool TryGetHomePosition(string villagerId, out Vector3 home)
+        {
+            foreach (VillagerProfile profile in _profiles)
+            {
+                if (profile.VillagerId == villagerId)
+                {
+                    home = profile.HomePosition;
+                    return true;
+                }
+            }
+
+            home = Vector3.zero;
+            return false;
+        }
+
         public string NeighborhoodOf(string villagerId)
         {
             foreach (VillagerProfile profile in _profiles)

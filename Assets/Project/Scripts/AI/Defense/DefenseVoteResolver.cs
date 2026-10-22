@@ -105,6 +105,15 @@ namespace ProjectShaman.AI.Defense
                 return;
             }
 
+            // "Went to drive them out and found them already dead": the death comes to light, the vote judged nobody
+            if (_factory != null && _factory.Registry != null && _factory.Registry.TryGet(villagerId, out Interfaces.IVillagerView view) && !view.IsAlive)
+            {
+                Vector3 where = _manager != null && _manager.TryGetHomePosition(villagerId, out Vector3 home) ? home : Vector3.zero;
+                AILog.Log(AILog.DEFENSE, villagerId, "Voted out but already dead");
+                _manager?.RevealDeath(villagerId, where, "voted out, found already dead");
+                return;
+            }
+
             Resolve(villagerId);
         }
 

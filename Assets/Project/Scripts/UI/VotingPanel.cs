@@ -69,7 +69,7 @@ public class VotingPanel : UIPanel
         if (_subscribedReg != null)
         {
             _subscribedReg.OnRegistered += HandleVillagerChanged;
-            _subscribedReg.OnDied += HandleVillagerChanged;
+            _subscribedReg.OnDeathKnown += HandleVillagerChanged;
             _subscribedReg.OnCleared += BuildCells;
         }
     }
@@ -94,7 +94,7 @@ public class VotingPanel : UIPanel
         if (_subscribedReg != null)
         {
             _subscribedReg.OnRegistered -= HandleVillagerChanged;
-            _subscribedReg.OnDied -= HandleVillagerChanged;
+            _subscribedReg.OnDeathKnown -= HandleVillagerChanged;
             _subscribedReg.OnCleared -= BuildCells;
             _subscribedReg = null;
         }
@@ -115,7 +115,8 @@ public class VotingPanel : UIPanel
         {
             foreach (IVillagerView villager in _subscribedReg.Villagers)
             {
-                if (!villager.IsAlive)
+                // Only deaths the village knows of leave the list
+                if (villager.IsDeathKnown)
                 {
                     continue;
                 }

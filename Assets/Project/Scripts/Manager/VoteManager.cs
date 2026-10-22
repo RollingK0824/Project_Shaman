@@ -31,7 +31,8 @@ public class VoteManager : SceneSingleton<VoteManager>
 
     public bool IsVotable(string npcId)
     {
-        return _reg != null && _reg.TryGet(npcId, out var v) && v.IsAlive;
+        // Voting follows what the village knows: an undiscovered death still looks like a villager
+        return _reg != null && _reg.TryGet(npcId, out var v) && !v.IsDeathKnown;
     }
 
     public bool CastVote(uint voterId, string npcId)
@@ -187,7 +188,7 @@ public class VoteManager : SceneSingleton<VoteManager>
         {
             foreach (IVillagerView villager in _reg.Villagers)
             {
-                if (villager.IsAlive)
+                if (!villager.IsDeathKnown)
                 {
                     candidates.Add(villager.VillagerId);
                 }

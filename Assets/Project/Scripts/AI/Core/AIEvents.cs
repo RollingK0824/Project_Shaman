@@ -6,6 +6,13 @@ namespace ProjectShaman.AI.Core
         public static event System.Action<string, string, string> OnVillagerRequest;
 
         public static event System.Action<string, string> OnVillagerDied;
+        public static event System.Action<string> OnVillagerDeathKnown;
+
+        public static void RaiseDeathKnown(string villagerId)
+        {
+            AILog.Log(AILog.EVENT, villagerId, "Death made known");
+            OnVillagerDeathKnown?.Invoke(villagerId);
+        }
 
         public static void RaiseVillagerDied(string villagerId, string reason)
         {

@@ -12,6 +12,8 @@ namespace ProjectShaman.AI.Interfaces
         VillagerSocialClass SocialClass { get; }
         VillagerAgeGroup AgeGroup { get; }
         bool IsAlive { get; }
+        // Public knowledge of the death (body cleared, or found dead when voted out). Lists and votes use this, not IsAlive
+        bool IsDeathKnown { get; }
         VillagerScheduleView Schedule { get; }
     }
 }

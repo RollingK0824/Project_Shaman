@@ -17,6 +17,7 @@ namespace ProjectShaman.AI.Core
 
         public event Action<IVillagerView> OnRegistered;
         public event Action<IVillagerView> OnDied;
+        public event Action<IVillagerView> OnDeathKnown;
         public event Action OnCleared;
 
         internal VillagerRegistry()
@@ -30,6 +31,7 @@ namespace ProjectShaman.AI.Core
             _byId.Clear();
             OnRegistered = null;
             OnDied = null;
+            OnDeathKnown = null;
             OnCleared = null;
         }
 
@@ -80,6 +82,18 @@ namespace ProjectShaman.AI.Core
             OnDied?.Invoke(entry);
         }
 
+        internal void MarkDeathKnown(string villagerId)
+        {
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.IsDeathKnown)
+            {
+                return;
+            }
+
+            entry.IsDeathKnown = true;
+            AILog.Log(AILog.FACTORY, villagerId, "Registry death now known");
+            OnDeathKnown?.Invoke(entry);
+        }
+
         internal void Clear()
         {
             if (_villagers.Count == 0)
@@ -115,6 +129,7 @@ namespace ProjectShaman.AI.Core
             public VillagerSocialClass SocialClass { get; }
             public VillagerAgeGroup AgeGroup { get; }
             public bool IsAlive { get; set; } = true;
+            public bool IsDeathKnown { get; set; }
             public VillagerScheduleView Schedule { get; }
 
             public VillagerEntry(VillagerPublicInfo info, VillagerScheduleView schedule)
