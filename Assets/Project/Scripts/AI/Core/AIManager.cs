@@ -335,6 +335,7 @@ namespace ProjectShaman.AI.Core
                 List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig);
                 villager.SetToday(blocks, CalculateHomeReturnTime(villager, dayCount));
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
+                villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks));
                 PlanCorruption(villager, dayCount);
 
                 if (villager.Memory != null)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
 using ProjectShaman.AI;
@@ -27,6 +28,10 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private int _syncSlotsPerDay;
         private readonly SyncList<RoutineSlotInfo> _syncSchedule = new SyncList<RoutineSlotInfo>();
 
+        // Today's block hours change every morning; the day is written first so the hours hook sees it
+        [SyncVar] private int _syncBlocksDay;
+        [SyncVar(hook = nameof(OnBlockHoursChanged))] private int[] _syncBlockHours;
+
         private AI_Core aiCore;
         private AI_Movement aiMovement;
         private AI_VisualController visualController;
@@ -47,6 +52,8 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered += HandleSymptomTriggered;
+                aiCore.OnTodayBlocksChanged += WriteTodayBlocks;
+                WriteTodayBlocks();
             }
 
             if (aiMovement != null) aiMovement.SetAgentActive(true);
@@ -73,6 +80,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.ApplyNetworkState(_networkState);
                     aiCore.ApplyNetworkSchedule(VillagerScheduleView.FromFlat(_syncCycleDays, _syncSlotsPerDay, _syncSchedule));
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
+                    aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
                 }
@@ -102,6 +110,7 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered -= HandleSymptomTriggered;
+                aiCore.OnTodayBlocksChanged -= WriteTodayBlocks;
             }
 
             base.OnStopServer();
@@ -152,6 +161,21 @@ namespace ProjectShaman.Network.AI
             _syncSchedule.AddRange(schedule.FlatSlots);
 
             AILog.Log(AILog.NET, aiCore.LogId, $"Schedule written to SyncList ({schedule.CycleDays}x{schedule.SlotsPerDay})");
+        }
+
+        [Server]
+        private void WriteTodayBlocks()
+        {
+            _syncBlocksDay = aiCore.TodayBlocksDay;
+            _syncBlockHours = new List<int>(aiCore.TodayBlockHours).ToArray();
+        }
+
+        private void OnBlockHoursChanged(int[] oldValue, int[] newValue)
+        {
+            if (!isServer && aiCore != null)
+            {
+                aiCore.SetTodayBlocks(_syncBlocksDay, newValue);
+            }
         }
 
         private VillagerPublicInfo ReadPublicInfoFromSyncVars()
