@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
@@ -349,10 +350,23 @@ namespace ProjectShaman.AI.Core
             }
         }
 
+        // The count picked in the lobby wins; the inspector value is for scenes started without the lobby
+        private int ResolveGhostCount()
+        {
+            if (NetworkManager.singleton is RoomManager room && room.SelectedGhostCount > 0)
+            {
+                AILog.Log(AILog.FACTORY, $"Ghost count {room.SelectedGhostCount} (lobby)");
+                return room.SelectedGhostCount;
+            }
+
+            AILog.Log(AILog.FACTORY, $"Ghost count {_ghostCount} (inspector, no lobby selection)");
+            return _ghostCount;
+        }
+
         private void AssignGhosts(List<VillagerProfile> profiles)
         {
             List<VillagerProfile> pool = new List<VillagerProfile>(profiles);
-            int count = Mathf.Min(_ghostCount, pool.Count);
+            int count = Mathf.Min(ResolveGhostCount(), pool.Count);
 
             for (int i = 0; i < count; i++)
             {
