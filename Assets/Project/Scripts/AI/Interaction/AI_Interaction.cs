@@ -301,7 +301,7 @@ namespace ProjectShaman.AI.Interaction
             _activeId = target.InteractableId;
             _activeKind = profile.Kind;
             _startedWhileHoming = IsMustGoHome();
-            _deadline = Time.time + duration + TIMEOUT_MARGIN_SECONDS;
+            _deadline = Time.time + EstimateApproachSeconds(response, position) + duration + TIMEOUT_MARGIN_SECONDS;
             _serial++;
 
             if (response != InteractionResponse.Converse)
@@ -322,6 +322,21 @@ namespace ProjectShaman.AI.Interaction
 
             _activeDebug = $"#{_serial} {response} {profile.Label} ({duration:F1}s)";
             AILog.Log(AILog.INTERACTION, _core.LogId, $"Begin {_activeDebug} priority={profile.Priority} activity={context.Activity}");
+        }
+
+        // A far approach (a neighbour's house across the village) needs its walk inside the timeout, not just the stay
+        private float EstimateApproachSeconds(InteractionResponse response, Vector3 position)
+        {
+            if (response != InteractionResponse.Approach)
+            {
+                return 0f;
+            }
+
+            Vector3 offset = position - transform.position;
+            offset.y = 0f;
+            NavMeshAgent agent = GetComponent<NavMeshAgent>();
+            float speed = agent != null && agent.speed > 0.1f ? agent.speed : 0.1f;
+            return offset.magnitude / speed;
         }
 
         private void End(InteractionEndReason reason)

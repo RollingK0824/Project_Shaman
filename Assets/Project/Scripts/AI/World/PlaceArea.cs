@@ -4,17 +4,22 @@ using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Data;
+using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.Map;
 
 namespace ProjectShaman.AI.World
 {
     // Work/rest places are map areas too, so positions inside them resolve to the place name
-    public class PlaceArea : MonoBehaviour, IMapArea
+    public class PlaceArea : MonoBehaviour, IMapArea, IVillagerInteractable
     {
         private const float NAVMESH_SAMPLE_DISTANCE = 3f;
         private const int RANDOM_POINT_ATTEMPTS = 12;
         private const float STATION_CLEARANCE = 1.5f;
+        private const float LOOK_HEIGHT = 1.2f;
+
+        private static InteractionProfile _visitProfile;
 
         [SerializeField] private string _placeId;
         [SerializeField] private string _displayName;
@@ -123,6 +128,33 @@ namespace ProjectShaman.AI.World
             }
 
             return Center;
+        }
+
+        // A neighbour looks in on a house on the way home (a Home place is only ever approached on purpose, never scanned)
+        public string InteractableId => $"House_{_placeId}";
+        public InteractionProfile Profile => _visitProfile != null ? _visitProfile : (_visitProfile = CreateVisitProfile());
+        public Vector3 LookPoint => Center + Vector3.up * LOOK_HEIGHT;
+
+        public bool CanInteract(in InteractionContext context)
+        {
+            return true;
+        }
+
+        public void BeginInteraction(in InteractionContext context, InteractionResponse response)
+        {
+        }
+
+        public InteractionResult EndInteraction(in InteractionContext context, InteractionResponse response, InteractionEndReason reason)
+        {
+            return InteractionResult.None(InteractableId, InteractionKind.Conversation, response);
+        }
+
+        private static InteractionProfile CreateVisitProfile()
+        {
+            InteractionProfile profile = ScriptableObject.CreateInstance<InteractionProfile>();
+            profile.name = "HouseVisit";
+            profile.hideFlags = HideFlags.DontSave;
+            return profile;
         }
 
         public void SetOwner(string villagerId)

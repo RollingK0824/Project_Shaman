@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
+using UnityEngine.AI;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
@@ -23,6 +24,8 @@ namespace ProjectShaman.AI.Core
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
 
         private const float STATION_RETRY_INTERVAL = 0.5f;
+
+        private static NavMeshPath _pathBuffer;
 
         private readonly List<VillagerRuntime> _villagers = new List<VillagerRuntime>();
         private TimeManager _time;
@@ -106,7 +109,6 @@ namespace ProjectShaman.AI.Core
             _absence = null;
             _profiles.Clear();
             _visitedDay.Clear();
-            HouseVisitPoint.ClearAll();
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -653,8 +655,24 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            HouseVisitPoint point = HouseVisitPoint.For(target.VillagerId, target.HomePosition);
-            if (villager.Interaction.TryBegin(point, InteractionResponse.Approach, _behaviourConfig.NeighbourVisitLingerSeconds))
+            if (!PlaceRegistry.TryGet(target.PublicInfo.HomePlaceId, out PlaceArea house))
+            {
+                return;
+            }
+
+            // Only if the detour still ends at home before dark (delays during the day eat the budget)
+            float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            Vector3 housePoint = house.GetHomePoint();
+            float needed = (PathLength(villager.Core.transform.position, housePoint) + PathLength(housePoint, villager.Profile.HomePosition)) / speed
+                + _behaviourConfig.NeighbourVisitLingerSeconds + _behaviourConfig.HomeReturnMarginSeconds;
+            float daylight = TimeManager.DAY_DURATION - GetDayElapsed();
+            if (needed > daylight)
+            {
+                AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: needs {needed:F0}s, {daylight:F0}s of daylight left");
+                return;
+            }
+
+            if (villager.Interaction.TryBegin(house, InteractionResponse.Approach, _behaviourConfig.NeighbourVisitLingerSeconds))
             {
                 _visitedDay[villager.Id] = _time.DayCount;
                 AILog.Log(AILog.MANAGER, villager.Id, $"Looking in on {target.VillagerId} on the way home (not seen today)");
@@ -669,16 +687,56 @@ namespace ProjectShaman.AI.Core
         private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount)
         {
             float travelDistance = 0f;
+            float visitSeconds = 0f;
             VillagerSchedule schedule = villager.Profile.Schedule;
             RoutineEntry lastRoutine = schedule != null ? schedule.Get(dayCount, _behaviourConfig.RoutinesPerDay - 1) : null;
 
             if (lastRoutine != null && PlaceRegistry.TryGet(lastRoutine.PlaceId, out PlaceArea place))
             {
-                travelDistance = Vector3.Distance(place.Center, villager.Profile.HomePosition);
+                Vector3 home = villager.Profile.HomePosition;
+                travelDistance = PathLength(place.Center, home);
+
+                // Room for the look-in on the way: the longest detour through a neighbour's house
+                float detour = 0f;
+                foreach (VillagerProfile neighbour in _profiles)
+                {
+                    if (neighbour != villager.Profile && neighbour.NeighborhoodId == villager.Profile.NeighborhoodId)
+                    {
+                        detour = Mathf.Max(detour, PathLength(place.Center, neighbour.HomePosition) + PathLength(neighbour.HomePosition, home) - travelDistance);
+                    }
+                }
+
+                if (detour > 0f)
+                {
+                    visitSeconds = detour / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + _behaviourConfig.NeighbourVisitLingerSeconds;
+                }
             }
 
-            float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + _behaviourConfig.HomeReturnMarginSeconds;
+            float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + visitSeconds + _behaviourConfig.HomeReturnMarginSeconds;
             return Mathf.Max(0f, TimeManager.DAY_DURATION - lead);
+        }
+
+        // Walking distance along the NavMesh (roads bend), straight line when no path is found
+        private static float PathLength(Vector3 from, Vector3 to)
+        {
+            if (_pathBuffer == null)
+            {
+                _pathBuffer = new NavMeshPath();
+            }
+
+            if (!NavMesh.CalculatePath(from, to, NavMesh.AllAreas, _pathBuffer) || _pathBuffer.status == NavMeshPathStatus.PathInvalid)
+            {
+                return Vector3.Distance(from, to);
+            }
+
+            Vector3[] corners = _pathBuffer.corners;
+            float length = 0f;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                length += Vector3.Distance(corners[i - 1], corners[i]);
+            }
+
+            return length;
         }
 
         private void RecordMemory(VillagerRuntime villager, ResolvedRoutine resolved)
