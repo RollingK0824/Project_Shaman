@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
@@ -11,6 +12,7 @@ namespace ProjectShaman.AI.Interaction
     public class AI_Conversation : MonoBehaviour, IVillagerInteractable, IAIConfigurable
     {
         private const float LOOK_HEIGHT = 1.6f;
+        private static readonly List<AI_Conversation> _all = new List<AI_Conversation>();
         private static readonly string[] BUSY_BARKS = { "지금 바빠유!", "이따 다시 와주시겠소" };
         private static readonly string[] HOME_BARKS = { "해가 지는구먼, 들어가 봐야겠소" };
         private static readonly string[] GREETING_BARKS = { "무슨 일이오?", "어서 오시오" };
@@ -42,10 +44,31 @@ namespace ProjectShaman.AI.Interaction
 
         public event Action<ConversationSession, ConversationLine> OnLineSpoken;
 
+        public static IReadOnlyList<AI_Conversation> All => _all;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnLoad()
+        {
+            _all.Clear();
+        }
+
         private void Awake()
         {
             _core = GetComponent<AI_Core>();
             _interaction = GetComponent<AI_Interaction>();
+        }
+
+        private void OnEnable()
+        {
+            if (!_all.Contains(this))
+            {
+                _all.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            _all.Remove(this);
         }
 
         public void Configure(AIRuntimeContext context)

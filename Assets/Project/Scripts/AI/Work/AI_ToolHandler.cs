@@ -28,6 +28,7 @@ namespace ProjectShaman.AI.Work
 
         private ToolItem _heldTool;
         private ToolSearchSession _search;
+        private ToolInquiry _inquiry;
 
         public AI_Core Core { get; private set; }
         public AI_Memory Memory { get; private set; }
@@ -37,6 +38,7 @@ namespace ProjectShaman.AI.Work
         public AIRuntimeContext Context { get; private set; }
 
         public ToolSearchSession Search => _search;
+        public ToolInquiry Inquiry => _inquiry;
         public ToolItem HeldTool => _heldTool;
         public bool IsHolding => _heldTool != null;
         public string VillagerId => Core.LogId;
@@ -51,6 +53,7 @@ namespace ProjectShaman.AI.Work
             Movable = GetComponent<INetworkMovable>();
             Agent = GetComponent<NavMeshAgent>();
             _search = new ToolSearchSession(this);
+            _inquiry = new ToolInquiry(this);
 
             Core.OnRoutineApplied += HandleRoutineApplied;
             Core.OnRoutineCleared += HandleRoutineCleared;
@@ -79,6 +82,14 @@ namespace ProjectShaman.AI.Work
         public void Configure(AIRuntimeContext context)
         {
             Context = context;
+        }
+
+        private void Update()
+        {
+            if (Context != null)
+            {
+                _inquiry.Tick();
+            }
         }
 
         public bool IsHoldingType(string typeId)
@@ -175,6 +186,7 @@ namespace ProjectShaman.AI.Work
         private void HandleRoutineApplied(ResolvedRoutine routine)
         {
             _search.Cancel();
+            _inquiry.Cancel("routine changed");
 
             if (!IsHolding)
             {
@@ -193,6 +205,7 @@ namespace ProjectShaman.AI.Work
         private void HandleRoutineCleared(string reason)
         {
             _search.Cancel();
+            _inquiry.Cancel($"routine cleared ({reason})");
 
             if (IsHolding)
             {
