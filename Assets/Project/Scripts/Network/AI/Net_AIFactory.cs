@@ -6,7 +6,7 @@ using ProjectShaman.AI.Interfaces;
 namespace ProjectShaman.Network.AI
 {
     [RequireComponent(typeof(NetworkIdentity), typeof(AIFactory))]
-    public class Net_AIFactory : NetworkBehaviour, ISpawnHandler
+    public partial class Net_AIFactory : NetworkBehaviour, ISpawnHandler
     {
         private AIFactory _factory;
 
@@ -26,6 +26,7 @@ namespace ProjectShaman.Network.AI
             ValidateSpawnPrefabRegistration();
             AIEvents.OnVillagerDied += HandleVillagerDied;
             _factory.CreateVillagers(this);
+            ServerBindQuests();
         }
 
         private void HandleVillagerDied(string villagerId, string reason)
@@ -46,6 +47,7 @@ namespace ProjectShaman.Network.AI
         public override void OnStopServer()
         {
             AIEvents.OnVillagerDied -= HandleVillagerDied;
+            ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
             base.OnStopServer();
@@ -54,12 +56,14 @@ namespace ProjectShaman.Network.AI
         public override void OnStartClient()
         {
             base.OnStartClient();
+            ClientBindQuests();
             AILog.Log(AILog.NET, $"Net_AIFactory OnStartClient (isServer={isServer}, ready={NetworkClient.ready})");
         }
 
         public override void OnStopClient()
         {
             _factory.Registry?.Clear();
+            ClientUnbindQuests();
             base.OnStopClient();
         }
 
