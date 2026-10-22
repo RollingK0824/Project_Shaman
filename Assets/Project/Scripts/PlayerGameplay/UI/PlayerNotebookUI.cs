@@ -119,7 +119,8 @@ public class PlayerNotebookUI : MonoBehaviour
             var spread = new GameObject("VillagerScheduleSpread", typeof(RectTransform), typeof(NotebookScheduleView));
             spread.transform.SetParent(scheduleRoot, false);
             PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
-            spread.GetComponent<NotebookScheduleView>().Bind(owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true)?.font);
+            // The notebook's own tab font (shared with the other UI), not the item panels' font
+            spread.GetComponent<NotebookScheduleView>().Bind(_panel.GetComponentInChildren<TMP_Text>(true)?.font);
         }
     }
 
