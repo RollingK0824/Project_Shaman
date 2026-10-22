@@ -32,6 +32,12 @@ namespace ProjectShaman.AI.Observation
 
             foreach (IVillagerView view in _registry.Villagers)
             {
+                // The request is a hint about a death nobody has found yet; the living are never "missing"
+                if (view.IsAlive)
+                {
+                    continue;
+                }
+
                 string missingId = view.VillagerId;
                 bool seenToday = false;
                 AIManager.VillagerRuntime lastWitness = null;

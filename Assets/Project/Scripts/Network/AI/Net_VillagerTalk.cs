@@ -190,7 +190,6 @@ namespace ProjectShaman.Network.AI
             }
 
             GameplayEvents.RaiseActionDone(playerId, QuestActions.TALK, villagerId);
-            GameplayEvents.RaiseActionDone(playerId, QuestActions.INSPECT, villagerId, villagerId);
         }
 
         // ----- Player dialogue (server) -----

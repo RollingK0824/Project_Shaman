@@ -32,7 +32,6 @@ namespace ProjectShaman.AI.Dialogue
         public const string ASK_TODAY = "ask.today";
         public const string ASK_TOOL = "ask.tool";
         public const string ASK_TRACE = "ask.trace";
-        public const string ASK_PERSON = "ask.person";
         public const string ASK_BYE = "ask.bye";
 
         private static readonly Dictionary<string, int> _asked = new Dictionary<string, int>();
@@ -105,15 +104,12 @@ namespace ProjectShaman.AI.Dialogue
                     return AnswerTool(villager, memory, arg);
                 case ASK_TRACE:
                     return AnswerFact(villager, memory, day, f => f.Kind == MemoryKind.TraceWitness && f.SubjectId == arg, true) ?? DialogueLibrary.Line("trace.ask.none", _random);
-                case ASK_PERSON:
-                    return AnswerFact(villager, memory, day, f => f.ActorId == arg && DialogueComposer.IsNamed(f.Kind), true)
-                        ?? DialogueComposer.Fill(DialogueLibrary.Line("person.none", _random), "person", DialogueComposer.NameOf(arg));
                 default:
                     return DialogueLibrary.Line("answer.none", _random);
             }
         }
 
-        // Quest targets become questions: a lost tool, a trace, a missing villager
+        // Quest targets become questions: a lost tool, a trace. A missing villager is checked at their house, not asked about
         private static void AddQuestTopics(List<DialogueTopic> topics)
         {
             QuestManager quests = QuestManager.Existing;
@@ -140,11 +136,6 @@ namespace ProjectShaman.AI.Dialogue
                 {
                     string area = MapAreaRegistry.Describe(trace.Position) ?? DialogueLibrary.Noun("place.unknown", "마을 어귀");
                     AddTopic(topics, added, $"{ASK_TRACE}:{trace.QuestContextId}", DialogueComposer.Fill(DialogueLibrary.Line(ASK_TRACE, null), "area", area, "object", trace.DisplayName));
-                }
-
-                if (quest.Definition.ObjectiveType == QuestActions.INSPECT && !string.IsNullOrEmpty(quest.TargetId))
-                {
-                    AddTopic(topics, added, $"{ASK_PERSON}:{quest.TargetId}", DialogueComposer.Fill(DialogueLibrary.Line(ASK_PERSON, null), "person", DialogueComposer.NameOf(quest.TargetId)));
                 }
             }
         }
