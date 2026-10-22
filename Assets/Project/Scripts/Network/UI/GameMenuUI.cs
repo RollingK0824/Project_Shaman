@@ -47,6 +47,13 @@ public class GameMenuUI : MonoBehaviour
             return;
         }
 
+        // 수첩에서 띄운 나가기 확인창(메뉴 패널 없이 혼자 떠 있음)은 ESC로 닫기만 함
+        if (_leaveConfirmPanel.activeSelf && !_menuPanel.activeSelf)
+        {
+            _leaveConfirmPanel.SetActive(false);
+            return;
+        }
+
         // 게임 중에는 관전상태에서만 열 수 있음 (닫기는 항상 허용)
         if (!_menuPanel.activeSelf && !CanOpenMenu()) return;
 
@@ -128,6 +135,12 @@ public class GameMenuUI : MonoBehaviour
         }
 
         Leave();
+    }
+
+    // 수첩 [끼임 탈출] 버튼 (UnstuckButtonUI의 _onUnstuck에 연결)
+    public void OnClickUnstuck()
+    {
+        NetPlayerUnstuck.TryUnstuckLocalPlayer();
     }
 
     // 호스트 확인창 [확인]
