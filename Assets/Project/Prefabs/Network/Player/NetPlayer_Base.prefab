@@ -573,6 +573,7 @@ GameObject:
   - component: {fileID: 8299054508780920671}
   - component: {fileID: 4851121491699357251}
   - component: {fileID: 6806520525206389558}
+  - component: {fileID: 6993644920240441871}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -728,6 +729,7 @@ MonoBehaviour:
   _midThreshold: 35
   _highThreshold: 70
   _logStressEvents: 0
+  _nightStressPerSecond: 0.25
 --- !u!114 &6870577808019892608
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1312,9 +1314,20 @@ MonoBehaviour:
   _sprintVolume: 0.55
   _crouchVolume: 0.18
   _stepPitch: {x: 0.95, y: 1.05}
+  _stepVolumeVariation: 0.05
   _minimumMoveSpeed: 0.15
   _remoteSprintSpeed: 5
   _teleportDistance: 2
+  _breathingClip: {fileID: 0}
+  _minimumSprintDuration: 3
+  _recoveryDuration: 4
+  _breathingFadeSeconds: 0.6
+  _breathingVolume: 0.22
+  _breathingPitch: {x: 1, y: 1.22}
+  _heartbeatClip: {fileID: 0}
+  _heartbeatStartThreshold: -1
+  _heartbeatBpm: {x: 65, y: 115}
+  _heartbeatVolume: {x: 0.12, y: 0.3}
   _landing: {fileID: 8300000, guid: ff697d3070687ce4583faa0561a145a2, type: 3}
   _jump: {fileID: 0}
   _hurt: {fileID: 8300000, guid: 36629308f3cc74e70a814281fc9410b4, type: 3}
@@ -1342,6 +1355,29 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 66c536aabbff81549bf09e28285f8008, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::PlayerGhostTarget
+--- !u!114 &6993644920240441871
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b87d95268227e75439ecd4ce2aad9c72, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::PlayerSightStress
+  _playerCamera: {fileID: 7294129451887348670}
+  _sightDistance: 15
+  _horizontalFov: 90
+  _requiredVisibleDuration: 0.6
+  _retriggerCooldown: 8
+  _occlusionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _sampleInterval: 0.1
+  _candidateRefreshInterval: 1
+  _ghostStressAmount: 20
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0

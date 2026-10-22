@@ -189,6 +189,11 @@ public class LobbyUI : MonoBehaviour
         _friendInvitePanel.Open();
     }
 
+    public void OnClickBoardBack()
+    {
+        if (LobbyBoardFocus.Current != null) LobbyBoardFocus.Current.Unfocus();
+    }
+
     public void ShowNotification()
     {
         if (_notEnoughPlayerCount == null) return;
