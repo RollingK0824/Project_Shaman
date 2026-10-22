@@ -21,13 +21,6 @@ namespace ProjectShaman.AI.Work
         private const float LINE_GAP = 1.6f;
         private const float FALLBACK_HEARING = 4f;
 
-        private static readonly Dictionary<string, string> TOOL_NAMES = new Dictionary<string, string>
-        {
-            { "Hoe", "괭이" }, { "Sickle", "낫" }, { "Axe", "도끼" }, { "Bucket", "물동이" }, { "Rope", "새끼줄" },
-            { "Hammer", "망치" }, { "Knife", "칼" }, { "Broom", "빗자루" }, { "Book", "책" }, { "Jar", "항아리" },
-            { "Ladle", "국자" }, { "FishingRod", "낚싯대" }, { "Whetstone", "숫돌" }, { "Scraper", "긁개" }
-        };
-
         private enum Phase
         {
             None,
@@ -62,11 +55,6 @@ namespace ProjectShaman.AI.Work
             _owner = owner;
             _interaction = owner.GetComponent<AI_Interaction>();
             _conversation = owner.GetComponent<AI_Conversation>();
-        }
-
-        public static string ToolName(string toolType)
-        {
-            return !string.IsNullOrEmpty(toolType) && TOOL_NAMES.TryGetValue(toolType, out string name) ? name : toolType;
         }
 
         // Once per routine; false means the caller should give up and raise the request
@@ -169,7 +157,7 @@ namespace ProjectShaman.AI.Work
                 return;
             }
 
-            _conversation.Say($"{_partner.DisplayName}, 혹시 {ToolName(_toolType)} 못 봤소?", $"inquiry to {_partner.VillagerId}");
+            _conversation.Say($"{_partner.DisplayName}, 혹시 {AIDisplayNames.Tool(_toolType)} 못 봤소?", $"inquiry to {_partner.VillagerId}");
             _phase = Phase.Asked;
             _nextTime = Time.time + LINE_GAP;
         }
@@ -221,33 +209,20 @@ namespace ProjectShaman.AI.Work
 
         private string DescribeSighting(ToolSighting sighting)
         {
-            string tool = ToolName(sighting.TypeId);
+            string tool = AIDisplayNames.Tool(sighting.TypeId);
 
             if (!string.IsNullOrEmpty(sighting.HolderId))
             {
                 string holder = DisplayNameOf(sighting.HolderId);
-                return $"{holder}{Josa(holder, "이", "가")} {tool}{Josa(tool, "을", "를")} 들고 있더구먼";
+                return $"{holder}{AIDisplayNames.Josa(holder, "이", "가")} {tool}{AIDisplayNames.Josa(tool, "을", "를")} 들고 있더구먼";
             }
 
             if (PlaceRegistry.TryFindContaining(sighting.Position, out PlaceArea place))
             {
-                return $"{place.DisplayName} 쪽에 {tool}{Josa(tool, "이", "가")} 놓여 있더구먼";
+                return $"{place.DisplayName} 쪽에 {tool}{AIDisplayNames.Josa(tool, "이", "가")} 놓여 있더구먼";
             }
 
-            return $"저짝에 {tool}{Josa(tool, "이", "가")} 떨어져 있던디";
-        }
-
-        // Picks the particle by the last syllable's final consonant (괭이를 / 낫을)
-        private static string Josa(string word, string afterConsonant, string afterVowel)
-        {
-            if (string.IsNullOrEmpty(word))
-            {
-                return afterVowel;
-            }
-
-            char last = word[word.Length - 1];
-            bool hasFinal = last >= '가' && last <= '힣' && (last - '가') % 28 != 0;
-            return hasFinal ? afterConsonant : afterVowel;
+            return $"저짝에 {tool}{AIDisplayNames.Josa(tool, "이", "가")} 떨어져 있던디";
         }
 
         private static string DisplayNameOf(string villagerId)

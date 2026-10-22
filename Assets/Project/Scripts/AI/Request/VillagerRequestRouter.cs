@@ -12,12 +12,15 @@ namespace ProjectShaman.AI.Request
     {
         public const string FIND_TOOL = "FindTool";
         public const string TRACE = "Trace";
+        public const string TRACE_CLEANSE = "TraceCleanse";
         public const string GUT = "Gut";
 
         private sealed class RequestOrigin
         {
             public string Kind;
             public string Detail;
+            public string TargetId;
+            public string ContextId;
             public string BundleKey;
         }
 
@@ -50,6 +53,7 @@ namespace ProjectShaman.AI.Request
             _quests.QuestEnded += HandleQuestEnded;
             AIEvents.OnVillagerRequest += HandleRequest;
             GhostTraceRegistry.OnTraceAdded += WatchTrace;
+            GhostTraceRegistry.OnTraceResolved += HandleTraceResolved;
 
             foreach (GhostTrace trace in GhostTraceRegistry.Traces)
             {
@@ -75,6 +79,7 @@ namespace ProjectShaman.AI.Request
             _quests.QuestEnded -= HandleQuestEnded;
             AIEvents.OnVillagerRequest -= HandleRequest;
             GhostTraceRegistry.OnTraceAdded -= WatchTrace;
+            GhostTraceRegistry.OnTraceResolved -= HandleTraceResolved;
 
             foreach (GhostTrace trace in _watchedTraces)
             {
@@ -114,7 +119,7 @@ namespace ProjectShaman.AI.Request
         {
             if (requestType == FIND_TOOL)
             {
-                Offer(villagerId, new RequestOrigin { Kind = FIND_TOOL, Detail = detail });
+                Offer(villagerId, new RequestOrigin { Kind = FIND_TOOL, Detail = detail, TargetId = detail });
             }
         }
 
@@ -126,7 +131,16 @@ namespace ProjectShaman.AI.Request
                 return;
             }
 
-            RequestOrigin origin = new RequestOrigin { Kind = TRACE, Detail = trace.Kind.ToString(), BundleKey = trace.BundleKey };
+            // Hand-clearable traces ask to be cleared, the rest (wells, guardians ...) to be cleansed with an item
+            string kind = trace.ClearableByHand ? TRACE : TRACE_CLEANSE;
+            RequestOrigin origin = new RequestOrigin
+            {
+                Kind = kind,
+                Detail = trace.Kind.ToString(),
+                TargetId = trace.Kind.ToString(),
+                ContextId = trace.QuestContextId,
+                BundleKey = trace.BundleKey
+            };
             if (Offer(villagerId, origin))
             {
                 _openBundles.Add(trace.BundleKey);
@@ -155,7 +169,7 @@ namespace ProjectShaman.AI.Request
             }
 
             _pending = origin;
-            bool offered = _quests.TryOffer(giverId, questId);
+            bool offered = _quests.TryOffer(giverId, questId, origin.TargetId, origin.ContextId);
             _pending = null;
 
             if (offered)
@@ -203,6 +217,16 @@ namespace ProjectShaman.AI.Request
             else if (quest.State == QuestState.Failed)
             {
                 AIEvents.RaiseStress(quest.GiverId, $"request {origin.Kind} failed", _config.RequestFailedStress);
+            }
+        }
+
+        // A resolved trace takes any request still pointing at it. Request-resolved traces are skipped:
+        // that happens inside QuestEnded, the completed quest has already left, and its bundle holds no other request.
+        private void HandleTraceResolved(GhostTrace trace, TraceResolveReason reason)
+        {
+            if (reason != TraceResolveReason.Request)
+            {
+                _quests.CancelByContext(trace.QuestContextId);
             }
         }
 

@@ -59,6 +59,7 @@ namespace ProjectShaman.Network.AI
             }
 
             AILog.Log(AILog.TRACE, _trace.InteractableId, $"Cleared by {player.name}");
+            QuestTargets.ReportAction(player, QuestActions.CLEAR, _trace.Kind.ToString(), _trace);
             _trace.Resolve(TraceResolveReason.ClearedByPlayer);
         }
 

@@ -31,10 +31,10 @@ MonoBehaviour:
       Amount: 20
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +20"
   - Id: q_find_tool
-    Title: "\uC783\uC5B4\uBC84\uB9B0 \uB3C4\uAD6C \uCC3E\uAE30"
-    Objective: "\uC783\uC5B4\uBC84\uB9B0 \uB3C4\uAD6C\uB97C \uCC3E\uC544 \uC758\uB8B0\uC778\uC5D0\uAC8C \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
+    Title: "{target} \uCC3E\uAE30"
+    Objective: "{giver}\uC758 \uC783\uC5B4\uBC84\uB9B0 {target}\uC744(\uB97C) \uCC3E\uC544 \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
     ObjectiveType: Deliver
-    TargetId: Hoe
+    TargetId: $target
     ContextId: $giver
     RequiredAmount: 1
     Reward:
@@ -48,11 +48,28 @@ MonoBehaviour:
       Amount: 10
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
   - Id: q_clear_trace
-    Title: "\uD754\uC801 \uC815\uD654\uD558\uAE30"
-    Objective: "\uD754\uC801\uC774 \uB0A8\uC740 \uACF3\uC5D0 \uC18C\uAE08\uC744 \uBFCC\uB824\uC8FC\uC138\uC694."
-    ObjectiveType: Use
+    Title: "{context} \uCE58\uC6B0\uAE30"
+    Objective: "{area}\uC5D0 \uC0DD\uAE34 {context}\uC744(\uB97C) \uCE58\uC6CC\uC8FC\uC138\uC694."
+    ObjectiveType: Clear
+    TargetId: $target
+    ContextId: $context
+    RequiredAmount: 1
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 10
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
+  - Id: q_cleanse_trace
+    Title: "{context} \uC815\uD654\uD558\uAE30"
+    Objective: "{area}\uC758 {context}\uC5D0 \uC18C\uAE08\uC744 \uBFCC\uB824 \uC815\uD654\uD574\uC8FC\uC138\uC694."
+    ObjectiveType: UseOn
     TargetId: item_salt
-    ContextId: 
+    ContextId: $context
     RequiredAmount: 1
     Reward:
       Type: Item
@@ -66,7 +83,7 @@ MonoBehaviour:
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
   - Id: q_gut
     Title: "\uAD7F \uC62C\uB9AC\uAE30"
-    Objective: "\uC758\uB8B0\uC778\uC744 \uC704\uD574 \uC9D5\uC744 \uC138 \uBC88 \uC6B8\uB824\uC8FC\uC138\uC694."
+    Objective: "{giver}\uC744(\uB97C) \uC704\uD574 \uC9D5\uC744 \uC138 \uBC88 \uC6B8\uB824\uC8FC\uC138\uC694."
     ObjectiveType: Use
     TargetId: item_gong
     ContextId: 

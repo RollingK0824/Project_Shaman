@@ -125,6 +125,7 @@ namespace ProjectShaman.AI.Data
         {
             new RequestQuestEntry("FindTool", "q_find_tool"),
             new RequestQuestEntry("Trace", "q_clear_trace"),
+            new RequestQuestEntry("TraceCleanse", "q_cleanse_trace"),
             new RequestQuestEntry("Gut", "q_gut")
         };
         [SerializeField, Min(0f)] private float _requestCompletedStressRelief = 30f;

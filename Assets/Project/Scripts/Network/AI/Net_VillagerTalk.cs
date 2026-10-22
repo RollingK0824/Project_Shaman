@@ -155,7 +155,7 @@ namespace ProjectShaman.Network.AI
 
                 if (quests.TryAcceptQuest(playerId, villagerId))
                 {
-                    _conversation.Say(offer != null ? offer.Definition.Objective : "부탁 하나만 들어주시오", "quest accepted");
+                    _conversation.Say(offer != null ? offer.ObjectiveText : "부탁 하나만 들어주시오", "quest accepted");
                 }
                 else
                 {

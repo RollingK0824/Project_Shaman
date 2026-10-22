@@ -73,6 +73,7 @@ public class LocalGameplayJudge : MonoBehaviour
         if (data.UseAction.Execute(context.WithConsume(amount => inventory.ConsumeItem(data, amount))))
         {
             PlayerItemActions.ReportUse(context.Owner, data);
+            QuestTargets.NotifyItemUsed(context.Owner, data, context.AimOrigin, context.AimDirection);
         }
     }
 }
