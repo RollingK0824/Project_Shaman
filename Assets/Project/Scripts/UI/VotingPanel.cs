@@ -195,13 +195,23 @@ public class VotingPanel : UIPanel
 
     private Color GetVoterColor(uint voterId)
     {
-        int slot = _knownPlayers.IndexOf(voterId);
-        if (slot < 0 || _playerColors == null || _playerColors.Length == 0)
+        //int slot = _knownPlayers.IndexOf(voterId);
+        //if (slot < 0 || _playerColors == null || _playerColors.Length == 0)
+        //{
+        //    return _unknownVoterColor;
+        //}
+        //
+        //return _playerColors[slot % _playerColors.Length];
+
+        if (NetworkClient.spawned.TryGetValue(voterId, out NetworkIdentity identity)
+            && identity != null
+            && identity.TryGetComponent(out NetPlayerStatus status)
+            && status.CharacterId >= 0)
         {
-            return _unknownVoterColor;
+            return PlayerColors.Get(status.CharacterId);
         }
 
-        return _playerColors[slot % _playerColors.Length];
+        return _unknownVoterColor;
     }
 
     private void OnCellClicked(string npcId)

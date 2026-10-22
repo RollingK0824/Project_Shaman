@@ -173,15 +173,15 @@ namespace ProjectShaman.AI.Defense
                 AILog.Warn(AILog.DEFENSE, "NightHuntDirector missing, exorcised ghost is not excluded tonight");
             }
 
-            DefenseManager defense = DefenseManager.Existing != null ? DefenseManager.Existing : FindFirstObjectByType<DefenseManager>();
-            if (defense == null)
-            {
-                AILog.Warn(AILog.DEFENSE, "DefenseManager not in scene, defense not started");
-                return;
-            }
-
-            defense.StartDefense();
-            AILog.Log(AILog.DEFENSE, verdict.VillagerId, "DefenseManager.StartDefense requested");
+            //DefenseManager defense = DefenseManager.Existing != null ? DefenseManager.Existing : FindFirstObjectByType<DefenseManager>();
+            //if (defense == null)
+            //{
+            //    AILog.Warn(AILog.DEFENSE, "DefenseManager not in scene, defense not started");
+            //    return;
+            //}
+            //
+            //defense.StartDefense();
+            //AILog.Log(AILog.DEFENSE, verdict.VillagerId, "DefenseManager.StartDefense requested");
         }
 
         private void HandleWrongVote(DefenseVerdict verdict)

@@ -1,12 +1,15 @@
-using System;
 using Mirror;
+using System;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 
 // 서버의 PlayerHealth가 확정한 공개 상태(이름, 사망 여부, 스트레스 단계)를 모든 클라이언트에 전달합니다.
 [RequireComponent(typeof(NetworkIdentity), typeof(PlayerHealth))]
 public class NetPlayerStatus : NetworkBehaviour
 {
     [SyncVar] private string _playerName;
+    // [서버 -> 모든 클라] 로비에서 고른 캐릭터 번호 (= 플레이어 색). -1 = 알 수 없음
+    [SyncVar] private int _characterId = -1;
     [SyncVar(hook = nameof(OnIsDeadChanged))] private bool _isDead;
 
     // [서버 -> 모든 클라] 스트레스 단계. 떨림,숨소리등 같은 다른 사람에게 보이는 증상용
@@ -16,6 +19,10 @@ public class NetPlayerStatus : NetworkBehaviour
     private PlayerStressController _stress;
 
     public string PlayerName => _playerName;
+
+    public int CharacterId => _characterId;
+    
+
     public bool IsDead => _isDead;
     public PlayerStressController.StressLevel StressLevel => _stressLevel;
 
@@ -29,9 +36,10 @@ public class NetPlayerStatus : NetworkBehaviour
     }
 
     [Server]
-    public void ServerInitialize(string playerName)
+    public void ServerInitialize(string playerName, int characterId = -1)
     {
         _playerName = playerName;
+        _characterId = characterId;
     }
 
     public override void OnStartServer()

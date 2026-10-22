@@ -11,9 +11,13 @@ public class CreateRoomUI : MonoBehaviour
     private const int MaxRoomNameLength = 20;
     private const int MaxPasswordLength = 16;
 
-    [Header("선택 표시 색")]
-    [SerializeField] private Color _selectedColor = new Color(0.45f, 0.30f, 0.18f, 0.8f);
-    [SerializeField] private Color _unselectedColor = new Color(1f, 1f, 1f, 0f);
+    [Header(" 선택 표시 이미지")]
+    [SerializeField] private Sprite _selectedSprite;    // ProjectShaman_Image_RoomSetting4
+    [SerializeField] private Sprite _unselectedSprite;  // ProjectShaman_Image_RoomSetting5
+
+    //[Header("선택 표시 색")]
+    //[SerializeField] private Color _selectedColor = new Color(0.45f, 0.30f, 0.18f, 0.8f);
+    //[SerializeField] private Color _unselectedColor = new Color(1f, 1f, 1f, 0f);
 
     [SerializeField] private List<Button> ghostCountButtons;
 
@@ -188,7 +192,12 @@ public class CreateRoomUI : MonoBehaviour
     {
         for (int i = 0; i < buttons.Count; i++)
         {
-            buttons[i].image.color = i == selectedIndex ? _selectedColor : _unselectedColor;
+            Image image = buttons[i].image;
+            image.sprite = i == selectedIndex ? _selectedSprite : _unselectedSprite;
+
+            image.color = Color.white;
+
+            //buttons[i].image.color = i == selectedIndex ? _selectedColor : _unselectedColor;
         }
     }
 
