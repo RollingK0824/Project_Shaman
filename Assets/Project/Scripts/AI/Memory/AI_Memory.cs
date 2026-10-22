@@ -1,9 +1,12 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
+using ProjectShaman.Map;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
+using ProjectShaman.AI.Observation;
+using ProjectShaman.AI.Trace;
 using ProjectShaman.AI.Perception;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
@@ -22,8 +25,10 @@ namespace ProjectShaman.AI.Memory
         private AI_Interaction _interaction;
         private AIRuntimeContext _context;
         private int _currentDay;
+        private readonly Dictionary<string, (int Day, float Time)> _lastSeen = new Dictionary<string, (int, float)>();
 
         public ToolSightingStore ToolSightings { get; private set; }
+        public int CurrentDay => _currentDay;
         public EventMemoryStore Events { get; private set; }
 
         private void Awake()
@@ -86,6 +91,7 @@ namespace ProjectShaman.AI.Memory
                 InstanceId = tool.InstanceId,
                 TypeId = tool.TypeId,
                 Position = tool.Position,
+                AreaId = MapAreaRegistry.ResolveId(tool.Position),
                 HolderId = tool.HolderId,
                 DayCount = _core.CurrentRoutine.DayCount,
                 SeenTime = _context.GameNow
@@ -139,11 +145,97 @@ namespace ProjectShaman.AI.Memory
             AILog.Log(AILog.MEMORY, _core.LogId, $"Remember {entry}");
         }
 
+        // Seen with our own eyes; the same act by the same actor counts once a day
+        public bool RecordWitness(Observable observable, int traitMask)
+        {
+            if (Events == null || observable == null)
+            {
+                return false;
+            }
+
+            MemoryEntry entry = new MemoryEntry
+            {
+                Kind = MemoryKind.Witness,
+                Source = MemorySource.Direct,
+                SubjectId = observable.ActorId,
+                ActorId = observable.ActorId,
+                VerbId = observable.VerbId,
+                ObjectId = observable.ObjectId,
+                Position = observable.Position,
+                AreaId = MapAreaRegistry.ResolveId(observable.Position),
+                TraitMask = traitMask,
+                IsAnomalous = observable.IsAnomalous,
+                DayCount = _currentDay,
+                RecordedTime = _context.GameNow
+            };
+            entry.PlaceId = entry.AreaId;
+
+            return RecordFact(entry);
+        }
+
+        // Witness/heard facts share one dedupe rule: a fact we already know (from anyone) is not stored twice
+        public bool RecordFact(MemoryEntry entry)
+        {
+            if (Events == null || Events.ContainsFact(entry.FactKey))
+            {
+                return false;
+            }
+
+            Events.Record(entry);
+            Events.WriteDebug(_eventsDebug);
+            AILog.Log(AILog.MEMORY, _core.LogId, $"Remember {entry}");
+            return true;
+        }
+
+        public void RecordSeenVillager(string villagerId)
+        {
+            if (_context != null && !string.IsNullOrEmpty(villagerId))
+            {
+                _lastSeen[villagerId] = (_currentDay, _context.GameNow);
+            }
+        }
+
+        public bool HasSeenToday(string villagerId)
+        {
+            return _lastSeen.TryGetValue(villagerId, out (int Day, float Time) seen) && seen.Day == _currentDay;
+        }
+
+        public bool TryGetLastSeen(string villagerId, out int day, out float time)
+        {
+            bool found = _lastSeen.TryGetValue(villagerId, out (int Day, float Time) seen);
+            day = seen.Day;
+            time = seen.Time;
+            return found;
+        }
+
+        public bool Knows(in MemoryEntry fact)
+        {
+            return Events != null && Events.ContainsFact(fact.FactKey);
+        }
+
         private void RecordInteraction(InteractionResult result, InteractionEndReason reason)
         {
             if (result.Kind == InteractionKind.GhostTrace && result.Witnessed)
             {
-                Record(MemoryKind.TraceWitness, result.Subject, result.PlaceId, result.Position, result.Detailed ? "detailed" : "glance");
+                GhostTrace trace = QuestTargets.TryGet(result.Subject, out IQuestTarget target) ? target as GhostTrace : null;
+                string kind = trace != null ? trace.Kind.ToString() : null;
+                string areaId = MapAreaRegistry.ResolveId(result.Position) ?? result.PlaceId;
+                RecordFact(new MemoryEntry
+                {
+                    Kind = MemoryKind.TraceWitness,
+                    Source = MemorySource.Direct,
+                    SubjectId = result.Subject,
+                    PlaceId = areaId,
+                    AreaId = areaId,
+                    Position = result.Position,
+                    Detail = result.Detailed ? "detailed" : "glance",
+                    VerbId = "trace",
+                    ObjectId = kind,
+                    ActorId = trace != null ? trace.VictimId : null,
+                    IsAnomalous = true,
+                    DayCount = _currentDay,
+                    RecordedTime = _context.GameNow
+                });
                 return;
             }
 

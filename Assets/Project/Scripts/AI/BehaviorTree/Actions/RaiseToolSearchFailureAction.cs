@@ -17,6 +17,8 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
     {
         [SerializeReference] public BlackboardVariable<GameObject> Agent;
 
+        private AI_ToolHandler _handler;
+
         protected override Status OnStart()
         {
             AI_ToolHandler handler = Agent.Value != null ? Agent.Value.GetComponent<AI_ToolHandler>() : null;
@@ -28,11 +30,27 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
 
             if (handler != null)
             {
-                handler.Search.RaiseFailure();
+                bool failed = handler.Search.RaiseFailure();
                 handler.RefreshSearchDebug();
+
+                if (!failed)
+                {
+                    _handler = handler;
+                    return Status.Running;
+                }
             }
 
             return Status.Failure;
+        }
+
+        protected override Status OnUpdate()
+        {
+            return _handler != null && _handler.Inquiry.IsActive ? Status.Running : Status.Failure;
+        }
+
+        protected override void OnEnd()
+        {
+            _handler = null;
         }
     }
 }

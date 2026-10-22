@@ -120,6 +120,7 @@ public class NetPlayerItemUse : NetworkBehaviour
 
         // 퀘스트 Use 보고는 판정이 확정된 서버에서 한 번만
         PlayerItemActions.ReportUse(gameObject, data);
+        QuestTargets.NotifyItemUsed(gameObject, data, aimOrigin, aimDirection);
 
         RpcPlayUsePresentation(itemId, aimOrigin, aimDirection);
     }

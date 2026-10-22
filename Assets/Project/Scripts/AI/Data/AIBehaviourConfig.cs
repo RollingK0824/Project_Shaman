@@ -106,7 +106,6 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _hearingDistance = 12f;
 
         [Header("Ghost Trace")]
-        [SerializeField, Min(1)] private int _traceMaxPerKind = 5;
         [SerializeField, Min(0f)] private float _traceNeglectStressPerDay = 0.5f;
         [SerializeField, Min(1f)] private float _traceNeglectStressMax = 3f;
 
@@ -119,6 +118,41 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _villagerStressAnxious = 50f;
         [SerializeField, Min(0f)] private float _villagerStressLimit = 100f;
         [SerializeField, Min(0f)] private float _villagerStressMorningDecay = 5f;
+
+        [Header("Vision")]
+        [SerializeField, Range(10f, 180f)] private float _visionHalfAngle = 60f;
+        [SerializeField, Min(0f)] private float _visionNearRadius = 2f;
+        [SerializeField, Min(0f)] private float _visionEyeHeight = 1.6f;
+        [Tooltip("Buildings, walls, terrain. Empty = no line-of-sight test")]
+        [SerializeField] private LayerMask _visionObstacleMask = 0;
+
+        [Header("Observation")]
+        [SerializeField, Min(1f)] private float _observationRadius = 10f;
+        [SerializeField, Min(0.1f)] private float _observationInterval = 1f;
+        [SerializeField, Range(1, 3)] private int _witnessTraitMin = 1;
+        [SerializeField, Range(1, 3)] private int _witnessTraitMax = 2;
+        [SerializeField, Min(5f)] private float _anxiousMutterInterval = 30f;
+        [SerializeField, Range(0f, 1f)] private float _anxiousMutterChance = 0.35f;
+
+        [Tooltip("How long a neighbour stays at a house it looks in on, on the way home")]
+        [SerializeField, Min(0f)] private float _neighbourVisitLingerSeconds = 3f;
+
+        [Header("Dialogue")]
+        [SerializeField, Range(0f, 1f)] private float _rumorChance = 0.5f;
+        [SerializeField, Range(1, 4)] private int _rumorMaxHops = 2;
+        [SerializeField, Min(1)] private int _playerQuestionsPerDay = 2;
+
+        [Header("Villager Request")]
+        [SerializeField] private List<RequestQuestEntry> _requestQuests = new List<RequestQuestEntry>
+        {
+            new RequestQuestEntry("FindTool", "q_find_tool"),
+            new RequestQuestEntry("Trace", "q_clear_trace"),
+            new RequestQuestEntry("TraceCleanse", "q_cleanse_trace"),
+            new RequestQuestEntry("CheckOn", "q_check_on"),
+            new RequestQuestEntry("Gut", "q_gut")
+        };
+        [SerializeField, Min(0f)] private float _requestCompletedStressRelief = 30f;
+        [SerializeField, Min(0f)] private float _requestFailedStress = 10f;
 
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
@@ -187,7 +221,6 @@ namespace ProjectShaman.AI.Data
         public int ConversationGroupMax => Mathf.Max(2, _conversationGroupMax);
         public float ConversationPartnerCooldown => Mathf.Max(0f, _conversationPartnerCooldown);
         public float HearingDistance => Mathf.Max(0f, _hearingDistance);
-        public int TraceMaxPerKind => Mathf.Max(1, _traceMaxPerKind);
         public float TraceNeglectStressPerDay => Mathf.Max(0f, _traceNeglectStressPerDay);
         public float TraceNeglectStressMax => Mathf.Max(1f, _traceNeglectStressMax);
         public int MemoryDays => Mathf.Max(1, _memoryDays);
@@ -196,6 +229,56 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
+        public float VisionHalfAngle => _visionHalfAngle;
+        public float VisionNearRadius => _visionNearRadius;
+        public float VisionEyeHeight => _visionEyeHeight;
+        public LayerMask VisionObstacleMask => _visionObstacleMask;
+        public float ObservationRadius => _observationRadius;
+        public float ObservationInterval => _observationInterval;
+        public int WitnessTraitMin => Mathf.Clamp(_witnessTraitMin, 1, 3);
+        public int WitnessTraitMax => Mathf.Clamp(_witnessTraitMax, WitnessTraitMin, 3);
+        public float AnxiousMutterInterval => _anxiousMutterInterval;
+        public float AnxiousMutterChance => _anxiousMutterChance;
+        public float NeighbourVisitLingerSeconds => _neighbourVisitLingerSeconds;
+        public float RumorChance => _rumorChance;
+        public int RumorMaxHops => _rumorMaxHops;
+        public int PlayerQuestionsPerDay => _playerQuestionsPerDay;
+        public float RequestCompletedStressRelief => _requestCompletedStressRelief;
+        public float RequestFailedStress => _requestFailedStress;
+
+        // "Kind:Detail" wins over "Kind", so one tool or trace kind can get its own quest
+        public bool TryGetRequestQuest(string kind, string detail, out string questId)
+        {
+            questId = null;
+
+            if (_requestQuests == null || string.IsNullOrEmpty(kind))
+            {
+                return false;
+            }
+
+            string exactKey = string.IsNullOrEmpty(detail) ? null : $"{kind}:{detail}";
+
+            foreach (RequestQuestEntry entry in _requestQuests)
+            {
+                if (string.IsNullOrEmpty(entry.QuestId))
+                {
+                    continue;
+                }
+
+                if (entry.RequestKey == exactKey)
+                {
+                    questId = entry.QuestId;
+                    return true;
+                }
+
+                if (entry.RequestKey == kind && questId == null)
+                {
+                    questId = entry.QuestId;
+                }
+            }
+
+            return questId != null;
+        }
 
         public int GetInterruptResistance(VillagerActivity activity)
         {

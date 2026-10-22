@@ -15,6 +15,8 @@ namespace ProjectShaman.AI.World
         [SerializeField] private string _homeStoragePlaceId;
         [SerializeField] private Vector3 _heldLocalOffset = Vector3.zero;
         [SerializeField] private Vector3 _heldLocalEuler = Vector3.zero;
+        [Tooltip("Turn the collider off while a player, villager or ghost holds the tool")]
+        [SerializeField] private bool _disableColliderWhenHeld = true;
 
         [Header("Runtime")]
         [SerializeField] private string _holderId;
@@ -22,6 +24,7 @@ namespace ProjectShaman.AI.World
         [SerializeField] private int _ghostHiddenNight = -1;
 
         private Transform _holderSocket;
+        private Collider _collider;
 
         public string InstanceId => string.IsNullOrEmpty(_toolInstanceId) ? name : _toolInstanceId;
         public string TypeId => _toolTypeId;
@@ -30,8 +33,24 @@ namespace ProjectShaman.AI.World
         public string ReservedBy => _reservedBy;
         public bool IsHeld => !string.IsNullOrEmpty(_holderId);
         public bool IsOnGround => !IsHeld;
+        // On the ground and not claimed by a villager walking over to pick it up
+        public bool IsUnclaimed => IsOnGround && string.IsNullOrEmpty(_reservedBy);
         public Vector3 Position => transform.position;
         public GhostTargetKind Kind => GhostTargetKind.Tool;
+
+        private void Awake()
+        {
+            _collider = GetComponent<Collider>();
+        }
+
+        // The server applies it on pick up and drop; clients get the held state from the network layer
+        public void ApplyHeldState(bool isHeld)
+        {
+            if (_collider != null)
+            {
+                _collider.enabled = !(_disableColliderWhenHeld && isHeld);
+            }
+        }
 
         private void OnEnable()
         {
@@ -107,6 +126,7 @@ namespace ProjectShaman.AI.World
             _reservedBy = null;
             _holderSocket = socket;
             FollowSocket();
+            ApplyHeldState(true);
             AILog.Log(AILog.TOOL, villagerId, $"Picked up {InstanceId}({TypeId})");
             return true;
         }
@@ -120,6 +140,7 @@ namespace ProjectShaman.AI.World
 
             _holderId = null;
             _holderSocket = null;
+            ApplyHeldState(false);
 
             if (NavMesh.SamplePosition(position, out NavMeshHit hit, GROUND_SAMPLE_DISTANCE, NavMesh.AllAreas))
             {

@@ -56,7 +56,12 @@ public class DayNightCycleController : MonoBehaviour
         EnsureValidReferences();
 
         _lastCycleProgress = cycleProgress;
-        ApplyFromCycleProgress(cycleProgress);
+
+        // 에디터(비재생)에서는 씬에 저장된 라이트·환경 값을 덮어쓰지 않는다. 씬을 열 때마다 씬이 변경 상태가 된다.
+        if (Application.isPlaying)
+        {
+            ApplyFromCycleProgress(cycleProgress);
+        }
 
 #if UNITY_EDITOR
         // 해당 주석 해제시 Scene에서도 play 중인 환경처럼 테스트 가능
@@ -139,13 +144,16 @@ public class DayNightCycleController : MonoBehaviour
     {
         EnsureValidReferences();
 
+        // 씬 로드·도메인 리로드 직후 첫 호출은 기록만 한다. cycleProgress를 직접 바꿨을 때만 반영한다.
+        if (_lastCycleProgress < 0f)
+        {
+            _lastCycleProgress = cycleProgress;
+            return;
+        }
+
         if (!Mathf.Approximately(cycleProgress, _lastCycleProgress))
         {
             _lastCycleProgress = cycleProgress;
-            ApplyFromCycleProgress(cycleProgress);
-        }
-        else if (directionalLight != null)
-        {
             ApplyFromCycleProgress(cycleProgress);
         }
     }

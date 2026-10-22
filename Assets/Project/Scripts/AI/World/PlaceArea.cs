@@ -1,15 +1,25 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Data;
+using ProjectShaman.AI.Interaction;
+using ProjectShaman.AI.Interfaces;
+using ProjectShaman.Map;
 
 namespace ProjectShaman.AI.World
 {
-    public class PlaceArea : MonoBehaviour
+    // Work/rest places are map areas too, so positions inside them resolve to the place name
+    public class PlaceArea : MonoBehaviour, IMapArea, IVillagerInteractable
     {
         private const float NAVMESH_SAMPLE_DISTANCE = 3f;
         private const int RANDOM_POINT_ATTEMPTS = 12;
         private const float STATION_CLEARANCE = 1.5f;
+        private const float LOOK_HEIGHT = 1.2f;
+
+        private static InteractionProfile _visitProfile;
 
         [SerializeField] private string _placeId;
         [SerializeField] private string _displayName;
@@ -20,10 +30,28 @@ namespace ProjectShaman.AI.World
         [SerializeField] private int _maxPeople = 1;
 
         public string PlaceId => _placeId;
-        public string DisplayName => string.IsNullOrEmpty(_displayName) ? _placeId : _displayName;
+        // Runtime only: who lives here. Never serialized, assigned when houses are handed out (server) and replayed on clients.
+        [NonSerialized] private string _ownerId;
+
+        public string OwnerId => _ownerId;
+
+        public string DisplayName
+        {
+            get
+            {
+                string baseName = string.IsNullOrEmpty(_displayName) ? _placeId : _displayName;
+                string ownerName = OwnerName();
+                return string.IsNullOrEmpty(ownerName) ? baseName : $"{ownerName}네 {baseName}";
+            }
+        }
         public PlaceType Type => _placeType;
         public int MaxPeople => _maxPeople;
         public Vector3 Center => transform.position;
+        public string AreaId => _placeId;
+        public float Footprint => _shape == PlaceShape.Sphere ? Mathf.PI * _radius * _radius : Mathf.Abs(_boxSize.x * _boxSize.z);
+        public int Depth => _depth >= 0 ? _depth : (_depth = MapAreaRegistry.CountParents(transform));
+
+        private int _depth = -1;
 
         private WorkStation[] _stations;
 
@@ -77,12 +105,15 @@ namespace ProjectShaman.AI.World
 
         private void OnEnable()
         {
+            _depth = -1;
             PlaceRegistry.Register(this);
+            MapAreaRegistry.Register(this);
         }
 
         private void OnDisable()
         {
             PlaceRegistry.Unregister(this);
+            MapAreaRegistry.Unregister(this);
         }
 
         public Vector3 GetRandomPoint(System.Random random)
@@ -97,6 +128,55 @@ namespace ProjectShaman.AI.World
             }
 
             return Center;
+        }
+
+        // A neighbour looks in on a house on the way home (a Home place is only ever approached on purpose, never scanned)
+        public string InteractableId => $"House_{_placeId}";
+        public InteractionProfile Profile => _visitProfile != null ? _visitProfile : (_visitProfile = CreateVisitProfile());
+        public Vector3 LookPoint => Center + Vector3.up * LOOK_HEIGHT;
+
+        public bool CanInteract(in InteractionContext context)
+        {
+            return true;
+        }
+
+        public void BeginInteraction(in InteractionContext context, InteractionResponse response)
+        {
+        }
+
+        public InteractionResult EndInteraction(in InteractionContext context, InteractionResponse response, InteractionEndReason reason)
+        {
+            return InteractionResult.None(InteractableId, InteractionKind.Conversation, response);
+        }
+
+        private static InteractionProfile CreateVisitProfile()
+        {
+            InteractionProfile profile = ScriptableObject.CreateInstance<InteractionProfile>();
+            profile.name = "HouseVisit";
+            profile.hideFlags = HideFlags.DontSave;
+            return profile;
+        }
+
+        public void SetOwner(string villagerId)
+        {
+            _ownerId = villagerId;
+        }
+
+        // Where a resident stands/spawns: the centre, pulled onto the NavMesh
+        public Vector3 GetHomePoint()
+        {
+            return NavMesh.SamplePosition(Center, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) ? hit.position : Center;
+        }
+
+        private string OwnerName()
+        {
+            if (string.IsNullOrEmpty(_ownerId))
+            {
+                return null;
+            }
+
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            return registry != null && registry.TryGet(_ownerId, out IVillagerView view) && !string.IsNullOrEmpty(view.DisplayName) ? view.DisplayName : null;
         }
 
         public Vector3 GetWaitingPoint()
@@ -213,6 +293,25 @@ namespace ProjectShaman.AI.World
             return transform.rotation * local;
         }
 
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (string.IsNullOrWhiteSpace(_placeId))
+            {
+                Debug.LogWarning($"[PlaceArea] '{name}' has no PlaceId", this);
+                return;
+            }
+
+            foreach (PlaceArea other in FindObjectsByType<PlaceArea>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                if (other != this && other.gameObject.scene == gameObject.scene && other._placeId == _placeId)
+                {
+                    Debug.LogWarning($"[PlaceArea] Duplicate PlaceId '{_placeId}' on '{name}' and '{other.name}'", this);
+                }
+            }
+        }
+#endif
+
         private void OnDrawGizmos()
         {
             Gizmos.color = GetGizmoColor();
@@ -227,6 +326,9 @@ namespace ProjectShaman.AI.World
                 Gizmos.DrawWireCube(Vector3.zero, _boxSize);
                 Gizmos.matrix = Matrix4x4.identity;
             }
+#if UNITY_EDITOR
+            UnityEditor.Handles.Label(Center + Vector3.up * 1.5f, $"{DisplayName}\n<{_placeId}>");
+#endif
         }
 
         private Color GetGizmoColor()
@@ -239,6 +341,8 @@ namespace ProjectShaman.AI.World
                     return new Color(0.2f, 0.8f, 0.3f);
                 case PlaceType.Home:
                     return new Color(0.3f, 0.5f, 1f);
+                case PlaceType.Area:
+                    return new Color(0.3f, 0.8f, 1f);
                 default:
                     return Color.gray;
             }

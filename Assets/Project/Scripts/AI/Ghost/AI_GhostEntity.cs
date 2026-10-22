@@ -599,6 +599,7 @@ namespace ProjectShaman.AI.Ghost
 
             GhostActionContext context = CreateContext();
             Vector3 tracePosition;
+            string victimId = null;
 
             if (_session.Shape == GhostActionShape.Carry)
             {
@@ -620,6 +621,7 @@ namespace ProjectShaman.AI.Ghost
                 }
 
                 tracePosition = _session.Target.gameObject.transform.position;
+                victimId = _session.Target.gameObject.TryGetComponent(out AI_Core victim) ? victim.LogId : null;
 
                 if (!GhostVerbExecutor.TryApply(_session.Target, context))
                 {
@@ -635,7 +637,11 @@ namespace ProjectShaman.AI.Ghost
 
             if (action.TracePrefab != null)
             {
-                _ledger.SpawnTrace(action.TracePrefab, tracePosition, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+                GameObject traceObject = _ledger.SpawnTrace(action.TracePrefab, tracePosition, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+                if (action.IsHunt && victimId != null && traceObject != null && traceObject.TryGetComponent(out Trace.GhostTrace body))
+                {
+                    body.SetVictim(victimId);
+                }
             }
 
             if (action.IsHunt)

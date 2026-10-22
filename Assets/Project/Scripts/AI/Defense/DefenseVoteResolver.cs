@@ -39,6 +39,7 @@ namespace ProjectShaman.AI.Defense
         [SerializeField] private string _lastVerdict;
 
         private VoteManager _voteManager;
+        private DefenseManager _defense;
         private bool _hasVerdict;
         private DefenseVerdict _verdict;
 
@@ -70,6 +71,17 @@ namespace ProjectShaman.AI.Defense
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
         {
             UnsubscribeVote();
+
+            _defense = DefenseManager.Existing != null ? DefenseManager.Existing : FindFirstObjectByType<DefenseManager>();
+            if (_defense != null)
+            {
+                _defense.DefenseCompleted += HandleDefenseCompleted;
+            }
+            else
+            {
+                AILog.Warn(AILog.DEFENSE, "DefenseManager not in scene, a won defense will not exorcise the host");
+            }
+
             _voteManager = VoteManager.Existing != null ? VoteManager.Existing : FindFirstObjectByType<VoteManager>();
 
             if (_voteManager == null)
@@ -90,6 +102,12 @@ namespace ProjectShaman.AI.Defense
 
         private void UnsubscribeVote()
         {
+            if (_defense != null)
+            {
+                _defense.DefenseCompleted -= HandleDefenseCompleted;
+                _defense = null;
+            }
+
             if (_voteManager != null)
             {
                 _voteManager.NpcVotedOut -= HandleNpcVotedOut;
@@ -102,6 +120,15 @@ namespace ProjectShaman.AI.Defense
             if (string.IsNullOrEmpty(villagerId))
             {
                 AILog.Log(AILog.DEFENSE, "Vote finished without a target, nothing to judge");
+                return;
+            }
+
+            // "Went to drive them out and found them already dead": the death comes to light, the vote judged nobody
+            if (_factory != null && _factory.Registry != null && _factory.Registry.TryGet(villagerId, out Interfaces.IVillagerView view) && !view.IsAlive)
+            {
+                Vector3 where = _manager != null && _manager.TryGetHomePosition(villagerId, out Vector3 home) ? home : Vector3.zero;
+                AILog.Log(AILog.DEFENSE, villagerId, "Voted out but already dead");
+                _manager?.RevealDeath(villagerId, where, "voted out, found already dead");
                 return;
             }
 
@@ -173,6 +200,23 @@ namespace ProjectShaman.AI.Defense
             //
             //defense.StartDefense();
             //AILog.Log(AILog.DEFENSE, verdict.VillagerId, "DefenseManager.StartDefense requested");
+        }
+
+        // Holding out until morning on a correct verdict exorcises the host; losing leaves the ghost as it was
+        private void HandleDefenseCompleted(bool won)
+        {
+            if (!_hasVerdict || !_verdict.IsCorrect)
+            {
+                return;
+            }
+
+            _hasVerdict = false;
+            AILog.Log(AILog.DEFENSE, _verdict.VillagerId, $"Defense {(won ? "won" : "lost")} against {_verdict.GhostId}");
+
+            if (won)
+            {
+                _manager?.Exorcise(_verdict.VillagerId);
+            }
         }
 
         private void HandleWrongVote(DefenseVerdict verdict)

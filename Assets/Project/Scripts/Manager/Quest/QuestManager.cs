@@ -1,5 +1,6 @@
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Interfaces;
+using Mirror;
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -9,8 +10,9 @@ public class QuestManager : SceneSingleton<QuestManager>
     [SerializeField]
     private QuestDatabase _database;
 
+    // Optional: item display names for quest text ({target} = item id)
     [SerializeField]
-    private float _offerWindowSeconds = 120f;
+    private QuestItemCatalog _itemCatalog;
 
     [SerializeField]
     private int _maxActive = 3;
@@ -23,6 +25,9 @@ public class QuestManager : SceneSingleton<QuestManager>
     private int _nextInstanceId;
     private VillagerRegistry _registry => AIManager.Instance != null ? AIManager.Instance.Registry : null;
     private VillagerRegistry _subscribedReg;
+
+    public const string TARGET_PARAM = "$target";
+    public const string CONTEXT_PARAM = "$context";
 
 
     public IReadOnlyList<IQuestView> Quests => _quests;
@@ -48,6 +53,13 @@ public class QuestManager : SceneSingleton<QuestManager>
     public event Action<IQuestView> QuestStarted;
     public event Action<IQuestView> QuestUpdated;
     public event Action<IQuestView> QuestEnded;
+    // Clients: the replicated list was replaced (no per-quest events there)
+    public event Action QuestListChanged;
+
+    public QuestItemCatalog ItemCatalog => _itemCatalog;
+
+    // Quest rules run on the server (or offline); clients only mirror the list
+    private static bool IsServerSide => !NetworkClient.active || NetworkServer.active;
 
 
     private bool IsGiverAlive(string villagerId)
@@ -79,28 +91,40 @@ public class QuestManager : SceneSingleton<QuestManager>
 
     public bool TryAcceptQuest (uint playerId, string giverId)
     {
-        if (!TryGetOpenQuest(giverId, out QuestInstance quest) || quest.State != QuestState.Offered || ActiveCount >= _maxActive)
+        if (!IsServerSide)
         {
             return false;
         }
 
-        if (!TryResolveContextId(quest, out string contextId))
+        if (!TryGetOpenQuest(giverId, out QuestInstance quest) || quest.State != QuestState.Offered || ActiveCount >= _maxActive)
         {
             return false;
         }
 
         quest.State = QuestState.Active;
         quest.AcceptedBy = playerId;
-        quest.TargetId = quest.Definition.TargetId;
-        quest.ContextId = contextId;
         QuestStarted?.Invoke(quest);
         return true;
     }
 
-    // "$giver" → 의뢰인, "$randomVillager" → 의뢰인이 아닌 살아있는 무작위 주민, 빈 값 → null (아무나/어디서나)
-    private bool TryResolveContextId(QuestInstance quest, out string contextId)
+    // "$target" → 호출자가 넘긴 값 (필수), 그 외 → 정의 값 그대로
+    private static bool TryResolveTargetId(QuestDefinition definition, string targetId, out string resolved)
     {
-        string raw = quest.Definition.ContextId;
+        resolved = definition.TargetId == TARGET_PARAM ? targetId : definition.TargetId;
+        return !string.IsNullOrEmpty(resolved);
+    }
+
+    // "$context" → 호출자가 넘긴 값 (필수, 퀘스트 대상 오브젝트 ID 등), "$giver" → 의뢰인,
+    // "$randomVillager" → 의뢰인이 아닌 살아있는 무작위 주민, 빈 값 → null (아무나/어디서나)
+    private bool TryResolveContextId(QuestDefinition definition, string giverId, string contextArg, out string contextId)
+    {
+        string raw = definition.ContextId;
+
+        if (raw == CONTEXT_PARAM)
+        {
+            contextId = contextArg;
+            return !string.IsNullOrEmpty(contextId);
+        }
 
         if (string.IsNullOrEmpty(raw))
         {
@@ -110,7 +134,7 @@ public class QuestManager : SceneSingleton<QuestManager>
 
         if (raw == "$giver")
         {
-            contextId = quest.GiverId;
+            contextId = giverId;
             return true;
         }
 
@@ -122,7 +146,7 @@ public class QuestManager : SceneSingleton<QuestManager>
             {
                 foreach (IVillagerView villager in _registry.Villagers)
                 {
-                    if (villager.VillagerId != quest.GiverId && IsGiverAlive(villager.VillagerId))
+                    if (villager.VillagerId != giverId && IsGiverAlive(villager.VillagerId))
                     {
                         candidates.Add(villager.VillagerId);
                     }
@@ -146,7 +170,14 @@ public class QuestManager : SceneSingleton<QuestManager>
 
     public bool TryOffer(string giverId, string questId = null)
     {
-        if (!IsInOfferWindow() || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
+        return TryOffer(giverId, questId, null, null);
+    }
+
+    // targetId / contextId fill the definition's "$target" / "$context" (e.g. tool type, quest target object id).
+    // Both are resolved here, at offer time, so "!" and dialogue can already describe the request.
+    public bool TryOffer(string giverId, string questId, string targetId, string contextId)
+    {
+        if (!IsServerSide || !IsDay() || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
         {
             return false;
         }
@@ -164,11 +195,25 @@ public class QuestManager : SceneSingleton<QuestManager>
             return false;
         }
 
+        if (!TryResolveTargetId(definition, targetId, out string resolvedTarget))
+        {
+            Debug.LogWarning($"[QuestManager] Quest '{definition.Id}' needs a target ($target) but none was given");
+            return false;
+        }
+
+        if (!TryResolveContextId(definition, giverId, contextId, out string resolvedContext))
+        {
+            Debug.LogWarning($"[QuestManager] Quest '{definition.Id}' context '{definition.ContextId}' could not be resolved");
+            return false;
+        }
+
         QuestInstance quest = new QuestInstance
         {
             InstanceId = _nextInstanceId++,
             Definition = definition,
             GiverId = giverId,
+            TargetId = resolvedTarget,
+            ContextId = resolvedContext,
             DayIssued = TimeManager.Instance.DayCount,
             State = QuestState.Offered
         };
@@ -182,6 +227,7 @@ public class QuestManager : SceneSingleton<QuestManager>
     {
         // RaiseActionDone 은 서버에서만 호출되므로 클라이언트에서는 구독해도 아무 일도 없음
         GameplayEvents.ActionDone += HandleActionDone;
+        QuestText.AddNameResolver(ResolveItemName);
 
         if (TimeManager.Instance)
         {
@@ -217,6 +263,7 @@ public class QuestManager : SceneSingleton<QuestManager>
     private void OnDisable()
     {
         GameplayEvents.ActionDone -= HandleActionDone;
+        QuestText.RemoveNameResolver(ResolveItemName);
 
         if (TimeManager.Existing)
         {
@@ -238,6 +285,11 @@ public class QuestManager : SceneSingleton<QuestManager>
     // 받지 않은 의뢰와 진행 중인 퀘스트 모두 실패 (패널티)
     private void HandleNightStart()
     {
+        if (!IsServerSide)
+        {
+            return;
+        }
+
         // End 가 리스트에서 지우므로 뒤에서부터 돈다
         for (int i = _quests.Count - 1; i >= 0; i--)
         {
@@ -255,11 +307,11 @@ public class QuestManager : SceneSingleton<QuestManager>
         HandleGiverRemoved(villager.VillagerId);
     }
 
-    // 의뢰인 사망/추방 → 그 퀘스트 삭제. 받을 주민이 죽은 Deliver 퀘스트도 완료할 수 없으므로 삭제
+    // 의뢰인 사망/추방 → 그 퀘스트 삭제. 대상·문맥이 그 주민인 퀘스트(전달 받을 주민 등)도 완료할 수 없으므로 삭제
     private void HandleGiverRemoved(string villagerId)
     {
         // 투표에서 아무도 추방되지 않으면 null
-        if (villagerId == null)
+        if (villagerId == null || !IsServerSide)
         {
             return;
         }
@@ -275,7 +327,7 @@ public class QuestManager : SceneSingleton<QuestManager>
             }
 
             bool isGiver = quest.GiverId == villagerId;
-            bool isReceiver = quest.Definition.ObjectiveType == "Deliver" && quest.ContextId == villagerId;
+            bool isReceiver = quest.ContextId == villagerId || quest.TargetId == villagerId;
 
             if (isGiver || isReceiver)
             {
@@ -287,6 +339,11 @@ public class QuestManager : SceneSingleton<QuestManager>
     // GameplayEvents.ActionDone 구독: 플레이어가 아이템을 전달/사용할 때마다 호출됨
     private void HandleActionDone(uint playerId, string actionType, string targetId, string contextId)
     {
+        if (!IsServerSide)
+        {
+            return;
+        }
+
         // 완료되면 End 가 리스트에서 지우므로 뒤에서부터 돈다
         for (int i = _quests.Count - 1; i >= 0; i--)
         {
@@ -343,12 +400,116 @@ public class QuestManager : SceneSingleton<QuestManager>
         }
 
         QuestEnded?.Invoke(quest);
+        QuestOutcomeApplier.Apply(quest, _itemCatalog);
     }
 
-    private bool IsInOfferWindow()
+    // Server → network: open quests then history, ids and numbers only
+    public List<QuestSyncEntry> ExportForNetwork()
     {
-        double intoCycle = TimeManager.Instance.Elapsed % TimeManager.CYCLE_DURATION;
-        float window = Mathf.Min(_offerWindowSeconds, TimeManager.DAY_DURATION);
-        return intoCycle < window;
+        List<QuestSyncEntry> entries = new List<QuestSyncEntry>(_quests.Count + _history.Count);
+
+        foreach (QuestInstance quest in _quests)
+        {
+            entries.Add(ToEntry(quest));
+        }
+
+        foreach (QuestInstance quest in _history)
+        {
+            entries.Add(ToEntry(quest));
+        }
+
+        return entries;
+    }
+
+    // Network → client: rebuild the read-only copy from the same QuestDatabase
+    public void ApplyNetworkQuests(IList<QuestSyncEntry> entries)
+    {
+        if (IsServerSide || entries == null)
+        {
+            return;
+        }
+
+        _quests.Clear();
+        _history.Clear();
+
+        foreach (QuestSyncEntry entry in entries)
+        {
+            if (_database == null || !_database.TryGet(entry.QuestId, out QuestDefinition definition))
+            {
+                Debug.LogWarning($"[QuestManager] Replicated quest '{entry.QuestId}' not in QuestDatabase");
+                continue;
+            }
+
+            QuestInstance quest = new QuestInstance
+            {
+                InstanceId = entry.InstanceId,
+                Definition = definition,
+                GiverId = entry.GiverId,
+                TargetId = entry.TargetId,
+                ContextId = entry.ContextId,
+                Progress = entry.Progress,
+                State = (QuestState)entry.State,
+                DayIssued = entry.DayIssued,
+                AcceptedBy = entry.AcceptedBy
+            };
+
+            if (quest.State == QuestState.Offered || quest.State == QuestState.Active)
+            {
+                _quests.Add(quest);
+            }
+            else
+            {
+                _history.Add(quest);
+            }
+        }
+
+        QuestListChanged?.Invoke();
+    }
+
+    private static QuestSyncEntry ToEntry(QuestInstance quest)
+    {
+        return new QuestSyncEntry
+        {
+            InstanceId = quest.InstanceId,
+            QuestId = quest.Definition.Id,
+            GiverId = quest.GiverId,
+            TargetId = quest.TargetId,
+            ContextId = quest.ContextId,
+            Progress = quest.Progress,
+            State = (int)quest.State,
+            DayIssued = quest.DayIssued,
+            AcceptedBy = quest.AcceptedBy
+        };
+    }
+
+    // 퀘스트 대상 오브젝트가 퀘스트와 무관하게 사라짐(다른 방법으로 해결, 파괴 등) → 완료할 수 없으므로 삭제
+    public void CancelByContext(string contextId)
+    {
+        if (string.IsNullOrEmpty(contextId) || !IsServerSide)
+        {
+            return;
+        }
+
+        for (int i = _quests.Count - 1; i >= 0; i--)
+        {
+            QuestInstance quest = _quests[i];
+
+            if ((quest.State == QuestState.Offered || quest.State == QuestState.Active) && quest.ContextId == contextId)
+            {
+                End(quest, QuestState.Cancelled);
+            }
+        }
+    }
+
+    private string ResolveItemName(string id)
+    {
+        ItemData item = _itemCatalog != null ? _itemCatalog.Find(id) : null;
+        return item != null ? item.DisplayName : null;
+    }
+
+    // 의뢰는 낮 동안 언제든 생길 수 있다 (트리거 기반). 밤 시작 시 받지 않은 의뢰는 실패
+    private bool IsDay()
+    {
+        return TimeManager.Instance.Elapsed % TimeManager.CYCLE_DURATION < TimeManager.DAY_DURATION;
     }
 }

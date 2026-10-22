@@ -1,11 +1,16 @@
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
+using UnityEngine.AI;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.Observation;
+using ProjectShaman.AI.Perception;
+using ProjectShaman.AI.Request;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.World;
@@ -20,10 +25,18 @@ namespace ProjectShaman.AI.Core
 
         private const float STATION_RETRY_INTERVAL = 0.5f;
 
+        private static NavMeshPath _pathBuffer;
+
         private readonly List<VillagerRuntime> _villagers = new List<VillagerRuntime>();
         private TimeManager _time;
         private RoutineResolver _resolver;
         private ConversationService _conversations;
+        private VillagerRequestRouter _requests;
+        private ObservationService _observation;
+        private AbsenceTracker _absence;
+        private readonly List<VillagerProfile> _profiles = new List<VillagerProfile>();
+        private readonly Dictionary<string, int> _visitedDay = new Dictionary<string, int>();
+
         private bool _isRunning;
         private bool _isDayActive;
 
@@ -49,6 +62,7 @@ namespace ProjectShaman.AI.Core
                 _factory.OnVillagersCleared -= HandleVillagersCleared;
             }
 
+            _requests?.Stop();
             UnsubscribeTime();
             base.OnDestroy();
         }
@@ -87,6 +101,14 @@ namespace ProjectShaman.AI.Core
             _resolver = null;
             _conversations?.Clear();
             _conversations = null;
+            _requests?.Stop();
+            _requests = null;
+            _observation?.Clear();
+            _observation = null;
+            _absence?.Clear();
+            _absence = null;
+            _profiles.Clear();
+            _visitedDay.Clear();
         }
 
         private void HandleVillagersCreated(IReadOnlyList<AI_Core> cores)
@@ -101,13 +123,14 @@ namespace ProjectShaman.AI.Core
 
             _resolver = new RoutineResolver(new System.Random(_factory.Seed + 1), _behaviourConfig);
             AIRuntimeContext context = new AIRuntimeContext(_behaviourConfig, GetGameClock, BuildToolUsePlaces());
-            _conversations = new ConversationService(context, _factory.Seed + 2);
+            _conversations = new ConversationService(context, _factory.Seed + 2, new Dialogue.FactConversationContent(_behaviourConfig, _factory.Seed + 5));
 
             foreach (AI_Core core in cores)
             {
                 if (core != null && core.Profile != null)
                 {
                     VillagerRuntime villager = new VillagerRuntime(core);
+                    _profiles.Add(core.Profile);
                     villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
                     core.OnRoutineFailed += villager.RoutineFailedHandler;
                     SubscribeDeath(villager);
@@ -122,18 +145,178 @@ namespace ProjectShaman.AI.Core
                 }
             }
 
-            AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
+            StartRequests();
+            _observation = IsAuthority() ? new ObservationService(_behaviourConfig, _factory.Seed + 4) : null;
+            _absence = IsAuthority() ? new AbsenceTracker(_factory.Registry) : null;
 
-            if (_time.DayCount > 0)
-            {
-                AILog.Error(AILog.TIME_TO_AI, $"Day {_time.DayCount} already started before villagers were created, waiting for next day");
-            }
+            AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
 
             UnsubscribeTime();
             _time.OnNewDay += HandleNewDay;
             _time.OnDayStart += HandleDayStart;
             _time.OnNightStart += HandleNightStart;
             _isRunning = true;
+
+            CatchUpStartedDay();
+        }
+
+        // Villagers created after the day began missed its NewDay/DayStart: plan only the hours still ahead
+        private void CatchUpStartedDay()
+        {
+            if (_time.DayCount <= 0)
+            {
+                return;
+            }
+
+            if (_time.CurrentTimePhase != TimeOfDay.Day)
+            {
+                AILog.Warn(AILog.TIME_TO_AI, $"Villagers created during night {_time.DayCount}, waiting for next day");
+                return;
+            }
+
+            float now = GetDayElapsed();
+            AILog.Log(AILog.TIME_TO_AI, $"Day {_time.DayCount} already started before villagers were created, planning from {DayClock.ToHour(now):F1}h ({now:F1}s)");
+            PlanDay(_time.DayCount, now);
+            HandleDayStart();
+        }
+
+        // Requests come from villager triggers and are judged on the server only
+        private void StartRequests()
+        {
+            _requests?.Stop();
+            _requests = null;
+
+            if (!IsAuthority())
+            {
+                return;
+            }
+
+            List<AI_Stress> stresses = new List<AI_Stress>();
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Stress != null)
+                {
+                    stresses.Add(villager.Stress);
+                }
+            }
+
+            _requests = new VillagerRequestRouter(_behaviourConfig, stresses);
+            _requests.Start();
+        }
+
+        // Server: the village learns of a death. The victim's neighbours (or, without one, the villager nearest to where
+        // it came to light) remember it; it leaves vote lists and is never "missing" again.
+        public void RevealDeath(string victimId, Vector3 where, string reason)
+        {
+            VillagerRegistry registry = Registry;
+            if (registry == null || !registry.TryGet(victimId, out IVillagerView view) || view.IsAlive || view.IsDeathKnown)
+            {
+                return;
+            }
+
+            registry.MarkDeathKnown(victimId);
+
+            string neighborhood = NeighborhoodOf(victimId);
+            List<VillagerRuntime> learners = new List<VillagerRuntime>();
+            VillagerRuntime nearest = null;
+            float nearestSqr = float.MaxValue;
+
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Core == null || villager.Memory == null)
+                {
+                    continue;
+                }
+
+                if (!string.IsNullOrEmpty(neighborhood) && villager.Profile.NeighborhoodId == neighborhood)
+                {
+                    learners.Add(villager);
+                }
+
+                float sqr = (villager.Core.transform.position - where).sqrMagnitude;
+                if (sqr < nearestSqr)
+                {
+                    nearestSqr = sqr;
+                    nearest = villager;
+                }
+            }
+
+            if (learners.Count == 0 && nearest != null)
+            {
+                learners.Add(nearest);
+            }
+
+            string areaId = ProjectShaman.Map.MapAreaRegistry.ResolveId(where);
+            foreach (VillagerRuntime learner in learners)
+            {
+                learner.Memory.RecordFact(new MemoryEntry
+                {
+                    Kind = MemoryKind.Death,
+                    Source = MemorySource.Direct,
+                    SubjectId = victimId,
+                    ActorId = victimId,
+                    VerbId = "died",
+                    AreaId = areaId,
+                    PlaceId = areaId,
+                    Position = where,
+                    TraitMask = 7,
+                    IsAnomalous = true,
+                    DayCount = learner.Memory.CurrentDay
+                });
+            }
+
+            AILog.Log(AILog.MANAGER, victimId, $"Death revealed ({reason}), {learners.Count} villager(s) remember it");
+            AIEvents.RaiseDeathKnown(victimId);
+        }
+
+        // Server: a won exorcism frees the host. With no possession the ghost has no entity, hunt, corruption or symptoms from now on.
+        public void Exorcise(string villagerId)
+        {
+            VillagerRuntime villager = _villagers.Find(v => v.Id == villagerId);
+            AI_Possession possession = villager != null ? villager.Profile.Possession : null;
+            if (possession == null)
+            {
+                AILog.Warn(AILog.DEFENSE, $"{villagerId} exorcise requested but not possessed, ignored");
+                return;
+            }
+
+            string ghostId = possession.GhostId;
+            villager.Profile.Possession = null;
+            Destroy(possession);
+            AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager");
+        }
+
+        public bool TryGetHomePosition(string villagerId, out Vector3 home)
+        {
+            foreach (VillagerProfile profile in _profiles)
+            {
+                if (profile.VillagerId == villagerId)
+                {
+                    home = profile.HomePosition;
+                    return true;
+                }
+            }
+
+            home = Vector3.zero;
+            return false;
+        }
+
+        public string NeighborhoodOf(string villagerId)
+        {
+            foreach (VillagerProfile profile in _profiles)
+            {
+                if (profile.VillagerId == villagerId)
+                {
+                    return profile.NeighborhoodId;
+                }
+            }
+
+            return null;
+        }
+
+        private static bool IsAuthority()
+        {
+            return !NetworkClient.active || NetworkServer.active;
         }
 
         private float GetGameClock()
@@ -180,12 +363,19 @@ namespace ProjectShaman.AI.Core
         private void HandleNewDay(int dayCount)
         {
             AILog.Log(AILog.TIME_TO_AI, $"NewDay {dayCount} (cycleDay={(dayCount - 1) % _behaviourConfig.CycleDays})");
+            PlanDay(dayCount, 0f);
+        }
 
+        // Blocks already over at fromTime are dropped; the one in progress stays and TickVillager judges what is left of it
+        private void PlanDay(int dayCount, float fromTime)
+        {
             foreach (VillagerRuntime villager in _villagers)
             {
                 List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig);
+                blocks.RemoveAll(block => block.EndTime <= fromTime);
                 villager.SetToday(blocks, CalculateHomeReturnTime(villager, dayCount));
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
+                villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks));
                 PlanCorruption(villager, dayCount);
 
                 if (villager.Memory != null)
@@ -214,13 +404,17 @@ namespace ProjectShaman.AI.Core
             }
 
             _isDayActive = true;
+            _absence?.OnDayStart(_villagers, _time.DayCount);
+            _requests?.OnDayStart();
         }
 
         private void HandleNightStart()
         {
             AILog.Log(AILog.TIME_TO_AI, $"NightStart Day {_time.DayCount}");
             _isDayActive = false;
+            LogVillagersOutside();
             _conversations?.EndAll("night");
+            _absence?.OnNightStart(_villagers, _time.DayCount);
 
             foreach (VillagerRuntime villager in _villagers)
             {
@@ -254,12 +448,14 @@ namespace ProjectShaman.AI.Core
             }
 
             _conversations?.Tick(_villagers);
+            _observation?.Tick(_villagers);
         }
 
         private void TickVillager(VillagerRuntime villager, float now)
         {
             if (villager.IsHomeOrdered)
             {
+                LogHomeArrival(villager, now);
                 return;
             }
 
@@ -299,12 +495,56 @@ namespace ProjectShaman.AI.Core
 
                 villager.Current = resolved;
                 villager.Core.ApplyRoutine(resolved);
+                _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
                 RecordMemory(villager, resolved);
             }
             else
             {
                 SkipRoutine(villager, $"block {block.Index} resolve failed");
             }
+        }
+
+        // Validation only: "home" is the same radius sleep paralysis uses to count a villager as in the house
+        private void LogHomeArrival(VillagerRuntime villager, float now)
+        {
+            if (villager.HasArrivedHome || !IsAtHome(villager))
+            {
+                return;
+            }
+
+            villager.HasArrivedHome = true;
+            AILog.Log(AILog.MANAGER, villager.Id, $"Arrived home at {DayClock.ToHour(now):F1}h ({now:F1}s), {TimeManager.DAY_DURATION - now:F0}s before night");
+        }
+
+        private void LogVillagersOutside()
+        {
+            List<string> outside = new List<string>();
+
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Core != null && !IsAtHome(villager))
+                {
+                    float distance = Vector3.Distance(villager.Core.transform.position, villager.Profile.HomePosition);
+                    outside.Add($"{villager.Id}({distance:F1}m{(villager.IsHomeOrdered ? "" : ", not ordered")})");
+                }
+            }
+
+            if (outside.Count > 0)
+            {
+                AILog.Warn(AILog.MANAGER, $"Night start: {outside.Count} villager(s) still outside: {string.Join(", ", outside)}");
+            }
+            else
+            {
+                AILog.Log(AILog.MANAGER, $"Night start: all {_villagers.Count} villagers home");
+            }
+        }
+
+        private bool IsAtHome(VillagerRuntime villager)
+        {
+            Vector3 offset = villager.Core.transform.position - villager.Profile.HomePosition;
+            offset.y = 0f;
+            float radius = _behaviourConfig.SleepParalysisHomeDistance;
+            return offset.sqrMagnitude <= radius * radius;
         }
 
         private void PlanCorruption(VillagerRuntime villager, int dayCount)
@@ -346,6 +586,7 @@ namespace ProjectShaman.AI.Core
                 symptom.HasFired = true;
                 symptoms[i] = symptom;
                 villager.Core.TriggerSymptom(symptom.Type);
+                _observation?.OnSymptom(villager.Core, symptom.Type);
                 possession.RefreshDebug();
             }
         }
@@ -364,6 +605,7 @@ namespace ProjectShaman.AI.Core
             _villagers.Remove(villager);
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
+            _observation?.OnVillagerRemoved(villager.Id);
             _factory.Registry?.MarkDead(villager.Id);
             AIEvents.RaiseVillagerDied(villager.Id, reason);
 
@@ -462,6 +704,65 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, villager.Id, $"Tidy zone {zone} (distance to home {distance:F1}m)");
             AILog.Log(AILog.MANAGER, villager.Id, $"GoHome ordered at {DayClock.ToHour(GetDayElapsed()):F1}h ({GetDayElapsed():F1}s)");
             villager.Core.SetMustGoHome(true);
+            TryLookInOnNeighbour(villager);
+        }
+
+        // On the way home: a neighbour (same home-point group) this villager has not seen all day
+        // gets a look-in. Inside the house the normal trace scan sees what is there (a body included).
+        private void TryLookInOnNeighbour(VillagerRuntime villager)
+        {
+            if (_observation == null || !_isDayActive || villager.Memory == null || villager.Interaction == null
+                || string.IsNullOrEmpty(villager.Profile.NeighborhoodId)
+                || (_visitedDay.TryGetValue(villager.Id, out int day) && day == _time.DayCount))
+            {
+                return;
+            }
+
+            VillagerProfile target = null;
+            float best = float.MaxValue;
+
+            foreach (VillagerProfile neighbour in _profiles)
+            {
+                if (neighbour == villager.Profile || neighbour.NeighborhoodId != villager.Profile.NeighborhoodId || villager.Memory.HasSeenToday(neighbour.VillagerId))
+                {
+                    continue;
+                }
+
+                float distance = (neighbour.HomePosition - villager.Profile.HomePosition).sqrMagnitude;
+                if (distance < best)
+                {
+                    best = distance;
+                    target = neighbour;
+                }
+            }
+
+            if (target == null)
+            {
+                return;
+            }
+
+            if (!PlaceRegistry.TryGet(target.PublicInfo.HomePlaceId, out PlaceArea house))
+            {
+                return;
+            }
+
+            // Only if the detour still ends at home before dark (delays during the day eat the budget)
+            float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            Vector3 housePoint = house.GetHomePoint();
+            float needed = (PathLength(villager.Core.transform.position, housePoint) + PathLength(housePoint, villager.Profile.HomePosition)) / speed
+                + _behaviourConfig.NeighbourVisitLingerSeconds + _behaviourConfig.HomeReturnMarginSeconds;
+            float daylight = TimeManager.DAY_DURATION - GetDayElapsed();
+            if (needed > daylight)
+            {
+                AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: needs {needed:F0}s, {daylight:F0}s of daylight left");
+                return;
+            }
+
+            if (villager.Interaction.TryBegin(house, InteractionResponse.Approach, _behaviourConfig.NeighbourVisitLingerSeconds))
+            {
+                _visitedDay[villager.Id] = _time.DayCount;
+                AILog.Log(AILog.MANAGER, villager.Id, $"Looking in on {target.VillagerId} on the way home (not seen today)");
+            }
         }
 
         private int GetBlockSeed(VillagerRuntime villager, int dayCount)
@@ -472,16 +773,56 @@ namespace ProjectShaman.AI.Core
         private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount)
         {
             float travelDistance = 0f;
+            float visitSeconds = 0f;
             VillagerSchedule schedule = villager.Profile.Schedule;
             RoutineEntry lastRoutine = schedule != null ? schedule.Get(dayCount, _behaviourConfig.RoutinesPerDay - 1) : null;
 
             if (lastRoutine != null && PlaceRegistry.TryGet(lastRoutine.PlaceId, out PlaceArea place))
             {
-                travelDistance = Vector3.Distance(place.Center, villager.Profile.HomePosition);
+                Vector3 home = villager.Profile.HomePosition;
+                travelDistance = PathLength(place.Center, home);
+
+                // Room for the look-in on the way: the longest detour through a neighbour's house
+                float detour = 0f;
+                foreach (VillagerProfile neighbour in _profiles)
+                {
+                    if (neighbour != villager.Profile && neighbour.NeighborhoodId == villager.Profile.NeighborhoodId)
+                    {
+                        detour = Mathf.Max(detour, PathLength(place.Center, neighbour.HomePosition) + PathLength(neighbour.HomePosition, home) - travelDistance);
+                    }
+                }
+
+                if (detour > 0f)
+                {
+                    visitSeconds = detour / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + _behaviourConfig.NeighbourVisitLingerSeconds;
+                }
             }
 
-            float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + _behaviourConfig.HomeReturnMarginSeconds;
+            float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + visitSeconds + _behaviourConfig.HomeReturnMarginSeconds;
             return Mathf.Max(0f, TimeManager.DAY_DURATION - lead);
+        }
+
+        // Walking distance along the NavMesh (roads bend), straight line when no path is found
+        private static float PathLength(Vector3 from, Vector3 to)
+        {
+            if (_pathBuffer == null)
+            {
+                _pathBuffer = new NavMeshPath();
+            }
+
+            if (!NavMesh.CalculatePath(from, to, NavMesh.AllAreas, _pathBuffer) || _pathBuffer.status == NavMeshPathStatus.PathInvalid)
+            {
+                return Vector3.Distance(from, to);
+            }
+
+            Vector3[] corners = _pathBuffer.corners;
+            float length = 0f;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                length += Vector3.Distance(corners[i - 1], corners[i]);
+            }
+
+            return length;
         }
 
         private void RecordMemory(VillagerRuntime villager, ResolvedRoutine resolved)
@@ -500,6 +841,9 @@ namespace ProjectShaman.AI.Core
             public AI_Core Core { get; }
             public AI_ToolHandler ToolHandler { get; }
             public AI_Memory Memory { get; }
+            public AI_Perception Perception { get; }
+            public AI_Interaction Interaction { get; }
+            public AI_Conversation Conversation { get; }
             public System.Action<string> RoutineFailedHandler { get; set; }
             public AI_Status Status { get; set; }
             public AI_Stress Stress { get; set; }
@@ -508,6 +852,7 @@ namespace ProjectShaman.AI.Core
             public string Id { get; }
             public int LastBlockIndex { get; set; } = -1;
             public bool IsHomeOrdered { get; set; }
+            public bool HasArrivedHome { get; set; }
             public float HomeReturnTime { get; private set; }
             public IReadOnlyList<DailyBlock> TodayBlocks => _todayBlocks;
             public float NextStationRetryTime { get; set; }
@@ -519,6 +864,9 @@ namespace ProjectShaman.AI.Core
                 Id = core.LogId;
                 ToolHandler = core.GetComponent<AI_ToolHandler>();
                 Memory = core.GetComponent<AI_Memory>();
+                Perception = core.GetComponent<AI_Perception>();
+                Interaction = core.GetComponent<AI_Interaction>();
+                Conversation = core.GetComponent<AI_Conversation>();
             }
 
             public int NextSerial()
@@ -537,6 +885,7 @@ namespace ProjectShaman.AI.Core
             {
                 LastBlockIndex = -1;
                 IsHomeOrdered = false;
+                HasArrivedHome = false;
             }
 
             public bool TryGetBlockAt(float time, out DailyBlock block)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Unity.Behavior;
 using ProjectShaman.AI.Core;
@@ -30,6 +31,9 @@ namespace ProjectShaman.AI
         public VillagerProfile Profile => _profile;
         public VillagerPublicInfo PublicInfo => _publicInfo;
         public VillagerScheduleView ScheduleView { get; private set; }
+        // Today's routine blocks as clock-hour pairs (DailyBlock.ToHourPairs), for the notebook schedule on every peer
+        public IReadOnlyList<int> TodayBlockHours => _todayBlockHours;
+        public int TodayBlocksDay { get; private set; }
         public bool IsInitialized => _profile != null;
         public ResolvedRoutine CurrentRoutine { get; private set; }
         public bool HasRoutine => CurrentRoutine.Source != null;
@@ -41,6 +45,9 @@ namespace ProjectShaman.AI
         public event Action<string> OnRoutineFailed;
         public event Action<string> OnRoutineCleared;
         public event Action<SymptomType> OnSymptomTriggered;
+        public event System.Action OnTodayBlocksChanged;
+
+        private int[] _todayBlockHours = Array.Empty<int>();
 
         public bool IsSimulating => btAgent != null && btAgent.enabled;
 
@@ -70,6 +77,14 @@ namespace ProjectShaman.AI
         {
             ScheduleView = scheduleView;
             AILog.Log(AILog.NET, LogId, $"Schedule applied on client ({(scheduleView != null ? $"{scheduleView.CycleDays}x{scheduleView.SlotsPerDay}" : "none")})");
+        }
+
+        // Server: set each morning by AIManager. Client: applied from the network copy
+        public void SetTodayBlocks(int dayCount, int[] blockHours)
+        {
+            TodayBlocksDay = dayCount;
+            _todayBlockHours = blockHours ?? Array.Empty<int>();
+            OnTodayBlocksChanged?.Invoke();
         }
 
         public void ApplyNetworkPublicInfo(VillagerPublicInfo publicInfo)

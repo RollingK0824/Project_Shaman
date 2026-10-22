@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
@@ -101,7 +102,7 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
             AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
 
-            _scheduleBuilder = new ScheduleBuilder(_dataProvider.Routines, _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.RestRatio, _random, GetPlaceCapacity);
+            _scheduleBuilder = new ScheduleBuilder(ExcludeMissingTools(_dataProvider.Routines), _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.RestRatio, _random, GetPlaceCapacity);
 
             List<VillagerProfile> profiles = GenerateProfiles();
 
@@ -147,6 +148,7 @@ namespace ProjectShaman.AI.Core
 
             _spawnedVillagers.Clear();
             _registry?.Clear();
+            PlaceRegistry.ClearOwners();
             _usedNames.Clear();
             _scheduleBuilder = null;
             _hasCreated = false;
@@ -178,6 +180,42 @@ namespace ProjectShaman.AI.Core
 
             AILog.Warn(AILog.ROUTINE, $"Place '{placeId}' not registered, routines using it are excluded");
             return 0;
+        }
+
+        // A routine whose tool kind is not in the scene can never be worked, and its failed search
+        // would end in a request no player can fulfil
+        private List<RoutineEntry> ExcludeMissingTools(IReadOnlyList<RoutineEntry> routines)
+        {
+            HashSet<string> present = new HashSet<string>();
+            foreach (ToolItem tool in ToolRegistry.All)
+            {
+                if (tool != null && !string.IsNullOrEmpty(tool.TypeId))
+                {
+                    present.Add(tool.TypeId);
+                }
+            }
+
+            List<RoutineEntry> result = new List<RoutineEntry>();
+            SortedDictionary<string, int> missing = new SortedDictionary<string, int>();
+
+            foreach (RoutineEntry routine in routines)
+            {
+                if (routine != null && !string.IsNullOrEmpty(routine.ToolId) && !present.Contains(routine.ToolId))
+                {
+                    missing.TryGetValue(routine.ToolId, out int count);
+                    missing[routine.ToolId] = count + 1;
+                    continue;
+                }
+
+                result.Add(routine);
+            }
+
+            foreach (KeyValuePair<string, int> pair in missing)
+            {
+                AILog.Warn(AILog.ROUTINE, $"Tool '{pair.Key}' not in scene, {pair.Value} routine(s) using it are excluded");
+            }
+
+            return result;
         }
 
         private List<VillagerProfile> GenerateProfiles()
@@ -228,6 +266,7 @@ namespace ProjectShaman.AI.Core
                 }
 
                 info.JobId = job.JobId;
+                info.JobName = job.DisplayName;
 
                 if (!_scheduleBuilder.TryBuild(info, out VillagerSchedule schedule))
                 {
@@ -295,18 +334,76 @@ namespace ProjectShaman.AI.Core
 
         private void AssignHouses(List<VillagerProfile> profiles)
         {
+            Dictionary<string, int> groups = new Dictionary<string, int>();
+            List<PlaceArea> homes = new List<PlaceArea>();
+            PlaceRegistry.CollectByType(PlaceType.Home, homes);
+            PlaceRegistry.ClearOwners();
+
             foreach (VillagerProfile profile in profiles)
             {
-                profile.HomePosition = GetTestPoint(_testHomePoints, profile.Index);
+                Transform parent;
+
+                if (homes.Count > 0)
+                {
+                    // A house for each villager; with fewer houses than villagers the rest share one (named after its first resident)
+                    PlaceArea home = homes[profile.Index % homes.Count];
+                    profile.HomePosition = home.GetHomePoint();
+                    profile.PublicInfo.HomePlaceId = home.PlaceId;
+                    parent = home.transform.parent;
+
+                    if (string.IsNullOrEmpty(home.OwnerId))
+                    {
+                        home.SetOwner(profile.VillagerId);
+                    }
+                }
+                else
+                {
+                    Transform point = GetTestPointTransform(_testHomePoints, profile.Index);
+                    profile.HomePosition = point != null ? point.position : transform.position;
+                    parent = point != null ? point.parent : null;
+                }
+
+                profile.NeighborhoodId = parent != null ? $"{parent.name}#{parent.GetInstanceID()}" : null;
+
+                if (profile.NeighborhoodId != null)
+                {
+                    groups[profile.NeighborhoodId] = groups.TryGetValue(profile.NeighborhoodId, out int count) ? count + 1 : 1;
+                }
             }
 
-            AILog.Log(AILog.STUB, $"AssignHouses using test home points ({profiles.Count})");
+            if (homes.Count == 0)
+            {
+                AILog.Warn(AILog.FACTORY, "No Home PlaceArea in the scene: using Test Home Points. Place PlaceArea (Type = Home) per house");
+            }
+            else if (homes.Count < profiles.Count)
+            {
+                AILog.Warn(AILog.FACTORY, $"Only {homes.Count} Home places for {profiles.Count} villagers: some share a house");
+            }
+
+            AILog.Log(AILog.FACTORY, $"AssignHouses ({profiles.Count}) neighbourhoods: [{string.Join(", ", System.Linq.Enumerable.Select(groups, g => $"{g.Key.Split('#')[0]}={g.Value}"))}]");
+            if (groups.Count == 1 && profiles.Count > 4)
+            {
+                AILog.Warn(AILog.FACTORY, "All home points share one parent: the whole village counts as neighbours. Group home points under one parent per neighbourhood");
+            }
+        }
+
+        // The count picked in the lobby wins; the inspector value is for scenes started without the lobby
+        private int ResolveGhostCount()
+        {
+            if (NetworkManager.singleton is RoomManager room && room.SelectedGhostCount > 0)
+            {
+                AILog.Log(AILog.FACTORY, $"Ghost count {room.SelectedGhostCount} (lobby)");
+                return room.SelectedGhostCount;
+            }
+
+            AILog.Log(AILog.FACTORY, $"Ghost count {_ghostCount} (inspector, no lobby selection)");
+            return _ghostCount;
         }
 
         private void AssignGhosts(List<VillagerProfile> profiles)
         {
             List<VillagerProfile> pool = new List<VillagerProfile>(profiles);
-            int count = Mathf.Min(_ghostCount, pool.Count);
+            int count = Mathf.Min(ResolveGhostCount(), pool.Count);
 
             for (int i = 0; i < count; i++)
             {
@@ -332,6 +429,11 @@ namespace ProjectShaman.AI.Core
             AI_Possession possession = core.gameObject.AddComponent<AI_Possession>();
             possession.Initialize(profile.GhostId, _random.Next(), Mathf.Min(_behaviourConfig.InitialYin, _behaviourConfig.MaxYin));
             profile.Possession = possession;
+        }
+
+        private static Transform GetTestPointTransform(Transform[] points, int index)
+        {
+            return points == null || points.Length == 0 ? null : points[index % points.Length];
         }
 
         private Vector3 GetTestPoint(Transform[] points, int index)

@@ -21,6 +21,7 @@ public class QuestsTab : MonoBehaviour
         quests.QuestStarted += HandleQuestChanged;
         quests.QuestUpdated += HandleQuestChanged;
         quests.QuestEnded += HandleQuestChanged;
+        quests.QuestListChanged += Rebuild;
         Rebuild();
     }
 
@@ -31,6 +32,7 @@ public class QuestsTab : MonoBehaviour
         quests.QuestStarted -= HandleQuestChanged;
         quests.QuestUpdated -= HandleQuestChanged;
         quests.QuestEnded -= HandleQuestChanged;
+        quests.QuestListChanged -= Rebuild;
     }
 
     private void HandleQuestChanged(IQuestView quest)

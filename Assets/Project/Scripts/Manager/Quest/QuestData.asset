@@ -16,7 +16,7 @@ MonoBehaviour:
   - Id: q_salt_delivery
     Title: "\uC18C\uAE08 \uAD6C\uD574\uC624\uAE30"
     Objective: "\uC18C\uAE08 2\uAC1C\uB97C \uC758\uB8B0\uC778\uC5D0\uAC8C \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
-    ObjectiveType: "\tDeliver"
+    ObjectiveType: Deliver
     TargetId: item_salt
     ContextId: $giver
     RequiredAmount: 2
@@ -30,3 +30,88 @@ MonoBehaviour:
       Id: 
       Amount: 20
       Description: "\uC2A4\uD2B8\uB808\uC2A4 +20"
+  - Id: q_find_tool
+    Title: "{target} \uCC3E\uAE30"
+    Objective: "{giver:\uC774} \uC783\uC5B4\uBC84\uB9B0 {target:\uC744} \uCC3E\uC544 \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
+    ObjectiveType: Deliver
+    TargetId: $target
+    ContextId: $giver
+    RequiredAmount: 1
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 10
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
+  - Id: q_clear_trace
+    Title: "{context} \uCE58\uC6B0\uAE30"
+    Objective: "{area}\uC5D0 \uC0DD\uAE34 {context:\uC744} \uCE58\uC6CC\uC8FC\uC138\uC694."
+    ObjectiveType: Clear
+    TargetId: $target
+    ContextId: $context
+    RequiredAmount: 1
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 10
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
+  - Id: q_cleanse_trace
+    Title: "{context} \uC815\uD654\uD558\uAE30"
+    Objective: "{area}\uC758 {context}\uC5D0 \uC18C\uAE08\uC744 \uBFCC\uB824 \uC815\uD654\uD574\uC8FC\uC138\uC694."
+    ObjectiveType: UseOn
+    TargetId: item_salt
+    ContextId: $context
+    RequiredAmount: 1
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 10
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"
+  - Id: q_gut
+    Title: "\uAD7F \uC62C\uB9AC\uAE30"
+    Objective: "{giver:\uC744} \uC704\uD574 \uC9D5\uC744 \uC138 \uBC88 \uC6B8\uB824\uC8FC\uC138\uC694."
+    ObjectiveType: Use
+    TargetId: item_gong
+    ContextId: 
+    RequiredAmount: 3
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 15
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +15"
+  - Id: q_check_on
+    Title: "{target} \uCC3E\uC544\uBCF4\uAE30"
+    Objective: "{target:\uC774} \uC5B4\uC81C \uD558\uB8E8 \uC885\uC77C \uBCF4\uC774\uC9C0 \uC54A\uC558\uC18C. \uBB34\uC2A8 \uC77C\uC778\uC9C0 \uD655\uC778\uD574 \uC8FC\uC2DC\uACA0\uC18C?"
+    ObjectiveType: Inspect
+    TargetId: $target
+    ContextId: $context
+    RequiredAmount: 1
+    Reward:
+      Type: Item
+      Id: item_incense
+      Amount: 1
+      Description: "\uD5A5 1\uAC1C"
+    Penalty:
+      Type: Stress
+      Id: 
+      Amount: 10
+      Description: "\uC2A4\uD2B8\uB808\uC2A4 +10"

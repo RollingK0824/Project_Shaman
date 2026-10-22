@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Mirror;
 using UnityEngine;
 using ProjectShaman.AI;
@@ -5,6 +6,7 @@ using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Routine;
+using ProjectShaman.AI.World;
 
 namespace ProjectShaman.Network.AI
 {
@@ -17,13 +19,19 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private string _syncVillagerId;
         [SyncVar] private string _syncDisplayName;
         [SyncVar] private string _syncJobId;
+        [SyncVar] private string _syncJobName;
         [SyncVar] private VillagerGender _syncGender;
         [SyncVar] private VillagerSocialClass _syncSocialClass;
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
+        [SyncVar] private string _syncHomePlaceId;
 
         [SyncVar] private int _syncCycleDays;
         [SyncVar] private int _syncSlotsPerDay;
         private readonly SyncList<RoutineSlotInfo> _syncSchedule = new SyncList<RoutineSlotInfo>();
+
+        // Today's block hours change every morning; the day is written first so the hours hook sees it
+        [SyncVar] private int _syncBlocksDay;
+        [SyncVar(hook = nameof(OnBlockHoursChanged))] private int[] _syncBlockHours;
 
         private AI_Core aiCore;
         private AI_Movement aiMovement;
@@ -45,6 +53,8 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered += HandleSymptomTriggered;
+                aiCore.OnTodayBlocksChanged += WriteTodayBlocks;
+                WriteTodayBlocks();
             }
 
             if (aiMovement != null) aiMovement.SetAgentActive(true);
@@ -71,6 +81,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.ApplyNetworkState(_networkState);
                     aiCore.ApplyNetworkSchedule(VillagerScheduleView.FromFlat(_syncCycleDays, _syncSlotsPerDay, _syncSchedule));
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
+                    aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
                 }
@@ -87,6 +98,12 @@ namespace ProjectShaman.Network.AI
             }
 
             registry.Register(aiCore.PublicInfo, aiCore.ScheduleView);
+
+            // Same house, same owner on every client: the scene places are identical, only the assignment is told
+            if (!string.IsNullOrEmpty(aiCore.PublicInfo.HomePlaceId) && PlaceRegistry.TryGet(aiCore.PublicInfo.HomePlaceId, out PlaceArea home) && string.IsNullOrEmpty(home.OwnerId))
+            {
+                home.SetOwner(aiCore.PublicInfo.VillagerId);
+            }
         }
 
         public override void OnStopServer()
@@ -94,6 +111,7 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered -= HandleSymptomTriggered;
+                aiCore.OnTodayBlocksChanged -= WriteTodayBlocks;
             }
 
             base.OnStopServer();
@@ -118,9 +136,11 @@ namespace ProjectShaman.Network.AI
             _syncVillagerId = info.VillagerId;
             _syncDisplayName = info.DisplayName;
             _syncJobId = info.JobId;
+            _syncJobName = info.JobName;
             _syncGender = info.Gender;
             _syncSocialClass = info.SocialClass;
             _syncAgeGroup = info.AgeGroup;
+            _syncHomePlaceId = info.HomePlaceId;
 
             AILog.Log(AILog.NET, info.VillagerId, "Public info written to SyncVars");
             WriteScheduleToSyncList();
@@ -145,6 +165,21 @@ namespace ProjectShaman.Network.AI
             AILog.Log(AILog.NET, aiCore.LogId, $"Schedule written to SyncList ({schedule.CycleDays}x{schedule.SlotsPerDay})");
         }
 
+        [Server]
+        private void WriteTodayBlocks()
+        {
+            _syncBlocksDay = aiCore.TodayBlocksDay;
+            _syncBlockHours = new List<int>(aiCore.TodayBlockHours).ToArray();
+        }
+
+        private void OnBlockHoursChanged(int[] oldValue, int[] newValue)
+        {
+            if (!isServer && aiCore != null)
+            {
+                aiCore.SetTodayBlocks(_syncBlocksDay, newValue);
+            }
+        }
+
         private VillagerPublicInfo ReadPublicInfoFromSyncVars()
         {
             return new VillagerPublicInfo
@@ -152,9 +187,11 @@ namespace ProjectShaman.Network.AI
                 VillagerId = _syncVillagerId,
                 DisplayName = _syncDisplayName,
                 JobId = _syncJobId,
+                JobName = _syncJobName,
                 Gender = _syncGender,
                 SocialClass = _syncSocialClass,
-                AgeGroup = _syncAgeGroup
+                AgeGroup = _syncAgeGroup,
+                HomePlaceId = _syncHomePlaceId
             };
         }
 

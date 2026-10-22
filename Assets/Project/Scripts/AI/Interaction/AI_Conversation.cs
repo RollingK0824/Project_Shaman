@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
@@ -11,6 +12,7 @@ namespace ProjectShaman.AI.Interaction
     public class AI_Conversation : MonoBehaviour, IVillagerInteractable, IAIConfigurable
     {
         private const float LOOK_HEIGHT = 1.6f;
+        private static readonly List<AI_Conversation> _all = new List<AI_Conversation>();
         private static readonly string[] BUSY_BARKS = { "지금 바빠유!", "이따 다시 와주시겠소" };
         private static readonly string[] HOME_BARKS = { "해가 지는구먼, 들어가 봐야겠소" };
         private static readonly string[] GREETING_BARKS = { "무슨 일이오?", "어서 오시오" };
@@ -35,6 +37,7 @@ namespace ProjectShaman.AI.Interaction
         public int JoinedInteractionSerial { get; private set; }
         public bool IsInSession => Session != null;
         public float HearingDistance => _context != null && _context.Config != null ? _context.Config.HearingDistance : 0f;
+        public AIBehaviourConfig Config => _context != null ? _context.Config : null;
 
         public string InteractableId => VillagerId;
         public InteractionProfile Profile => _profile;
@@ -42,10 +45,31 @@ namespace ProjectShaman.AI.Interaction
 
         public event Action<ConversationSession, ConversationLine> OnLineSpoken;
 
+        public static IReadOnlyList<AI_Conversation> All => _all;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnLoad()
+        {
+            _all.Clear();
+        }
+
         private void Awake()
         {
             _core = GetComponent<AI_Core>();
             _interaction = GetComponent<AI_Interaction>();
+        }
+
+        private void OnEnable()
+        {
+            if (!_all.Contains(this))
+            {
+                _all.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            _all.Remove(this);
         }
 
         public void Configure(AIRuntimeContext context)
@@ -146,6 +170,23 @@ namespace ProjectShaman.AI.Interaction
             OnLineSpoken?.Invoke(session, line);
         }
 
+        // Resting (alone or in a rest chat) and not heading home: a player can sit down and talk
+        public bool CanTalkWithPlayer()
+        {
+            if (_core == null || !_core.IsSimulating || !_core.HasRoutine || _context == null)
+            {
+                return false;
+            }
+
+            VillagerActivity activity = CurrentActivity();
+            if (IsInSession)
+            {
+                return Session.Kind == ConversationKind.RestTalk;
+            }
+
+            return activity == VillagerActivity.Rest && !_interaction.IsInteracting;
+        }
+
         public void RespondToPlayer(GameObject player)
         {
             string playerName = player != null ? player.name : "(test)";
@@ -171,6 +212,18 @@ namespace ProjectShaman.AI.Interaction
 
             AILog.Log(AILog.STUB, VillagerId, $"Player talk with {playerName} accepted, conversation UI not implemented (dialogue branch)");
             Bark(GREETING_BARKS, $"greeted {playerName}");
+        }
+
+        // Server-side one-off line outside the random barks (quest hand-over etc.)
+        public void Say(string text, string reason)
+        {
+            if (string.IsNullOrEmpty(text))
+            {
+                return;
+            }
+
+            AILog.Log(AILog.INTERACTION, VillagerId, $"Say: {text} ({reason})");
+            OnLineSpoken?.Invoke(null, new ConversationLine(VillagerId, text));
         }
 
         private void Bark(string[] lines, string reason)

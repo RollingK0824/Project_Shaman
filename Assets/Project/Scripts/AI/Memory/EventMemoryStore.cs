@@ -56,6 +56,33 @@ namespace ProjectShaman.AI.Memory
             return Array.Empty<MemoryEntry>();
         }
 
+        public bool ContainsFact(string factKey)
+        {
+            foreach (List<MemoryEntry> list in _byKind.Values)
+            {
+                foreach (MemoryEntry entry in list)
+                {
+                    if (entry.FactKey == factKey)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        // Witness, trace and absence facts, newest first
+        public void CollectFacts(List<MemoryEntry> results)
+        {
+            results.Clear();
+            results.AddRange(Get(MemoryKind.Witness));
+            results.AddRange(Get(MemoryKind.TraceWitness));
+            results.AddRange(Get(MemoryKind.Absent));
+            results.AddRange(Get(MemoryKind.Death));
+            results.Sort((a, b) => b.RecordedTime.CompareTo(a.RecordedTime));
+        }
+
         public bool Contains(MemoryKind kind, string subjectId)
         {
             foreach (MemoryEntry entry in Get(kind))

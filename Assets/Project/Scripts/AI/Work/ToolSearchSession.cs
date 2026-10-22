@@ -16,6 +16,7 @@ namespace ProjectShaman.AI.Work
         private ToolItem _targetTool;
         private float _deadline;
         private bool _hasRaisedFirstStress;
+        private int _firstStressRoutineSerial = -1;
         private bool _isLookPendingAfterArrival;
 
         public string RequiredToolType { get; private set; }
@@ -53,7 +54,8 @@ namespace ProjectShaman.AI.Work
 
             float budget = Mathf.Max(1f, routine.EndTime - routine.StartTime) * Config.ToolSearchTimeRatio;
             _deadline = Now + budget;
-            _hasRaisedFirstStress = false;
+            // A re-plan after an inquiry keeps the first stress already raised for this routine
+            _hasRaisedFirstStress = _firstStressRoutineSerial == routine.Serial;
             _isLookPendingAfterArrival = false;
             CandidateIndex = -1;
             IsActive = true;
@@ -127,6 +129,7 @@ namespace ProjectShaman.AI.Work
             if (wasAfterArrival && !_hasRaisedFirstStress)
             {
                 _hasRaisedFirstStress = true;
+                _firstStressRoutineSerial = _owner.Core.CurrentRoutine.Serial;
                 AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' not at expected place", Config.ToolMissingStress);
             }
 
@@ -152,18 +155,28 @@ namespace ProjectShaman.AI.Work
             }
 
             IsActive = false;
+            AIEvents.RaiseToolRecovered(Id, tool.TypeId);
             return true;
         }
 
-        public void RaiseFailure()
+        // Returns false when an inquiry started instead; the routine stays and the search is planned again afterwards
+        public bool RaiseFailure()
         {
-            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (checked {Mathf.Max(0, CandidateIndex + 1)}/{_candidates.Count}, {(Now > _deadline ? "time over" : "no more candidates")})");
-            AILog.Log(AILog.STUB, Id, $"Inquiry to nearby villagers for '{RequiredToolType}' skipped (interaction branch)");
-            AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", Config.ToolSearchFailedStress);
+            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (checked {Mathf.Clamp(CandidateIndex + 1, 0, _candidates.Count)}/{_candidates.Count}, {(Now > _deadline ? "time over" : "no more candidates")})");
+
+            if (_owner.Inquiry.TryStart(RequiredToolType))
+            {
+                Cancel();
+                return false;
+            }
+
             _owner.Memory.RecordToolLost(RequiredToolType);
+            // Request first: the stress below may leave Calm and ask for a gut, and a giver holds one request at a time
             AIEvents.RaiseRequest(Id, "FindTool", RequiredToolType);
+            AIEvents.RaiseStress(Id, $"tool '{RequiredToolType}' search failed", Config.ToolSearchFailedStress);
             Cancel();
             _owner.Core.FailCurrentRoutine($"tool '{RequiredToolType}' not found");
+            return true;
         }
 
         public void Cancel()

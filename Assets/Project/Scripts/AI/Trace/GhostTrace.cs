@@ -9,7 +9,7 @@ using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Trace
 {
-    public class GhostTrace : MonoBehaviour, IVillagerInteractable
+    public class GhostTrace : MonoBehaviour, IVillagerInteractable, IQuestTarget
     {
         private static int _nextSerial;
 
@@ -18,6 +18,8 @@ namespace ProjectShaman.AI.Trace
         [SerializeField] private Transform _lookPoint;
         [SerializeField] private string _placeId;
         [SerializeField] private bool _clearableByHand = true;
+        [Tooltip("Items that cleanse this trace when used on it (UseOn quests)")]
+        [SerializeField] private List<string> _cleansingItemIds = new List<string> { "item_salt" };
         [SerializeField] private bool _activeOnEnable = true;
 
         [Header("Runtime (server only)")]
@@ -31,7 +33,7 @@ namespace ProjectShaman.AI.Trace
 
         public GhostTraceKind Kind => _kind;
         public string PlaceId => _placeId;
-        public string BundleKey => $"{_kind}@{(string.IsNullOrEmpty(_placeId) ? "-" : _placeId)}";
+        public string BundleKey => !string.IsNullOrEmpty(VictimId) ? $"Body@{VictimId}" : $"{_kind}@{(string.IsNullOrEmpty(_placeId) ? "-" : _placeId)}";
         public bool ClearableByHand => _clearableByHand;
         public bool IsActive => _isActive;
         public int Serial => _serial;
@@ -40,6 +42,10 @@ namespace ProjectShaman.AI.Trace
 
         public string InteractableId => $"Trace_{_kind}_{_serial}";
         public InteractionProfile Profile => _profile;
+        public string QuestContextId => InteractableId;
+        public string VictimId { get; private set; }
+        public string DisplayName => string.IsNullOrEmpty(VictimId) ? AIDisplayNames.Trace(_kind) : $"{VictimName()}의 {AIDisplayNames.Trace(_kind)}";
+        public Vector3 Position => transform.position;
         public Vector3 LookPoint => _lookPoint != null ? _lookPoint.position : transform.position;
 
         public event Action<GhostTrace, TraceResolveReason> OnResolved;
@@ -57,6 +63,7 @@ namespace ProjectShaman.AI.Trace
         {
             InteractableRegistry.Unregister(this);
             GhostTraceRegistry.Unregister(this);
+            QuestTargets.Unregister(this);
         }
 
         public void Initialize(AIBehaviourConfig config, int createdDay, string placeId)
@@ -91,6 +98,7 @@ namespace ProjectShaman.AI.Trace
 
             InteractableRegistry.Register(this);
             GhostTraceRegistry.Register(this);
+            QuestTargets.Register(this);
             AILog.Log(AILog.TRACE, InteractableId, "Active");
         }
 
@@ -103,6 +111,7 @@ namespace ProjectShaman.AI.Trace
 
             _isActive = false;
             InteractableRegistry.Unregister(this);
+            QuestTargets.Unregister(this);
             AILog.Log(AILog.TRACE, InteractableId, $"Resolved ({reason}), witnesses={_witnessed.Count}");
 
             OnResolved?.Invoke(this, reason);
@@ -119,6 +128,39 @@ namespace ProjectShaman.AI.Trace
 
             int neglectedDays = Mathf.Max(0, dayCount - _createdDay - 1);
             return Mathf.Min(_config.TraceNeglectStressMax, 1f + _config.TraceNeglectStressPerDay * neglectedDays);
+        }
+
+        // Set by the night ledger when a hunt leaves a body, so a check-on request can point at it
+        public void SetVictim(string villagerId)
+        {
+            VictimId = villagerId;
+            AILog.Log(AILog.TRACE, InteractableId, $"Body of {villagerId} ({BundleKey})");
+        }
+
+        private string VictimName()
+        {
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            return registry != null && registry.TryGet(VictimId, out Interfaces.IVillagerView view) && !string.IsNullOrEmpty(view.DisplayName) ? view.DisplayName : VictimId;
+        }
+
+        public bool Accepts(string actionType, string actionId)
+        {
+            if (!_isActive)
+            {
+                return false;
+            }
+
+            if (actionType == QuestActions.INSPECT)
+            {
+                return actionId == (VictimId ?? _kind.ToString());
+            }
+
+            if (actionType == QuestActions.CLEAR)
+            {
+                return _clearableByHand && actionId == _kind.ToString();
+            }
+
+            return actionType == QuestActions.USE_ON && _cleansingItemIds != null && _cleansingItemIds.Contains(actionId);
         }
 
         public bool CanInteract(in InteractionContext context)
