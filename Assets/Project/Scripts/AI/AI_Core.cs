@@ -45,7 +45,7 @@ namespace ProjectShaman.AI
         public event Action<string> OnRoutineFailed;
         public event Action<string> OnRoutineCleared;
         public event Action<SymptomType> OnSymptomTriggered;
-        public event Action OnTodayBlocksChanged;
+        public event System.Action OnTodayBlocksChanged;
 
         private int[] _todayBlockHours = Array.Empty<int>();
 
