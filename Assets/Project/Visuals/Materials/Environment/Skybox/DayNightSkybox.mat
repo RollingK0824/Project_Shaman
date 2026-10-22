@@ -1,0 +1,55 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!21 &2100000
+Material:
+  serializedVersion: 8
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_Name: DayNightSkybox
+  m_Shader: {fileID: 4800000, guid: 734f390d596a1c94d8b8150b8459e752, type: 3}
+  m_Parent: {fileID: 0}
+  m_ModifiedSerializedProperties: 0
+  m_ValidKeywords: []
+  m_InvalidKeywords: []
+  m_LightmapFlags: 4
+  m_EnableInstancingVariants: 0
+  m_DoubleSidedGI: 0
+  m_CustomRenderQueue: -1
+  stringTagMap: {}
+  disabledShaderPasses: []
+  m_LockedProperties: 
+  m_SavedProperties:
+    serializedVersion: 3
+    m_TexEnvs:
+    - _NightTex:
+        m_Texture: {fileID: 8900000, guid: 97259d0c0ea9f491692be825da27978a, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _Tex:
+        m_Texture: {fileID: 8900000, guid: 6fa3f446deee84c52aec507bd0aca28c, type: 3}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    m_Ints: []
+    m_Floats:
+    - _Blend: 0
+    - _Exposure: 1
+    - _MoonIntensity: 1.8
+    - _MoonSize: 0.038
+    - _NightPitch: -4
+    - _NightRotation: 65
+    - _Pitch: 6.811627
+    - _Rotation: 341.42856
+    - _SunIntensity: 2.2
+    - _SunSize: 0.045
+    - _SunsetFactor: 0
+    m_Colors:
+    - _MoonColor: {r: 0.78, g: 0.88, b: 1, a: 1}
+    - _MoonDir: {r: -0.5251354, g: 0.40299672, b: 0.74955094, a: 0}
+    - _SunColor: {r: 1, g: 0.95, b: 0.82, a: 1}
+    - _SunDir: {r: 0.7542845, g: -0.5788488, b: 0.3098209, a: 0}
+    - _SunsetColor: {r: 1, g: 0.45, b: 0.17999998, a: 1}
+    - _Tint: {r: 0.5, g: 0.5, b: 0.5, a: 0.5}
+  m_BuildTextureStacks: []
+  m_AllowLocking: 1
