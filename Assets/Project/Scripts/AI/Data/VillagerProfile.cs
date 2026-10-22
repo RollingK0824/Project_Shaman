@@ -14,6 +14,7 @@ namespace ProjectShaman.AI.Data
         public VillagerGender Gender;
         public VillagerSocialClass SocialClass;
         public VillagerAgeGroup AgeGroup;
+        public string HomePlaceId;
 
         public override string ToString()
         {

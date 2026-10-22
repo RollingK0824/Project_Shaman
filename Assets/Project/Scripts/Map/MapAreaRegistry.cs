@@ -20,6 +20,22 @@ namespace ProjectShaman.Map
             _all.Clear();
         }
 
+        // How many map areas sit above this object in the hierarchy (a house inside a market is deeper than the market)
+        public static int CountParents(Transform transform)
+        {
+            int depth = 0;
+
+            for (Transform parent = transform.parent; parent != null; parent = parent.parent)
+            {
+                if (parent.GetComponent<IMapArea>() != null)
+                {
+                    depth++;
+                }
+            }
+
+            return depth;
+        }
+
         public static void Register(IMapArea area)
         {
             if (area == null || string.IsNullOrEmpty(area.AreaId))

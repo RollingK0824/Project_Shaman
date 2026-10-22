@@ -97,7 +97,6 @@ MonoBehaviour:
   _conversationGroupMax: 4
   _conversationPartnerCooldown: 60
   _hearingDistance: 12
-  _traceMaxPerKind: 5
   _traceNeglectStressPerDay: 0.5
   _traceNeglectStressMax: 3
   _memoryDays: 2
@@ -106,3 +105,32 @@ MonoBehaviour:
   _villagerStressAnxious: 50
   _villagerStressLimit: 100
   _villagerStressMorningDecay: 5
+  _visionHalfAngle: 60
+  _visionNearRadius: 2
+  _visionEyeHeight: 1.6
+  _visionObstacleMask:
+    serializedVersion: 2
+    m_Bits: 128
+  _observationRadius: 10
+  _observationInterval: 1
+  _witnessTraitMin: 1
+  _witnessTraitMax: 2
+  _anxiousMutterInterval: 30
+  _anxiousMutterChance: 0.35
+  _neighbourVisitLingerSeconds: 3
+  _rumorChance: 0.5
+  _rumorMaxHops: 2
+  _playerQuestionsPerDay: 2
+  _requestQuests:
+  - RequestKey: FindTool
+    QuestId: q_find_tool
+  - RequestKey: Trace
+    QuestId: q_clear_trace
+  - RequestKey: TraceCleanse
+    QuestId: q_cleanse_trace
+  - RequestKey: CheckOn
+    QuestId: q_check_on
+  - RequestKey: Gut
+    QuestId: q_gut
+  _requestCompletedStressRelief: 30
+  _requestFailedStress: 10

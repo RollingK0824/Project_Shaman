@@ -5,6 +5,7 @@ using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Routine;
+using ProjectShaman.AI.World;
 
 namespace ProjectShaman.Network.AI
 {
@@ -20,6 +21,7 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private VillagerGender _syncGender;
         [SyncVar] private VillagerSocialClass _syncSocialClass;
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
+        [SyncVar] private string _syncHomePlaceId;
 
         [SyncVar] private int _syncCycleDays;
         [SyncVar] private int _syncSlotsPerDay;
@@ -87,6 +89,12 @@ namespace ProjectShaman.Network.AI
             }
 
             registry.Register(aiCore.PublicInfo, aiCore.ScheduleView);
+
+            // Same house, same owner on every client: the scene places are identical, only the assignment is told
+            if (!string.IsNullOrEmpty(aiCore.PublicInfo.HomePlaceId) && PlaceRegistry.TryGet(aiCore.PublicInfo.HomePlaceId, out PlaceArea home) && string.IsNullOrEmpty(home.OwnerId))
+            {
+                home.SetOwner(aiCore.PublicInfo.VillagerId);
+            }
         }
 
         public override void OnStopServer()
@@ -121,6 +129,7 @@ namespace ProjectShaman.Network.AI
             _syncGender = info.Gender;
             _syncSocialClass = info.SocialClass;
             _syncAgeGroup = info.AgeGroup;
+            _syncHomePlaceId = info.HomePlaceId;
 
             AILog.Log(AILog.NET, info.VillagerId, "Public info written to SyncVars");
             WriteScheduleToSyncList();
@@ -154,7 +163,8 @@ namespace ProjectShaman.Network.AI
                 JobId = _syncJobId,
                 Gender = _syncGender,
                 SocialClass = _syncSocialClass,
-                AgeGroup = _syncAgeGroup
+                AgeGroup = _syncAgeGroup,
+                HomePlaceId = _syncHomePlaceId
             };
         }
 

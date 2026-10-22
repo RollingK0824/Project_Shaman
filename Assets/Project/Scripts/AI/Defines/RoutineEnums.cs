@@ -16,7 +16,8 @@ namespace ProjectShaman.AI.Defines
         Rest,
         Storage,
         Home,
-        Accumulation
+        Accumulation,
+        Area
     }
 
     public enum PlaceShape

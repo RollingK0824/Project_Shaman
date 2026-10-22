@@ -147,6 +147,7 @@ namespace ProjectShaman.AI.Core
 
             _spawnedVillagers.Clear();
             _registry?.Clear();
+            PlaceRegistry.ClearOwners();
             _usedNames.Clear();
             _scheduleBuilder = null;
             _hasCreated = false;
@@ -296,17 +297,49 @@ namespace ProjectShaman.AI.Core
         private void AssignHouses(List<VillagerProfile> profiles)
         {
             Dictionary<string, int> groups = new Dictionary<string, int>();
+            List<PlaceArea> homes = new List<PlaceArea>();
+            PlaceRegistry.CollectByType(PlaceType.Home, homes);
+            PlaceRegistry.ClearOwners();
 
             foreach (VillagerProfile profile in profiles)
             {
-                Transform point = GetTestPointTransform(_testHomePoints, profile.Index);
-                profile.HomePosition = point != null ? point.position : transform.position;
-                profile.NeighborhoodId = point != null && point.parent != null ? $"{point.parent.name}#{point.parent.GetInstanceID()}" : null;
+                Transform parent;
+
+                if (homes.Count > 0)
+                {
+                    // A house for each villager; with fewer houses than villagers the rest share one (named after its first resident)
+                    PlaceArea home = homes[profile.Index % homes.Count];
+                    profile.HomePosition = home.GetHomePoint();
+                    profile.PublicInfo.HomePlaceId = home.PlaceId;
+                    parent = home.transform.parent;
+
+                    if (string.IsNullOrEmpty(home.OwnerId))
+                    {
+                        home.SetOwner(profile.VillagerId);
+                    }
+                }
+                else
+                {
+                    Transform point = GetTestPointTransform(_testHomePoints, profile.Index);
+                    profile.HomePosition = point != null ? point.position : transform.position;
+                    parent = point != null ? point.parent : null;
+                }
+
+                profile.NeighborhoodId = parent != null ? $"{parent.name}#{parent.GetInstanceID()}" : null;
 
                 if (profile.NeighborhoodId != null)
                 {
                     groups[profile.NeighborhoodId] = groups.TryGetValue(profile.NeighborhoodId, out int count) ? count + 1 : 1;
                 }
+            }
+
+            if (homes.Count == 0)
+            {
+                AILog.Warn(AILog.FACTORY, "No Home PlaceArea in the scene: using Test Home Points. Place PlaceArea (Type = Home) per house");
+            }
+            else if (homes.Count < profiles.Count)
+            {
+                AILog.Warn(AILog.FACTORY, $"Only {homes.Count} Home places for {profiles.Count} villagers: some share a house");
             }
 
             AILog.Log(AILog.FACTORY, $"AssignHouses ({profiles.Count}) neighbourhoods: [{string.Join(", ", System.Linq.Enumerable.Select(groups, g => $"{g.Key.Split('#')[0]}={g.Value}"))}]");
