@@ -87,6 +87,7 @@ public class PlayerNotebookUI : MonoBehaviour
         var owner = _owner;
         var inventoryRoot = CreatePage(0, "PlayerInventoryPage");
         var craftingRoot = CreatePage(2, "PlayerCraftingPage");
+        var scheduleRoot = CreatePage(4, "VillagerSchedulePage");
         if (inventoryRoot != null && owner.InventoryPanelPrefab != null)
         {
             var spread = new GameObject("PlayerInformationSpread", typeof(RectTransform), typeof(NotebookPlayerInfoView));
@@ -112,6 +113,13 @@ public class PlayerNotebookUI : MonoBehaviour
             _crafting.SetRecipes(owner.CraftingRecipes);
             _crafting.ConfigureNotebook();
             _crafting.gameObject.SetActive(true);
+        }
+        if (scheduleRoot != null && owner.InventoryPanelPrefab != null)
+        {
+            var spread = new GameObject("VillagerScheduleSpread", typeof(RectTransform), typeof(NotebookScheduleView));
+            spread.transform.SetParent(scheduleRoot, false);
+            PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
+            spread.GetComponent<NotebookScheduleView>().Bind(owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true)?.font);
         }
     }
 
