@@ -12100,6 +12100,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_02
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -17210,6 +17211,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_01
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -23335,6 +23337,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_01
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -38654,6 +38657,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_01
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -45224,10 +45228,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1609645646}
     m_Modifications:
-    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.349
-      objectReference: {fileID: 0}
     - target: {fileID: 1030994777, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Name
       value: Wall01c (3)
@@ -45307,6 +45307,10 @@ PrefabInstance:
     - target: {fileID: 9032231917269049725, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Layer
       value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.349
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -60961,7 +60965,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1198501830
 Transform:
   m_ObjectHideFlags: 0
@@ -78612,6 +78616,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_01
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -87602,6 +87607,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_02
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -88159,10 +88165,6 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 378088403}
     m_Modifications:
-    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.349
-      objectReference: {fileID: 0}
     - target: {fileID: 1030994777, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Name
       value: Wall01c (10)
@@ -88242,6 +88244,10 @@ PrefabInstance:
     - target: {fileID: 9032231917269049725, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Layer
       value: 7
+      objectReference: {fileID: 0}
+    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.349
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -92934,6 +92940,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_01
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -94379,6 +94386,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_02
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -99907,6 +99915,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_01
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
@@ -101066,6 +101075,7 @@ MonoBehaviour:
   _homeStoragePlaceId: Shed_02
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
+  _disableColliderWhenHeld: 1
   _holderId: 
   _reservedBy: 
   _ghostHiddenNight: -1
