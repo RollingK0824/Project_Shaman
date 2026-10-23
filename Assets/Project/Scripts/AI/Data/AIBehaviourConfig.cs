@@ -11,11 +11,13 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int _cycleDays = 3;
         [SerializeField, Range(0f, 1f)] private float _restRatio = 0.3f;
         [SerializeField] private int _routinesPerDay = 2;
-        [Tooltip("Share of the day one routine block takes (2 blocks x 0.4 + 0.2 spare = day 4:4:2), rounded to whole hours")]
+        [Tooltip("Share of the day one routine block takes (2 blocks x 0.4 + 0.2 spare = day 4:4:2)")]
         [SerializeField, Range(0.05f, 1f)] private float _routineDayRatio = 0.4f;
-        [Tooltip("Shortest a block may shrink to when travel crowds the day, as a share of the full block")]
+        [Tooltip("Shortest a block may shrink to when the walk home does not fit the spare, as a share of the full block")]
         [SerializeField, Range(0.05f, 1f)] private float _minRoutineRatio = 0.5f;
         [SerializeField] private int _maxStartDelayHours = 2;
+        [Tooltip("A villager with less spare than this share of a block leaves up to this much into the first block, so not everyone sets off at dawn together")]
+        [SerializeField, Range(0f, 0.5f)] private float _startStaggerRatio = 0.1f;
         [Tooltip("A block with less than this share of its length left is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
@@ -176,9 +178,10 @@ namespace ProjectShaman.AI.Data
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
-        public int RoutineHours => Mathf.Max(1, Mathf.RoundToInt(DayClock.DAY_HOURS * _routineDayRatio));
-        public int MinRoutineHours => Mathf.Clamp(Mathf.CeilToInt(RoutineHours * _minRoutineRatio), 1, RoutineHours);
-        public int MaxStartDelayHours => Mathf.Max(0, _maxStartDelayHours);
+        public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
+        public float MinRoutineSeconds => RoutineSeconds * _minRoutineRatio;
+        public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
+        public float StartStaggerSeconds => RoutineSeconds * _startStaggerRatio;
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
