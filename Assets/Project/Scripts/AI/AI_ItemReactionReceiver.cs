@@ -10,16 +10,14 @@ using ProjectShaman.AI.Interfaces;
 namespace ProjectShaman.AI
 {
     // A player's ritual item reaching a villager: salt sprinkled on them, bean-mugwort thrown, a bell or gong rung nearby.
-    // An ordinary villager is only startled (small stress). In a host the ghost shows through in proportion to its yin:
-    // low yin looks like anyone startled, enough yin forces trembling, high yin a violent outburst.
+    // Everyone is startled alike (same line, small stress). In a host the ghost also shows through in proportion to its yin:
+    // low yin looks like anyone startled, enough yin forces a quiet symptom at once, high yin twists the body.
     // No animation yet: the reaction is an animator trigger on every peer (Item{Kind}Startled / Symptom*) plus a line.
     [RequireComponent(typeof(AI_Core))]
     public class AI_ItemReactionReceiver : MonoBehaviour, IItemControlReceiver, ISaltReactable, IAIConfigurable
     {
-        // Lines per item (item.startled.Salt ...) so the bubble says what just happened to them
+        // Lines per item (item.startled.Salt ...) so the bubble says what just happened to them, host or not
         private const string STARTLED_LINE = "item.startled";
-        private const string SHUDDER_LINE = "item.shudder";
-        private const string OUTBURST_LINE = "item.outburst";
 
         private AI_Core _core;
         private AI_Status _status;
@@ -71,16 +69,18 @@ namespace ProjectShaman.AI
 
             AIEvents.RaiseStress(villagerId, $"{item} from {userName}", _config.ItemStartleStress);
 
+            // Everyone says the same kind of thing: the words never give a host away, only what its body does
+            Say($"{STARTLED_LINE}.{item}", $"startled by {item}");
+
             if (possession == null || yin < _config.ItemReactionYin)
             {
                 AILog.Log(AILog.GHOST, villagerId, $"Startled by {item} from {userName}{(possession != null ? $" (host, yin {yin:F0} too low to show)" : "")}");
                 _core.TriggerEffect($"Item{item}Startled");
-                Say($"{STARTLED_LINE}.{item}", $"startled by {item}");
                 return true;
             }
 
             bool violent = yin >= _config.ItemViolentYin;
-            SymptomType symptom = violent ? SymptomType.Grotesque : SymptomType.Tremble;
+            SymptomType symptom = PickSymptom(violent);
             AILog.Log(AILog.GHOST, villagerId, $"Host reacts to {item} from {userName}: {symptom} (yin {yin:F0}{(violent ? ", violent" : "")})");
 
             if (AIManager.Existing != null)
@@ -92,9 +92,19 @@ namespace ProjectShaman.AI
                 _core.TriggerSymptom(symptom);
             }
 
-            Say(violent ? OUTBURST_LINE : SHUDDER_LINE, $"{(violent ? "outburst" : "shudder")} at {item}");
-
             return true;
+        }
+
+        // The ghost shows through as one of its usual symptoms: high yin twists the body, otherwise a quieter one
+        private SymptomType PickSymptom(bool violent)
+        {
+            if (violent)
+            {
+                return SymptomType.Grotesque;
+            }
+
+            SymptomType[] quiet = { SymptomType.Tremble, SymptomType.StareIntoVoid, SymptomType.Nonsense };
+            return quiet[_random.Next(quiet.Length)];
         }
 
         private void Say(string lineId, string reason)
