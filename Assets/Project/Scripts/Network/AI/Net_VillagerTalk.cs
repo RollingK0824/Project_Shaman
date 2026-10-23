@@ -1,5 +1,4 @@
 using Mirror;
-using TMPro;
 using UnityEngine;
 using ProjectShaman.AI;
 using ProjectShaman.AI.Core;
@@ -34,6 +33,7 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private float _dialogueIdleTimeout = 40f;
         [SerializeField] private float _dialogueLeaveDistance = 6f;
 
+        private AI_Core _core;
         private AI_Conversation _conversation;
         private AI_Interaction _interaction;
         private NetworkConnectionToClient _dialogueConnection;
@@ -43,21 +43,29 @@ namespace ProjectShaman.Network.AI
         private bool _questOffer;
         private bool _toolDelivery;
         private float _dialogueDeadline;
-        private TextMeshPro _marker;
+        private AI_QuestMarker _marker;
         private QuestManager _subscribedQuests;
 
-        [SyncVar(hook = nameof(OnQuestOfferChanged))] private bool _hasQuestOffer;
+        [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasQuestOffer;
+        // An accepted quest is finished by coming back to this villager (delivery to the giver ...)
+        [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasActiveQuest;
 
         public string InteractionPrompt => _interactionPrompt;
 
         private void Awake()
         {
+            _core = GetComponent<AI_Core>();
             _conversation = GetComponent<AI_Conversation>();
             _interaction = GetComponent<AI_Interaction>();
         }
 
         public override void OnStartServer()
         {
+            if (_core != null)
+            {
+                _core.OnMustGoHomeChanged += HandleMustGoHomeChanged;
+            }
+
             _subscribedQuests = QuestManager.Existing;
             if (_subscribedQuests == null)
             {
@@ -67,12 +75,17 @@ namespace ProjectShaman.Network.AI
             _subscribedQuests.QuestOffered += HandleQuestChanged;
             _subscribedQuests.QuestStarted += HandleQuestChanged;
             _subscribedQuests.QuestEnded += HandleQuestChanged;
-            RefreshQuestOffer();
+            RefreshQuestMarker();
         }
 
         public override void OnStopServer()
         {
             EndDialogue(null);
+
+            if (_core != null)
+            {
+                _core.OnMustGoHomeChanged -= HandleMustGoHomeChanged;
+            }
 
             if (_subscribedQuests == null)
             {
@@ -87,59 +100,51 @@ namespace ProjectShaman.Network.AI
 
         public override void OnStartClient()
         {
-            ApplyMarker(_hasQuestOffer);
+            ApplyMarker();
         }
 
         private void HandleQuestChanged(IQuestView quest)
         {
-            if (quest.GiverId == _conversation.VillagerId)
+            string villagerId = _conversation.VillagerId;
+            if (quest.GiverId == villagerId || quest.ContextId == villagerId)
             {
-                RefreshQuestOffer();
+                RefreshQuestMarker();
             }
         }
 
-        private void RefreshQuestOffer()
+        private void HandleMustGoHomeChanged(bool mustGoHome)
         {
-            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(_conversation.VillagerId);
+            RefreshQuestMarker();
         }
 
-        private void OnQuestOfferChanged(bool oldValue, bool newValue)
+        // Sent home for the evening (until the next day start) the villager cannot take an offer: "!" waits for the morning
+        private bool IsHomeBound => _core != null && _core.MustGoHome;
+
+        private void RefreshQuestMarker()
         {
-            ApplyMarker(newValue);
+            string villagerId = _conversation.VillagerId;
+            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsHomeBound;
+            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId);
         }
 
-        private void ApplyMarker(bool visible)
+        private void OnQuestMarkerChanged(bool oldValue, bool newValue)
         {
-            if (visible && _marker == null)
+            ApplyMarker();
+        }
+
+        // An offer waiting here outranks a quest to finish here
+        private void ApplyMarker()
+        {
+            string symbol = _hasQuestOffer ? AI_QuestMarker.OFFER : _hasActiveQuest ? AI_QuestMarker.IN_PROGRESS : null;
+            if (symbol != null && _marker == null)
             {
-                GameObject markerObject = new GameObject("QuestMarker");
-                markerObject.transform.SetParent(transform, false);
-                markerObject.transform.localPosition = MARKER_LOCAL_POSITION;
-                _marker = markerObject.AddComponent<TextMeshPro>();
-                _marker.text = "!";
-                _marker.fontSize = _markerFontSize;
-                _marker.fontStyle = FontStyles.Bold;
-                _marker.alignment = TextAlignmentOptions.Center;
-                _marker.color = _markerColor;
-                _marker.outlineColor = Color.black;
-                _marker.outlineWidth = 0.3f;
+                _marker = AI_QuestMarker.Create(transform, MARKER_LOCAL_POSITION, _markerFontSize, _markerColor);
             }
 
             if (_marker != null)
             {
-                _marker.gameObject.SetActive(visible);
+                _marker.Show(symbol);
             }
-        }
-
-        private void LateUpdate()
-        {
-            if (_marker == null || !_marker.gameObject.activeSelf)
-            {
-                return;
-            }
-
-            _marker.transform.localPosition = MARKER_LOCAL_POSITION;
-            AI_ViewerCamera.Face(_marker.transform);
         }
 
         public bool CanInteract(GameObject interactor)
@@ -176,11 +181,15 @@ namespace ProjectShaman.Network.AI
             uint playerId = player.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
             string villagerId = _conversation.VillagerId;
 
+            // A villager sent home (walking back, then in for the night) does not stop for a window: they only answer
+            // in passing (the usual line). An offer waits for the morning
+            bool goingHome = IsHomeBound || _conversation.CurrentActivity() == VillagerActivity.ReturningHome;
             // A pending offer opens the quest window (accept / decline) instead of the usual greeting
             QuestManager quests = QuestManager.Existing;
-            IQuestView offer = quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
+            IQuestView offer = !goingHome && quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
             // Bringing back the tool this villager asked for comes before anything else
-            IQuestView delivery = FindToolDelivery(quests, villagerId, player, out Net_ToolItem carried);
+            Net_ToolItem carried = null;
+            IQuestView delivery = goingHome ? null : FindToolDelivery(quests, villagerId, player, out carried);
 
             if (_dialogueConnection != null && _dialogueConnection != sender)
             {
@@ -194,9 +203,21 @@ namespace ProjectShaman.Network.AI
             {
                 StartQuestOffer(sender, player, offer);
             }
-            else if (!TryStartDialogue(sender, player))
+            else
             {
-                _conversation.RespondToPlayer(player);
+                // The day after an exorcism the freed villager thanks the player first (in the window, or in passing)
+                string thanks = VillagerDialogueService.TakeThanks(_conversation, playerId);
+                if (!TryStartDialogue(sender, player, thanks))
+                {
+                    if (thanks != null)
+                    {
+                        _conversation.Say(thanks, "thanks for the exorcism");
+                    }
+                    else
+                    {
+                        _conversation.RespondToPlayer(player);
+                    }
+                }
             }
 
             GameplayEvents.RaiseActionDone(playerId, QuestActions.TALK, villagerId);
@@ -204,7 +225,7 @@ namespace ProjectShaman.Network.AI
 
         // ----- Player dialogue (server) -----
 
-        private bool TryStartDialogue(NetworkConnectionToClient sender, GameObject player)
+        private bool TryStartDialogue(NetworkConnectionToClient sender, GameObject player, string greeting = null)
         {
             AIBehaviourConfig config = _conversation.Config;
             if (_interaction == null || config == null || !_conversation.CanTalkWithPlayer())
@@ -232,7 +253,7 @@ namespace ProjectShaman.Network.AI
 
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
-            TargetOpenDialogue(sender, _conversation.DisplayName, VillagerDialogueService.Greeting(), ids, labels);
+            TargetOpenDialogue(sender, _conversation.DisplayName, greeting ?? VillagerDialogueService.Greeting(), ids, labels);
             return true;
         }
 

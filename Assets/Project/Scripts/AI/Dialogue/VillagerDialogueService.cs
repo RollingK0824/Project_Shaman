@@ -5,6 +5,7 @@ using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.Trace;
 using ProjectShaman.Map;
 
@@ -30,11 +31,13 @@ namespace ProjectShaman.AI.Dialogue
         public const string ASK_ANOMALY = "ask.anomaly";
         public const string ASK_RUMOR = "ask.rumor";
         public const string ASK_TODAY = "ask.today";
+        public const string ASK_FEELING = "ask.feeling";
         public const string ASK_TOOL = "ask.tool";
         public const string ASK_TRACE = "ask.trace";
         public const string ASK_BYE = "ask.bye";
 
         private static readonly Dictionary<string, int> _asked = new Dictionary<string, int>();
+        private static readonly Dictionary<string, HashSet<uint>> _thanked = new Dictionary<string, HashSet<uint>>();
         private static readonly List<MemoryEntry> _facts = new List<MemoryEntry>();
         private static readonly System.Random _random = new System.Random();
 
@@ -42,6 +45,32 @@ namespace ProjectShaman.AI.Dialogue
         private static void ResetOnLoad()
         {
             _asked.Clear();
+            _thanked.Clear();
+        }
+
+        // From the day after the exorcism, the first time each player talks to the freed villager: a word of thanks
+        public static string TakeThanks(AI_Conversation villager, uint playerId)
+        {
+            AI_Core core = villager.GetComponent<AI_Core>();
+            int today = TimeManager.Existing != null ? TimeManager.Existing.DayCount : 0;
+            if (core == null || core.Profile == null || core.Profile.ExorcisedDay < 0 || today <= core.Profile.ExorcisedDay)
+            {
+                return null;
+            }
+
+            if (!_thanked.TryGetValue(villager.VillagerId, out HashSet<uint> players))
+            {
+                players = new HashSet<uint>();
+                _thanked[villager.VillagerId] = players;
+            }
+
+            if (!players.Add(playerId))
+            {
+                return null;
+            }
+
+            AILog.Log(AILog.INTERACTION, villager.VillagerId, $"Thanks player {playerId} for the exorcism (day {core.Profile.ExorcisedDay})");
+            return DialogueLibrary.Line("exorcised.thanks", _random);
         }
 
         public static string Greeting()
@@ -63,6 +92,7 @@ namespace ProjectShaman.AI.Dialogue
                 topics.Add(new DialogueTopic(ASK_ANOMALY, DialogueLibrary.Line(ASK_ANOMALY, null)));
                 topics.Add(new DialogueTopic(ASK_RUMOR, DialogueLibrary.Line(ASK_RUMOR, null)));
                 topics.Add(new DialogueTopic(ASK_TODAY, DialogueLibrary.Line(ASK_TODAY, null)));
+                topics.Add(new DialogueTopic(ASK_FEELING, DialogueLibrary.Line(ASK_FEELING, null)));
                 AddQuestTopics(topics);
             }
 
@@ -100,6 +130,8 @@ namespace ProjectShaman.AI.Dialogue
                     return AnswerFact(villager, memory, day, f => f.Source == MemorySource.Heard, false) ?? DialogueLibrary.Line("rumor.none", _random);
                 case ASK_TODAY:
                     return AnswerToday(memory);
+                case ASK_FEELING:
+                    return AnswerFeeling(villager, config);
                 case ASK_TOOL:
                     return AnswerTool(villager, memory, arg);
                 case ASK_TRACE:
@@ -107,6 +139,24 @@ namespace ProjectShaman.AI.Dialogue
                 default:
                     return DialogueLibrary.Line("answer.none", _random);
             }
+        }
+
+        // How the villager feels hints at its stress without a number: calm, uneasy, anxious (from the anxious threshold),
+        // close to breaking (halfway from anxious to the limit, where the death mark falls)
+        private static string AnswerFeeling(AI_Conversation villager, AIBehaviourConfig config)
+        {
+            AI_Stress stress = villager.GetComponent<AI_Stress>();
+            float value = stress != null ? stress.Value : 0f;
+            float anxious = config.VillagerStressAnxious;
+            float limit = config.VillagerStressLimit;
+
+            string level = value >= (anxious + limit) * 0.5f ? "breaking"
+                : value >= anxious ? "anxious"
+                : value >= anxious * 0.5f ? "uneasy"
+                : "fine";
+
+            AILog.Log(AILog.INTERACTION, villager.VillagerId, $"Feeling asked: {level} (stress {value:F0})");
+            return DialogueLibrary.Line($"feeling.{level}", _random);
         }
 
         // Quest targets become questions: a lost tool, a trace. A missing villager is checked at their house, not asked about

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
 
 namespace ProjectShaman.AI.Data
@@ -10,10 +11,15 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int _cycleDays = 3;
         [SerializeField, Range(0f, 1f)] private float _restRatio = 0.3f;
         [SerializeField] private int _routinesPerDay = 2;
-        [SerializeField] private int _routineHours = 5;
-        [SerializeField] private int _minRoutineHours = 3;
+        [Tooltip("Share of the day one routine block takes (2 blocks x 0.4 + 0.2 spare = day 4:4:2)")]
+        [SerializeField, Range(0.05f, 1f)] private float _routineDayRatio = 0.4f;
+        [Tooltip("Shortest a block may shrink to when the walk home does not fit the spare, as a share of the full block")]
+        [SerializeField, Range(0.05f, 1f)] private float _minRoutineRatio = 0.5f;
         [SerializeField] private int _maxStartDelayHours = 2;
-        [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.17f;
+        [Tooltip("Every block but the last is randomly up to this share shorter per villager, so villagers do not all switch routines at the same moment")]
+        [SerializeField, Range(0f, 0.5f)] private float _blockLengthVariance = 0.35f;
+        [Tooltip("A block with less than this share of its length left is skipped instead of started")]
+        [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
         [SerializeField] private float _walkSpeedEstimate = 3.5f;
@@ -121,6 +127,16 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _villagerStressLimit = 100f;
         [SerializeField, Min(0f)] private float _villagerStressMorningDecay = 5f;
 
+        [Header("Player Item Reaction")]
+        [Tooltip("Stress a villager takes when salt, bean-mugwort, the bell or the gong reaches them")]
+        [SerializeField, Min(0f)] private float _itemStartleStress = 3f;
+        [Tooltip("After reacting to an item a villager ignores further items for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
+        [SerializeField, Min(0f)] private float _itemReactionCooldown = 6f;
+        [Tooltip("Host yin from which the ghost shows through the body (trembling); below it the host is startled like anyone")]
+        [SerializeField, Min(0f)] private float _itemReactionYin = 40f;
+        [Tooltip("Host yin from which the reaction turns violent (grotesque twisting, lashing out)")]
+        [SerializeField, Min(0f)] private float _itemViolentYin = 70f;
+
         [Header("Vision")]
         [SerializeField, Range(10f, 180f)] private float _visionHalfAngle = 60f;
         [SerializeField, Min(0f)] private float _visionNearRadius = 2f;
@@ -164,9 +180,10 @@ namespace ProjectShaman.AI.Data
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
-        public int RoutineHours => Mathf.Max(1, _routineHours);
-        public int MinRoutineHours => Mathf.Clamp(_minRoutineHours, 1, RoutineHours);
-        public int MaxStartDelayHours => Mathf.Max(0, _maxStartDelayHours);
+        public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
+        public float MinRoutineSeconds => RoutineSeconds * _minRoutineRatio;
+        public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
+        public float BlockLengthVariance => _blockLengthVariance;
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
@@ -238,6 +255,10 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
+        public float ItemReactionCooldown => Mathf.Max(0f, _itemReactionCooldown);
+        public float ItemStartleStress => Mathf.Max(0f, _itemStartleStress);
+        public float ItemReactionYin => Mathf.Max(0f, _itemReactionYin);
+        public float ItemViolentYin => Mathf.Max(ItemReactionYin, _itemViolentYin);
         public float VisionHalfAngle => _visionHalfAngle;
         public float VisionNearRadius => _visionNearRadius;
         public float VisionEyeHeight => _visionEyeHeight;

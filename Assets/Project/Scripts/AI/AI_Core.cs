@@ -45,6 +45,10 @@ namespace ProjectShaman.AI
         public event Action<string> OnRoutineFailed;
         public event Action<string> OnRoutineCleared;
         public event Action<SymptomType> OnSymptomTriggered;
+        public event Action<string> OnEffectTriggered;
+        // Set when the villager is sent home in the evening, cleared at the next day start
+        public event Action<bool> OnMustGoHomeChanged;
+        public bool MustGoHome => _routineDebug.MustGoHome;
         public event System.Action OnTodayBlocksChanged;
 
         private int[] _todayBlockHours = Array.Empty<int>();
@@ -186,6 +190,12 @@ namespace ProjectShaman.AI
             OnSymptomTriggered?.Invoke(symptom);
         }
 
+        // Animator trigger on every peer for a one-off reaction outside the symptoms (startled by an item ...)
+        public void TriggerEffect(string triggerName)
+        {
+            OnEffectTriggered?.Invoke(triggerName);
+        }
+
         public void FailCurrentRoutine(string reason)
         {
             AILog.Log(AILog.CORE, LogId, $"Routine failed ({reason})");
@@ -202,6 +212,7 @@ namespace ProjectShaman.AI
             SetBlackboardVariable(BB_MUST_GO_HOME, mustGoHome);
             _routineDebug.MustGoHome = mustGoHome;
             AILog.Log(AILog.CORE, LogId, $"Blackboard MustGoHome={mustGoHome}");
+            OnMustGoHomeChanged?.Invoke(mustGoHome);
         }
 
         public void SetBlackboardVariable<T>(string variableName, T value)

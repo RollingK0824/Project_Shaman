@@ -1,4 +1,5 @@
 using UnityEngine;
+using ProjectShaman.AI;
 using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Minion;
 
@@ -51,7 +52,15 @@ public class SaltUseAction : ItemUseAction
             if (consumeOnSuccess) consume?.Invoke(1);
         };
 
-        if (DamageTrigger.CreateBox(attack, ray.GetPoint(reach * .5f), new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f), Quaternion.LookRotation(ray.direction), _contactDuration) == null) return false;
+        Vector3 center = ray.GetPoint(reach * .5f);
+        Vector3 halfExtents = new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f);
+        Quaternion rotation = Quaternion.LookRotation(ray.direction);
+        if (DamageTrigger.CreateBox(attack, center, halfExtents, rotation, _contactDuration) == null) return false;
+
+        // Villagers are not hurt by salt: a damage-free contact on the same volume lets them react (ISaltReactable).
+        // It neither counts as a hit nor consumes salt.
+        var villagerTouch = new ItemAttackSession(context.Owner, 0f, default, ItemReactionFallback.Salt, _targetMask, _contactDuration, IsVillager);
+        DamageTrigger.CreateBox(villagerTouch, center, halfExtents, rotation, _contactDuration);
         // Report the resolved spray once; delayed/multiple hits must not count as additional uses.
         // Execute success is reported once by LocalGameplayJudge / NetPlayerItemUse.
         return true;
@@ -66,6 +75,12 @@ public class SaltUseAction : ItemUseAction
         if (ghost != null && ghost.isActiveAndEnabled) return true;
         var minion = other.GetComponentInParent<AI_Minion>();
         return minion != null && minion.isActiveAndEnabled;
+    }
+
+    private static bool IsVillager(Collider other)
+    {
+        var villager = other.GetComponentInParent<AI_ItemReactionReceiver>();
+        return villager != null && villager.isActiveAndEnabled;
     }
 
     private float GetReach(Ray ray, Transform owner)

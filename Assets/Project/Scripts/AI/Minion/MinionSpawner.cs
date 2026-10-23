@@ -18,6 +18,8 @@ namespace ProjectShaman.AI.Minion
         [SerializeField] private Transform _objective;
         [SerializeField] private Transform[] _spawnPoints;
         [SerializeField, Min(1f)] private float _fallbackSpawnRadius = 15f;
+        [Tooltip("Flying minions appear in the air at the spawn point's own height, scattered up and down by this much")]
+        [SerializeField, Min(0f)] private float _airSpawnHeightJitter = 1.5f;
 
         [Header("Runtime (server only)")]
         [SerializeField] private bool _isRunning;
@@ -276,6 +278,8 @@ namespace ProjectShaman.AI.Minion
             _aliveCount = _alive.Count;
         }
 
+        private bool IsFlyingMinion => _minionPrefab != null && _minionPrefab.GetComponent<AI_FlyingMovement>() != null;
+
         private bool TryPickSpawnPosition(out Vector3 position)
         {
             bool hasFallback = false;
@@ -288,20 +292,29 @@ namespace ProjectShaman.AI.Minion
                 float distance = Mathf.Sqrt((float)_random.NextDouble()) * _config.SpawnJitterRadius;
                 candidate += new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
 
-                if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas))
+                // Flyers keep the spawn point's height (set in the scene) instead of being put down on the NavMesh
+                if (IsFlyingMinion)
+                {
+                    candidate.y += ((float)_random.NextDouble() * 2f - 1f) * _airSpawnHeightJitter;
+                }
+                else if (NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas))
+                {
+                    candidate = hit.position;
+                }
+                else
                 {
                     continue;
                 }
 
                 if (!hasFallback)
                 {
-                    position = hit.position;
+                    position = candidate;
                     hasFallback = true;
                 }
 
-                if (!_battlefield.IsNearAnyPlayer(hit.position, _config.MinPlayerDistance))
+                if (!_battlefield.IsNearAnyPlayer(candidate, _config.MinPlayerDistance))
                 {
-                    position = hit.position;
+                    position = candidate;
                     return true;
                 }
             }

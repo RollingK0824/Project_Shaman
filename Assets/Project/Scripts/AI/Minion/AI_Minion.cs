@@ -15,6 +15,16 @@ namespace ProjectShaman.AI.Minion
 
         [SerializeField] private MinionData _data;
 
+        [Header("Swoop attack")]
+        [Tooltip("Flat distance to the player from which the minion lunges in (the hit is still judged against AttackRange)")]
+        [SerializeField, Min(0.1f)] private float _lungeStartDistance = 3f;
+        [SerializeField, Min(0.1f)] private float _lungeSpeed = 9f;
+        [Tooltip("After each strike the minion pulls up and away for this long before coming round again")]
+        [SerializeField, Min(0f)] private float _retreatSeconds = 0.8f;
+        [SerializeField, Min(0f)] private float _retreatDistance = 4f;
+        [SerializeField, Min(0f)] private float _retreatHeight = 3f;
+        [SerializeField, Min(0.1f)] private float _retreatSpeed = 6f;
+
         [Header("Runtime (server only)")]
         [SerializeField] private MinionState _state = MinionState.Inactive;
         [SerializeField] private string _targetName;
@@ -37,6 +47,8 @@ namespace ProjectShaman.AI.Minion
         private float _slowUntil;
         private float _slowMultiplier = 1f;
         private float _blindUntil;
+        private float _retreatUntil;
+        private Vector3 _retreatPoint;
 
         public MinionState State => _state;
         public MinionData Data => _data;
@@ -185,6 +197,12 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
+            if (Time.time < _retreatUntil)
+            {
+                MoveDirect(_retreatPoint, _retreatSpeed);
+                return;
+            }
+
             Vector3 playerPosition = _player.Position;
             float distance = MinionBattlefield.FlatDistance(transform.position, playerPosition);
 
@@ -196,16 +214,16 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
+            if (distance <= _lungeStartDistance && Time.time >= _nextAttackTime)
+            {
+                EnterAttack();
+                return;
+            }
+
             if (distance <= _data.AttackRange)
             {
                 _movement.Stop();
                 FaceToward(playerPosition);
-
-                if (Time.time >= _nextAttackTime)
-                {
-                    EnterAttack();
-                }
-
                 return;
             }
 
@@ -230,11 +248,12 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
+            // Windup = the lunge: straight at the player, fast
             Vector3 playerPosition = _player.Position;
-            FaceToward(playerPosition);
 
             if (Time.time < _attackHitTime)
             {
+                MoveDirect(playerPosition, _lungeSpeed);
                 return;
             }
 
@@ -253,8 +272,19 @@ namespace ProjectShaman.AI.Minion
                 AILog.Log(AILog.MINION, name, $"Attack on {_targetName} missed (distance {distance:F1}m)");
             }
 
+            BeginRetreat(playerPosition);
             _state = MinionState.ChasePlayer;
             OnAttackResolved?.Invoke(this, hit);
+        }
+
+        // Pull up and away from the player, then come round for the next pass
+        private void BeginRetreat(Vector3 playerPosition)
+        {
+            Vector3 away = transform.position - playerPosition;
+            away.y = 0f;
+            away = away.sqrMagnitude > 0.0001f ? away.normalized : -transform.forward;
+            _retreatPoint = transform.position + away * _retreatDistance + Vector3.up * _retreatHeight;
+            _retreatUntil = Time.time + _retreatSeconds;
         }
 
         private void HitObjective()
@@ -352,6 +382,12 @@ namespace ProjectShaman.AI.Minion
             }
 
             _nextRepathTime = Time.time + _data.RepathInterval;
+            MoveDirect(destination, speed);
+        }
+
+        // Every frame, no repath throttle (lunge, retreat)
+        private void MoveDirect(Vector3 destination, float speed)
+        {
             _lastDestination = destination;
             _movement.SetSpeed(Time.time < _slowUntil ? speed * _slowMultiplier : speed);
             _movement.MoveTo(destination);

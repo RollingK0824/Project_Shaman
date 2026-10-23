@@ -5,99 +5,94 @@ using ProjectShaman.AI.Data;
 
 namespace ProjectShaman.AI.Routine
 {
+    // Plans one villager's day in seconds on the base split (blocks 0.4 + 0.4, spare 0.2 of the day).
+    // The walk to a place is part of its block (it starts when the villager sets off).
+    // The walk home eats nearly all of the spare, so the spread between villagers is cut from the blocks instead:
+    // each villager gets its own start delay and its own length for every block but the last (up to
+    // BlockLengthVariance shorter), and the last block takes what is left before the walk home (never below
+    // MinRoutineSeconds). Where a block ends and the next begins therefore differs from villager to villager.
     public static class DailyBlockPlanner
     {
-        public static List<DailyBlock> Build(int seed, AIBehaviourConfig config, IReadOnlyList<float> travelSeconds, float latestEndHour, out string note)
+        public static List<DailyBlock> Build(int seed, AIBehaviourConfig config, float homeReturnTime, out string note)
         {
             int count = config.RoutinesPerDay;
-            int endLimit = Mathf.Clamp(Mathf.FloorToInt(latestEndHour), DayClock.DAY_START_HOUR, DayClock.DAY_END_HOUR);
-
-            int[] gaps = new int[count];
-            int gapTotal = 0;
-            for (int i = 0; i < count; i++)
-            {
-                gaps[i] = Mathf.CeilToInt(TravelAt(travelSeconds, i) / DayClock.SecondsPerHour);
-                gapTotal += gaps[i];
-            }
-
-            int available = endLimit - DayClock.DAY_START_HOUR - gapTotal;
-            int length = config.RoutineHours;
-            if (available < length * count)
-            {
-                length = Mathf.Max(config.MinRoutineHours, available / Mathf.Max(1, count));
-            }
-
-            int free = available - length * count;
-            note = $"length={length}h gaps=[{string.Join(",", gaps)}]h free={free}h end≤{endLimit}:00";
-
-            for (int i = count - 1; i >= 0 && free < 0; i--)
-            {
-                int cut = Mathf.Min(gaps[i], -free);
-                gaps[i] -= cut;
-                free += cut;
-            }
-
-            if (free < 0)
-            {
-                note += " (short, last block trimmed by home return)";
-                free = 0;
-            }
-
+            float dayEnd = TimeManager.DAY_DURATION;
+            float end = Mathf.Clamp(homeReturnTime, 0f, dayEnd);
+            float length = config.RoutineSeconds;
+            float minLength = config.MinRoutineSeconds;
             System.Random random = new System.Random(seed);
-            int[] spare = SplitSpare(free, count + 1, config.MaxStartDelayHours, random);
+
+            float[] lengths = new float[count];
+            float leading = 0f;
+            for (int i = 0; i < count - 1; i++)
+            {
+                lengths[i] = Mathf.Max(minLength, length * (1f - config.BlockLengthVariance * (float)random.NextDouble()));
+                leading += lengths[i];
+            }
+
+            // The last block must still fit its minimum: shorten the leading ones toward theirs if not
+            float over = leading + minLength - end;
+            for (int i = 0; i < count - 1 && over > 0f; i++)
+            {
+                float cut = Mathf.Min(over, lengths[i] - minLength);
+                lengths[i] -= cut;
+                leading -= cut;
+                over -= cut;
+            }
+
+            float room = Mathf.Max(0f, end - leading - minLength);
+            float delay = Next(random, Mathf.Min(config.MaxStartDelaySeconds, room));
+            float rest = end - delay - leading;
+            float gap = Next(random, Mathf.Max(0f, rest - length));
+            lengths[count - 1] = Mathf.Min(length, Mathf.Max(0f, rest - gap));
+
+            note = $"delay={delay:F0}s lengths=[{Join(lengths)}]s gap={gap:F0}s";
 
             List<DailyBlock> blocks = new List<DailyBlock>(count);
-            int hour = DayClock.DAY_START_HOUR;
+            float time = delay;
 
             for (int i = 0; i < count; i++)
             {
-                int leave = hour + spare[i];
-                int blockStart = leave + gaps[i];
-                int blockEnd = Mathf.Min(blockStart + length, DayClock.DAY_END_HOUR);
-                if (blockStart >= blockEnd)
+                if (i == count - 1)
+                {
+                    time += gap;
+                }
+
+                float startTime = time;
+                float endTime = Mathf.Min(time + lengths[i], dayEnd);
+                if (startTime >= endTime)
                 {
                     break;
                 }
 
-                float startTime = DayClock.ToDayElapsed(blockStart);
+                // Hours only label the schedule tab; the villager runs on the seconds
+                int startHour = Mathf.RoundToInt(DayClock.ToHour(startTime));
+                int endHour = Mathf.Max(startHour + 1, Mathf.RoundToInt(DayClock.ToHour(endTime)));
 
                 blocks.Add(new DailyBlock
                 {
                     Index = i,
-                    StartHour = blockStart,
-                    EndHour = blockEnd,
+                    StartHour = startHour,
+                    EndHour = Mathf.Min(endHour, DayClock.DAY_END_HOUR),
                     StartTime = startTime,
-                    EndTime = DayClock.ToDayElapsed(blockEnd),
-                    DepartTime = Mathf.Max(DayClock.ToDayElapsed(leave), startTime - TravelAt(travelSeconds, i))
+                    EndTime = endTime,
+                    DepartTime = startTime
                 });
 
-                hour = blockEnd;
+                time = endTime;
             }
 
             return blocks;
         }
 
-        private static int[] SplitSpare(int free, int parts, int firstCap, System.Random random)
+        private static string Join(float[] seconds)
         {
-            int[] spare = new int[parts];
-
-            for (int unit = 0; unit < free; unit++)
-            {
-                int slot = random.Next(parts);
-                if (slot == 0 && spare[0] >= firstCap)
-                {
-                    slot = 1 + random.Next(parts - 1);
-                }
-
-                spare[slot]++;
-            }
-
-            return spare;
+            return string.Join(",", System.Array.ConvertAll(seconds, s => s.ToString("F0")));
         }
 
-        private static float TravelAt(IReadOnlyList<float> travelSeconds, int index)
+        private static float Next(System.Random random, float max)
         {
-            return travelSeconds != null && index < travelSeconds.Count ? travelSeconds[index] : 0f;
+            return max > 0f ? (float)random.NextDouble() * max : 0f;
         }
     }
 }

@@ -26,6 +26,7 @@ namespace ProjectShaman.Network.AI
             ValidateSpawnPrefabRegistration();
             AIEvents.OnVillagerDied += HandleVillagerDied;
             AIEvents.OnVillagerDeathKnown += HandleDeathKnown;
+            AIEvents.OnVillagerExorcised += HandleExorcised;
             _factory.CreateVillagers(this);
             ServerBindQuests();
         }
@@ -33,22 +34,13 @@ namespace ProjectShaman.Network.AI
         private void HandleVillagerDied(string villagerId, string reason)
         {
             RpcVillagerDied(villagerId);
-
-            NetGM gameManager = FindFirstObjectByType<NetGM>();
-            if (gameManager == null)
-            {
-                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
-                return;
-            }
-
-            gameManager.ServerReportNpcDied();
-            AILog.Log(AILog.NET, villagerId, "Death reported to NetGM");
         }
 
         public override void OnStopServer()
         {
             AIEvents.OnVillagerDied -= HandleVillagerDied;
             AIEvents.OnVillagerDeathKnown -= HandleDeathKnown;
+            AIEvents.OnVillagerExorcised -= HandleExorcised;
             ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
@@ -69,9 +61,35 @@ namespace ProjectShaman.Network.AI
             base.OnStopClient();
         }
 
+        // A death counts for the game once it is known (body cleared by a player, or found dead when voted out),
+        // not when the ghost kills: until then the village does not know anyone is gone
         private void HandleDeathKnown(string villagerId)
         {
             RpcVillagerDeathKnown(villagerId);
+
+            NetGM gameManager = FindFirstObjectByType<NetGM>();
+            if (gameManager == null)
+            {
+                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
+                return;
+            }
+
+            gameManager.ServerReportNpcDied();
+            AILog.Log(AILog.NET, villagerId, "Death (now known) reported to NetGM");
+        }
+
+        private void HandleExorcised(string villagerId)
+        {
+            RpcVillagerExorcised(villagerId);
+        }
+
+        [ClientRpc]
+        private void RpcVillagerExorcised(string villagerId)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.MarkExorcised(villagerId);
+            }
         }
 
         [ClientRpc]

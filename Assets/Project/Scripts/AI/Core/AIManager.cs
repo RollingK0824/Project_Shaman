@@ -24,6 +24,7 @@ namespace ProjectShaman.AI.Core
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
 
         private const float STATION_RETRY_INTERVAL = 0.5f;
+        private const float HOME_CHECK_INTERVAL = 1f;
 
         private static NavMeshPath _pathBuffer;
 
@@ -283,8 +284,22 @@ namespace ProjectShaman.AI.Core
 
             string ghostId = possession.GhostId;
             villager.Profile.Possession = null;
+            villager.Profile.ExorcisedDay = _time != null ? _time.DayCount : 0;
             Destroy(possession);
-            AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager");
+
+            // Rumours of what the ghost did through this body die with it
+            int forgotten = 0;
+            foreach (VillagerRuntime other in _villagers)
+            {
+                if (other.Memory != null)
+                {
+                    forgotten += other.Memory.ForgetAnomaliesOf(villagerId);
+                }
+            }
+
+            AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager ({forgotten} rumour(s) about it dropped)");
+            Registry?.MarkExorcised(villagerId);
+            AIEvents.RaiseExorcised(villagerId);
         }
 
         public bool TryGetHomePosition(string villagerId, out Vector3 home)
@@ -373,8 +388,7 @@ namespace ProjectShaman.AI.Core
             foreach (VillagerRuntime villager in _villagers)
             {
                 float homeReturnTime = CalculateHomeReturnTime(villager, dayCount);
-                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig,
-                    CalculateTravelSeconds(villager, dayCount), DayClock.ToHour(homeReturnTime), out string blockNote);
+                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig, homeReturnTime, out string blockNote);
                 blocks.RemoveAll(block => block.EndTime <= fromTime);
                 villager.SetToday(blocks, homeReturnTime);
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
@@ -462,7 +476,7 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            if (now >= villager.HomeReturnTime)
+            if (now >= villager.HomeReturnTime || MustLeaveForHome(villager, now))
             {
                 OrderGoHome(villager);
                 return;
@@ -505,6 +519,27 @@ namespace ProjectShaman.AI.Core
             {
                 SkipRoutine(villager, $"block {block.Index} resolve failed");
             }
+        }
+
+        // The planned home time assumes the walk from the last routine's place. Wherever the villager actually is
+        // (a far fallback, a search that wandered), it also sets off once the walk from here would end after dark.
+        private bool MustLeaveForHome(VillagerRuntime villager, float now)
+        {
+            if (now < villager.NextHomeCheckTime)
+            {
+                return false;
+            }
+
+            villager.NextHomeCheckTime = now + HOME_CHECK_INTERVAL;
+            float walk = PathLength(villager.Core.transform.position, villager.Profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            float lead = _behaviourConfig.ToolTidySecondsEstimate + walk + _behaviourConfig.HomeReturnMarginSeconds;
+            if (now + lead < TimeManager.DAY_DURATION)
+            {
+                return false;
+            }
+
+            AILog.Log(AILog.MANAGER, villager.Id, $"Leaving for home early: {walk:F0}s walk from here, {TimeManager.DAY_DURATION - now:F0}s of daylight left");
+            return true;
         }
 
         // Validation only: "home" is the same radius sleep paralysis uses to count a villager as in the house
@@ -592,6 +627,18 @@ namespace ProjectShaman.AI.Core
                 _observation?.OnSymptom(villager.Core, symptom.Type);
                 possession.RefreshDebug();
             }
+        }
+
+        // A symptom forced out of a host outside today's plan (struck by salt ...): shown and witnessed like a planned one
+        public void ShowSymptom(AI_Core core, SymptomType symptom)
+        {
+            if (core == null)
+            {
+                return;
+            }
+
+            core.TriggerSymptom(symptom);
+            _observation?.OnSymptom(core, symptom);
         }
 
         internal void RemoveVillager(AI_Core core, string reason)
@@ -774,29 +821,6 @@ namespace ProjectShaman.AI.Core
             return unchecked(_factory.Seed * 486187739 + villager.Profile.Index * 16777619 + dayCount * 31);
         }
 
-        private List<float> CalculateTravelSeconds(VillagerRuntime villager, int dayCount)
-        {
-            List<float> result = new List<float>(_behaviourConfig.RoutinesPerDay);
-            VillagerSchedule schedule = villager.Profile.Schedule;
-            float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
-            Vector3 from = villager.Profile.HomePosition;
-
-            for (int slot = 0; slot < _behaviourConfig.RoutinesPerDay; slot++)
-            {
-                RoutineEntry routine = schedule != null ? schedule.Get(dayCount, slot) : null;
-                if (routine == null || !PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
-                {
-                    result.Add(0f);
-                    continue;
-                }
-
-                result.Add(PathLength(from, place.Center) / speed);
-                from = place.Center;
-            }
-
-            return result;
-        }
-
         private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount)
         {
             float travelDistance = 0f;
@@ -809,16 +833,21 @@ namespace ProjectShaman.AI.Core
                 Vector3 home = villager.Profile.HomePosition;
                 travelDistance = PathLength(place.Center, home);
 
-                // Room for the look-in on the way: the longest detour through a neighbour's house
-                float detour = 0f;
+                // Room for the look-in on the way: TryLookInOnNeighbour picks the unseen neighbour nearest home, so plan the
+                // detour through the nearest one. A farther pick that no longer fits is skipped there against the daylight left
+                VillagerProfile nearest = null;
+                float nearestSqr = float.MaxValue;
                 foreach (VillagerProfile neighbour in _profiles)
                 {
-                    if (neighbour != villager.Profile && neighbour.NeighborhoodId == villager.Profile.NeighborhoodId)
+                    float sqr = (neighbour.HomePosition - home).sqrMagnitude;
+                    if (neighbour != villager.Profile && neighbour.NeighborhoodId == villager.Profile.NeighborhoodId && sqr < nearestSqr)
                     {
-                        detour = Mathf.Max(detour, PathLength(place.Center, neighbour.HomePosition) + PathLength(neighbour.HomePosition, home) - travelDistance);
+                        nearest = neighbour;
+                        nearestSqr = sqr;
                     }
                 }
 
+                float detour = nearest != null ? PathLength(place.Center, nearest.HomePosition) + PathLength(nearest.HomePosition, home) - travelDistance : 0f;
                 if (detour > 0f)
                 {
                     visitSeconds = detour / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + _behaviourConfig.NeighbourVisitLingerSeconds;
@@ -880,6 +909,7 @@ namespace ProjectShaman.AI.Core
             public int LastBlockIndex { get; set; } = -1;
             public bool IsHomeOrdered { get; set; }
             public bool HasArrivedHome { get; set; }
+            public float NextHomeCheckTime { get; set; }
             public float HomeReturnTime { get; private set; }
             public IReadOnlyList<DailyBlock> TodayBlocks => _todayBlocks;
             public float NextStationRetryTime { get; set; }

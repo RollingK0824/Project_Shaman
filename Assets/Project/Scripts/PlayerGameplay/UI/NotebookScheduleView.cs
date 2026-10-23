@@ -209,7 +209,8 @@ public sealed class NotebookScheduleView : MonoBehaviour
             _rows[i].gameObject.SetActive(true);
             _rowMarks[i].enabled = selected && _select != null;
             TMP_Text[] cells = _rowCells[i];
-            cells[0].text = villager.IsDeathKnown ? $"{villager.DisplayName} <size=70%>고인</size>" : villager.DisplayName;
+            // A death the village knows of stays on the roster, crossed out with an X
+            cells[0].text = villager.IsDeathKnown ? $"<color=#B03030>X</color> <s>{villager.DisplayName}</s>" : villager.DisplayName;
             cells[1].text = string.IsNullOrEmpty(villager.JobName) ? "-" : villager.JobName;
             cells[2].text = SocialClassName(villager.SocialClass);
             cells[3].text = villager.Gender == VillagerGender.Female ? "여" : "남";

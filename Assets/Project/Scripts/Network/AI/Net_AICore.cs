@@ -55,6 +55,7 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered += HandleSymptomTriggered;
+                aiCore.OnEffectTriggered += RpcTriggerEffect;
                 aiCore.OnTodayBlocksChanged += WriteTodayBlocks;
                 WriteTodayBlocks();
             }
@@ -122,6 +123,7 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered -= HandleSymptomTriggered;
+                aiCore.OnEffectTriggered -= RpcTriggerEffect;
                 aiCore.OnTodayBlocksChanged -= WriteTodayBlocks;
             }
 

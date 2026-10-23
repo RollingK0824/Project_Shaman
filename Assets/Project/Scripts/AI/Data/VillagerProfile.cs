@@ -36,6 +36,8 @@ namespace ProjectShaman.AI.Data
         public bool IsPossessed;
         public string GhostId;
         public ProjectShaman.AI.Ghost.AI_Possession Possession;
+        // Day the ghost was driven out of this villager, -1 = never (thanks the players from the next day)
+        public int ExorcisedDay = -1;
 
         public string VillagerId => PublicInfo.VillagerId;
 

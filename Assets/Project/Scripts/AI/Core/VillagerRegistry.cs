@@ -18,6 +18,7 @@ namespace ProjectShaman.AI.Core
         public event Action<IVillagerView> OnRegistered;
         public event Action<IVillagerView> OnDied;
         public event Action<IVillagerView> OnDeathKnown;
+        public event Action<IVillagerView> OnExorcised;
         public event Action OnCleared;
 
         internal VillagerRegistry()
@@ -32,6 +33,7 @@ namespace ProjectShaman.AI.Core
             OnRegistered = null;
             OnDied = null;
             OnDeathKnown = null;
+            OnExorcised = null;
             OnCleared = null;
         }
 
@@ -94,6 +96,18 @@ namespace ProjectShaman.AI.Core
             OnDeathKnown?.Invoke(entry);
         }
 
+        internal void MarkExorcised(string villagerId)
+        {
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.IsExorcised)
+            {
+                return;
+            }
+
+            entry.IsExorcised = true;
+            AILog.Log(AILog.FACTORY, villagerId, "Registry marked exorcised");
+            OnExorcised?.Invoke(entry);
+        }
+
         internal void Clear()
         {
             if (_villagers.Count == 0)
@@ -131,6 +145,7 @@ namespace ProjectShaman.AI.Core
             public VillagerAgeGroup AgeGroup { get; }
             public bool IsAlive { get; set; } = true;
             public bool IsDeathKnown { get; set; }
+            public bool IsExorcised { get; set; }
             public VillagerScheduleView Schedule { get; }
 
             public VillagerEntry(VillagerPublicInfo info, VillagerScheduleView schedule)

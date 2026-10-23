@@ -20,6 +20,7 @@ namespace ProjectShaman.AI.Stress
 
         private AI_Core _core;
         private AI_Status _status;
+        private AI_GhostReactionReceiver _ghostTarget;
         private AIBehaviourConfig _config;
         private bool _isSubscribed;
 
@@ -36,6 +37,7 @@ namespace ProjectShaman.AI.Stress
         {
             _core = GetComponent<AI_Core>();
             _status = GetComponent<AI_Status>();
+            _ghostTarget = GetComponent<AI_GhostReactionReceiver>();
         }
 
         private void OnDestroy()
@@ -113,9 +115,10 @@ namespace ProjectShaman.AI.Stress
             _state = next;
             AILog.Log(AILog.STRESS, VillagerId, $"State {previous} → {next} ({_value:F1})");
 
-            if (next == VillagerStressState.Breaking)
+            // Stress limit = death mark: the ghost hunts this villager first from tonight. The mark stays even if stress eases
+            if (next == VillagerStressState.Breaking && _ghostTarget != null && !_ghostTarget.IsMarked)
             {
-                AILog.Log(AILog.STUB, VillagerId, "Stress limit reached, death mark not implemented yet");
+                _ghostTarget.SetMarked(true);
             }
             OnStateChanged?.Invoke(this, previous, next);
         }
