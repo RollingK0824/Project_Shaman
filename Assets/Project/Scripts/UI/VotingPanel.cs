@@ -24,6 +24,7 @@ public class VotingPanel : UIPanel
     private readonly List<uint> _knownPlayers = new List<uint>();
 
     private readonly Dictionary<string, VoteCellUI> _cells = new Dictionary<string, VoteCellUI>();
+    private readonly HashSet<string> _deadIds = new HashSet<string>();
 
     // RefreshCells에서 셀마다 다시 채워 쓰는 색 목록 (매번 새로 만들지 않도록)
     private readonly List<Color> _markColors = new List<Color>();
@@ -112,22 +113,26 @@ public class VotingPanel : UIPanel
             Destroy(oldCell.gameObject);
         }
         _cells.Clear();
+        _deadIds.Clear();
 
         if (_subscribedReg != null)
         {
             foreach (IVillagerView villager in _subscribedReg.Villagers)
             {
-                // Only deaths the village knows of leave the list
-                if (villager.IsDeathKnown)
-                {
-                    continue;
-                }
+                // 사망이 알려진 주민은 목록에서 빼지 않고 X로 표시 (투표 불가). 퇴마된 주민은 이름 옆에 표시
+                // (둘 다 AI 쪽 레지스트리 이벤트로 다시 그림)
+                bool isDead = villager.IsDeathKnown;
+                string label = isDead ? $"<color=#B03030>X</color> <s>{villager.DisplayName}</s>"
+                    : villager.IsExorcised ? $"{villager.DisplayName} <size=70%>퇴마</size>"
+                    : villager.DisplayName;
 
                 VoteCellUI cell = Instantiate(_cellPrefab, _gridRoot);
-                // 퇴마된 주민은 이름 옆에 표시 (AI 쪽 레지스트리 OnExorcised로 다시 그림)
-                string label = villager.IsExorcised ? $"{villager.DisplayName} <size=70%>퇴마</size>" : villager.DisplayName;
                 cell.Setup(villager.VillagerId, label, OnCellClicked);
                 _cells.Add(villager.VillagerId, cell);
+                if (isDead)
+                {
+                    _deadIds.Add(villager.VillagerId);
+                }
             }
         }
 
@@ -168,7 +173,7 @@ public class VotingPanel : UIPanel
             }
 
             pair.Value.Refresh(_markColors.Count, _markColors);
-            pair.Value.SetInteractable(isVotingOpen);
+            pair.Value.SetInteractable(isVotingOpen && !_deadIds.Contains(npcId));
         }
     }
 
