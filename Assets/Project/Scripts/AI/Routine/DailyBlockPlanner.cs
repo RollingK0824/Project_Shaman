@@ -7,10 +7,10 @@ namespace ProjectShaman.AI.Routine
 {
     // Plans one villager's day in seconds on the base split (blocks 0.4 + 0.4, spare 0.2 of the day).
     // The walk to a place is part of its block (it starts when the villager sets off).
-    // The spare first holds this villager's walk home; what is left is split at random into a start delay
-    // and a break between blocks, so villagers set off and switch at their own moments.
-    // A villager with (almost) no spare instead leaves up to StartStaggerSeconds into the first block.
-    // Only when the walk home does not fit the spare are blocks cut: the last one first, never below MinRoutineSeconds.
+    // The walk home eats nearly all of the spare, so the spread between villagers is cut from the blocks instead:
+    // each villager gets its own start delay and its own length for every block but the last (up to
+    // BlockLengthVariance shorter), and the last block takes what is left before the walk home (never below
+    // MinRoutineSeconds). Where a block ends and the next begins therefore differs from villager to villager.
     public static class DailyBlockPlanner
     {
         public static List<DailyBlock> Build(int seed, AIBehaviourConfig config, float homeReturnTime, out string note)
@@ -20,51 +20,45 @@ namespace ProjectShaman.AI.Routine
             float end = Mathf.Clamp(homeReturnTime, 0f, dayEnd);
             float length = config.RoutineSeconds;
             float minLength = config.MinRoutineSeconds;
+            System.Random random = new System.Random(seed);
 
             float[] lengths = new float[count];
-            float[] breaks = new float[count];
-            for (int i = 0; i < count; i++)
+            float leading = 0f;
+            for (int i = 0; i < count - 1; i++)
             {
-                lengths[i] = length;
+                lengths[i] = Mathf.Max(minLength, length * (1f - config.BlockLengthVariance * (float)random.NextDouble()));
+                leading += lengths[i];
             }
 
-            System.Random random = new System.Random(seed);
-            float free = end - length * count;
-            float delay = 0f;
-            float[] staggers = new float[count];
-
-            if (free > 0f)
+            // The last block must still fit its minimum: shorten the leading ones toward theirs if not
+            float over = leading + minLength - end;
+            for (int i = 0; i < count - 1 && over > 0f; i++)
             {
-                delay = Next(random, Mathf.Min(free, config.MaxStartDelaySeconds));
-                float rest = free - delay;
-                for (int i = 0; i < count - 1; i++)
-                {
-                    breaks[i] = Next(random, rest);
-                    rest -= breaks[i];
-                }
-            }
-            else if (free < 0f)
-            {
-                Cut(lengths, -free, minLength);
+                float cut = Mathf.Min(over, lengths[i] - minLength);
+                lengths[i] -= cut;
+                leading -= cut;
+                over -= cut;
             }
 
-            // Without spare to break between blocks the switch would land on the same second for all of them too
-            if (free < config.StartStaggerSeconds)
-            {
-                for (int i = 0; i < count; i++)
-                {
-                    staggers[i] = Next(random, Mathf.Min(config.StartStaggerSeconds, lengths[i] - minLength));
-                }
-            }
+            float room = Mathf.Max(0f, end - leading - minLength);
+            float delay = Next(random, Mathf.Min(config.MaxStartDelaySeconds, room));
+            float rest = end - delay - leading;
+            float gap = Next(random, Mathf.Max(0f, rest - length));
+            lengths[count - 1] = Mathf.Min(length, Mathf.Max(0f, rest - gap));
 
-            note = $"free={free:F0}s delay={delay:F0}s staggers=[{Join(staggers)}]s breaks=[{Join(breaks)}]s";
+            note = $"delay={delay:F0}s lengths=[{Join(lengths)}]s gap={gap:F0}s";
 
             List<DailyBlock> blocks = new List<DailyBlock>(count);
             float time = delay;
 
             for (int i = 0; i < count; i++)
             {
-                float startTime = time + staggers[i];
+                if (i == count - 1)
+                {
+                    time += gap;
+                }
+
+                float startTime = time;
                 float endTime = Mathf.Min(time + lengths[i], dayEnd);
                 if (startTime >= endTime)
                 {
@@ -85,26 +79,10 @@ namespace ProjectShaman.AI.Routine
                     DepartTime = startTime
                 });
 
-                time = endTime + breaks[i];
+                time = endTime;
             }
 
             return blocks;
-        }
-
-        // The walk home trims the last block down to its minimum; past that the earlier blocks share the rest
-        private static void Cut(float[] lengths, float amount, float minLength)
-        {
-            int last = lengths.Length - 1;
-            float lastCut = Mathf.Min(amount, lengths[last] - minLength);
-            lengths[last] -= lastCut;
-            amount -= lastCut;
-
-            for (int i = 0; i < last && amount > 0f; i++)
-            {
-                float share = Mathf.Min(amount / (last - i), lengths[i] - minLength);
-                lengths[i] -= share;
-                amount -= share;
-            }
         }
 
         private static string Join(float[] seconds)

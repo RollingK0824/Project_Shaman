@@ -16,8 +16,8 @@ namespace ProjectShaman.AI.Data
         [Tooltip("Shortest a block may shrink to when the walk home does not fit the spare, as a share of the full block")]
         [SerializeField, Range(0.05f, 1f)] private float _minRoutineRatio = 0.5f;
         [SerializeField] private int _maxStartDelayHours = 2;
-        [Tooltip("A villager with less spare than this share of a block leaves up to this much into the first block, so not everyone sets off at dawn together")]
-        [SerializeField, Range(0f, 0.5f)] private float _startStaggerRatio = 0.1f;
+        [Tooltip("Every block but the last is randomly up to this share shorter per villager, so villagers do not all switch routines at the same moment")]
+        [SerializeField, Range(0f, 0.5f)] private float _blockLengthVariance = 0.35f;
         [Tooltip("A block with less than this share of its length left is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
@@ -183,7 +183,7 @@ namespace ProjectShaman.AI.Data
         public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
         public float MinRoutineSeconds => RoutineSeconds * _minRoutineRatio;
         public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
-        public float StartStaggerSeconds => RoutineSeconds * _startStaggerRatio;
+        public float BlockLengthVariance => _blockLengthVariance;
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
