@@ -566,7 +566,7 @@ namespace ProjectShaman.AI.Core
             AI_Possession possession = villager.Profile.Possession;
             ResolvedRoutine current = villager.Current;
 
-            if (possession == null || possession.TodayPlan == null || villager.IsHomeOrdered || current.Category != RoutineCategory.Rest)
+            if (possession == null || possession.TodayPlan == null || villager.IsHomeOrdered || (current.Category != RoutineCategory.Rest && current.Category != RoutineCategory.Work))
             {
                 return;
             }

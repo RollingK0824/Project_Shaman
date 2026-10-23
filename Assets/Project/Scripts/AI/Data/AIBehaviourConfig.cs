@@ -38,6 +38,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(0f, 1f)] private float _timeDelayMinRatio = 0.15f;
         [SerializeField, Range(0f, 1f)] private float _timeDelayMaxRatio = 0.25f;
         [SerializeField] private int _maxSymptomsPerRestSlot = 3;
+        [SerializeField, Range(0f, 1f)] private float _workSlotSymptomMultiplier = 0.5f;
         [SerializeField] private float _emptyHandToolYinThreshold = 80f;
         [SerializeField, Range(0f, 1f)] private float _emptyHandToolChance = 0.25f;
         [SerializeField] private float _toolCorruptionSearchRadius = 25f;
@@ -181,6 +182,7 @@ namespace ProjectShaman.AI.Data
         public float TimeDelayMinRatio => _timeDelayMinRatio;
         public float TimeDelayMaxRatio => _timeDelayMaxRatio;
         public int MaxSymptomsPerRestSlot => _maxSymptomsPerRestSlot;
+        public float WorkSlotSymptomMultiplier => _workSlotSymptomMultiplier;
         public float EmptyHandToolYinThreshold => _emptyHandToolYinThreshold;
         public float EmptyHandToolChance => _emptyHandToolChance;
         public float ToolCorruptionSearchRadius => _toolCorruptionSearchRadius;
