@@ -25,6 +25,11 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
                 return Status.Failure;
             }
 
+            if (handler.Search.HasRequiredTool())
+            {
+                return Status.Success;
+            }
+
             handler.Search.Plan();
             handler.RefreshSearchDebug();
             return Status.Success;
