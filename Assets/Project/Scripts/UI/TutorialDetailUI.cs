@@ -10,15 +10,12 @@ public class TutorialDetailUI : MonoBehaviour
     [SerializeField] private TMP_Text _pageNumText;
 
     public string Name => _name;
-    public List<GameObject> DetailPanels => _tutorialDetailPanels;
 
     private int _currentNumber = 0;
 
-    public void OnEnable()
+    private void OnEnable()
     {
         _currentNumber = 0;
-        _pageNumText.text = $"{_currentNumber + 1} / {_tutorialDetailPanels.Count}";
-
         OpenPanel(_currentNumber);
     }
 
@@ -27,8 +24,6 @@ public class TutorialDetailUI : MonoBehaviour
         if (_currentNumber >= _tutorialDetailPanels.Count - 1) return;
 
         _currentNumber++;
-        PrintPage();
-
         OpenPanel(_currentNumber);
     }
 
@@ -37,24 +32,24 @@ public class TutorialDetailUI : MonoBehaviour
         if (_currentNumber <= 0) return;
 
         _currentNumber--;
-        PrintPage();
-
         OpenPanel(_currentNumber);
     }
 
     private void OpenPanel(int idx)
     {
+        if (idx < 0 || idx >= _tutorialDetailPanels.Count) return;
+
         foreach (GameObject panel in _tutorialDetailPanels)
         {
             panel.SetActive(false);
         }
 
         _tutorialDetailPanels[idx].SetActive(true);
+        PrintPage();
     }
 
-    public void PrintPage()
+    private void PrintPage()
     {
         _pageNumText.text = $"{_currentNumber + 1} / {_tutorialDetailPanels.Count}";
     }
 }
-

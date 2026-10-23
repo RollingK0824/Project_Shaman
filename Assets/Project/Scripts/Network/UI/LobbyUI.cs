@@ -27,9 +27,6 @@ public class LobbyUI : MonoBehaviour
 
     [SerializeField] private LobbyCharacterPreview _characterPreview;
 
-    [SerializeField] private Image[] _characterColorChips;   // 버튼별 색 칩 (없어도 됨, 순서 = 버튼 순서)
-
-    private bool _colorsApplied;
 
 
     private Coroutine _warningCoroutine;
@@ -108,7 +105,7 @@ public class LobbyUI : MonoBehaviour
             var row = Instantiate(_playerRowPrefab, _playerListParent);
             row.transform.localScale = Vector3.one;
 
-            row.GetComponent<LobbyPlayerRowUI>().SetPlayerInfo(string.IsNullOrEmpty(rp.nickname) ? "Connecting..." : rp.nickname, rp.readyToBegin, rp.index == 0, rp.characterId);
+            row.GetComponent<LobbyPlayerRowUI>().SetPlayerInfo(string.IsNullOrEmpty(rp.nickname) ? "Connecting..." : rp.nickname, rp.readyToBegin, rp.index == 0, rp.colorId);
 
         }
 
@@ -147,14 +144,11 @@ public class LobbyUI : MonoBehaviour
 
     private void UpdateCharacterButtons()
     {
-        ApplyCharacterColors();
-
         for (int i = 0; i < _characterButtons.Length; i++)
         {
             bool canPick = _localRoomPlayer != null
                 && !_localRoomPlayer.readyToBegin
-                && _localRoomPlayer.characterId != i
-                && !_localRoomPlayer.IsTakenByOther(i);
+                && _localRoomPlayer.characterId != i;
 
             _characterButtons[i].interactable = canPick;
         }
@@ -163,19 +157,6 @@ public class LobbyUI : MonoBehaviour
         {
             _characterPreview.Show(_localRoomPlayer != null ? _localRoomPlayer.characterId : -1);
         }
-    }
-
-    // 버튼 색 칩은 번호별로 고정이라 한 번만 칠함
-    private void ApplyCharacterColors()
-    {
-        if (_colorsApplied || _characterColorChips == null) return;
-
-        for (int i = 0; i < _characterColorChips.Length; i++)
-        {
-            if (_characterColorChips[i] != null) _characterColorChips[i].color = PlayerColors.Get(i);
-        }
-
-        _colorsApplied = true;
     }
 
     // 캐릭터 버튼 OnClick 연결

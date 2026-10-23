@@ -6,7 +6,7 @@ using UnityEngine;
 public struct MapPlayerSnapshot
 {
     public uint NetId;
-    public int CharacterId;     // colour: PlayerColors.Get(CharacterId)
+    public int ColorId;     // colour: PlayerColors.Get(CharacterId)
     public string Name;
     public Vector3 Position;    // the body, also while spectating
     public Vector3 Forward;     // Vector3.zero = no arrow

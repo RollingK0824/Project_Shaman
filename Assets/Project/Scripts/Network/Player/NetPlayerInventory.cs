@@ -172,7 +172,9 @@ public class NetPlayerInventory : NetworkBehaviour
 
         if (itemData == null) return;
 
-        if (!_inventory.RemoveItem(itemData, 1))
+        bool removed = itemData.IsPermanent ? _inventory.TryDropUnit(itemData, () => true) : _inventory.RemoveItem(itemData, 1);
+
+        if (!removed)
         {
             Debug.LogWarning($"[NetPlayerInventory] 서버와 클라 수량 어긋남: {itemData.DisplayName}", this);
         }

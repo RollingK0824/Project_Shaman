@@ -575,6 +575,8 @@ GameObject:
   - component: {fileID: 6806520525206389558}
   - component: {fileID: 6993644920240441871}
   - component: {fileID: 3662518075650597335}
+  - component: {fileID: 154331009197329902}
+  - component: {fileID: 3119850079899015170}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -1399,6 +1401,41 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _wardPrefab: {fileID: 4485040634307117601, guid: 3ca46820f2b7bdd4286ee3f2ed82f895, type: 3}
+--- !u!114 &154331009197329902
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a9d5a3cc0de7eba4db5d790853b54d78, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::PlayerItemDropController
+  _forwardDistance: 1.25
+  _groundMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _obstacleMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+--- !u!114 &3119850079899015170
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 517fa803217627248b4172955da9140f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerItemDrop
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _dataBase: {fileID: 11400000, guid: bd35ab6adfe38c54a811627ac6bc3d23, type: 2}
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0

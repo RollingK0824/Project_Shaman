@@ -10,6 +10,8 @@ public class NetPlayerStatus : NetworkBehaviour
     [SyncVar] private string _playerName;
     // [서버 -> 모든 클라] 로비에서 고른 캐릭터 번호 (= 플레이어 색). -1 = 알 수 없음
     [SyncVar] private int _characterId = -1;
+    // [서버 -> 모든 클라] 플레이어 색 번호 (PlayerColors). -1 = 알 수 없음
+    [SyncVar] private int _colorId = -1;
     [SyncVar(hook = nameof(OnIsDeadChanged))] private bool _isDead;
 
     // [서버 -> 모든 클라] 스트레스 단계. 떨림,숨소리등 같은 다른 사람에게 보이는 증상용
@@ -21,7 +23,8 @@ public class NetPlayerStatus : NetworkBehaviour
     public string PlayerName => _playerName;
 
     public int CharacterId => _characterId;
-    
+    public int ColorId => _colorId;
+
 
     public bool IsDead => _isDead;
     public PlayerStressController.StressLevel StressLevel => _stressLevel;
@@ -36,10 +39,11 @@ public class NetPlayerStatus : NetworkBehaviour
     }
 
     [Server]
-    public void ServerInitialize(string playerName, int characterId = -1)
+    public void ServerInitialize(string playerName, int characterId = -1, int colorId = -1)
     {
         _playerName = playerName;
         _characterId = characterId;
+        _colorId = colorId;
     }
 
     public override void OnStartServer()
