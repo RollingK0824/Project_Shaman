@@ -2,7 +2,7 @@ Shader "ProjectShaman/Items/BarrierField"
 {
     Properties
     {
-        [HDR] _BaseColor("Glow Color", Color) = (1.5, .7, .2, 1)
+        [HDR] _BaseColor("Glow Color", Color) = (.52, .54, .56, 1)
         _Opacity("Opacity", Range(0,1)) = .7
         _Pulse("Activation Pulse", Range(0,1)) = 0
         [Toggle] _IsLine("Seal Line", Float) = 0
@@ -13,7 +13,7 @@ Shader "ProjectShaman/Items/BarrierField"
         Pass
         {
             Tags { "LightMode"="UniversalForward" }
-            Blend SrcAlpha One
+            Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
             ZTest LEqual
             Cull Off
@@ -50,7 +50,7 @@ Shader "ProjectShaman/Items/BarrierField"
                     float band = smoothstep(.97, 1, cos(input.positionOS.y * 38 - _Time.y * .65));
                     alpha *= .018 + rim * .48 + band * .10 + _Pulse * (.12 + rim * .3);
                 }
-                half3 color = lerp(_BaseColor.rgb, half3(1.8, 1.4, .7), _Pulse * .65);
+                half3 color = lerp(_BaseColor.rgb, half3(.72, .74, .76), _Pulse * .35);
                 return half4(color, saturate(alpha * _BaseColor.a));
             }
             ENDHLSL

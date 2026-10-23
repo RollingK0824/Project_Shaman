@@ -5,9 +5,10 @@ using UnityEngine;
 [DefaultExecutionOrder(200)]
 public sealed class FirstPersonItemLayout : MonoBehaviour
 {
-    private const float Right = .955f;
-    private const float Bottom = .18f;
-    private const float MaxWidth = .33f;
+    private const float Right = .98f;
+    private const float Bottom = .155f;
+    private const float MaxWidth = .36f;
+    private const float SizeMultiplier = 1.15f;
     private Camera _camera;
     private ItemData _data;
     private Renderer[] _renderers;
@@ -35,7 +36,7 @@ public sealed class FirstPersonItemLayout : MonoBehaviour
         if (_camera == null || _data == null || _renderers == null) return;
         transform.localPosition = Vector3.zero;
         transform.localScale = Vector3.one;
-        float preferredHeight = Mathf.Clamp(_data.FirstPersonViewportHeight, .08f, .52f);
+        float preferredHeight = Mathf.Clamp(_data.FirstPersonViewportHeight * SizeMultiplier, .08f, .60f);
         // Perspective means scaling also changes depth. Re-measure after every adjustment.
         for (int pass = 0; pass < 8; pass++)
         {
