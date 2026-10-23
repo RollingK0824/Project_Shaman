@@ -10,7 +10,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int _cycleDays = 3;
         [SerializeField, Range(0f, 1f)] private float _restRatio = 0.3f;
         [SerializeField] private int _routinesPerDay = 2;
-        [SerializeField] private int _routineHours = 6;
+        [SerializeField] private int _routineHours = 5;
         [SerializeField] private int _maxStartDelayHours = 2;
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.17f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
