@@ -13,6 +13,8 @@ public struct QuestDefinition
     public string ContextId;
 
     public int RequiredAmount;
+    [Tooltip("받지 않은 채 밤이 되면 실패 (그날의 일: 도구 찾기 등). 끄면 다음 날 아침 다시 받을 수 있다")]
+    public bool ExpiresAtNight;
     public QuestEffect Reward;
     public QuestEffect Penalty;
 }

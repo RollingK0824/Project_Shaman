@@ -301,7 +301,7 @@ public class QuestManager : SceneSingleton<QuestManager>
     }
 
     // 진행 중인 퀘스트는 실패 (패널티). 받지 않은 의뢰는 남겨 두었다가 다음 날 아침 다시 받을 수 있다
-    // (의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다)
+    // (ExpiresAtNight 의뢰는 그날로 실패, 의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다)
     private void HandleNightStart()
     {
         if (!IsServerSide)
@@ -314,7 +314,7 @@ public class QuestManager : SceneSingleton<QuestManager>
         {
             QuestInstance quest = _quests[i];
 
-            if (quest.State == QuestState.Active)
+            if (quest.State == QuestState.Active || (quest.State == QuestState.Offered && quest.Definition.ExpiresAtNight))
             {
                 End(quest, QuestState.Failed);
             }
