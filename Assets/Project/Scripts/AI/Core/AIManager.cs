@@ -447,7 +447,7 @@ namespace ProjectShaman.AI.Core
                 TickSymptoms(villager, now);
             }
 
-            _conversations?.Tick(_villagers);
+            _conversations?.Tick(_villagers, now);
             _observation?.Tick(_villagers);
         }
 
@@ -648,7 +648,8 @@ namespace ProjectShaman.AI.Core
         private void TryAssignWaitingStation(VillagerRuntime villager)
         {
             ResolvedRoutine current = villager.Current;
-            if (!current.IsWaitingForStation || villager.IsHomeOrdered || current.Source == null || Time.time < villager.NextStationRetryTime)
+            if (!current.IsWaitingForStation || villager.IsHomeOrdered || current.Source == null || Time.time < villager.NextStationRetryTime
+                || (villager.Conversation != null && villager.Conversation.IsInSession))
             {
                 return;
             }
