@@ -156,6 +156,11 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _requestCompletedStressRelief = 30f;
         [SerializeField, Min(0f)] private float _requestFailedStress = 10f;
 
+        [Header("Debug")]
+        [SerializeField, Tooltip("Temporary: possessed villagers wear the debug material on every peer")]
+        private bool _showPossessedMaterial = true;
+        [SerializeField] private Material _possessedDebugMaterial;
+
         public int CycleDays => _cycleDays;
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
@@ -249,6 +254,8 @@ namespace ProjectShaman.AI.Data
         public int PlayerQuestionsPerDay => _playerQuestionsPerDay;
         public float RequestCompletedStressRelief => _requestCompletedStressRelief;
         public float RequestFailedStress => _requestFailedStress;
+        public bool ShowPossessedMaterial => _showPossessedMaterial && _possessedDebugMaterial != null;
+        public Material PossessedDebugMaterial => _possessedDebugMaterial;
 
         // "Kind:Detail" wins over "Kind", so one tool or trace kind can get its own quest
         public bool TryGetRequestQuest(string kind, string detail, out string questId)

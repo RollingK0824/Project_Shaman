@@ -42,6 +42,7 @@ namespace ProjectShaman.AI.Core
 
         internal IReadOnlyList<VillagerRuntime> Villagers => _villagers;
         public VillagerRegistry Registry => _factory != null ? _factory.Registry : null;
+        public AIBehaviourConfig Config => _behaviourConfig;
 
         protected override void Awake()
         {

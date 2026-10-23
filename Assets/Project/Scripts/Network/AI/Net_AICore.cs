@@ -5,6 +5,7 @@ using ProjectShaman.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
 
@@ -24,6 +25,7 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private VillagerSocialClass _syncSocialClass;
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
         [SyncVar] private string _syncHomePlaceId;
+        [SyncVar(hook = nameof(OnPossessionMarkChanged))] private bool _syncPossessionMarked;
 
         [SyncVar] private int _syncCycleDays;
         [SyncVar] private int _syncSlotsPerDay;
@@ -82,6 +84,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.ApplyNetworkSchedule(VillagerScheduleView.FromFlat(_syncCycleDays, _syncSlotsPerDay, _syncSchedule));
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
                     aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours);
+                    ApplyPossessionMark(_syncPossessionMarked);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
                 }
@@ -210,6 +213,37 @@ namespace ProjectShaman.Network.AI
             {
                 _networkState = aiCore.CurrentState;
             }
+
+            AIBehaviourConfig config = AIManager.Instance != null ? AIManager.Instance.Config : null;
+            bool marked = config != null && config.ShowPossessedMaterial && TryGetComponent(out AI_Possession _);
+            if (marked != _syncPossessionMarked)
+            {
+                _syncPossessionMarked = marked;
+                ApplyPossessionMark(marked);
+            }
+        }
+
+        private void OnPossessionMarkChanged(bool oldValue, bool newValue)
+        {
+            ApplyPossessionMark(newValue);
+        }
+
+        private void ApplyPossessionMark(bool marked)
+        {
+            AIBehaviourConfig config = AIManager.Instance != null ? AIManager.Instance.Config : null;
+            Material material = config != null ? config.PossessedDebugMaterial : null;
+
+            if (!TryGetComponent(out AI_PossessionMarker marker))
+            {
+                if (!marked)
+                {
+                    return;
+                }
+
+                marker = gameObject.AddComponent<AI_PossessionMarker>();
+            }
+
+            marker.SetMarked(marked, material);
         }
 
         private void OnStateChanged(AIState oldVal, AIState newVal)
