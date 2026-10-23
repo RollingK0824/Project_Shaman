@@ -73,8 +73,6 @@ public sealed class PlayerItemDropController : MonoBehaviour
         WorldItem world = null; bool published = false, committed = false;
         try
         {
-            //var prefab = item.WorldPrefab;
-
             GameObject prefab = _resolvePrefab != null ? _resolvePrefab(item) : null;
             if (prefab == null) prefab = item.WorldPrefab;
 
