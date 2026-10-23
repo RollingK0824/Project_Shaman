@@ -51,6 +51,8 @@ namespace ProjectShaman.AI.Ghost
                     {
                         plan.SetSlotAxis(slot, PickAxis(routine, random));
                     }
+
+                    PlanSymptoms(plan, slot, yinFactor * config.WorkSlotSymptomMultiplier, config, random);
                 }
                 else if (routine.Category == RoutineCategory.Rest)
                 {
@@ -91,9 +93,9 @@ namespace ProjectShaman.AI.Ghost
             return axes;
         }
 
-        private static void PlanSymptoms(CorruptionPlan plan, int slot, float yinFactor, AIBehaviourConfig config, System.Random random)
+        private static void PlanSymptoms(CorruptionPlan plan, int slot, float frequency, AIBehaviourConfig config, System.Random random)
         {
-            int count = Mathf.RoundToInt(yinFactor * config.MaxSymptomsPerRestSlot);
+            int count = Mathf.RoundToInt(frequency * config.MaxSymptomsPerRestSlot);
 
             for (int i = 0; i < count; i++)
             {

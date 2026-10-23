@@ -10,11 +10,17 @@ public struct TalismanEffectState
     public float RemainingDuration;
 }
 
+public struct TalismanEffectDisplay
+{
+    public string Name;
+    public float RemainingDuration;
+}
+
 // Small timed modifier layer. Base movement/stress settings are never overwritten.
 [DisallowMultipleComponent]
 public class PlayerTalismanEffectController : MonoBehaviour
 {
-    private struct ActiveEffect { public TalismanEffectType Type; public float Magnitude, Expires; }
+    private struct ActiveEffect { public TalismanEffectType Type; public string Name; public float Magnitude, Expires; }
     private readonly Dictionary<string, ActiveEffect> _active = new();
     private readonly List<string> _expired = new();
     private PlayerHealth _health;
@@ -54,13 +60,32 @@ public class PlayerTalismanEffectController : MonoBehaviour
     public bool CanApply(TalismanEffectDefinition definition)
     {
         Expire();
-        return CanExecute && definition != null && definition.IsValid &&
-            (definition.StackPolicy != TalismanStackPolicy.RejectWhileActive || !_active.ContainsKey(definition.EffectId));
+        if (!CanExecute || definition == null || !definition.IsValid) return false;
+        if (definition.EffectType == TalismanEffectType.StressRelief)
+            return TryGetComponent<PlayerStressController>(out var stress) && stress.CurrentStress > 0f;
+        if (definition.EffectType == TalismanEffectType.HealthRestore)
+            return _health != null && !_health.IsDead && _health.CurrentHealth < _health.MaxHealth;
+        return definition.StackPolicy != TalismanStackPolicy.RejectWhileActive || !_active.ContainsKey(definition.EffectId);
     }
     public bool TryApply(TalismanEffectDefinition definition)
     {
         if (!CanApply(definition)) return false;
-        _active[definition.EffectId] = new ActiveEffect { Type = definition.EffectType, Magnitude = definition.Magnitude, Expires = Time.time + definition.Duration };
+        if (definition.EffectType == TalismanEffectType.StressRelief)
+        {
+            var stress = GetComponent<PlayerStressController>();
+            float before = stress.CurrentStress;
+            try { stress.ReduceStress(definition.Magnitude); }
+            catch (Exception e) { Debug.LogException(e, this); } // A failing UI listener must not grant a free effect.
+            return stress.CurrentStress < before;
+        }
+        if (definition.EffectType == TalismanEffectType.HealthRestore)
+        {
+            float before = _health.CurrentHealth;
+            try { _health.RestoreHealth(definition.Magnitude); }
+            catch (Exception e) { Debug.LogException(e, this); }
+            return _health.CurrentHealth > before;
+        }
+        _active[definition.EffectId] = new ActiveEffect { Type = definition.EffectType, Name = definition.DisplayName, Magnitude = definition.Magnitude, Expires = Time.time + definition.Duration };
         return true;
     }
     // Collection publishes after effect + consumption commit, preventing reentrant double use.
@@ -74,6 +99,17 @@ public class PlayerTalismanEffectController : MonoBehaviour
         foreach (var pair in _active) result.Add(new TalismanEffectState { EffectId = pair.Key, RemainingDuration = pair.Value.Expires - Time.time });
         return result.ToArray();
     }
+    // Local presentation, including replicated timed effects; wire payload stays unchanged.
+    public void CopyActiveDisplay(List<TalismanEffectDisplay> output)
+    {
+        output.Clear();
+        if (!isActiveAndEnabled || !PlayerActionGuard.CanAct(gameObject)) return;
+        foreach (var effect in _active.Values)
+        {
+            float remaining = effect.Expires - Time.time;
+            if (remaining > 0f) output.Add(new TalismanEffectDisplay { Name = effect.Name, RemainingDuration = remaining });
+        }
+    }
     // Adapter resolves IDs using the trusted local catalogue, never accepts client-authored magnitudes.
     public bool ApplyReplicatedState(long version, IReadOnlyList<TalismanEffectState> states, Func<string, TalismanEffectDefinition> resolve)
     {
@@ -83,9 +119,9 @@ public class PlayerTalismanEffectController : MonoBehaviour
         foreach (var state in states)
         {
             var definition = resolve(state.EffectId);
-            if (definition == null || !definition.IsValid || definition.EffectId != state.EffectId || next.ContainsKey(state.EffectId) ||
+            if (definition == null || !definition.IsValid || definition.IsInstant || definition.EffectId != state.EffectId || next.ContainsKey(state.EffectId) ||
                 float.IsNaN(state.RemainingDuration) || float.IsInfinity(state.RemainingDuration) || state.RemainingDuration <= 0f || state.RemainingDuration > definition.Duration) return false;
-            next.Add(state.EffectId, new ActiveEffect { Type = definition.EffectType, Magnitude = definition.Magnitude, Expires = Time.time + state.RemainingDuration });
+            next.Add(state.EffectId, new ActiveEffect { Type = definition.EffectType, Name = definition.DisplayName, Magnitude = definition.Magnitude, Expires = Time.time + state.RemainingDuration });
         }
         _active.Clear(); foreach (var pair in next) _active.Add(pair.Key, pair.Value);
         _snapshotVersion = version; PublishChanged(); return true;

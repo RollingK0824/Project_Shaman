@@ -83,7 +83,7 @@ public class PlayerTalismanCollection : MonoBehaviour
             if (!_effects.TryApply(definition)) return false;
             if (definition.ConsumeOnUse) { _instances[item].Remove(drawing); _selected.Remove(item); }
             else _selected[item] = id;
-            PlayerItemActions.ReportUse(gameObject, item);
+            try { PlayerItemActions.ReportUse(gameObject, item); } catch (Exception e) { Debug.LogException(e, this); }
             try { _effects.PublishChanged(); SelectionChanged?.Invoke(); UseCommitted?.Invoke(id); }
             catch (Exception e) { Debug.LogException(e, this); }
             return true;

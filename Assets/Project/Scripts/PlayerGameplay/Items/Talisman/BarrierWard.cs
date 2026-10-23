@@ -33,6 +33,9 @@ public sealed class BarrierWard : MonoBehaviour
     public static bool IsProtecting(GameObject owner) => owner != null &&
         Active.TryGetValue(owner, out var ward) && ward != null && ward.IsActive;
 
+    public static float GetRemainingDuration(GameObject owner) => owner != null &&
+        Active.TryGetValue(owner, out var ward) && ward != null ? ward.RemainingDuration : 0f;
+
     internal void Prepare(GameObject owner, Action<BarrierWard> despawn)
     {
         _owner = owner;

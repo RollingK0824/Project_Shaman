@@ -17,17 +17,58 @@ public class EffectTalismanInventoryView : MonoBehaviour
     private readonly List<EffectTalismanInventoryRow> _visibleRows = new();
     private string _selectedId;
     private Action _back;
+    private Button _unassignButton, _dropButton;
+    public const string DropUnavailableReason = "문양 부적은 버릴 수 없습니다.";
     private void Awake()
     {
         _backButton.onClick.AddListener(() => _back?.Invoke());
         _useButton.onClick.AddListener(UseSelected);
+        _unassignButton = CreateAction("Unassign", "등록 해제", new Vector2(-210, -390));
+        _unassignButton.onClick.AddListener(UnassignSelected);
+        _dropButton = CreateAction("Drop", "버리기", new Vector2(-18, -390));
+        _dropButton.interactable = false;
         for (int i = 0; i < _slotButtons.Length; i++)
         {
             int slot = i;
             if (_slotButtons[i] != null) _slotButtons[i].onClick.AddListener(() => AssignSelected(slot));
         }
     }
-    public void Bind(PlayerTalismanCollection collection, Action back) { _collection = collection; _back = back; _selectedId = null; if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = string.Empty; Refresh(); }
+    private Button CreateAction(string name, string label, Vector2 position)
+    {
+        var button = Instantiate(_useButton, _useButton.transform.parent);
+        button.name = name; button.onClick = new Button.ButtonClickedEvent();
+        PlayerItemUIStyle.Place((RectTransform)button.transform, Vector2.one, Vector2.one, position, new Vector2(168, 42));
+        var text = button.GetComponentInChildren<TMP_Text>(); text.text = label;
+        PlayerItemUIStyle.Stretch(text.rectTransform, Vector2.zero, Vector2.zero);
+        var colors = button.colors; colors.disabledColor = new Color(.5f, .5f, .5f, .45f); button.colors = colors;
+        return button;
+    }
+    public void Bind(PlayerTalismanCollection collection, Action back)
+    {
+        if (_collection != null) _collection.SelectionChanged -= Refresh;
+        _collection = collection; _back = back; _selectedId = null;
+        if (_collection != null) _collection.SelectionChanged += Refresh;
+        if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = string.Empty; Refresh();
+    }
+    private void OnDestroy() { if (_collection != null) _collection.SelectionChanged -= Refresh; }
+    private void LateUpdate()
+    {
+        bool assigned = false;
+        if (_collection != null && _collection.Find(_selectedId, out _) != null && PlayerActionGuard.CanAct(_collection.gameObject))
+        {
+            var inventory = _collection.GetComponent<PlayerInventory>();
+            for (int i = 0; i < inventory.QuickSlotCount; i++) assigned |= inventory.GetQuickSlotInstanceId(i) == _selectedId;
+        }
+        _unassignButton.interactable = assigned;
+    }
+    public void UnassignSelected()
+    {
+        if (_collection == null || !PlayerActionGuard.CanAct(_collection.gameObject) || _collection.Find(_selectedId, out _) == null) return;
+        var inventory = _collection.GetComponent<PlayerInventory>();
+        for (int i = 0; i < inventory.QuickSlotCount; i++)
+            if (inventory.GetQuickSlotInstanceId(i) == _selectedId) inventory.ClearQuickSlot(i);
+        _status.text = "등록 해제 · 문양 부적은 소지품에 보관됩니다.";
+    }
     public void Refresh()
     {
         foreach (var row in _visibleRows) { row.gameObject.SetActive(false); Destroy(row.gameObject); }
@@ -48,7 +89,7 @@ public class EffectTalismanInventoryView : MonoBehaviour
     {
         var drawing = _collection.Find(id, out var item);
         if (drawing == null) return;
-        _selectedId = id; if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = string.Empty; ShowDetails();
+        _selectedId = id; if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = DropUnavailableReason; ShowDetails();
     }
     private void ShowDetails()
     {
@@ -57,7 +98,7 @@ public class EffectTalismanInventoryView : MonoBehaviour
         if (drawing == null) { if (_slotPicker != null) _slotPicker.SetActive(false); _details.text = "효과 부적을 선택해 주세요."; return; }
         _collection.Find(_selectedId, out var item); var effect = item.FindEffect(drawing.EffectId);
         _details.text = effect == null ? "사용할 수 없는 효과입니다." :
-            $"{drawing.CustomName}\n{effect.DisplayName} · {effect.Duration:0.#}초\n{effect.ModifierDescription}\n{effect.Description}\n{(effect.ConsumeOnUse ? "사용 후 소모" : "사용 후 유지")}";
+            $"{drawing.CustomName}\n{effect.DisplayName}\n{effect.Description}\n{(effect.ConsumeOnUse ? "사용 후 소모" : "사용 후 유지")}";
         _useButton.interactable &= effect != null;
     }
     public void UseSelected()

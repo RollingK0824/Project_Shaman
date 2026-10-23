@@ -12,7 +12,6 @@ GameObject:
   - component: {fileID: 5892124183681195446}
   - component: {fileID: 6482841292186840878}
   - component: {fileID: 4397440419873100088}
-  - component: {fileID: 506190158807410709}
   - component: {fileID: 8595304086226700934}
   - component: {fileID: 8752787911056484865}
   - component: {fileID: 3070340092247269476}
@@ -118,28 +117,6 @@ CapsuleCollider:
   m_Height: 2
   m_Direction: 1
   m_Center: {x: 0, y: 1, z: 0}
---- !u!195 &506190158807410709
-NavMeshAgent:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 370358293719328386}
-  m_Enabled: 0
-  m_AgentTypeID: 0
-  m_Radius: 0.5
-  m_Speed: 3.5
-  m_Acceleration: 8
-  avoidancePriority: 50
-  m_AngularSpeed: 120
-  m_StoppingDistance: 0.2
-  m_AutoTraverseOffMeshLink: 1
-  m_AutoBraking: 1
-  m_AutoRepath: 1
-  m_Height: 2
-  m_BaseOffset: 0
-  m_WalkableMask: 4294967295
-  m_ObstacleAvoidanceType: 4
 --- !u!114 &8595304086226700934
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -149,9 +126,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 370358293719328386}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5e042b7ab498e35458bcc67b615b6454, type: 3}
+  m_Script: {fileID: 11500000, guid: 48dab93141ff4a7287de0f5dd3e929cd, type: 3}
   m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Movement
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_FlyingMovement
 --- !u!114 &8752787911056484865
 MonoBehaviour:
   m_ObjectHideFlags: 0

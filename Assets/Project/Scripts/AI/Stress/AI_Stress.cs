@@ -117,11 +117,6 @@ namespace ProjectShaman.AI.Stress
             {
                 AILog.Log(AILog.STUB, VillagerId, "Stress limit reached, death mark not implemented yet");
             }
-            else if (next == VillagerStressState.Anxious && previous == VillagerStressState.Calm)
-            {
-                AILog.Log(AILog.STUB, VillagerId, "Anxious, gut request waits for quest integration");
-            }
-
             OnStateChanged?.Invoke(this, previous, next);
         }
 
