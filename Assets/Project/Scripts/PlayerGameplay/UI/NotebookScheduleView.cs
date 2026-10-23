@@ -41,6 +41,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private readonly List<Button> _rows = new();
     private readonly List<TMP_Text[]> _rowCells = new();
     private readonly List<Image> _rowMarks = new();
+    private readonly List<IVillagerView> _shown = new();
     private readonly List<(Image wash, TMP_Text label)> _blocks = new();
     // Last block hours seen per villager, kept when their object is gone so a hidden death changes nothing here
     private readonly Dictionary<string, (int day, int[] hours)> _hours = new();
@@ -195,8 +196,18 @@ public sealed class NotebookScheduleView : MonoBehaviour
     {
         if (_title == null) return;
         VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
-        IReadOnlyList<IVillagerView> villagers = registry != null ? registry.Villagers : null;
-        int count = villagers != null ? villagers.Count : 0;
+        // Villagers whose death is known (body cleared) leave the roster
+        _shown.Clear();
+        if (registry != null)
+        {
+            foreach (IVillagerView entry in registry.Villagers)
+            {
+                if (!entry.IsDeathKnown) _shown.Add(entry);
+            }
+        }
+        List<IVillagerView> villagers = _shown;
+        int count = villagers.Count;
+        if (!string.IsNullOrEmpty(_selectedId) && !_shown.Exists(v => v.VillagerId == _selectedId)) _selectedId = null;
 
         CacheBlockHours();
         _dayLabel.text = TimeManager.Existing != null && TimeManager.Existing.DayCount > 0 ? $"{TimeManager.Existing.DayCount}일째" : "";
@@ -209,12 +220,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
             _rows[i].gameObject.SetActive(true);
             _rowMarks[i].enabled = selected && _select != null;
             TMP_Text[] cells = _rowCells[i];
-            cells[0].text = villager.IsDeathKnown ? $"{villager.DisplayName} <size=70%>고인</size>" : villager.DisplayName;
+            cells[0].text = villager.DisplayName;
             cells[1].text = string.IsNullOrEmpty(villager.JobName) ? "-" : villager.JobName;
             cells[2].text = SocialClassName(villager.SocialClass);
             cells[3].text = villager.Gender == VillagerGender.Female ? "여" : "남";
             cells[4].text = AgeGroupName(villager.AgeGroup);
-            foreach (TMP_Text cell in cells) cell.color = villager.IsDeathKnown ? PlayerItemUIStyle.NotebookMuted : INK;
+            foreach (TMP_Text cell in cells) cell.color = INK;
         }
         for (int i = count; i < _rows.Count; i++) _rows[i].gameObject.SetActive(false);
         _listContent.sizeDelta = new Vector2(ROW_WIDTH, Mathf.Max(LIST_HEIGHT, count * LIST_ROW_HEIGHT));
@@ -334,8 +345,8 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private void Select(int index)
     {
         VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
-        if (registry == null || index >= registry.Villagers.Count) return;
-        _selectedId = registry.Villagers[index].VillagerId;
+        if (registry == null || index >= _shown.Count) return;
+        _selectedId = _shown[index].VillagerId;
         Refresh();
     }
 }

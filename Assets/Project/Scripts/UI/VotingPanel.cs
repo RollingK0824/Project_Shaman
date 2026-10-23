@@ -70,6 +70,7 @@ public class VotingPanel : UIPanel
         {
             _subscribedReg.OnRegistered += HandleVillagerChanged;
             _subscribedReg.OnDeathKnown += HandleVillagerChanged;
+            _subscribedReg.OnExorcised += HandleVillagerChanged;
             _subscribedReg.OnCleared += BuildCells;
         }
     }
@@ -95,6 +96,7 @@ public class VotingPanel : UIPanel
         {
             _subscribedReg.OnRegistered -= HandleVillagerChanged;
             _subscribedReg.OnDeathKnown -= HandleVillagerChanged;
+            _subscribedReg.OnExorcised -= HandleVillagerChanged;
             _subscribedReg.OnCleared -= BuildCells;
             _subscribedReg = null;
         }
@@ -122,7 +124,9 @@ public class VotingPanel : UIPanel
                 }
 
                 VoteCellUI cell = Instantiate(_cellPrefab, _gridRoot);
-                cell.Setup(villager.VillagerId, villager.DisplayName, OnCellClicked);
+                // 퇴마된 주민은 이름 옆에 표시 (AI 쪽 레지스트리 OnExorcised로 다시 그림)
+                string label = villager.IsExorcised ? $"{villager.DisplayName} <size=70%>퇴마</size>" : villager.DisplayName;
+                cell.Setup(villager.VillagerId, label, OnCellClicked);
                 _cells.Add(villager.VillagerId, cell);
             }
         }

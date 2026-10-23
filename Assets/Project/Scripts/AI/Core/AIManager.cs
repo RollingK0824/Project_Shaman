@@ -298,6 +298,8 @@ namespace ProjectShaman.AI.Core
             }
 
             AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager ({forgotten} rumour(s) about it dropped)");
+            Registry?.MarkExorcised(villagerId);
+            AIEvents.RaiseExorcised(villagerId);
         }
 
         public bool TryGetHomePosition(string villagerId, out Vector3 home)

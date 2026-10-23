@@ -15,6 +15,8 @@ namespace ProjectShaman.AI.Interfaces
         bool IsAlive { get; }
         // Public knowledge of the death (body cleared, or found dead when voted out). Lists and votes use this, not IsAlive
         bool IsDeathKnown { get; }
+        // A ghost was driven out of this villager (public: the whole village saw the exorcism)
+        bool IsExorcised { get; }
         VillagerScheduleView Schedule { get; }
     }
 }
