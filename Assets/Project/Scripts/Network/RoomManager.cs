@@ -107,6 +107,7 @@ public class RoomManager : NetworkRoomManager
     {
         _isLeavingVoluntarily = false;
         base.OnStartClient();
+        MapPlayerSource.Current = new NetMapPlayerSource();
     }
     // [Steam 로비] Steam으로 호스트를 시작하면 방 목록에 등록
     public override void OnStartHost()
@@ -172,6 +173,7 @@ public class RoomManager : NetworkRoomManager
     {
         base.OnRoomStopClient();
         EndGameLoading();
+        MapPlayerSource.Current = null;
     }
 
     public override void OnStopServer()
@@ -326,7 +328,7 @@ public class RoomManager : NetworkRoomManager
 
         if (roomPlayerComp != null && status != null)
         {
-            status.ServerInitialize(roomPlayerComp.nickname, roomPlayerComp.characterId);
+            status.ServerInitialize(roomPlayerComp.nickname, roomPlayerComp.characterId, roomPlayerComp.colorId);
         }
         else
         {

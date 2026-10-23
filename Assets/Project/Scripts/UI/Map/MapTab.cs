@@ -56,7 +56,7 @@ public class MapTab : MonoBehaviour
             MapPlayerSnapshot me = new MapPlayerSnapshot
             {
                 NetId = local.netId,
-                CharacterId = status != null ? status.CharacterId : -1,
+                ColorId = status != null ? status.ColorId : -1,
                 Name = "나",
                 Position = local.transform.position,
                 Forward = local.transform.forward,
@@ -91,7 +91,7 @@ public class MapTab : MonoBehaviour
             angle = Mathf.Atan2(dir.y, dir.x) * Mathf.Rad2Deg - 90f;
         }
 
-        Color color = player.IsDead ? _deadColor : PlayerColors.Get(player.CharacterId);
+        Color color = player.IsDead ? _deadColor : PlayerColors.Get(player.ColorId);
 
         MapMarkerUI marker = Instantiate(_markerPrefab, _mapRect);
         marker.Set(uv, angle, color, player.Name, isLocal);

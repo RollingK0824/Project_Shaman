@@ -20,8 +20,8 @@ public class NetDoor : NetworkBehaviour, IInteractable
     [SerializeField] private float _cooldown = 0.4f;
 
     [Header("NPC Auto Open")]
-    [SerializeField] private float _npcOpenRadius = 1.5f;
-    [SerializeField] private float _npcCloseDelay = 1.5f;
+    [SerializeField] private float _npcOpenRadius = 0.5f;
+    [SerializeField] private float _npcCloseDelay = 1.0f;
 
     private const float NpcCheckInterval = 0.2f;
     private static readonly Collider[] _overlapBuffer = new Collider[32];

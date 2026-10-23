@@ -1,6 +1,8 @@
 using UnityEngine;
 using Mirror;
 using System;
+using System.Linq;
+
 public class RoomPlayer : NetworkRoomPlayer
 {
     [SyncVar(hook = nameof(OnNicknameChanged))] public string nickname;
@@ -8,9 +10,20 @@ public class RoomPlayer : NetworkRoomPlayer
     public const int CHARACTER_COUNT = 4;
     // 로비엣 ㅓ고른 캐릭터 (0 ~ 3 == NetPlayer1 ~ 4 - 1) = 서버가 아직 배정 전
     [SyncVar(hook = nameof(OnCharacterChanged))] public int characterId = -1;
+    [SyncVar(hook = nameof(OnColorChanged))] public int colorId = -1;
 
     public static event Action NotEnoughPlayers;
     public static event Action LobbyChanged;
+
+
+    public override void Start()
+    {
+        base.Start();   // 여기서 roomSlots에 등록됨
+
+        // roomSlots 등록 뒤에 배정해야 같은 프레임에 들어온 사람끼리 색이 겹치지 않음
+        // 로비 <-> 게임 씬을 오가도 RoomPlayer는 유지되므로 다시 배정되지 않음
+        if (isServer) colorId = FindFreeColor();
+    }
     public override void OnStartServer()
     {
         base.OnStartServer();
@@ -94,6 +107,17 @@ public class RoomPlayer : NetworkRoomPlayer
         return false;
     }
 
+    private int FindFreeColor()
+    {
+        if (NetworkManager.singleton is not NetworkRoomManager room) return -1;
+
+        for (int id = 0; id < PlayerColors.Count; id++)
+        {
+            if (!room.roomSlots.OfType<RoomPlayer>().Any(rp => rp != this && rp.colorId == id)) return id;
+        }
+
+        return -1;
+    }
     private int FindFreeCharacter()
     {
         for (int id = 0; id< CHARACTER_COUNT; id++)
@@ -103,15 +127,17 @@ public class RoomPlayer : NetworkRoomPlayer
 
         return 0;
     }
-
     [Command]
     public void CmdSelectCharacter(int id)
     {
         if (id < 0 || id >= CHARACTER_COUNT) return;
         if (readyToBegin) return;
-        if (IsTakenByOther(id)) return;
 
         characterId = id;
+    }
+    private void OnColorChanged(int oldValue, int newValue)
+    {
+        LobbyChanged?.Invoke();
     }
 
     private void OnCharacterChanged(int oldValue, int newValue)

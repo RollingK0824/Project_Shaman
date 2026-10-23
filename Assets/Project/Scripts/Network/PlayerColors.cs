@@ -14,5 +14,7 @@ public static class PlayerColors
 
     public static readonly Color Unknown = Color.gray;
 
+    public static int Count => Colors.Length;   // 추가
+
     public static Color Get(int characterId) => characterId >= 0 && characterId < Colors.Length ? Colors[characterId] : Unknown;
 }
