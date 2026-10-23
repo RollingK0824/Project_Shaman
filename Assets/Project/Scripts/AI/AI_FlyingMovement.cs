@@ -15,7 +15,8 @@ namespace ProjectShaman.AI
         [SerializeField, Min(0f)] private float _arriveDistance = 0.5f;
         [Tooltip("How fast the velocity can change (m/s²): lower = wider, lazier curves")]
         [SerializeField, Min(0.1f)] private float _acceleration = 10f;
-        [SerializeField, Min(0f)] private float _turnSpeed = 540f;
+        [Tooltip("Yaw only, toward where the flyer is heading (the weave does not turn the body)")]
+        [SerializeField, Min(0f)] private float _turnSpeed = 180f;
 
         [Header("Height")]
         [Tooltip("Height above the ground while far from the destination, picked per flyer in this range")]
@@ -25,6 +26,8 @@ namespace ProjectShaman.AI
         [Tooltip("Height above the destination point once there")]
         [SerializeField] private float _hoverHeight = 0.8f;
         [SerializeField, Min(0f)] private float _groundClearance = 0.5f;
+        [Tooltip("Never higher than this above the ground (or above the destination where there is no terrain)")]
+        [SerializeField, Min(0.5f)] private float _maxHeight = 10f;
         [SerializeField, Min(0f)] private float _heightFollowRate = 3f;
         [SerializeField, Min(0f)] private float _bobAmplitude = 0.15f;
         [SerializeField, Min(0f)] private float _bobFrequency = 1.5f;
@@ -51,6 +54,8 @@ namespace ProjectShaman.AI
         private float _bobPhase;
         private float _weaveSeed;
         private Vector3 _approachBearing;
+        private Vector3 _heading;
+        private float _fallbackGround;
         private bool _hasDestination;
 
         public bool IsStopped => _isStopped;
@@ -88,6 +93,8 @@ namespace ProjectShaman.AI
                 {
                     _active.Add(this);
                 }
+
+                _fallbackGround = transform.position.y - _hoverHeight;
             }
             else
             {
@@ -124,7 +131,9 @@ namespace ProjectShaman.AI
 
             float deltaTime = Time.deltaTime;
             Vector3 position = transform.position;
-            float ground = GroundHeight(position, position.y - _hoverHeight);
+            // Off the terrain the ground is unknown: the destination's height (or where it spawned) stands in,
+            // never the flyer's own height, which would let it climb without end
+            float ground = GroundHeight(position, _hasDestination ? _destination.y : _fallbackGround);
             bool moving = !_isStopped && _hasDestination;
 
             Vector3 desired = moving ? FlightVelocity(position, ground) : HoverVelocity(position, ground);
@@ -132,11 +141,18 @@ namespace ProjectShaman.AI
 
             _velocity = Vector3.MoveTowards(_velocity, desired, _acceleration * deltaTime);
             position += _velocity * deltaTime;
-            position.y = Mathf.Max(position.y, GroundHeight(position, ground) + _groundClearance);
+            float floor = GroundHeight(position, ground);
+            float ceiling = Mathf.Max(floor, _hasDestination ? _destination.y : floor) + _maxHeight;
+            position.y = Mathf.Clamp(position.y, floor + _groundClearance, ceiling);
+            if (position.y >= ceiling && _velocity.y > 0f)
+            {
+                _velocity.y = 0f;
+            }
+
             transform.position = position;
 
-            Vector3 facing = moving ? new Vector3(_velocity.x, _velocity.y * 0.5f, _velocity.z)
-                : _hasDestination ? FlatToward(position, _destination) : Vector3.zero;
+            // Face the way it is heading, upright: the sway and climb move the body, not its facing
+            Vector3 facing = _hasDestination ? (moving ? _heading : FlatToward(position, _destination)) : Vector3.zero;
             if (facing.sqrMagnitude > 0.01f)
             {
                 transform.rotation = Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(facing), _turnSpeed * deltaTime);
@@ -161,6 +177,7 @@ namespace ProjectShaman.AI
             Vector3 flat = aim - position;
             flat.y = 0f;
             Vector3 forward = flat.sqrMagnitude > 0.0001f ? flat.normalized : transform.forward;
+            _heading = forward;
             Vector3 side = Vector3.Cross(Vector3.up, forward);
 
             // Sideways sway of about _weaveAmplitude metres (and half that up and down), each flyer on its own phase.
@@ -175,7 +192,7 @@ namespace ProjectShaman.AI
             Vector3 horizontal = forward * speed + side * sway;
 
             float arrive = _destination.y + _hoverHeight;
-            float targetHeight = Mathf.Lerp(ground + _cruiseHeight, arrive, closeness);
+            float targetHeight = Mathf.Lerp(ground + Mathf.Min(_cruiseHeight, _maxHeight), arrive, closeness);
             float climb = Mathf.Clamp((targetHeight - position.y) * _heightFollowRate, -_speed, _speed) + lift;
 
             return new Vector3(horizontal.x, climb, horizontal.z);
