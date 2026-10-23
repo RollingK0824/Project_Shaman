@@ -9822,10 +9822,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 8819895945463206421, guid: 1b60d1c85598b8b45bbf2d64bbdefc83, type: 3}
-      propertyPath: m_IsActive
-      value: 0
-      objectReference: {fileID: 0}
     - target: {fileID: 9042133392111694554, guid: 1b60d1c85598b8b45bbf2d64bbdefc83, type: 3}
       propertyPath: m_Name
       value: Dashboard
@@ -10369,6 +10365,14 @@ MonoBehaviour:
   _headOffset: 24
   _maxWidth: 520
   _maxDistance: 25
+  _showNames: 1
+  _nameMaxDistance: 15
+  _nameFontScale: 0.7
+  _nameBackgroundAlpha: 0.35
+  _nameOcclusionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  _nameVisibilityInterval: 0.15
 --- !u!224 &180093930
 RectTransform:
   m_ObjectHideFlags: 0
@@ -60965,7 +60969,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!4 &1198501830
 Transform:
   m_ObjectHideFlags: 0
@@ -103642,7 +103646,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5039578871894660444, guid: 9e3bbd62a82dbf6459ffc514e83298fa, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 5162139666799685654, guid: 9e3bbd62a82dbf6459ffc514e83298fa, type: 3}
       propertyPath: m_AnchorMax.y

@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -7,18 +6,13 @@ public class TutorialUI : MonoBehaviour
 {
     [Header("튜토리얼 패널")]
     [SerializeField] private TMP_Text _nameText;
-    [SerializeField] private List<GameObject> _tutorialPanels = new List<GameObject>();
     [SerializeField] private List<TutorialDetailUI> _detailPanels = new List<TutorialDetailUI>();
 
     private TutorialDetailUI _detailUI;
 
     private int _lastIndex = 0;
 
-    private void Awake()
-    {
-    }
-
-    public void OnEnable()
+    private void OnEnable()
     {
         OpenPanel(_lastIndex);
     }
@@ -26,31 +20,30 @@ public class TutorialUI : MonoBehaviour
     public void OnClickButton(int index)
     {
         OpenPanel(index);
-
-        _lastIndex = index;
     }
 
     public void OnClickNextButton()
     {
-        _detailPanels[_lastIndex].TryClickNextButton();
+        _detailUI.TryClickNextButton();
     }
 
     public void OnClickPrevButton()
     {
-        _detailPanels[_lastIndex].TryClickPrevButton();
+        _detailUI.TryClickPrevButton();
     }
 
     private void OpenPanel(int idx)
     {
-        foreach (GameObject panel in _tutorialPanels)
+        if (idx < 0 || idx >= _detailPanels.Count) return;
+
+        foreach (TutorialDetailUI panel in _detailPanels)
         {
-            panel.SetActive(false);
+            panel.gameObject.SetActive(false);
         }
 
-        _tutorialPanels[idx].SetActive(true);
-        _detailUI = _tutorialPanels[idx].GetComponent<TutorialDetailUI>();
+        _lastIndex = idx;
+        _detailUI = _detailPanels[idx];
+        _detailUI.gameObject.SetActive(true);
         _nameText.text = _detailUI.Name;
     }
-
-    
 }

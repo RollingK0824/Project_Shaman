@@ -206,9 +206,9 @@ public class VotingPanel : UIPanel
         if (NetworkClient.spawned.TryGetValue(voterId, out NetworkIdentity identity)
             && identity != null
             && identity.TryGetComponent(out NetPlayerStatus status)
-            && status.CharacterId >= 0)
+            && status.ColorId >= 0)
         {
-            return PlayerColors.Get(status.CharacterId);
+            return PlayerColors.Get(status.ColorId);
         }
 
         return _unknownVoterColor;

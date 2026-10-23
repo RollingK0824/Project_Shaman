@@ -9,7 +9,7 @@ public class LobbyPlayerRowUI : MonoBehaviour
     private Color _defaultNameColor;
     private bool _hasDefaultColor;
 
-    public void SetPlayerInfo(string nickname, bool isReady, bool isHost, int characterId)
+    public void SetPlayerInfo(string nickname, bool isReady, bool isHost, int colorId)
     {
         if (_nameText != null)
         {
@@ -21,7 +21,7 @@ public class LobbyPlayerRowUI : MonoBehaviour
             }
 
             _nameText.text = nickname;
-            _nameText.color = characterId >= 0 ? PlayerColors.Get(characterId) : _defaultNameColor;
+            _nameText.color = colorId >= 0 ? PlayerColors.Get(colorId) : _defaultNameColor;
         }
 
         if (_readyText != null)
