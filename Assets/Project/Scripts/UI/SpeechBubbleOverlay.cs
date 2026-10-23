@@ -6,7 +6,7 @@ using ProjectShaman.AI;
 
 // Villager speech bubbles drawn as screen-space UI above each speaker's head (local client only).
 // Fixed pixel size at any distance, never hidden behind bodies or walls; hidden when the speaker is behind the camera
-// or farther than Max Distance. Placed in the game scene once; bubbles are pooled copies of the inactive template.
+// or farther than Max Distance. Name tags are stricter: only for villagers on screen and in the viewer's line of sight. Placed in the game scene once; bubbles are pooled copies of the inactive template.
 public class SpeechBubbleOverlay : MonoBehaviour
 {
     private const float HEAD_HEIGHT = 2f;
@@ -25,6 +25,9 @@ public class SpeechBubbleOverlay : MonoBehaviour
     private float _nameMaxDistance = 15f;
     [SerializeField] private float _nameFontScale = 0.7f;
     [SerializeField, Range(0f, 1f)] private float _nameBackgroundAlpha = 0.35f;
+    [SerializeField, Tooltip("Layers that hide a name behind them (walls, terrain); the villager and the viewer's own body are ignored")]
+    private LayerMask _nameOcclusionMask = ~0;
+    [SerializeField, Min(0f)] private float _nameVisibilityInterval = 0.15f;
 
     private class Bubble
     {
@@ -34,6 +37,8 @@ public class SpeechBubbleOverlay : MonoBehaviour
         public Transform Speaker;
         public float HideTime;
         public float Distance;
+        public float NextVisibilityCheck;
+        public bool IsInSight;
     }
 
     private static SpeechBubbleOverlay _instance;
@@ -243,8 +248,56 @@ public class SpeechBubbleOverlay : MonoBehaviour
                 continue;
             }
 
-            tag.Rect.gameObject.SetActive(_showNames && viewer != null && tag.Speaker.gameObject.activeInHierarchy && Place(tag, viewer, _nameMaxDistance, 0f));
+            bool shown = _showNames && viewer != null && tag.Speaker.gameObject.activeInHierarchy
+                && IsOnScreen(tag.Speaker, viewer) && IsInSight(tag, viewer) && Place(tag, viewer, _nameMaxDistance, 0f);
+            tag.Rect.gameObject.SetActive(shown);
         }
+    }
+
+    private static bool IsOnScreen(Transform target, Camera viewer)
+    {
+        Vector3 viewport = viewer.WorldToViewportPoint(target.position + Vector3.up * HEAD_HEIGHT);
+        return viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
+    }
+
+    private bool IsInSight(Bubble tag, Camera viewer)
+    {
+        if (Time.time < tag.NextVisibilityCheck)
+        {
+            return tag.IsInSight;
+        }
+
+        tag.NextVisibilityCheck = Time.time + _nameVisibilityInterval;
+        tag.IsInSight = HasLineOfSight(tag.Speaker, viewer);
+        return tag.IsInSight;
+    }
+
+    private bool HasLineOfSight(Transform target, Camera viewer)
+    {
+        Vector3 eye = viewer.transform.position;
+        Vector3 head = target.position + Vector3.up * HEAD_HEIGHT * 0.85f;
+        Vector3 toHead = head - eye;
+        float distance = toHead.magnitude;
+        if (distance < 0.01f)
+        {
+            return true;
+        }
+
+        Transform viewerRoot = viewer.transform.root;
+        RaycastHit[] hits = Physics.RaycastAll(eye, toHead / distance, distance, _nameOcclusionMask, QueryTriggerInteraction.Ignore);
+
+        foreach (RaycastHit hit in hits)
+        {
+            Transform hitTransform = hit.transform;
+            if (hitTransform.IsChildOf(target) || hitTransform.IsChildOf(viewerRoot))
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return true;
     }
 
     private float NameHeight(Transform speaker)
