@@ -798,16 +798,21 @@ namespace ProjectShaman.AI.Core
                 Vector3 home = villager.Profile.HomePosition;
                 travelDistance = PathLength(place.Center, home);
 
-                // Room for the look-in on the way: the longest detour through a neighbour's house
-                float detour = 0f;
+                // Room for the look-in on the way: TryLookInOnNeighbour picks the unseen neighbour nearest home, so plan the
+                // detour through the nearest one. A farther pick that no longer fits is skipped there against the daylight left
+                VillagerProfile nearest = null;
+                float nearestSqr = float.MaxValue;
                 foreach (VillagerProfile neighbour in _profiles)
                 {
-                    if (neighbour != villager.Profile && neighbour.NeighborhoodId == villager.Profile.NeighborhoodId)
+                    float sqr = (neighbour.HomePosition - home).sqrMagnitude;
+                    if (neighbour != villager.Profile && neighbour.NeighborhoodId == villager.Profile.NeighborhoodId && sqr < nearestSqr)
                     {
-                        detour = Mathf.Max(detour, PathLength(place.Center, neighbour.HomePosition) + PathLength(neighbour.HomePosition, home) - travelDistance);
+                        nearest = neighbour;
+                        nearestSqr = sqr;
                     }
                 }
 
+                float detour = nearest != null ? PathLength(place.Center, nearest.HomePosition) + PathLength(nearest.HomePosition, home) - travelDistance : 0f;
                 if (detour > 0f)
                 {
                     visitSeconds = detour / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + _behaviourConfig.NeighbourVisitLingerSeconds;
