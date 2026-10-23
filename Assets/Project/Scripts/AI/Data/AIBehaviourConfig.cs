@@ -11,6 +11,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(0f, 1f)] private float _restRatio = 0.3f;
         [SerializeField] private int _routinesPerDay = 2;
         [SerializeField] private int _routineHours = 5;
+        [SerializeField] private int _minRoutineHours = 3;
         [SerializeField] private int _maxStartDelayHours = 2;
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.17f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
@@ -159,6 +160,7 @@ namespace ProjectShaman.AI.Data
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public int RoutineHours => Mathf.Max(1, _routineHours);
+        public int MinRoutineHours => Mathf.Clamp(_minRoutineHours, 1, RoutineHours);
         public int MaxStartDelayHours => Mathf.Max(0, _maxStartDelayHours);
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
