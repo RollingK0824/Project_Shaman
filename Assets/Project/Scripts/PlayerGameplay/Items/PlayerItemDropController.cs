@@ -13,6 +13,7 @@ public sealed class PlayerItemDropController : MonoBehaviour
     private Func<bool> _authority;
     private Func<WorldItem, bool> _publishWorld;
     private Action<WorldItem> _rollbackWorld;
+    private Func<ItemData, GameObject> _resolvePrefab;
     private long _nextRequest, _lastFinalRequest, _pendingRequest;
     private bool _busy;
     public event Action<long, ItemData> DropRequested;
@@ -27,6 +28,9 @@ public sealed class PlayerItemDropController : MonoBehaviour
         if ((publish == null) != (rollback == null)) throw new ArgumentException("World publisher and rollback must be set together.");
         _publishWorld = publish; _rollbackWorld = rollback;
     }
+
+    public void SetWorldPrefabResolver(Func<ItemData, GameObject> resolve) => _resolvePrefab = resolve;
+
     private bool CanCommit => isActiveAndEnabled && PlayerActionGuard.CanAct(gameObject) &&
         (!NetworkClient.active && !NetworkServer.active ? _authority == null || _authority() :
          NetworkServer.active && _authority != null && _authority() && _publishWorld != null && _rollbackWorld != null);
@@ -69,7 +73,11 @@ public sealed class PlayerItemDropController : MonoBehaviour
         WorldItem world = null; bool published = false, committed = false;
         try
         {
-            var prefab = item.WorldPrefab;
+            //var prefab = item.WorldPrefab;
+
+            GameObject prefab = _resolvePrefab != null ? _resolvePrefab(item) : null;
+            if (prefab == null) prefab = item.WorldPrefab;
+
             var prototype = prefab.GetComponent<WorldItem>();
             if (!prefab.activeSelf || prototype == null || !prototype.enabled || prototype.ItemData != item ||
                 prefab.GetComponentsInChildren<WorldItem>(true).Length != 1)
