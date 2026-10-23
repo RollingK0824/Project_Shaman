@@ -6,6 +6,8 @@ namespace ProjectShaman.AI.Interfaces
     {
         void MoveTo(Vector3 destination);
         void Stop();
+        void SetSpeed(float speed);
+        void SetAgentActive(bool active);
         bool IsStopped { get; }
         bool HasReachedDestination { get; }
         float CurrentSpeed { get; }

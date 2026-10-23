@@ -199,19 +199,25 @@ namespace ProjectShaman.AI.Request
                 BundleKey = trace.BundleKey
             };
             bool isBody = !string.IsNullOrEmpty(trace.VictimId);
-            if (isBody)
-            {
-                Panic(villagerId);
-            }
 
             // Found on the way home (a look-in): the villager runs home and asks next morning
             if (IsHoming(villagerId))
             {
                 _openBundles.Add(trace.BundleKey);
-                _deferred.Add((villagerId, origin));
-                _deferredGivers.Add(villagerId);
+                Defer(villagerId, origin);
                 AILog.Log(AILog.REQUEST, villagerId, $"Saw {trace.DisplayName} on the way home, will ask tomorrow morning");
+
+                if (isBody)
+                {
+                    Panic(villagerId);
+                }
+
                 return;
+            }
+
+            if (isBody)
+            {
+                Panic(villagerId);
             }
 
             if (Offer(villagerId, origin))
@@ -230,8 +236,14 @@ namespace ProjectShaman.AI.Request
 
             foreach ((string giverId, RequestOrigin origin) in _deferred)
             {
-                _openBundles.Remove(origin.BundleKey);
-                if (QuestTargets.TryGet(origin.ContextId, out _) && Offer(giverId, origin))
+                bool hasBundle = !string.IsNullOrEmpty(origin.BundleKey);
+                if (hasBundle)
+                {
+                    _openBundles.Remove(origin.BundleKey);
+                }
+
+                bool targetStillThere = string.IsNullOrEmpty(origin.ContextId) || QuestTargets.TryGet(origin.ContextId, out _);
+                if (targetStillThere && Offer(giverId, origin) && hasBundle)
                 {
                     _openBundles.Add(origin.BundleKey);
                 }
@@ -294,7 +306,23 @@ namespace ProjectShaman.AI.Request
                 return;
             }
 
-            Offer(core.LogId, new RequestOrigin { Kind = GUT });
+            RequestOrigin gut = new RequestOrigin { Kind = GUT };
+
+            // Asked in the evening it would fail at nightfall: the villager asks next morning instead
+            if (IsHoming(core.LogId))
+            {
+                Defer(core.LogId, gut);
+                AILog.Log(AILog.REQUEST, core.LogId, "Anxious on the way home, will ask for a gut tomorrow morning");
+                return;
+            }
+
+            Offer(core.LogId, gut);
+        }
+
+        private void Defer(string giverId, RequestOrigin origin)
+        {
+            _deferred.Add((giverId, origin));
+            _deferredGivers.Add(giverId);
         }
 
         private bool Offer(string giverId, RequestOrigin origin)

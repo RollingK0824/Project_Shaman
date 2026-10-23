@@ -24,7 +24,6 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
             AI_ToolHandler handler = Agent.Value != null ? Agent.Value.GetComponent<AI_ToolHandler>() : null;
             if (handler != null && handler.Search.HasRequiredTool())
             {
-                ProjectShaman.AI.Core.AILog.Warn(ProjectShaman.AI.Core.AILog.TOOL, $"{handler.VillagerId} reached search failure while holding required tool, ignored (check Repeat While 'Return Failure On Condition Fail')");
                 return Status.Success;
             }
 

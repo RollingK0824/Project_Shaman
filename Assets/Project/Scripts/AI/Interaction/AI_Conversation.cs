@@ -136,7 +136,7 @@ namespace ProjectShaman.AI.Interaction
             {
                 if (!IsHoldingConversationInteraction())
                 {
-                    reason = "interaction ended";
+                    reason = $"interaction ended ({_interaction.LastEndReason})";
                     return false;
                 }
 
