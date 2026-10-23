@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Memory;
 using ProjectShaman.AI.Perception;
@@ -26,9 +27,15 @@ namespace ProjectShaman.AI.Work
         [SerializeField] private ToolTidyZone _tidyZone;
         [SerializeField] private bool _isMovingToStorage;
 
+        private const float PUT_AWAY_LINGER_SECONDS = 1f;
+
         private ToolItem _heldTool;
         private ToolSearchSession _search;
         private ToolInquiry _inquiry;
+        private AI_Interaction _interaction;
+        private PlaceArea _putAwayStorage;
+        private bool _isPutAwayPending;
+        private bool _isPuttingAway;
 
         public AI_Core Core { get; private set; }
         public AI_Memory Memory { get; private set; }
@@ -52,11 +59,17 @@ namespace ProjectShaman.AI.Work
             Perception = GetComponent<AI_Perception>();
             Movable = GetComponent<INetworkMovable>();
             Agent = GetComponent<NavMeshAgent>();
+            _interaction = GetComponent<AI_Interaction>();
             _search = new ToolSearchSession(this);
             _inquiry = new ToolInquiry(this);
 
             Core.OnRoutineApplied += HandleRoutineApplied;
             Core.OnRoutineCleared += HandleRoutineCleared;
+
+            if (_interaction != null)
+            {
+                _interaction.OnInteractionEnded += HandleInteractionEnded;
+            }
         }
 
         private void OnDestroy()
@@ -65,6 +78,11 @@ namespace ProjectShaman.AI.Work
             {
                 Core.OnRoutineApplied -= HandleRoutineApplied;
                 Core.OnRoutineCleared -= HandleRoutineCleared;
+            }
+
+            if (_interaction != null)
+            {
+                _interaction.OnInteractionEnded -= HandleInteractionEnded;
             }
 
             if (_search != null)
@@ -89,7 +107,88 @@ namespace ProjectShaman.AI.Work
             if (Context != null)
             {
                 _inquiry.Tick();
+                TickPutAway();
             }
+        }
+
+        public bool PutAwayUnlessNeeded(string reason)
+        {
+            if (!IsHolding)
+            {
+                return false;
+            }
+
+            if (ToolTidyPolicy.ShouldKeepForRoutine(_heldTool.TypeId, Core.CurrentRoutine.ToolTypeId))
+            {
+                AILog.Log(AILog.TOOL, VillagerId, $"Keep {_heldTool.InstanceId} for current routine ({reason})");
+                return false;
+            }
+
+            if (!PlaceRegistry.TryGet(_heldTool.HomeStoragePlaceId, out PlaceArea storage) || _interaction == null)
+            {
+                return false;
+            }
+
+            _putAwayStorage = storage;
+            _isPutAwayPending = true;
+            AILog.Log(AILog.TOOL, VillagerId, $"Put away {_heldTool.InstanceId} at {storage.PlaceId} ({reason})");
+            return true;
+        }
+
+        private void TickPutAway()
+        {
+            if (!_isPutAwayPending)
+            {
+                return;
+            }
+
+            if (!IsHolding || IsMustGoHome() || ToolTidyPolicy.ShouldKeepForRoutine(_heldTool.TypeId, Core.CurrentRoutine.ToolTypeId))
+            {
+                ClearPutAway();
+                return;
+            }
+
+            if (!Core.IsSimulating || _interaction.IsInteracting)
+            {
+                return;
+            }
+
+            if (_interaction.TryBegin(_putAwayStorage, InteractionResponse.Approach, PUT_AWAY_LINGER_SECONDS))
+            {
+                _isPutAwayPending = false;
+                _isPuttingAway = true;
+            }
+        }
+
+        private void HandleInteractionEnded(InteractionResult result, InteractionEndReason reason)
+        {
+            if (!_isPuttingAway || _putAwayStorage == null || result.InteractableId != _putAwayStorage.InteractableId)
+            {
+                return;
+            }
+
+            _isPuttingAway = false;
+
+            if (reason == InteractionEndReason.Completed && IsHolding)
+            {
+                Drop(transform.position, $"put away at {_putAwayStorage.PlaceId}");
+                ClearPutAway();
+                return;
+            }
+
+            _isPutAwayPending = IsHolding;
+        }
+
+        private void ClearPutAway()
+        {
+            _putAwayStorage = null;
+            _isPutAwayPending = false;
+            _isPuttingAway = false;
+        }
+
+        private bool IsMustGoHome()
+        {
+            return Core.TryGetBlackboardVariable(AI_Core.BB_MUST_GO_HOME, out bool mustGoHome) && mustGoHome;
         }
 
         public bool IsHoldingType(string typeId)
@@ -199,7 +298,10 @@ namespace ProjectShaman.AI.Work
                 return;
             }
 
-            Drop(transform.position, $"routine changed to {routine.Source?.RoutineId}");
+            if (!PutAwayUnlessNeeded($"routine changed to {routine.Source?.RoutineId}"))
+            {
+                Drop(transform.position, $"routine changed to {routine.Source?.RoutineId}");
+            }
         }
 
         private void HandleRoutineCleared(string reason)
@@ -207,7 +309,7 @@ namespace ProjectShaman.AI.Work
             _search.Cancel();
             _inquiry.Cancel($"routine cleared ({reason})");
 
-            if (IsHolding)
+            if (IsHolding && (IsMustGoHome() || !PutAwayUnlessNeeded($"routine cleared ({reason})")))
             {
                 Drop(transform.position, $"routine cleared ({reason})");
             }
