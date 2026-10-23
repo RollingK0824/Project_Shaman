@@ -3,10 +3,11 @@ using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Interfaces;
 
 namespace ProjectShaman.AI.Minion
 {
-    [RequireComponent(typeof(AI_Movement), typeof(AI_Status))]
+    [RequireComponent(typeof(AI_Status))]
     public class AI_Minion : MonoBehaviour, IItemControlReceiver
     {
         private const float RANGE_TOLERANCE = 0.3f;
@@ -19,7 +20,7 @@ namespace ProjectShaman.AI.Minion
         [SerializeField] private string _targetName;
         [SerializeField] private float _distanceToObjective;
 
-        private AI_Movement _movement;
+        private INetworkMovable _movement;
         private AI_Status _status;
         private MinionBattlefield _battlefield;
         private MinionPlayer _player;
@@ -47,8 +48,14 @@ namespace ProjectShaman.AI.Minion
 
         private void Awake()
         {
-            _movement = GetComponent<AI_Movement>();
+            _movement = GetComponent<INetworkMovable>();
             _status = GetComponent<AI_Status>();
+
+            if (_movement == null)
+            {
+                AILog.Error(AILog.MINION, $"{name} has no INetworkMovable (AI_FlyingMovement or AI_Movement)");
+                enabled = false;
+            }
         }
 
         private void OnEnable()
