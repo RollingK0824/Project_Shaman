@@ -106,6 +106,40 @@ public class PlayerInventory : MonoBehaviour
     }
 
     public IReadOnlyList<ItemData> Items => _items;
+    public PlayerItemDropController Drops => GetComponent<PlayerItemDropController>() ?? gameObject.AddComponent<PlayerItemDropController>();
+
+    // World drop is not consumption: permanent equipment may leave ownership.
+    // World activation is committed while observers and reentrant inventory writes are blocked.
+    internal bool TryDropUnit(ItemData item, Func<bool> commitWorld)
+    {
+        if (_publishingTransaction || !PlayerActionGuard.CanAct(gameObject) || item == null ||
+            item.PreventDrop || IsMaterial(item) || commitWorld == null) return false;
+        int index = _items.IndexOf(item);
+        if (index < 0) return false;
+        _publishingTransaction = true;
+        _items.RemoveAt(index);
+        try
+        {
+            bool committed;
+            try { committed = commitWorld(); }
+            catch (Exception e) { Debug.LogException(e, this); committed = false; }
+            if (!committed) { _items.Insert(index, item); return false; }
+            // From this point observer errors cannot roll back a committed world item.
+            try { ItemUnitsChanged?.Invoke(item, -1); } catch (Exception e) { Debug.LogException(e, this); }
+            if (!Contains(item))
+                for (int i = 0; i < QUICK_SLOT_COUNT; i++)
+                    if (_quickSlots[i] == item && string.IsNullOrEmpty(_quickSlotInstanceIds[i]))
+                    {
+                        _quickSlots[i] = null;
+                        try { QuickSlotChanged?.Invoke(i, null); } catch (Exception e) { Debug.LogException(e, this); }
+                    }
+            try { ItemRemoved?.Invoke(item); } catch (Exception e) { Debug.LogException(e, this); }
+            try { ItemCountChanged?.Invoke(item, GetItemCount(item)); } catch (Exception e) { Debug.LogException(e, this); }
+            try { InventoryChanged?.Invoke(); } catch (Exception e) { Debug.LogException(e, this); }
+            return true;
+        }
+        finally { _publishingTransaction = false; }
+    }
 
     public int QuickSlotCount => QUICK_SLOT_COUNT;
 

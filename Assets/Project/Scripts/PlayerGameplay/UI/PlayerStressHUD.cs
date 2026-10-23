@@ -2,6 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+[DefaultExecutionOrder(2000)]
 public class PlayerStressHUD : MonoBehaviour
 {
     [Header("Player")]
@@ -25,11 +26,47 @@ public class PlayerStressHUD : MonoBehaviour
         if (_canvas == null) _canvas = GetComponent<Canvas>();
     }
 
+    public PlayerStatusHUD StatusHUD { get; private set; }
+
+    private QuickSlotUI _quickSlots;
+    private readonly Vector3[] _corners = new Vector3[4];
+    private void LateUpdate()
+    {
+        if (_valueText == null || _stress == null) return;
+        var panel = _valueText.transform.parent as RectTransform;
+        if (panel == null || !(panel.parent is RectTransform parent)) return;
+        var inventory = _stress.GetComponent<PlayerInventory>();
+        if (_quickSlots == null || _quickSlots.BoundInventory != inventory)
+            foreach (var quick in FindObjectsByType<QuickSlotUI>(FindObjectsSortMode.None))
+                if (quick.BoundInventory == inventory) { _quickSlots = quick; break; }
+        float unit = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
+        float left = Screen.width * .5f - 280f * unit, centerY = 62f * unit;
+        if (_quickSlots != null)
+        {
+            ((RectTransform)_quickSlots.transform).GetWorldCorners(_corners);
+            var qc = _quickSlots.GetComponentInParent<Canvas>();
+            Camera camera = qc.renderMode == RenderMode.ScreenSpaceOverlay ? null : qc.worldCamera;
+            var bottom = RectTransformUtility.WorldToScreenPoint(camera, _corners[0]);
+            var top = RectTransformUtility.WorldToScreenPoint(camera, _corners[1]);
+            left = bottom.x; centerY = (bottom.y + top.y) * .5f;
+        }
+        float scale = Mathf.Min(unit, Mathf.Max(.1f, (left - 40f * unit) / 320f));
+        Vector2 screen = new Vector2(left - 24f * unit - 160f * scale, Mathf.Max(12f * unit + 36f * scale, centerY));
+        var canvas = parent.GetComponentInParent<Canvas>();
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screen,
+            canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, out var local);
+        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(.5f, .5f);
+        panel.sizeDelta = new Vector2(320, 72); panel.anchoredPosition = local;
+        panel.localScale = Vector3.one * scale / Mathf.Max(.001f, Mathf.Abs(parent.lossyScale.x));
+    }
+
     public void Bind(PlayerStressController stress, PlayerHealth health)
     {
         Unsubscribe();
         _stress = stress;
         _health = health;
+        if (StatusHUD == null) StatusHUD = GetComponent<PlayerStatusHUD>() ?? gameObject.AddComponent<PlayerStatusHUD>();
+        StatusHUD.Bind(stress != null ? stress.gameObject : null, _valueText != null ? _valueText.font : null);
         if (isActiveAndEnabled) Subscribe();
         Refresh();
     }

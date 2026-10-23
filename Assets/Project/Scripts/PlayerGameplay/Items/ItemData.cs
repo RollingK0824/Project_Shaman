@@ -18,6 +18,9 @@ public class ItemData : ScriptableObject
 
     [Header("Ownership")]
     [SerializeField] private bool _isPermanent;
+    [Tooltip("Prevents world drop independently of consumption/permanent equipment.")]
+    [SerializeField] private bool _preventDrop;
+    public bool PreventDrop => _preventDrop || _itemId == "item_notebook";
     [SerializeField] private bool _isUnique;
     [SerializeField] private bool _canUseQuickSlot = true;
     public bool IsPermanent => _isPermanent;
