@@ -8,9 +8,6 @@ public class QuestEntryUI : MonoBehaviour
     [SerializeField]
     private TMP_Text _giver, _title, _objective, _progress, _reward, _penalty, _state;
 
-    [SerializeField]
-    private CanvasGroup _canvasGroup;
-
     public void Set(IQuestView q)
     {
         if (q == null)
@@ -30,7 +27,5 @@ public class QuestEntryUI : MonoBehaviour
              : q.State == QuestState.Completed ? "완료"
              : q.State == QuestState.Failed ? "실패" : "";
         _state.SetText(state);
-
-        _canvasGroup.alpha = q.State == QuestState.Active ? 1f : 0.5f;
     }
 }
