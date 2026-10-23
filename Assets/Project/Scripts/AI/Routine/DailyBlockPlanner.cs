@@ -31,7 +31,7 @@ namespace ProjectShaman.AI.Routine
             System.Random random = new System.Random(seed);
             float free = end - length * count;
             float delay = 0f;
-            float stagger = 0f;
+            float[] staggers = new float[count];
 
             if (free > 0f)
             {
@@ -48,19 +48,23 @@ namespace ProjectShaman.AI.Routine
                 Cut(lengths, -free, minLength);
             }
 
+            // Without spare to break between blocks the switch would land on the same second for all of them too
             if (free < config.StartStaggerSeconds)
             {
-                stagger = Next(random, config.StartStaggerSeconds);
+                for (int i = 0; i < count; i++)
+                {
+                    staggers[i] = Next(random, Mathf.Min(config.StartStaggerSeconds, lengths[i] - minLength));
+                }
             }
 
-            note = $"free={free:F0}s delay={delay:F0}s stagger={stagger:F0}s breaks=[{string.Join(",", System.Array.ConvertAll(breaks, b => b.ToString("F0")))}]s";
+            note = $"free={free:F0}s delay={delay:F0}s staggers=[{Join(staggers)}]s breaks=[{Join(breaks)}]s";
 
             List<DailyBlock> blocks = new List<DailyBlock>(count);
             float time = delay;
 
             for (int i = 0; i < count; i++)
             {
-                float startTime = time + (i == 0 ? stagger : 0f);
+                float startTime = time + staggers[i];
                 float endTime = Mathf.Min(time + lengths[i], dayEnd);
                 if (startTime >= endTime)
                 {
@@ -101,6 +105,11 @@ namespace ProjectShaman.AI.Routine
                 lengths[i] -= share;
                 amount -= share;
             }
+        }
+
+        private static string Join(float[] seconds)
+        {
+            return string.Join(",", System.Array.ConvertAll(seconds, s => s.ToString("F0")));
         }
 
         private static float Next(System.Random random, float max)

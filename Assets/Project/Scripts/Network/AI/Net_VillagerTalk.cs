@@ -161,11 +161,14 @@ namespace ProjectShaman.Network.AI
             uint playerId = player.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
             string villagerId = _conversation.VillagerId;
 
+            // A villager walking home does not stop for a window: they only answer in passing (the usual line)
+            bool goingHome = _conversation.CurrentActivity() == VillagerActivity.ReturningHome;
             // A pending offer opens the quest window (accept / decline) instead of the usual greeting
             QuestManager quests = QuestManager.Existing;
-            IQuestView offer = quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
+            IQuestView offer = !goingHome && quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
             // Bringing back the tool this villager asked for comes before anything else
-            IQuestView delivery = FindToolDelivery(quests, villagerId, player, out Net_ToolItem carried);
+            Net_ToolItem carried = null;
+            IQuestView delivery = goingHome ? null : FindToolDelivery(quests, villagerId, player, out carried);
 
             if (_dialogueConnection != null && _dialogueConnection != sender)
             {
