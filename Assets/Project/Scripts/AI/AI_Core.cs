@@ -45,6 +45,7 @@ namespace ProjectShaman.AI
         public event Action<string> OnRoutineFailed;
         public event Action<string> OnRoutineCleared;
         public event Action<SymptomType> OnSymptomTriggered;
+        public event Action<string> OnEffectTriggered;
         public event System.Action OnTodayBlocksChanged;
 
         private int[] _todayBlockHours = Array.Empty<int>();
@@ -184,6 +185,12 @@ namespace ProjectShaman.AI
         {
             AILog.Log(AILog.GHOST, LogId, $"Symptom {symptom}");
             OnSymptomTriggered?.Invoke(symptom);
+        }
+
+        // Animator trigger on every peer for a one-off reaction outside the symptoms (startled by an item ...)
+        public void TriggerEffect(string triggerName)
+        {
+            OnEffectTriggered?.Invoke(triggerName);
         }
 
         public void FailCurrentRoutine(string reason)

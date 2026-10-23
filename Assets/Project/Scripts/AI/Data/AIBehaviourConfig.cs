@@ -121,6 +121,14 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _villagerStressLimit = 100f;
         [SerializeField, Min(0f)] private float _villagerStressMorningDecay = 5f;
 
+        [Header("Player Item Reaction")]
+        [Tooltip("Stress a villager takes when salt, bean-mugwort, the bell or the gong reaches them")]
+        [SerializeField, Min(0f)] private float _itemStartleStress = 3f;
+        [Tooltip("Host yin from which the ghost shows through the body (trembling); below it the host is startled like anyone")]
+        [SerializeField, Min(0f)] private float _itemReactionYin = 40f;
+        [Tooltip("Host yin from which the reaction turns violent (grotesque twisting, lashing out)")]
+        [SerializeField, Min(0f)] private float _itemViolentYin = 70f;
+
         [Header("Vision")]
         [SerializeField, Range(10f, 180f)] private float _visionHalfAngle = 60f;
         [SerializeField, Min(0f)] private float _visionNearRadius = 2f;
@@ -238,6 +246,9 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
+        public float ItemStartleStress => Mathf.Max(0f, _itemStartleStress);
+        public float ItemReactionYin => Mathf.Max(0f, _itemReactionYin);
+        public float ItemViolentYin => Mathf.Max(ItemReactionYin, _itemViolentYin);
         public float VisionHalfAngle => _visionHalfAngle;
         public float VisionNearRadius => _visionNearRadius;
         public float VisionEyeHeight => _visionEyeHeight;

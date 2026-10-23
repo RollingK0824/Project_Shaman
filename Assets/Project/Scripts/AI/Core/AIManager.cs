@@ -594,6 +594,18 @@ namespace ProjectShaman.AI.Core
             }
         }
 
+        // A symptom forced out of a host outside today's plan (struck by salt ...): shown and witnessed like a planned one
+        public void ShowSymptom(AI_Core core, SymptomType symptom)
+        {
+            if (core == null)
+            {
+                return;
+            }
+
+            core.TriggerSymptom(symptom);
+            _observation?.OnSymptom(core, symptom);
+        }
+
         internal void RemoveVillager(AI_Core core, string reason)
         {
             VillagerRuntime villager = _villagers.Find(v => v.Core == core);
