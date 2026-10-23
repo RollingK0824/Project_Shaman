@@ -300,7 +300,8 @@ public class QuestManager : SceneSingleton<QuestManager>
         }
     }
 
-    // 받지 않은 의뢰와 진행 중인 퀘스트 모두 실패 (패널티)
+    // 진행 중인 퀘스트는 실패 (패널티). 받지 않은 의뢰는 남겨 두었다가 다음 날 아침 다시 받을 수 있다
+    // (의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다)
     private void HandleNightStart()
     {
         if (!IsServerSide)
@@ -313,7 +314,7 @@ public class QuestManager : SceneSingleton<QuestManager>
         {
             QuestInstance quest = _quests[i];
 
-            if (quest.State == QuestState.Offered || quest.State == QuestState.Active)
+            if (quest.State == QuestState.Active)
             {
                 End(quest, QuestState.Failed);
             }
@@ -525,7 +526,7 @@ public class QuestManager : SceneSingleton<QuestManager>
         return item != null ? item.DisplayName : null;
     }
 
-    // 의뢰는 낮 동안 언제든 생길 수 있다 (트리거 기반). 밤 시작 시 받지 않은 의뢰는 실패
+    // 의뢰는 낮 동안 언제든 생길 수 있다 (트리거 기반). 받지 않은 의뢰는 밤을 넘겨 남는다
     private bool IsDay()
     {
         return TimeManager.Instance.Elapsed % TimeManager.CYCLE_DURATION < TimeManager.DAY_DURATION;

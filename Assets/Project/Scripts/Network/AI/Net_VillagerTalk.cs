@@ -33,6 +33,7 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private float _dialogueIdleTimeout = 40f;
         [SerializeField] private float _dialogueLeaveDistance = 6f;
 
+        private AI_Core _core;
         private AI_Conversation _conversation;
         private AI_Interaction _interaction;
         private NetworkConnectionToClient _dialogueConnection;
@@ -53,12 +54,18 @@ namespace ProjectShaman.Network.AI
 
         private void Awake()
         {
+            _core = GetComponent<AI_Core>();
             _conversation = GetComponent<AI_Conversation>();
             _interaction = GetComponent<AI_Interaction>();
         }
 
         public override void OnStartServer()
         {
+            if (_core != null)
+            {
+                _core.OnMustGoHomeChanged += HandleMustGoHomeChanged;
+            }
+
             _subscribedQuests = QuestManager.Existing;
             if (_subscribedQuests == null)
             {
@@ -74,6 +81,11 @@ namespace ProjectShaman.Network.AI
         public override void OnStopServer()
         {
             EndDialogue(null);
+
+            if (_core != null)
+            {
+                _core.OnMustGoHomeChanged -= HandleMustGoHomeChanged;
+            }
 
             if (_subscribedQuests == null)
             {
@@ -100,10 +112,18 @@ namespace ProjectShaman.Network.AI
             }
         }
 
+        private void HandleMustGoHomeChanged(bool mustGoHome)
+        {
+            RefreshQuestMarker();
+        }
+
+        // Sent home for the evening (until the next day start) the villager cannot take an offer: "!" waits for the morning
+        private bool IsHomeBound => _core != null && _core.MustGoHome;
+
         private void RefreshQuestMarker()
         {
             string villagerId = _conversation.VillagerId;
-            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId);
+            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsHomeBound;
             _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId);
         }
 
@@ -161,8 +181,9 @@ namespace ProjectShaman.Network.AI
             uint playerId = player.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
             string villagerId = _conversation.VillagerId;
 
-            // A villager walking home does not stop for a window: they only answer in passing (the usual line)
-            bool goingHome = _conversation.CurrentActivity() == VillagerActivity.ReturningHome;
+            // A villager sent home (walking back, then in for the night) does not stop for a window: they only answer
+            // in passing (the usual line). An offer waits for the morning
+            bool goingHome = IsHomeBound || _conversation.CurrentActivity() == VillagerActivity.ReturningHome;
             // A pending offer opens the quest window (accept / decline) instead of the usual greeting
             QuestManager quests = QuestManager.Existing;
             IQuestView offer = !goingHome && quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
