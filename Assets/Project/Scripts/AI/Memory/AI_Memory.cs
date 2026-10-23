@@ -208,6 +208,24 @@ namespace ProjectShaman.AI.Memory
             return found;
         }
 
+        // The odd things a host did were the ghost's doing: once it is driven out, what was seen or heard of them is let go
+        public int ForgetAnomaliesOf(string actorId)
+        {
+            if (Events == null || string.IsNullOrEmpty(actorId))
+            {
+                return 0;
+            }
+
+            int removed = Events.RemoveAll(e => e.IsAnomalous && e.ActorId == actorId);
+            if (removed > 0)
+            {
+                Events.WriteDebug(_eventsDebug);
+                AILog.Log(AILog.MEMORY, _core.LogId, $"Forgot {removed} odd thing(s) about {actorId} (exorcised)");
+            }
+
+            return removed;
+        }
+
         public bool Knows(in MemoryEntry fact)
         {
             return Events != null && Events.ContainsFact(fact.FactKey);

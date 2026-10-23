@@ -203,9 +203,21 @@ namespace ProjectShaman.Network.AI
             {
                 StartQuestOffer(sender, player, offer);
             }
-            else if (!TryStartDialogue(sender, player))
+            else
             {
-                _conversation.RespondToPlayer(player);
+                // The day after an exorcism the freed villager thanks the player first (in the window, or in passing)
+                string thanks = VillagerDialogueService.TakeThanks(_conversation, playerId);
+                if (!TryStartDialogue(sender, player, thanks))
+                {
+                    if (thanks != null)
+                    {
+                        _conversation.Say(thanks, "thanks for the exorcism");
+                    }
+                    else
+                    {
+                        _conversation.RespondToPlayer(player);
+                    }
+                }
             }
 
             GameplayEvents.RaiseActionDone(playerId, QuestActions.TALK, villagerId);
@@ -213,7 +225,7 @@ namespace ProjectShaman.Network.AI
 
         // ----- Player dialogue (server) -----
 
-        private bool TryStartDialogue(NetworkConnectionToClient sender, GameObject player)
+        private bool TryStartDialogue(NetworkConnectionToClient sender, GameObject player, string greeting = null)
         {
             AIBehaviourConfig config = _conversation.Config;
             if (_interaction == null || config == null || !_conversation.CanTalkWithPlayer())
@@ -241,7 +253,7 @@ namespace ProjectShaman.Network.AI
 
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
-            TargetOpenDialogue(sender, _conversation.DisplayName, VillagerDialogueService.Greeting(), ids, labels);
+            TargetOpenDialogue(sender, _conversation.DisplayName, greeting ?? VillagerDialogueService.Greeting(), ids, labels);
             return true;
         }
 

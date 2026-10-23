@@ -24,6 +24,7 @@ namespace ProjectShaman.AI.Core
         [SerializeField] private AIBehaviourConfig _behaviourConfig;
 
         private const float STATION_RETRY_INTERVAL = 0.5f;
+        private const float HOME_CHECK_INTERVAL = 1f;
 
         private static NavMeshPath _pathBuffer;
 
@@ -283,8 +284,20 @@ namespace ProjectShaman.AI.Core
 
             string ghostId = possession.GhostId;
             villager.Profile.Possession = null;
+            villager.Profile.ExorcisedDay = _time != null ? _time.DayCount : 0;
             Destroy(possession);
-            AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager");
+
+            // Rumours of what the ghost did through this body die with it
+            int forgotten = 0;
+            foreach (VillagerRuntime other in _villagers)
+            {
+                if (other.Memory != null)
+                {
+                    forgotten += other.Memory.ForgetAnomaliesOf(villagerId);
+                }
+            }
+
+            AILog.Log(AILog.DEFENSE, villagerId, $"Exorcised {ghostId}, now an ordinary villager ({forgotten} rumour(s) about it dropped)");
         }
 
         public bool TryGetHomePosition(string villagerId, out Vector3 home)
@@ -461,7 +474,7 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            if (now >= villager.HomeReturnTime)
+            if (now >= villager.HomeReturnTime || MustLeaveForHome(villager, now))
             {
                 OrderGoHome(villager);
                 return;
@@ -504,6 +517,27 @@ namespace ProjectShaman.AI.Core
             {
                 SkipRoutine(villager, $"block {block.Index} resolve failed");
             }
+        }
+
+        // The planned home time assumes the walk from the last routine's place. Wherever the villager actually is
+        // (a far fallback, a search that wandered), it also sets off once the walk from here would end after dark.
+        private bool MustLeaveForHome(VillagerRuntime villager, float now)
+        {
+            if (now < villager.NextHomeCheckTime)
+            {
+                return false;
+            }
+
+            villager.NextHomeCheckTime = now + HOME_CHECK_INTERVAL;
+            float walk = PathLength(villager.Core.transform.position, villager.Profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            float lead = _behaviourConfig.ToolTidySecondsEstimate + walk + _behaviourConfig.HomeReturnMarginSeconds;
+            if (now + lead < TimeManager.DAY_DURATION)
+            {
+                return false;
+            }
+
+            AILog.Log(AILog.MANAGER, villager.Id, $"Leaving for home early: {walk:F0}s walk from here, {TimeManager.DAY_DURATION - now:F0}s of daylight left");
+            return true;
         }
 
         // Validation only: "home" is the same radius sleep paralysis uses to count a villager as in the house
@@ -873,6 +907,7 @@ namespace ProjectShaman.AI.Core
             public int LastBlockIndex { get; set; } = -1;
             public bool IsHomeOrdered { get; set; }
             public bool HasArrivedHome { get; set; }
+            public float NextHomeCheckTime { get; set; }
             public float HomeReturnTime { get; private set; }
             public IReadOnlyList<DailyBlock> TodayBlocks => _todayBlocks;
             public float NextStationRetryTime { get; set; }

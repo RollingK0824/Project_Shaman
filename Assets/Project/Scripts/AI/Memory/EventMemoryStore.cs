@@ -56,6 +56,18 @@ namespace ProjectShaman.AI.Memory
             return Array.Empty<MemoryEntry>();
         }
 
+        public int RemoveAll(Predicate<MemoryEntry> match)
+        {
+            int removed = 0;
+
+            foreach (List<MemoryEntry> list in _byKind.Values)
+            {
+                removed += list.RemoveAll(match);
+            }
+
+            return removed;
+        }
+
         public bool ContainsFact(string factKey)
         {
             foreach (List<MemoryEntry> list in _byKind.Values)

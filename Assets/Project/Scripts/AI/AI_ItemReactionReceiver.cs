@@ -16,7 +16,9 @@ namespace ProjectShaman.AI
     [RequireComponent(typeof(AI_Core))]
     public class AI_ItemReactionReceiver : MonoBehaviour, IItemControlReceiver, ISaltReactable, IAIConfigurable
     {
+        // Lines per item (item.startled.Salt ...) so the bubble says what just happened to them
         private const string STARTLED_LINE = "item.startled";
+        private const string SHUDDER_LINE = "item.shudder";
         private const string OUTBURST_LINE = "item.outburst";
 
         private AI_Core _core;
@@ -73,7 +75,7 @@ namespace ProjectShaman.AI
             {
                 AILog.Log(AILog.GHOST, villagerId, $"Startled by {item} from {userName}{(possession != null ? $" (host, yin {yin:F0} too low to show)" : "")}");
                 _core.TriggerEffect($"Item{item}Startled");
-                Say(STARTLED_LINE, $"startled by {item}");
+                Say($"{STARTLED_LINE}.{item}", $"startled by {item}");
                 return true;
             }
 
@@ -90,10 +92,7 @@ namespace ProjectShaman.AI
                 _core.TriggerSymptom(symptom);
             }
 
-            if (violent)
-            {
-                Say(OUTBURST_LINE, $"outburst at {item}");
-            }
+            Say(violent ? OUTBURST_LINE : SHUDDER_LINE, $"{(violent ? "outburst" : "shudder")} at {item}");
 
             return true;
         }
