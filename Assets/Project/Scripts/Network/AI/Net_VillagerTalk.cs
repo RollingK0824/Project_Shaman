@@ -1,5 +1,4 @@
 using Mirror;
-using TMPro;
 using UnityEngine;
 using ProjectShaman.AI;
 using ProjectShaman.AI.Core;
@@ -43,10 +42,12 @@ namespace ProjectShaman.Network.AI
         private bool _questOffer;
         private bool _toolDelivery;
         private float _dialogueDeadline;
-        private TextMeshPro _marker;
+        private AI_QuestMarker _marker;
         private QuestManager _subscribedQuests;
 
-        [SyncVar(hook = nameof(OnQuestOfferChanged))] private bool _hasQuestOffer;
+        [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasQuestOffer;
+        // An accepted quest is finished by coming back to this villager (delivery to the giver ...)
+        [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasActiveQuest;
 
         public string InteractionPrompt => _interactionPrompt;
 
@@ -67,7 +68,7 @@ namespace ProjectShaman.Network.AI
             _subscribedQuests.QuestOffered += HandleQuestChanged;
             _subscribedQuests.QuestStarted += HandleQuestChanged;
             _subscribedQuests.QuestEnded += HandleQuestChanged;
-            RefreshQuestOffer();
+            RefreshQuestMarker();
         }
 
         public override void OnStopServer()
@@ -87,59 +88,43 @@ namespace ProjectShaman.Network.AI
 
         public override void OnStartClient()
         {
-            ApplyMarker(_hasQuestOffer);
+            ApplyMarker();
         }
 
         private void HandleQuestChanged(IQuestView quest)
         {
-            if (quest.GiverId == _conversation.VillagerId)
+            string villagerId = _conversation.VillagerId;
+            if (quest.GiverId == villagerId || quest.ContextId == villagerId)
             {
-                RefreshQuestOffer();
+                RefreshQuestMarker();
             }
         }
 
-        private void RefreshQuestOffer()
+        private void RefreshQuestMarker()
         {
-            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(_conversation.VillagerId);
+            string villagerId = _conversation.VillagerId;
+            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId);
+            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId);
         }
 
-        private void OnQuestOfferChanged(bool oldValue, bool newValue)
+        private void OnQuestMarkerChanged(bool oldValue, bool newValue)
         {
-            ApplyMarker(newValue);
+            ApplyMarker();
         }
 
-        private void ApplyMarker(bool visible)
+        // An offer waiting here outranks a quest to finish here
+        private void ApplyMarker()
         {
-            if (visible && _marker == null)
+            string symbol = _hasQuestOffer ? AI_QuestMarker.OFFER : _hasActiveQuest ? AI_QuestMarker.IN_PROGRESS : null;
+            if (symbol != null && _marker == null)
             {
-                GameObject markerObject = new GameObject("QuestMarker");
-                markerObject.transform.SetParent(transform, false);
-                markerObject.transform.localPosition = MARKER_LOCAL_POSITION;
-                _marker = markerObject.AddComponent<TextMeshPro>();
-                _marker.text = "!";
-                _marker.fontSize = _markerFontSize;
-                _marker.fontStyle = FontStyles.Bold;
-                _marker.alignment = TextAlignmentOptions.Center;
-                _marker.color = _markerColor;
-                _marker.outlineColor = Color.black;
-                _marker.outlineWidth = 0.3f;
+                _marker = AI_QuestMarker.Create(transform, MARKER_LOCAL_POSITION, _markerFontSize, _markerColor);
             }
 
             if (_marker != null)
             {
-                _marker.gameObject.SetActive(visible);
+                _marker.Show(symbol);
             }
-        }
-
-        private void LateUpdate()
-        {
-            if (_marker == null || !_marker.gameObject.activeSelf)
-            {
-                return;
-            }
-
-            _marker.transform.localPosition = MARKER_LOCAL_POSITION;
-            AI_ViewerCamera.Face(_marker.transform);
         }
 
         public bool CanInteract(GameObject interactor)

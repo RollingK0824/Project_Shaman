@@ -1,5 +1,6 @@
 using Mirror;
 using UnityEngine;
+using ProjectShaman.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Trace;
@@ -13,16 +14,87 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private float _maxClearDistance = 4f;
         [SerializeField] private float _inspectDistance = 3f;
 
+        [Header("Quest marker")]
+        [SerializeField] private Vector3 _markerLocalPosition = new Vector3(0f, 1.5f, 0f);
+        [SerializeField] private float _markerFontSize = 6f;
+        [SerializeField] private Color _markerColor = new Color(1f, 0.85f, 0.2f);
+
         private const float INSPECT_CHECK_INTERVAL = 0.5f;
         private float _nextInspectCheck;
 
         private GhostTrace _trace;
+        private AI_QuestMarker _marker;
+        private QuestManager _subscribedQuests;
+
+        // An accepted quest is finished here (clear, cleanse, check on the missing villager)
+        [SyncVar(hook = nameof(OnActiveQuestChanged))] private bool _hasActiveQuest;
 
         public string InteractionPrompt => _interactionPrompt;
 
         private void Awake()
         {
             _trace = GetComponent<GhostTrace>();
+        }
+
+        public override void OnStartServer()
+        {
+            _subscribedQuests = QuestManager.Existing;
+            if (_subscribedQuests == null)
+            {
+                return;
+            }
+
+            _subscribedQuests.QuestStarted += HandleQuestChanged;
+            _subscribedQuests.QuestEnded += HandleQuestChanged;
+            RefreshActiveQuest();
+        }
+
+        public override void OnStopServer()
+        {
+            if (_subscribedQuests == null)
+            {
+                return;
+            }
+
+            _subscribedQuests.QuestStarted -= HandleQuestChanged;
+            _subscribedQuests.QuestEnded -= HandleQuestChanged;
+            _subscribedQuests = null;
+        }
+
+        public override void OnStartClient()
+        {
+            ApplyMarker(_hasActiveQuest);
+        }
+
+        private void HandleQuestChanged(IQuestView quest)
+        {
+            if (quest.ContextId == _trace.QuestContextId)
+            {
+                RefreshActiveQuest();
+            }
+        }
+
+        private void RefreshActiveQuest()
+        {
+            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(_trace.QuestContextId);
+        }
+
+        private void OnActiveQuestChanged(bool oldValue, bool newValue)
+        {
+            ApplyMarker(newValue);
+        }
+
+        private void ApplyMarker(bool visible)
+        {
+            if (visible && _marker == null)
+            {
+                _marker = AI_QuestMarker.Create(transform, _markerLocalPosition, _markerFontSize, _markerColor);
+            }
+
+            if (_marker != null)
+            {
+                _marker.Show(visible ? AI_QuestMarker.IN_PROGRESS : null);
+            }
         }
 
         [ServerCallback]

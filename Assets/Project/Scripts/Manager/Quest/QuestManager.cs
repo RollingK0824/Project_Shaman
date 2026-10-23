@@ -75,6 +75,24 @@ public class QuestManager : SceneSingleton<QuestManager>
         return TryGetOpenQuest(giverId, out QuestInstance quest) && quest.State == QuestState.Offered;
     }
 
+    // An accepted quest is finished at this villager / quest target (ContextId), e.g. delivery back to the giver
+    public bool HasActiveAt(string contextId)
+    {
+        if (string.IsNullOrEmpty(contextId))
+        {
+            return false;
+        }
+
+        foreach (QuestInstance quest in _quests)
+        {
+            if (quest.State == QuestState.Active && quest.ContextId == contextId)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private bool TryGetOpenQuest(string giverId, out QuestInstance quest)
     {
         foreach (QuestInstance q in _quests)
