@@ -86,6 +86,14 @@ namespace ProjectShaman.Network.AI
                     RegisterToRegistry();
                 }
             }
+
+            SpeechBubbleOverlay.ShowName(transform, _syncDisplayName);
+        }
+
+        public override void OnStopClient()
+        {
+            SpeechBubbleOverlay.HideName(transform);
+            base.OnStopClient();
         }
 
         private void RegisterToRegistry()
