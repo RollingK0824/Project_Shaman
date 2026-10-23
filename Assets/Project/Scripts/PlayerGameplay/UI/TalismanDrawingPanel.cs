@@ -14,6 +14,7 @@ public class TalismanDrawingPanel : MonoBehaviour
     [SerializeField] private TMP_Dropdown _effectDropdown;
     [SerializeField] private Button _saveButton;
     [SerializeField] private TMP_Text _saveStatus;
+    private TMP_Text _effectDescription;
     private readonly System.Collections.Generic.List<TalismanEffectDefinition> _choices = new();
     private bool _hasInk;
     public string SelectedEffectId => _effectDropdown != null && _effectDropdown.value > 0 && _effectDropdown.value <= _choices.Count
@@ -33,12 +34,35 @@ public class TalismanDrawingPanel : MonoBehaviour
     private void Awake()
     {
         BuildBrushControls();
+        BuildEffectDescription();
         _clearButton.onClick.AddListener(ClearDrawing);
         _closeButton.onClick.AddListener(RequestClose);
         if (_nextButton != null) _nextButton.gameObject.SetActive(false);
         _nameInput.characterLimit = TalismanDrawingData.MaxNameLength;
         _nameInput.onValueChanged.AddListener(_ => RefreshSaveButton());
         if (_effectDropdown != null) _effectDropdown.onValueChanged.AddListener(_ => RefreshSaveButton());
+    }
+    private void BuildEffectDescription()
+    {
+        _effectDescription = Instantiate(_saveStatus, _saveStatus.transform.parent);
+        _effectDescription.name = "SelectedEffectDescription";
+        _effectDescription.raycastTarget = false;
+        _effectDescription.enableAutoSizing = true;
+        _effectDescription.fontSizeMin = 15; _effectDescription.fontSizeMax = 19;
+        _effectDescription.textWrappingMode = TextWrappingModes.Normal;
+        _effectDescription.overflowMode = TextOverflowModes.Overflow;
+        PlayerItemUIStyle.Place(_effectDescription.rectTransform, new Vector2(.5f, .5f), new Vector2(.5f, .5f), new Vector2(0, -48), new Vector2(440, 64));
+        _nameInput.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 80);
+        _effectDropdown.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 15);
+        _saveStatus.rectTransform.anchoredPosition = new Vector2(0, -96);
+        _saveStatus.rectTransform.sizeDelta = new Vector2(440, 28);
+        _saveStatus.enableAutoSizing = true; _saveStatus.fontSizeMin = 13; _saveStatus.fontSizeMax = 16;
+        RefreshEffectDescription();
+    }
+    private void RefreshEffectDescription()
+    {
+        var definition = string.IsNullOrEmpty(SelectedEffectId) ? null : _choices[_effectDropdown.value - 1];
+        if (_effectDescription != null) _effectDescription.text = definition == null ? "효과를 선택하면 설명이 표시됩니다." : definition.DisplayName + "\n" + definition.Description;
     }
     // Keep tools outside the paper; dialogs stay above them and block input as before.
     private void BuildBrushControls()
@@ -171,6 +195,7 @@ public class TalismanDrawingPanel : MonoBehaviour
     }
     private void RefreshSaveButton()
     {
+        RefreshEffectDescription();
         if (_saveButton != null) _saveButton.interactable = _hasInk && TalismanDrawingData.ValidName(_nameInput.text) && !string.IsNullOrEmpty(SelectedEffectId);
     }
     public void Close()

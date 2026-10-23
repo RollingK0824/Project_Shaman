@@ -42,6 +42,7 @@ namespace ProjectShaman.AI.Core
 
         internal IReadOnlyList<VillagerRuntime> Villagers => _villagers;
         public VillagerRegistry Registry => _factory != null ? _factory.Registry : null;
+        public AIBehaviourConfig Config => _behaviourConfig;
 
         protected override void Awake()
         {
@@ -371,9 +372,11 @@ namespace ProjectShaman.AI.Core
         {
             foreach (VillagerRuntime villager in _villagers)
             {
-                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig);
+                float homeReturnTime = CalculateHomeReturnTime(villager, dayCount);
+                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig,
+                    CalculateTravelSeconds(villager, dayCount), DayClock.ToHour(homeReturnTime), out string blockNote);
                 blocks.RemoveAll(block => block.EndTime <= fromTime);
-                villager.SetToday(blocks, CalculateHomeReturnTime(villager, dayCount));
+                villager.SetToday(blocks, homeReturnTime);
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
                 villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks));
                 PlanCorruption(villager, dayCount);
@@ -387,7 +390,7 @@ namespace ProjectShaman.AI.Core
                 {
                     villager.Stress.ApplyMorningDecay();
                 }
-                AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s)");
+                AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] {blockNote} homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s)");
             }
         }
 
@@ -447,7 +450,7 @@ namespace ProjectShaman.AI.Core
                 TickSymptoms(villager, now);
             }
 
-            _conversations?.Tick(_villagers);
+            _conversations?.Tick(_villagers, now);
             _observation?.Tick(_villagers);
         }
 
@@ -566,7 +569,7 @@ namespace ProjectShaman.AI.Core
             AI_Possession possession = villager.Profile.Possession;
             ResolvedRoutine current = villager.Current;
 
-            if (possession == null || possession.TodayPlan == null || villager.IsHomeOrdered || current.Category != RoutineCategory.Rest)
+            if (possession == null || possession.TodayPlan == null || villager.IsHomeOrdered || (current.Category != RoutineCategory.Rest && current.Category != RoutineCategory.Work))
             {
                 return;
             }
@@ -648,7 +651,8 @@ namespace ProjectShaman.AI.Core
         private void TryAssignWaitingStation(VillagerRuntime villager)
         {
             ResolvedRoutine current = villager.Current;
-            if (!current.IsWaitingForStation || villager.IsHomeOrdered || current.Source == null || Time.time < villager.NextStationRetryTime)
+            if (!current.IsWaitingForStation || villager.IsHomeOrdered || current.Source == null || Time.time < villager.NextStationRetryTime
+                || (villager.Conversation != null && villager.Conversation.IsInSession))
             {
                 return;
             }
@@ -768,6 +772,29 @@ namespace ProjectShaman.AI.Core
         private int GetBlockSeed(VillagerRuntime villager, int dayCount)
         {
             return unchecked(_factory.Seed * 486187739 + villager.Profile.Index * 16777619 + dayCount * 31);
+        }
+
+        private List<float> CalculateTravelSeconds(VillagerRuntime villager, int dayCount)
+        {
+            List<float> result = new List<float>(_behaviourConfig.RoutinesPerDay);
+            VillagerSchedule schedule = villager.Profile.Schedule;
+            float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            Vector3 from = villager.Profile.HomePosition;
+
+            for (int slot = 0; slot < _behaviourConfig.RoutinesPerDay; slot++)
+            {
+                RoutineEntry routine = schedule != null ? schedule.Get(dayCount, slot) : null;
+                if (routine == null || !PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
+                {
+                    result.Add(0f);
+                    continue;
+                }
+
+                result.Add(PathLength(from, place.Center) / speed);
+                from = place.Center;
+            }
+
+            return result;
         }
 
         private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount)

@@ -234,13 +234,14 @@ public class InventoryPanelUI : MonoBehaviour
                     _customSlots[id] = row;
                 }
                 slot.Setup(itemData, plain); slot.gameObject.SetActive(plain > 0);
-                slot.SetUse(() => UseTalisman(talisman, plainId));
+                slot.SetUse(() => { if (_embedded) _selectItem?.Invoke(talisman); else UseTalisman(talisman, plainId); });
             }
         }
         if (blankTemplate != null && blankEffects > 0)
         {
             var row = Instantiate(_itemSlotPrefab, _itemGrid);
-            row.Setup(blankTemplate, blankEffects); row.SetLabel("미사용 효과 부적"); row.SetUse(() => UseTalisman(blankTemplate, null));
+            row.Setup(blankTemplate, blankEffects); row.SetLabel("미사용 효과 부적");
+            row.SetUse(() => { if (_embedded) _selectItem?.Invoke(blankTemplate); else UseTalisman(blankTemplate, null); });
             _customSlots["effect-blanks"] = row;
         }
         if (_talismans != null && _talismans.DrawnEffectCount > 0)
@@ -248,7 +249,7 @@ public class InventoryPanelUI : MonoBehaviour
             TalismanItemData template = null;
             foreach (var type in _talismans.ItemTypes) if (type.IsEffectTalisman && _talismans.GetInstances(type).Count > 0) { template = type; break; }
             var row = Instantiate(_itemSlotPrefab, _itemGrid);
-            row.Setup(template, _talismans.DrawnEffectCount); row.SetLabel("드로잉된 효과 부적"); row.SetUse(OpenEffectGroup);
+            row.Setup(template, _talismans.DrawnEffectCount); row.SetLabel("문양 부적"); row.SetUse(OpenEffectGroup);
             _customSlots["effect-group"] = row;
         }
         if (_embedded)

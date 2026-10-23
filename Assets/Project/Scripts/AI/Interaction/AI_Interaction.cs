@@ -54,6 +54,7 @@ namespace ProjectShaman.AI.Interaction
         public IVillagerInteractable Active => _active;
         public InteractionResponse ActiveResponse => _activeResponse;
         public int Serial => _serial;
+        public InteractionEndReason LastEndReason { get; private set; }
 
         public event Action<InteractionResult, InteractionEndReason> OnInteractionEnded;
 
@@ -351,6 +352,7 @@ namespace ProjectShaman.AI.Interaction
             _activeId = null;
             _activeKind = InteractionKind.None;
             _serial++;
+            LastEndReason = reason;
 
             InteractionResult result = InteractableRegistry.IsAlive(target)
                 ? target.EndInteraction(CreateContext(), response, reason)

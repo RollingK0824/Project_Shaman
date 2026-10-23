@@ -22,6 +22,8 @@ namespace ProjectShaman.AI.Interaction
         private readonly HashSet<AI_Conversation> _usedThisCheck = new HashSet<AI_Conversation>();
         private readonly List<ConversationSession> _endBuffer = new List<ConversationSession>();
         private readonly List<AI_Conversation> _leaveBuffer = new List<AI_Conversation>();
+        private readonly Dictionary<AI_Conversation, float> _remaining = new Dictionary<AI_Conversation, float>();
+        private readonly Dictionary<ConversationSession, string> _leaveReasons = new Dictionary<ConversationSession, string>();
 
         private float _nextCheckTime;
         private int _serial;
@@ -37,7 +39,7 @@ namespace ProjectShaman.AI.Interaction
             _content = content ?? new DebugConversationContent();
         }
 
-        public void Tick(IReadOnlyList<AIManager.VillagerRuntime> villagers)
+        public void Tick(IReadOnlyList<AIManager.VillagerRuntime> villagers, float dayNow)
         {
             float now = Time.time;
             TickSessions(now);
@@ -48,7 +50,7 @@ namespace ProjectShaman.AI.Interaction
             }
 
             _nextCheckTime = now + Config.ConversationCheckInterval;
-            CollectEligible(villagers);
+            CollectEligible(villagers, dayNow);
             TryStartSessions(now);
         }
 
@@ -88,6 +90,11 @@ namespace ProjectShaman.AI.Interaction
                     {
                         participant.Leave(reason);
                         _leaveBuffer.Add(participant);
+
+                        if (!_leaveReasons.ContainsKey(session))
+                        {
+                            _leaveReasons[session] = $"{participant.VillagerId} {reason}";
+                        }
                     }
                 }
 
@@ -119,8 +126,13 @@ namespace ProjectShaman.AI.Interaction
 
             foreach (ConversationSession session in _endBuffer)
             {
-                End(session, session.Count < 2 ? "not enough participants" : "time over");
+                End(session, session.Count < 2 ? NotEnoughReason(session) : "time over");
             }
+        }
+
+        private string NotEnoughReason(ConversationSession session)
+        {
+            return _leaveReasons.TryGetValue(session, out string first) ? $"not enough participants, first left: {first}" : "not enough participants";
         }
 
         private void End(ConversationSession session, string reason)
@@ -134,13 +146,15 @@ namespace ProjectShaman.AI.Interaction
             }
 
             _sessions.Remove(session);
+            _leaveReasons.Remove(session);
             AILog.Log(AILog.INTERACTION, $"Conversation end {session} ({reason}, lines={session.LineCount})");
         }
 
-        private void CollectEligible(IReadOnlyList<AIManager.VillagerRuntime> villagers)
+        private void CollectEligible(IReadOnlyList<AIManager.VillagerRuntime> villagers, float dayNow)
         {
             _eligible.Clear();
             _usedThisCheck.Clear();
+            _remaining.Clear();
 
             foreach (AIManager.VillagerRuntime villager in villagers)
             {
@@ -155,10 +169,17 @@ namespace ProjectShaman.AI.Interaction
                     continue;
                 }
 
+                float remaining = Mathf.Min(villager.Current.EndTime, villager.HomeReturnTime) - dayNow;
+                if (remaining < Config.ConversationDurationMin)
+                {
+                    continue;
+                }
+
                 VillagerActivity activity = conversation.CurrentActivity();
                 if (activity == VillagerActivity.Rest || activity == VillagerActivity.Work)
                 {
                     _eligible.Add(conversation);
+                    _remaining[conversation] = remaining;
                 }
             }
 
@@ -255,7 +276,7 @@ namespace ProjectShaman.AI.Interaction
 
         private void StartRestTalk(float now)
         {
-            float duration = RandomDuration();
+            float duration = GroupDuration();
             ConversationSession session = new ConversationSession(++_serial, ConversationKind.RestTalk, now, now + duration);
 
             for (int i = 0; i < _group.Count; i++)
@@ -275,7 +296,7 @@ namespace ProjectShaman.AI.Interaction
 
         private void StartWorkChatter(float now)
         {
-            ConversationSession session = new ConversationSession(++_serial, ConversationKind.WorkChatter, now, now + RandomDuration());
+            ConversationSession session = new ConversationSession(++_serial, ConversationKind.WorkChatter, now, now + GroupDuration());
 
             foreach (AI_Conversation member in _group)
             {
@@ -311,9 +332,19 @@ namespace ProjectShaman.AI.Interaction
             return _pairCooldowns.TryGetValue(PairKey(a, b), out float until) && now < until;
         }
 
-        private float RandomDuration()
+        private float GroupDuration()
         {
-            return Config.ConversationDurationMin + (float)_random.NextDouble() * (Config.ConversationDurationMax - Config.ConversationDurationMin);
+            float duration = Config.ConversationDurationMin + (float)_random.NextDouble() * (Config.ConversationDurationMax - Config.ConversationDurationMin);
+
+            foreach (AI_Conversation member in _group)
+            {
+                if (_remaining.TryGetValue(member, out float remaining))
+                {
+                    duration = Mathf.Min(duration, remaining);
+                }
+            }
+
+            return duration;
         }
 
         private AI_Conversation GetConversation(AI_Core core)

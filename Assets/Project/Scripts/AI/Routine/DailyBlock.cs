@@ -9,12 +9,13 @@ namespace ProjectShaman.AI.Routine
         public int EndHour;
         public float StartTime;
         public float EndTime;
+        public float DepartTime;
 
         public float Length => EndTime - StartTime;
 
         public bool Contains(float time)
         {
-            return time >= StartTime && time < EndTime;
+            return time >= DepartTime && time < EndTime;
         }
 
         // [start0, end0, start1, end1, ...] in clock hours; the pair's position is the block index (= schedule slot)
@@ -32,7 +33,7 @@ namespace ProjectShaman.AI.Routine
 
         public override string ToString()
         {
-            return $"#{Index} {StartHour:00}:00~{EndHour:00}:00 [{StartTime:F1}s~{EndTime:F1}s]";
+            return $"#{Index} {StartHour:00}:00~{EndHour:00}:00 [depart {DepartTime:F1}s, {StartTime:F1}s~{EndTime:F1}s]";
         }
     }
 }

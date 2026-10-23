@@ -164,12 +164,25 @@ namespace ProjectShaman.Network.AI
             }
         }
 
-        // Requests end at night; a tool still carried is put down so the owner can find it again tomorrow
+        // Requests end at night; a tool still carried goes back to its storage so the owner can find it again tomorrow
         private void HandleNightStart()
         {
-            if (_carrier != null)
+            if (_carrier == null)
+            {
+                return;
+            }
+
+            if (!PlaceRegistry.TryGet(_tool.HomeStoragePlaceId, out PlaceArea storage))
             {
                 DropFromCarrier(_carrier.transform.position, "night started");
+                return;
+            }
+
+            DropFromCarrier(storage.GetRandomPoint(new System.Random((int)netId)), $"night started, returned to {storage.PlaceId}");
+
+            if (TryGetComponent(out NetworkTransformBase networkTransform))
+            {
+                networkTransform.ServerTeleport(transform.position, transform.rotation);
             }
         }
 

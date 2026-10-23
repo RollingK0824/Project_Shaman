@@ -355,6 +355,10 @@ namespace ProjectShaman.Network.AI
             {
                 handler.Memory.RecordToolSighting(tool);
             }
+            else if (inHand)
+            {
+                handler.PutAwayUnlessNeeded($"received from {_dialoguePlayer.name}");
+            }
 
             AILog.Log(AILog.TOOL, villagerId, $"Delivered {tool.InstanceId}({tool.TypeId}) by {_dialoguePlayer.name} ({(inHand ? "in hand" : "at feet")})");
             GameplayEvents.RaiseActionDone(playerId, QuestActions.DELIVER, tool.TypeId, villagerId);
