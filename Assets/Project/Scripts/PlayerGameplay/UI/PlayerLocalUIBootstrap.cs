@@ -31,6 +31,7 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     private NetworkIdentity _identity;
     private PlayerInputReader _input;
     private PlayerStressHUD _hud;
+    public PlayerStatusHUD StatusHUD => _hud != null ? _hud.StatusHUD : null;
     private PlayerCrosshair _crosshair;
     private PlayerInteractor _interactor;
 

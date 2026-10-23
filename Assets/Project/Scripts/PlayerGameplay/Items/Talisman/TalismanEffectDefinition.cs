@@ -1,6 +1,7 @@
 using UnityEngine;
 
-public enum TalismanEffectType { MovementSpeed, StressGain, StressRecovery }
+// Existing numeric values remain readable for older definitions and integrations.
+public enum TalismanEffectType { MovementSpeed, StressGain, StressRecovery, StressRelief, HealthRestore }
 public enum TalismanStackPolicy { RefreshDuration, RejectWhileActive }
 
 [CreateAssetMenu(menuName = "Project Shaman/Talisman Effect", fileName = "TalismanEffect")]
@@ -16,7 +17,14 @@ public class TalismanEffectDefinition : ScriptableObject
     [SerializeField] private bool _consumeOnUse = true;
     public string EffectId => _effectId;
     public string DisplayName => _displayName;
-    public string Description => _description;
+    public string Description => _effectType switch
+    {
+        TalismanEffectType.MovementSpeed => $"{_duration:0.#}초 동안 이동속도가 {_magnitude:0.##}배가 됩니다.",
+        TalismanEffectType.StressRelief => $"사용 즉시 스트레스가 {_magnitude:0.#} 감소합니다.",
+        TalismanEffectType.HealthRestore => $"사용 즉시 체력이 {_magnitude:0.#} 회복됩니다.",
+        _ => _description
+    };
+    public bool IsInstant => _effectType == TalismanEffectType.StressRelief || _effectType == TalismanEffectType.HealthRestore;
     public TalismanEffectType EffectType => _effectType;
     public float Magnitude => _magnitude;
     public float Duration => _duration;
@@ -28,10 +36,12 @@ public class TalismanEffectDefinition : ScriptableObject
         TalismanEffectType.MovementSpeed => $"이동속도 ×{_magnitude:0.##}",
         TalismanEffectType.StressGain => $"받는 스트레스 ×{_magnitude:0.##}",
         TalismanEffectType.StressRecovery => $"스트레스 회복량 ×{_magnitude:0.##}",
+        TalismanEffectType.StressRelief => $"스트레스 -{_magnitude:0.#}",
+        TalismanEffectType.HealthRestore => $"체력 +{_magnitude:0.#}",
         _ => _displayName
     };
     public bool IsValid => !string.IsNullOrWhiteSpace(_effectId) && _effectId.Length <= 64 &&
-        !float.IsNaN(_magnitude) && !float.IsInfinity(_magnitude) && _magnitude >= 0f && _magnitude <= 10f &&
+        !float.IsNaN(_magnitude) && !float.IsInfinity(_magnitude) && _magnitude > 0f && _magnitude <= (IsInstant ? 10000f : 10f) &&
         !float.IsNaN(_duration) && !float.IsInfinity(_duration) && _duration > 0f &&
         System.Enum.IsDefined(typeof(TalismanEffectType), _effectType) &&
         System.Enum.IsDefined(typeof(TalismanStackPolicy), _stackPolicy);
