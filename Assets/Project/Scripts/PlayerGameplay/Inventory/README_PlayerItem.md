@@ -53,7 +53,7 @@ PlayerGameplay Inventory·Items·Stress·UI, Player/UI 프리팹 범위 안에�
 - Scripts/PlayerGameplay/UI/PlayerStressHUDBootstrap.cs
 - Prefabs/UI/CraftingPanelUI.prefab
 - Prefabs/UI/Inventory/InventoryPanelUI.prefab
-- Prefabs/UI/Fonts/PlayerItemFont.asset (기존 한글 폰트의 UI 전용 복사본)
+- Visuals/Fonts/PlayerItemFont.asset (기존 한글 폰트의 UI 전용 복사본)
 
 ## Inspector / 수첩 담당자 연결
 

@@ -76,7 +76,7 @@ public class InventoryLayoutTests
         var collection=player.AddComponent<PlayerTalismanCollection>();
         var owner=player.AddComponent<PlayerLocalUIBootstrap>(); owner.enabled=false;
         Set(owner,"_inventoryPanelPrefab",LoadUI<InventoryPanelUI>("Inventory/InventoryPanelUI.prefab"));
-        Set(owner,"_notebookHUDIcon",AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Project/Visuals/Items/NoteBook/NoteBookUI.png"));
+        Set(owner,"_notebookHUDIcon",AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Project/Visuals/Sprites/Items/NoteBook/NoteBookUI.png"));
         var notebook=Keep(Object.Instantiate(LoadUI<GameObject>("PlayerNotebookUI.prefab"))).GetComponent<PlayerNotebookUI>();notebook.Bind(owner);
         var quick=Keep(Object.Instantiate(fixture)).GetComponentInChildren<QuickSlotUI>();quick.Bind(inv,input);
         var hud=Keep(Object.Instantiate(LoadUI<GameObject>("StressHUD.prefab"))).GetComponent<PlayerStressHUD>();hud.Bind(stress,health);stress.SetStress(50);
