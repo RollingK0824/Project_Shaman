@@ -46,6 +46,7 @@ namespace ProjectShaman.AI.Interaction
         private InteractionKind _activeKind;
         private bool _startedWhileHoming;
         private float _deadline;
+        private NavMeshPath _approachPath;
         private float _nextScanTime;
         private int _serial;
         private int _seenDay = -1;
@@ -333,10 +334,33 @@ namespace ProjectShaman.AI.Interaction
                 return 0f;
             }
 
-            Vector3 offset = position - transform.position;
-            offset.y = 0f;
             NavMeshAgent agent = GetComponent<NavMeshAgent>();
             float speed = agent != null && agent.speed > 0.1f ? agent.speed : 0.1f;
+
+            // Roads bend: the time it takes is the length of the walk along the NavMesh, not the straight line
+            // (a look-in at a house 115m away timed out 1.5m short of the door on the straight-line estimate)
+            if (agent != null && agent.isOnNavMesh)
+            {
+                if (_approachPath == null)
+                {
+                    _approachPath = new NavMeshPath();
+                }
+
+                if (agent.CalculatePath(position, _approachPath) && _approachPath.status != NavMeshPathStatus.PathInvalid)
+                {
+                    Vector3[] corners = _approachPath.corners;
+                    float length = 0f;
+                    for (int i = 1; i < corners.Length; i++)
+                    {
+                        length += Vector3.Distance(corners[i - 1], corners[i]);
+                    }
+
+                    return length / speed;
+                }
+            }
+
+            Vector3 offset = position - transform.position;
+            offset.y = 0f;
             return offset.magnitude / speed;
         }
 

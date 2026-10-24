@@ -800,6 +800,12 @@ namespace ProjectShaman.AI.Core
             // Only if the detour still ends at home before dark (delays during the day eat the budget)
             float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
             Vector3 housePoint = house.GetHomePoint();
+            if (!HasCompletePath(villager.Core.transform.position, housePoint))
+            {
+                AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: no complete walkable path to the house");
+                return;
+            }
+
             float needed = (PathLength(villager.Core.transform.position, housePoint) + PathLength(housePoint, villager.Profile.HomePosition)) / speed
                 + _behaviourConfig.NeighbourVisitLingerSeconds + _behaviourConfig.HomeReturnMarginSeconds;
             float daylight = TimeManager.DAY_DURATION - GetDayElapsed();
@@ -856,6 +862,17 @@ namespace ProjectShaman.AI.Core
 
             float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + visitSeconds + _behaviourConfig.HomeReturnMarginSeconds;
             return Mathf.Max(0f, TimeManager.DAY_DURATION - lead);
+        }
+
+        // A walk that really reaches the point: a partial path only gets as far as a wall and the villager would stand there
+        private static bool HasCompletePath(Vector3 from, Vector3 to)
+        {
+            if (_pathBuffer == null)
+            {
+                _pathBuffer = new NavMeshPath();
+            }
+
+            return NavMesh.CalculatePath(from, to, NavMesh.AllAreas, _pathBuffer) && _pathBuffer.status == NavMeshPathStatus.PathComplete;
         }
 
         // Walking distance along the NavMesh (roads bend), straight line when no path is found
