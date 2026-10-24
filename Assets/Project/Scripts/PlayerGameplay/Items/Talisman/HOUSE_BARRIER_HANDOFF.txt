@@ -1,0 +1,62 @@
+집 결계 우클릭 연결 / Player4 모델 참조 확인 (2026-10-24)
+
+Player 쪽 구현
+- PlayerItemController.Awake가 PlayerHouseBarrierPlacement를 설치합니다.
+- 좌클릭의 TalismanItem / BarrierTalismanUseAction / 개인 방어막 경로는 그대로입니다.
+- 우클릭: 사거리 3m, 첫 충돌면, 주민이 배정된 PlaceType.Home 영역인지 검사합니다.
+- 성공 시 벽/바닥에 부적 표시, 1개 소모, 해당 집 구역을 GhostBarrierRegistry에 등록합니다.
+- 기본 지속 시간 60초(기존 개인 결계와 같은 임시 기본값), 중복 집 부착 불가.
+- 만료, 집 비활성화, 집 OwnerId 변경 시 보호가 해제됩니다. 집 부착물은 사용자 사망과 독립적입니다.
+- 온라인 어댑터가 없으면 안내만 표시하고 소모/생성을 하지 않습니다.
+
+Network 담당 연결
+1. 로컬 플레이어의 PlayerHouseBarrierPlacement.PlacementRequested(ItemUseContext)를 구독합니다.
+   현재 InputManager를 수정하지 않고 우클릭을 읽습니다. 추후 SecondaryUse 액션으로 옮길 때
+   기존 마우스 폴링을 함께 제거해 중복 요청을 방지하세요. UI/리바인딩 중에는 Player 맵이 꺼져야 합니다.
+2. 기존 NetPlayerItemUse.CmdUseItem에 그대로 보내지 마세요. 그 경로의 Barrier 분기는 자기 보호입니다.
+   우클릭을 구분하는 Command에서 아이템 ID, aim origin/direction을 전달합니다.
+3. 서버가 sender/소유권/생존/라운드/쿨다운/조준값/장착/보유량을 검증합니다.
+   클라이언트가 집 ID나 보호 시간, 소모량을 확정하지 않습니다.
+4. ItemAttackAuthority에 서버 판정 권한을 연결한 후 다음 API를 호출합니다.
+   PlayerHouseBarrierPlacement.TryPlaceAuthoritative(context, isEquipped, tryConsumeOne,
+       registerSpawn, despawn, out HouseBarrierWard ward)
+   - isEquipped: NetPlayerEquipment.EquippedItem == context.Data
+   - tryConsumeOne: NetPlayerInventory.ServerConsume(context.Data, 1)
+   - registerSpawn: 아직 보호가 활성화되지 않은 서버 ward를 등록하고 bool 반환.
+     콜백은 동기식이며 예외 없이 동작해야 합니다. 이 단계에서 클라이언트에 성공을 알리지 마세요.
+   - despawn: 롤백/만료 시 서버 기록과 클라이언트 시각 효과를 제거하고 오브젝트 파괴.
+5. 반환값 true일 때만 서버에서 PlayerItemActions.ReportUse(owner, data) 1회와
+   필요한 QuestTargets.NotifyItemUsed를 호출합니다. 요청/RPC/VFX에서는 성공 보고 금지.
+   PlacementConfirmed는 같은 성공에 발생하는 별도 알림입니다. 양쪽에서 ReportUse하지 마세요.
+6. 성공 후 HomeId, ResidentId, 부착 transform.position/forward, 서버 만료 시각을 동기화합니다.
+   클라이언트는 부적 모습만 생성합니다. Arm/소모/AI 보호 등록은 서버에서만 수행합니다.
+   서버 ward에는 NetworkIdentity가 없으므로 NetworkServer.Spawn을 바로 호출하는 방식은 아닙니다.
+   기존 NetPlayerBarrier처럼 서버 상태 + 클라이언트 연출 또는 별도 네트워크 표시물을 사용하세요.
+7. 라운드 종료/서버 종료 시 살아 있는 ward.Expire()를 호출하고 늦은 접속자에게도 상태를 보냅니다.
+
+AI 담당 연결 (아직 실제 진입 차단 아님)
+- 현재 AI/Ghost/Targets/GhostTargetRegistry.cs의 IsBlocked 검사는 행동 대상 선택만 제외합니다.
+- HouseBarrierWard.Blocks(position, verb)는 배정된 집의 PlaceArea.Contains(position)를 사용합니다.
+- 목적지/경로 갱신/이동 중 구역 진입 검사에서도 이 계약을 소비해야 실제 귀신 출입이 차단됩니다.
+- 이동 경로가 집을 통과하는 경우, 이미 집 내부에 있는 귀신, 이미 선택된 공격 대상의 재검증,
+  미니언 적용 여부는 AI 담당자가 함께 처리해야 합니다. 플레이어/주민 이동을 막는 공용 장애물은 추가하지 않았습니다.
+
+Player4 목 뒤 관통 원인 / Network prefab 담당 연결
+- 로컬 Player (4).prefab은 보정 메시를 사용하지만 NetPlayer4.prefab은 원본 PL_4.fbx 메시를 사용합니다.
+- 실제 NetPlayer4 미리보기에서 달리기 중 목 아래/등에 피부가 튀어나오는 현상을 재현했습니다.
+- 아래 기존 Player 자산을 미리보기 인스턴스에만 연결하자 관통이 사라졌습니다.
+  뼈 배열의 이름/순서 일치도 확인했습니다. Network prefab 파일은 수정하지 않았습니다.
+- Assets/Project/Prefabs/Network/Player/NetPlayer4.prefab의 다음 SkinnedMeshRenderer를
+  Assets/Project/Prefabs/Player/PlayerPrefabs/Player (4).prefab과 일치시키세요.
+  Human.001 Mesh -> PL_4_HanbokBody.asset
+  Human.001 Materials -> 기존 피부 재질 + 두 번째 슬롯 PL_4_Underpants.mat (총 2개)
+  SM_Jeogori01b Mesh -> PL_4_HanbokSleeves.asset
+  SM_Daeran_Chima Mesh -> PL_4_HanbokSkirt.asset
+  위 4개 자산 위치: Assets/Project/Prefabs/Player/PlayerPrefabs/
+  Animator/Avatar/NetworkIdentity/Network 컴포넌트는 교체할 필요 없습니다.
+
+검증 범위
+- Unity 컴파일, 실제 Player4 prefab/inventory + 테스트 집의 판정/트랜잭션 API 검사.
+- 실제 Player4/소금 프리팹/스트레스 Volume을 사용한 최대 스트레스 비교 렌더.
+- 실제 로컬/Network Player4를 격리 미리보기에서 비교. 원본 프리팹/씬 저장 없음.
+- 실제 멀티플레이, 실제 귀신 경로 차단, Play 입력부터 종료까지의 통합 테스트는 미검증입니다.

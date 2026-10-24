@@ -34,6 +34,8 @@ public class PlayerFeedbackController : MonoBehaviour
 
     [Header("Post Processing")]
     [SerializeField] private float _volumeFadeSpeed = 6f;
+    [Tooltip("Limits the stress vignette so lower-right held items remain readable at maximum stress.")]
+    [SerializeField, Range(0f, 1f)] private float _maxStressVolumeWeight = .7f;
 
     private PlayerHealth _playerHealth;
     private PlayerStressController _stressController;
@@ -192,9 +194,11 @@ public class PlayerFeedbackController : MonoBehaviour
     {
         float target = _stressController != null ? _stressController.FeedbackIntensity : 0f;
         _stressIntensity = Mathf.MoveTowards(_stressIntensity, target, _stressBlendSpeed * Time.deltaTime);
-        float high = _stressController != null ? _stressController.HighIntensity : 0f;
-        _stressVolumeWeight = Mathf.MoveTowards(_stressVolumeWeight, high, _stressBlendSpeed * Time.deltaTime);
-        if (_stressVolume != null) _stressVolume.weight = _stressVolumeWeight;
+        // Volume blending also weakens vignette smoothness, so a linear low weight
+        // is barely visible. Keep the high-stress threshold and ease in above it.
+        float vignette = _stressController != null ? Mathf.Sqrt(_stressController.HighIntensity) : 0f;
+        _stressVolumeWeight = Mathf.MoveTowards(_stressVolumeWeight, vignette, _stressBlendSpeed * Time.deltaTime);
+        if (_stressVolume != null) _stressVolume.weight = _stressVolumeWeight * _maxStressVolumeWeight;
 
         if (!HasAudioController)
         {
