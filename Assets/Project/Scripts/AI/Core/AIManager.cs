@@ -284,7 +284,10 @@ namespace ProjectShaman.AI.Core
 
             string ghostId = possession.GhostId;
             villager.Profile.Possession = null;
-            villager.Profile.ExorcisedDay = _time != null ? _time.DayCount : 0;
+            // The exorcism belongs to the night it was won in. A defense that ends as morning breaks is already counted
+            // in the new day, so that morning is the "day after": the freed villager can thank the players right away
+            int night = _time != null ? (_time.CurrentTimePhase == TimeOfDay.Day ? _time.DayCount - 1 : _time.DayCount) : 0;
+            villager.Profile.ExorcisedDay = Mathf.Max(0, night);
             Destroy(possession);
 
             // Rumours of what the ghost did through this body die with it
