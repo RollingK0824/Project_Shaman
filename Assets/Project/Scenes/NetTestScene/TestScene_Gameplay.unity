@@ -24,7 +24,7 @@ RenderSettings:
   m_AmbientEquatorColor: {r: 0.24, g: 0.29, b: 0.4, a: 1}
   m_AmbientGroundColor: {r: 0.192, g: 0.232, b: 0.32000002, a: 0.8}
   m_AmbientIntensity: 1
-  m_AmbientMode: 0
+  m_AmbientMode: 3
   m_SubtractiveShadowColor: {r: 0.42, g: 0.478, b: 0.627, a: 1}
   m_SkyboxMaterial: {fileID: 2100000, guid: 4f3279aeeec5bf44fae5430c2877d7c4, type: 2}
   m_HaloStrength: 0.5
@@ -35,7 +35,7 @@ RenderSettings:
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
-  m_ReflectionIntensity: 1
+  m_ReflectionIntensity: 0.244
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 2096961661}
   m_UseRadianceAmbientProbe: 0
@@ -6470,6 +6470,7 @@ MonoBehaviour:
   - {fileID: 185880902}
   - {fileID: 538664954}
   _fallbackSpawnRadius: 15
+  _airSpawnHeightJitter: 1.5
   _isRunning: 0
   _settingsInfo: 
   _waveIndex: 0
@@ -45316,6 +45317,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1609645646}
     m_Modifications:
+    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.349
+      objectReference: {fileID: 0}
     - target: {fileID: 1030994777, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Name
       value: Wall01c (3)
@@ -45395,10 +45400,6 @@ PrefabInstance:
     - target: {fileID: 9032231917269049725, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Layer
       value: 7
-      objectReference: {fileID: 0}
-    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.349
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -76389,7 +76390,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &1506071924
 Transform:
   m_ObjectHideFlags: 0
@@ -88255,6 +88256,10 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 378088403}
     m_Modifications:
+    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: -0.349
+      objectReference: {fileID: 0}
     - target: {fileID: 1030994777, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Name
       value: Wall01c (10)
@@ -88334,10 +88339,6 @@ PrefabInstance:
     - target: {fileID: 9032231917269049725, guid: abc00000000013582911179529913124, type: 3}
       propertyPath: m_Layer
       value: 7
-      objectReference: {fileID: 0}
-    - target: {fileID: 1030994799, guid: abc00000000002760254284480936544, type: 3}
-      propertyPath: m_LocalPosition.z
-      value: -0.349
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -100597,7 +100598,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2096961658}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.05901855, y: 0.9185124, z: -0.36096904, w: 0.15017706}
+  m_LocalRotation: {x: -0.06537271, y: 0.9194962, z: -0.34668583, w: -0.17338452}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -100621,7 +100622,7 @@ MonoBehaviour:
   m_CustomShadowLayers: 0
   m_LightCookieSize: {x: 1, y: 1}
   m_LightCookieOffset: {x: 0, y: 0}
-  m_SoftShadowQuality: 1
+  m_SoftShadowQuality: 3
   m_RenderingLayersMask:
     serializedVersion: 0
     m_Bits: 1
@@ -100712,7 +100713,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::DayNightCycleController
   directionalLight: {fileID: 2096961661}
   skyboxMaterial: {fileID: 2100000, guid: 4f3279aeeec5bf44fae5430c2877d7c4, type: 2}
-  cycleProgress: 0
+  cycleProgress: 0.365
   autoSimulatePreview: 1
   previewCycleDuration: 24
   startAzimuthAngle: -65
@@ -100722,11 +100723,11 @@ MonoBehaviour:
   maxLightElevation: 48
   dayLightColor: {r: 0.95, g: 0.91, b: 0.85, a: 1}
   sunsetLightColor: {r: 0.95, g: 0.58, b: 0.38, a: 1}
-  nightLightColor: {r: 0.22, g: 0.35, b: 0.52, a: 1}
+  nightLightColor: {r: 0.090512626, g: 0.12449778, b: 0.16981131, a: 1}
   dayLightIntensity: 1.1
-  nightLightIntensity: 0.6
+  nightLightIntensity: 0.1
   dayAmbientColor: {r: 0.24, g: 0.29, b: 0.4, a: 1}
-  nightAmbientColor: {r: 0.08, g: 0.12, b: 0.2, a: 1}
+  nightAmbientColor: {r: 0.08285868, g: 0.1003227, b: 0.13207549, a: 1}
   dayFogColor: {r: 0.51, g: 0.54, b: 0.6, a: 1}
   nightFogColor: {r: 0.06, g: 0.09, b: 0.14, a: 1}
 --- !u!1 &2100476337
