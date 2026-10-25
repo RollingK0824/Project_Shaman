@@ -64,12 +64,13 @@ namespace ProjectShaman.AI.Routine
 
         private void ReserveStation(VillagerProfile profile, PlaceArea place, WorkStation preferredStation, ref ResolvedRoutine resolved)
         {
-            if (resolved.Category != RoutineCategory.Work || place.Stations.Count == 0 || resolved.CorruptionAxis == CorruptionAxis.Place)
+            if (resolved.Category != RoutineCategory.Work || !place.HasStationFor(resolved.ActionId) || resolved.CorruptionAxis == CorruptionAxis.Place)
             {
                 return;
             }
 
-            if (preferredStation != null && place.OwnsStation(preferredStation) && preferredStation.OccupantId == profile.VillagerId)
+            if (preferredStation != null && place.OwnsStation(preferredStation) && preferredStation.OccupantId == profile.VillagerId
+                && preferredStation.Accepts(resolved.ActionId))
             {
                 resolved.Station = preferredStation;
                 resolved.TargetPosition = preferredStation.StandPosition;
