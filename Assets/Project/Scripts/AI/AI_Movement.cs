@@ -9,6 +9,9 @@ namespace ProjectShaman.AI
     {
         private NavMeshAgent agent;
         private float defaultSpeed;
+        // Callers set the speed they want; a slow effect scales it without them knowing
+        private float baseSpeed;
+        private float speedMultiplier = 1f;
 
         public bool IsStopped => agent != null && agent.isStopped;
         public bool HasReachedDestination
@@ -27,21 +30,39 @@ namespace ProjectShaman.AI
         {
             agent = GetComponent<NavMeshAgent>();
             defaultSpeed = agent != null ? agent.speed : 0f;
+            baseSpeed = defaultSpeed;
         }
 
         public void SetSpeed(float speed)
         {
-            if (agent != null)
-            {
-                agent.speed = Mathf.Max(0.1f, speed);
-            }
+            baseSpeed = Mathf.Max(0.1f, speed);
+            ApplySpeed();
         }
 
         public void ResetSpeed()
         {
+            baseSpeed = defaultSpeed;
+            ApplySpeed();
+        }
+
+        // 1 = normal. Kept across SetSpeed/ResetSpeed until set back
+        public void SetSpeedMultiplier(float multiplier)
+        {
+            speedMultiplier = Mathf.Clamp(multiplier, 0.05f, 1f);
+            ApplySpeed();
+        }
+
+        // Jump to a point on the NavMesh without walking there (the caller has checked it is reachable)
+        public bool Warp(Vector3 position)
+        {
+            return agent != null && agent.isActiveAndEnabled && agent.Warp(position);
+        }
+
+        private void ApplySpeed()
+        {
             if (agent != null)
             {
-                agent.speed = defaultSpeed;
+                agent.speed = Mathf.Max(0.1f, baseSpeed * speedMultiplier);
             }
         }
 
