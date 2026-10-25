@@ -25,6 +25,7 @@ namespace ProjectShaman.Network.AI
 
         private AI_GhostEntity _entity;
         private AI_ChannelGauge _gauge;
+        private AI_RevealOutline _outline;
         private NetworkTransformBase _networkTransform;
 
         // Channel snapshot at the last server change: elapsed seconds then, total seconds, pause end and slow window
@@ -95,9 +96,11 @@ namespace ProjectShaman.Network.AI
             }
 
             _gauge = AI_ChannelGauge.Create(transform, _gaugeLocalPosition, _gaugeRadius, _gaugeWidth, _gaugeBackColor, _gaugeFillColor);
+            _outline = gameObject.AddComponent<AI_RevealOutline>();
         }
 
-        // Only players near the ghost see how far its action has come, unless a bell revealed it
+        // Only players near the ghost see how far its action has come, unless a bell revealed it.
+        // Revealed: every peer turns the glow outline on and off from the same synced end time (late joiners included)
         private void Update()
         {
             if (_gauge == null)
@@ -105,8 +108,11 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
+            bool revealed = IsRevealed;
+            _outline.Show(revealed);
+
             float progress = ChannelProgress;
-            if (progress >= 0f && !IsRevealed && !IsViewerWithin(_gaugeShowDistance))
+            if (progress >= 0f && !revealed && !IsViewerWithin(_gaugeShowDistance))
             {
                 progress = -1f;
             }
