@@ -26,6 +26,8 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private float _channelElapsedAtSync;
         [SyncVar] private double _channelSyncTime;
         [SyncVar] private double _channelPausedUntil;
+        // Bell: until this NetworkTime every player sees the gauge, near or far
+        [SyncVar] private double _revealedUntil;
 
         public bool IsChanneling => _channelDuration > 0f;
 
@@ -55,6 +57,7 @@ namespace ProjectShaman.Network.AI
             base.OnStartServer();
             _entity.OnChannelChanged += HandleServerChannelChanged;
             _entity.OnChannelEnded += HandleServerChannelEnded;
+            _entity.OnRevealed += HandleServerRevealed;
             _entity.SetSimulationActive(true);
             AILog.Log(AILog.NET, _entity.GhostId, "Ghost entity OnStartServer → Agent/BT enabled");
         }
@@ -63,6 +66,7 @@ namespace ProjectShaman.Network.AI
         {
             _entity.OnChannelChanged -= HandleServerChannelChanged;
             _entity.OnChannelEnded -= HandleServerChannelEnded;
+            _entity.OnRevealed -= HandleServerRevealed;
             base.OnStopServer();
         }
 
@@ -78,7 +82,7 @@ namespace ProjectShaman.Network.AI
             _gauge = AI_ChannelGauge.Create(transform, _gaugeLocalPosition, _gaugeRadius, _gaugeWidth, _gaugeBackColor, _gaugeFillColor);
         }
 
-        // Only players near the ghost see how far its action has come
+        // Only players near the ghost see how far its action has come, unless a bell revealed it
         private void Update()
         {
             if (_gauge == null)
@@ -87,7 +91,8 @@ namespace ProjectShaman.Network.AI
             }
 
             float progress = ChannelProgress;
-            if (progress >= 0f && !IsViewerWithin(_gaugeShowDistance))
+            bool revealed = NetworkTime.time < _revealedUntil;
+            if (progress >= 0f && !revealed && !IsViewerWithin(_gaugeShowDistance))
             {
                 progress = -1f;
             }
@@ -120,6 +125,11 @@ namespace ProjectShaman.Network.AI
         private void HandleServerChannelEnded(AI_GhostEntity entity)
         {
             _channelDuration = 0f;
+        }
+
+        private void HandleServerRevealed(AI_GhostEntity entity, float seconds)
+        {
+            _revealedUntil = System.Math.Max(_revealedUntil, NetworkTime.time + seconds);
         }
     }
 }
