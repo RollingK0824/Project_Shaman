@@ -68,7 +68,12 @@ namespace ProjectShaman.AI.Ghost
         private float _nextDecisionTime;
         private float _nextTargetCheckTime;
 
+        // Server: (ghost, duration) when a channel with time starts, and when it stops for any reason
+        public event System.Action<AI_GhostEntity, float> OnChannelStarted;
+        public event System.Action<AI_GhostEntity> OnChannelEnded;
+
         public string GhostId => _ghostId;
+        public bool IsChanneling => _session != null && _session.IsChanneling;
         public Vector3 Center => _center;
         public float Radius => _radius;
         public bool IsHunter => _isHunter;
@@ -541,6 +546,7 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
+            EndChannel();
             _session.SetCarried(carriable, from);
             _carriedName = carriable.gameObject.name;
 
@@ -567,8 +573,46 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
-            _session.BeginChannel(Time.time);
+            // Carry: the channel is the pick-up, so the drop after carrying is instant
+            float minimum = _config != null ? _config.GhostMinChannelSeconds : 0f;
+            float duration = _session.IsCarrying ? 0f : Mathf.Max(minimum, _session.Action.Duration);
+            _session.BeginChannel(Time.time, duration);
+
+            if (duration > 0f)
+            {
+                AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} for {duration:F1}s");
+                OnChannelStarted?.Invoke(this, duration);
+            }
+
             return true;
+        }
+
+        // Something outside the ghost (a player item) broke the channel: no effect, cost not refunded
+        public bool InterruptChannel(string reason)
+        {
+            if (_session == null || !_session.IsChanneling)
+            {
+                return false;
+            }
+
+            FailCommand($"channel interrupted ({reason})");
+            return true;
+        }
+
+        private void EndChannel()
+        {
+            if (_session == null || !_session.IsChanneling)
+            {
+                return;
+            }
+
+            bool hadTime = _session.ChannelEndTime > _session.ChannelStartTime;
+            _session.EndChannel();
+
+            if (hadTime)
+            {
+                OnChannelEnded?.Invoke(this);
+            }
         }
 
         public bool TickChannel(out bool finished)
@@ -703,6 +747,8 @@ namespace ProjectShaman.AI.Ghost
 
         private void EndSession(float retryDelay)
         {
+            EndChannel();
+
             if (!(_session.Action.IsHunt && _hunt.Contains(_session.Target)))
             {
                 GhostTargetRegistry.Release(_session.Target, _ghostId);
