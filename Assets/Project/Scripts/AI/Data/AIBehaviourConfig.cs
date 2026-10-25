@@ -76,6 +76,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostActionCooldownMax = 30f;
         [SerializeField] private float _ghostCommandRetrySeconds = 1f;
         [SerializeField] private float _ghostCommandTimeoutSeconds = 30f;
+        [SerializeField] private float _ghostMinChannelSeconds = 1.5f;
 
         [Header("Ghost Idle")]
         [SerializeField] private float _ghostStalkMinDistance = 3f;
@@ -225,6 +226,7 @@ namespace ProjectShaman.AI.Data
         public float GhostActionCooldownMax => Mathf.Max(GhostActionCooldownMin, _ghostActionCooldownMax);
         public float GhostCommandRetrySeconds => _ghostCommandRetrySeconds;
         public float GhostCommandTimeoutSeconds => _ghostCommandTimeoutSeconds;
+        public float GhostMinChannelSeconds => Mathf.Max(0f, _ghostMinChannelSeconds);
         public float GhostStalkMinDistance => Mathf.Max(0f, _ghostStalkMinDistance);
         public float GhostStalkMaxDistance => Mathf.Max(GhostStalkMinDistance, _ghostStalkMaxDistance);
         public float GhostStalkSpeed => Mathf.Max(0.1f, _ghostStalkSpeed);

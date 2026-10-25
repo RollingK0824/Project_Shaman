@@ -21,6 +21,7 @@ namespace ProjectShaman.AI.Ghost
         public Vector3 MovePosition { get; set; }
         public IGhostCarriable Carried { get; private set; }
         public Vector3 CarriedFrom { get; private set; }
+        public float ChannelStartTime { get; private set; } = -1f;
         public float ChannelEndTime { get; private set; } = -1f;
 
         public GhostActionShape Shape => Action.Shape;
@@ -42,9 +43,28 @@ namespace ProjectShaman.AI.Ghost
             return carried;
         }
 
-        public void BeginChannel(float now)
+        public void BeginChannel(float now, float duration)
         {
-            ChannelEndTime = now + Action.Duration;
+            ChannelStartTime = now;
+            ChannelEndTime = now + Mathf.Max(0f, duration);
+        }
+
+        public void EndChannel()
+        {
+            ChannelStartTime = -1f;
+            ChannelEndTime = -1f;
+        }
+
+        // 0..1, 1 once the channel time has passed
+        public float ChannelProgress(float now)
+        {
+            if (!IsChanneling)
+            {
+                return 0f;
+            }
+
+            float length = ChannelEndTime - ChannelStartTime;
+            return length <= 0f ? 1f : Mathf.Clamp01((now - ChannelStartTime) / length);
         }
 
         public override string ToString()
