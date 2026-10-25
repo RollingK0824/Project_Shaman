@@ -18,6 +18,8 @@ public class MapMarkerUI : MonoBehaviour
 
     [SerializeField]
     private float _localScale = 1.3f;
+    [SerializeField]
+    private float _otherScale = 0.6f;
 
     // uv: 0..1 on the map picture. angle: degrees, 0 = up on the picture, NaN = no arrow
     public void Set(Vector2 uv, float angle, Color color, string label, bool isLocal)
@@ -26,7 +28,7 @@ public class MapMarkerUI : MonoBehaviour
         rect.anchorMin = uv;
         rect.anchorMax = uv;
         rect.anchoredPosition = Vector2.zero;
-        rect.localScale = Vector3.one * (isLocal ? _localScale : 1f);
+        rect.localScale = Vector3.one * (isLocal ? _localScale : _otherScale);
 
         bool showArrow = !float.IsNaN(angle);
         _arrow.gameObject.SetActive(showArrow);
