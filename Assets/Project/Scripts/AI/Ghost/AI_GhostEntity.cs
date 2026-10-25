@@ -71,6 +71,9 @@ namespace ProjectShaman.AI.Ghost
         // Server: a channel with time started or its timing changed (read Session), and when it stops for any reason
         public event System.Action<AI_GhostEntity> OnChannelChanged;
         public event System.Action<AI_GhostEntity> OnChannelEnded;
+        public event System.Action<AI_GhostEntity, float> OnRevealed;
+
+        public AIBehaviourConfig Config => _config;
 
         public string GhostId => _ghostId;
         public bool IsChanneling => _session != null && _session.IsChanneling;
@@ -587,16 +590,57 @@ namespace ProjectShaman.AI.Ghost
             return true;
         }
 
-        // Something outside the ghost (a player item) broke the channel: no effect, cost not refunded
-        public bool InterruptChannel(string reason)
+        // Something outside the ghost (a player item) broke the channel: no effect, cost not refunded.
+        // The ghost holds off for retryDelay before choosing again
+        public bool InterruptChannel(string reason, float retryDelay)
         {
-            if (_session == null || !_session.IsChanneling)
+            if (!IsChanneling)
             {
                 return false;
             }
 
-            FailCommand($"channel interrupted ({reason})");
+            FailCommand($"channel interrupted ({reason})", retryDelay);
             return true;
+        }
+
+        // Push the channel back by a share of its length (progress never below 0)
+        public bool RewindChannel(float ratio, string reason)
+        {
+            if (!IsChanneling || _session.ChannelDuration <= 0f)
+            {
+                return false;
+            }
+
+            _session.RewindChannel(Time.time, _session.ChannelDuration * Mathf.Clamp01(ratio));
+            AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} rewound {ratio:P0} ({reason}), now {_session.ChannelProgress(Time.time):P0}");
+            OnChannelChanged?.Invoke(this);
+            return true;
+        }
+
+        // Hold the channel where it is for a while; it resumes on its own
+        public bool PauseChannel(float seconds, string reason)
+        {
+            if (!IsChanneling || _session.ChannelDuration <= 0f || seconds <= 0f)
+            {
+                return false;
+            }
+
+            _session.PauseChannel(Time.time, seconds);
+            AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} paused {seconds:F1}s ({reason})");
+            OnChannelChanged?.Invoke(this);
+            return true;
+        }
+
+        // Every player sees this ghost's channel for a while, however far away
+        public void Reveal(float seconds, string reason)
+        {
+            if (!_isSimulating || seconds <= 0f)
+            {
+                return;
+            }
+
+            AILog.Log(AILog.GHOST, _ghostId, $"Revealed for {seconds:F1}s ({reason})");
+            OnRevealed?.Invoke(this, seconds);
         }
 
         private void EndChannel()
@@ -708,6 +752,11 @@ namespace ProjectShaman.AI.Ghost
 
         public void FailCommand(string reason)
         {
+            FailCommand(reason, _config != null ? _config.GhostCommandRetrySeconds : 0f);
+        }
+
+        private void FailCommand(string reason, float retryDelay)
+        {
             if (_session == null)
             {
                 return;
@@ -720,7 +769,7 @@ namespace ProjectShaman.AI.Ghost
 
             _lastDecision = $"failed {_session} ({reason})";
             AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} failed ({reason}, cost not refunded)");
-            EndSession(_config != null ? _config.GhostCommandRetrySeconds : 0f);
+            EndSession(retryDelay);
         }
 
         public void ReleaseForDespawn()
