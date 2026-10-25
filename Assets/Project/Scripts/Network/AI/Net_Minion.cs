@@ -14,6 +14,11 @@ namespace ProjectShaman.Network.AI
         public event Action ClientAttackStarted;
         public event Action<bool> ClientAttackResolved;
         public event Action<ItemControlKind, float> ClientControlApplied;
+        public event Action<float> ClientPierced;
+
+        private float _fadeStartTime = -1f;
+        private float _fadeSeconds;
+        private Vector3 _fadeStartScale;
 
         private void Awake()
         {
@@ -26,6 +31,7 @@ namespace ProjectShaman.Network.AI
             _minion.OnAttackStarted += HandleServerAttackStarted;
             _minion.OnAttackResolved += HandleServerAttackResolved;
             _minion.OnControlApplied += HandleServerControlApplied;
+            _minion.OnPierced += HandleServerPierced;
             _minion.SetSimulationActive(true);
             AILog.Log(AILog.NET, name, "Minion OnStartServer → FSM enabled");
         }
@@ -35,6 +41,7 @@ namespace ProjectShaman.Network.AI
             _minion.OnAttackStarted -= HandleServerAttackStarted;
             _minion.OnAttackResolved -= HandleServerAttackResolved;
             _minion.OnControlApplied -= HandleServerControlApplied;
+            _minion.OnPierced -= HandleServerPierced;
             _minion.SetSimulationActive(false);
             base.OnStopServer();
         }
@@ -64,6 +71,11 @@ namespace ProjectShaman.Network.AI
             RpcControlApplied(effect.Kind, effect.Duration);
         }
 
+        private void HandleServerPierced(AI_Minion minion, float fadeSeconds)
+        {
+            RpcPierced(fadeSeconds);
+        }
+
         [ClientRpc]
         private void RpcAttackStarted()
         {
@@ -80,6 +92,27 @@ namespace ProjectShaman.Network.AI
         private void RpcControlApplied(ItemControlKind kind, float duration)
         {
             ClientControlApplied?.Invoke(kind, duration);
+        }
+
+        // Placeholder fade until there is an effect: the minion shrinks away where it stopped
+        [ClientRpc]
+        private void RpcPierced(float fadeSeconds)
+        {
+            _fadeStartTime = Time.time;
+            _fadeSeconds = Mathf.Max(0.01f, fadeSeconds);
+            _fadeStartScale = transform.localScale;
+            ClientPierced?.Invoke(fadeSeconds);
+        }
+
+        private void Update()
+        {
+            if (_fadeStartTime < 0f)
+            {
+                return;
+            }
+
+            float t = Mathf.Clamp01((Time.time - _fadeStartTime) / _fadeSeconds);
+            transform.localScale = _fadeStartScale * (1f - t);
         }
     }
 }
