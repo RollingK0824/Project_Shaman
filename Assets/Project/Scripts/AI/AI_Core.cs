@@ -34,6 +34,9 @@ namespace ProjectShaman.AI
         // Today's routine blocks as clock-hour pairs (DailyBlock.ToHourPairs), for the notebook schedule on every peer
         public IReadOnlyList<int> TodayBlockHours => _todayBlockHours;
         public int TodayBlocksDay { get; private set; }
+        // Clock hours: home by (after the last block's walk) and to bed (night side, 20 or later)
+        public int TodayHomeHour { get; private set; }
+        public int TodayBedHour { get; private set; }
         public bool IsInitialized => _profile != null;
         public ResolvedRoutine CurrentRoutine { get; private set; }
         public bool HasRoutine => CurrentRoutine.Source != null;
@@ -84,10 +87,12 @@ namespace ProjectShaman.AI
         }
 
         // Server: set each morning by AIManager. Client: applied from the network copy
-        public void SetTodayBlocks(int dayCount, int[] blockHours)
+        public void SetTodayBlocks(int dayCount, int[] blockHours, int homeHour, int bedHour)
         {
             TodayBlocksDay = dayCount;
             _todayBlockHours = blockHours ?? Array.Empty<int>();
+            TodayHomeHour = homeHour;
+            TodayBedHour = bedHour;
             OnTodayBlocksChanged?.Invoke();
         }
 
