@@ -68,8 +68,8 @@ namespace ProjectShaman.AI.Ghost
         private float _nextDecisionTime;
         private float _nextTargetCheckTime;
 
-        // Server: (ghost, duration) when a channel with time starts, and when it stops for any reason
-        public event System.Action<AI_GhostEntity, float> OnChannelStarted;
+        // Server: a channel with time started or its timing changed (read Session), and when it stops for any reason
+        public event System.Action<AI_GhostEntity> OnChannelChanged;
         public event System.Action<AI_GhostEntity> OnChannelEnded;
 
         public string GhostId => _ghostId;
@@ -581,7 +581,7 @@ namespace ProjectShaman.AI.Ghost
             if (duration > 0f)
             {
                 AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} for {duration:F1}s");
-                OnChannelStarted?.Invoke(this, duration);
+                OnChannelChanged?.Invoke(this);
             }
 
             return true;
@@ -606,7 +606,7 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
-            bool hadTime = _session.ChannelEndTime > _session.ChannelStartTime;
+            bool hadTime = _session.ChannelDuration > 0f;
             _session.EndChannel();
 
             if (hadTime)
@@ -630,7 +630,7 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
-            finished = Time.time >= _session.ChannelEndTime;
+            finished = _session.IsChannelDone(Time.time);
             return true;
         }
 
