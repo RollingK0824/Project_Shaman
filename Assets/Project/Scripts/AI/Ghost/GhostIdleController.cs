@@ -23,7 +23,6 @@ namespace ProjectShaman.AI.Ghost
         private readonly List<IGhostTarget> _players = new List<IGhostTarget>();
 
         private IGhostTarget _stalkTarget;
-        private PlayerStressController _stalkStress;
         private Vector3 _destination;
         private bool _hasDestination;
         private float _nextTickTime;
@@ -130,21 +129,11 @@ namespace ProjectShaman.AI.Ghost
             }
         }
 
+        // Stress no longer comes from being picked: the ghost's presence radius (GhostStressAura) covers the stalked player
         private void StartStalking(IGhostTarget player)
         {
             _stalkTarget = player;
-            _stalkStress = player.gameObject.GetComponentInParent<PlayerStressController>();
-            float rate = _config.GhostStalkStressPerSecond;
-
-            if (_stalkStress != null)
-            {
-                _stalkStress.SetSourceRate(_owner, rate);
-                AILog.Log(AILog.GHOST, _owner.GhostId, $"Stalking {player.gameObject.name} (stress +{rate}/s)");
-            }
-            else
-            {
-                AILog.Log(AILog.GHOST, _owner.GhostId, $"Stalking {player.gameObject.name} (no PlayerStressController, stress +{rate}/s skipped)");
-            }
+            AILog.Log(AILog.GHOST, _owner.GhostId, $"Stalking {player.gameObject.name}");
         }
 
         private void StopStalking(string reason)
@@ -154,14 +143,8 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
-            if (_stalkStress != null)
-            {
-                _stalkStress.RemoveSource(_owner);
-            }
-
             AILog.Log(AILog.GHOST, _owner.GhostId, $"Stalk ended ({reason})");
             _stalkTarget = null;
-            _stalkStress = null;
         }
 
         private void Wander()

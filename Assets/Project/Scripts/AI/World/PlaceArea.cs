@@ -84,17 +84,32 @@ namespace ProjectShaman.AI.World
             return false;
         }
 
+        // Only a station that takes this action: carrying firewood at a chopping block would only be rejected hit after hit (C113)
         public bool TryReserveStation(string occupantId, string actionId, out WorkStation reserved)
         {
-            reserved = FindAvailable(actionId, true) ?? FindAvailable(actionId, false);
+            reserved = FindAvailable(actionId);
             return reserved != null && reserved.TryReserve(occupantId);
         }
 
-        private WorkStation FindAvailable(string actionId, bool requireAccept)
+        // False: no station here takes this action at all, so the work is done anywhere in the place instead of waiting
+        public bool HasStationFor(string actionId)
         {
             foreach (WorkStation station in Stations)
             {
-                if (station != null && station.IsAvailable && (!requireAccept || station.Accepts(actionId)))
+                if (station != null && station.Accepts(actionId))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private WorkStation FindAvailable(string actionId)
+        {
+            foreach (WorkStation station in Stations)
+            {
+                if (station != null && station.IsAvailable && station.Accepts(actionId))
                 {
                     return station;
                 }

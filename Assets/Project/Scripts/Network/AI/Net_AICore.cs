@@ -31,8 +31,10 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private int _syncSlotsPerDay;
         private readonly SyncList<RoutineSlotInfo> _syncSchedule = new SyncList<RoutineSlotInfo>();
 
-        // Today's block hours change every morning; the day is written first so the hours hook sees it
+        // Today's block hours change every morning; the day and home/bed hours are written first so the hours hook sees them
         [SyncVar] private int _syncBlocksDay;
+        [SyncVar] private int _syncHomeHour;
+        [SyncVar] private int _syncBedHour;
         [SyncVar(hook = nameof(OnBlockHoursChanged))] private int[] _syncBlockHours;
 
         private AI_Core aiCore;
@@ -84,7 +86,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.ApplyNetworkState(_networkState);
                     aiCore.ApplyNetworkSchedule(VillagerScheduleView.FromFlat(_syncCycleDays, _syncSlotsPerDay, _syncSchedule));
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
-                    aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours);
+                    aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours, _syncHomeHour, _syncBedHour);
                     ApplyPossessionMark(_syncPossessionMarked);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
@@ -182,6 +184,8 @@ namespace ProjectShaman.Network.AI
         private void WriteTodayBlocks()
         {
             _syncBlocksDay = aiCore.TodayBlocksDay;
+            _syncHomeHour = aiCore.TodayHomeHour;
+            _syncBedHour = aiCore.TodayBedHour;
             _syncBlockHours = new List<int>(aiCore.TodayBlockHours).ToArray();
         }
 
@@ -189,7 +193,7 @@ namespace ProjectShaman.Network.AI
         {
             if (!isServer && aiCore != null)
             {
-                aiCore.SetTodayBlocks(_syncBlocksDay, newValue);
+                aiCore.SetTodayBlocks(_syncBlocksDay, newValue, _syncHomeHour, _syncBedHour);
             }
         }
 

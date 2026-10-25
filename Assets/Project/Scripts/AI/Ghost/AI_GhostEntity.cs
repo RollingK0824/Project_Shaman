@@ -5,6 +5,7 @@ using Unity.Behavior;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Ghost
 {
@@ -22,6 +23,9 @@ namespace ProjectShaman.AI.Ghost
         private const float RANGE_TOLERANCE = 0.5f;
         private const float FOLLOW_UPDATE_DISTANCE = 0.5f;
         private const float IDLE_ARRIVE_DISTANCE = 0.8f;
+        private const int REPEL_PLACE_TRIES = 3;
+        // Salt never throws a ghost into a house
+        private static readonly PlaceType[] REPEL_PLACE_TYPES = { PlaceType.Work, PlaceType.Rest, PlaceType.Storage, PlaceType.Accumulation, PlaceType.Area };
 
         [SerializeField] private Transform _carrySocket;
 
@@ -63,12 +67,28 @@ namespace ProjectShaman.AI.Ghost
         private GhostHuntPlan _hunt;
         private GhostNightActionData _huntAction;
         private GhostIdleController _idle;
+        private GhostStressAura _aura;
         private float _lastPlayerAttackTime = float.NegativeInfinity;
         private bool _isSimulating;
         private float _nextDecisionTime;
         private float _nextTargetCheckTime;
+        private float _slowRate = 1f;
+        private float _slowUntil;
+        private static NavMeshPath _repelPath;
+        private static readonly List<PlaceArea> _placeBuffer = new List<PlaceArea>();
+        private static readonly List<PlaceArea> _repelPlaces = new List<PlaceArea>();
+
+        // Server: a channel with time started or its timing changed (read Session), and when it stops for any reason
+        public event System.Action<AI_GhostEntity> OnChannelChanged;
+        public event System.Action<AI_GhostEntity> OnChannelEnded;
+        public event System.Action<AI_GhostEntity, float> OnRevealed;
+        // (ghost, from, to) when salt flings it elsewhere
+        public event System.Action<AI_GhostEntity, Vector3, Vector3> OnTeleported;
+
+        public AIBehaviourConfig Config => _config;
 
         public string GhostId => _ghostId;
+        public bool IsChanneling => _session != null && _session.IsChanneling;
         public Vector3 Center => _center;
         public float Radius => _radius;
         public bool IsHunter => _isHunter;
@@ -95,6 +115,8 @@ namespace ProjectShaman.AI.Ghost
             _isHunter = _hunt.HasKills;
             _canChasePlayer = _isHunter && canChasePlayer;
             _idle = new GhostIdleController(this, _movement, config, _random);
+            _aura?.Clear();
+            _aura = new GhostStressAura(this, config, possession);
 
             _actions.Clear();
             _uses.Clear();
@@ -155,6 +177,16 @@ namespace ProjectShaman.AI.Ghost
 
             _behaviorAgent.enabled = active;
             _isSimulating = active;
+
+            if (!active)
+            {
+                _aura?.Clear();
+            }
+        }
+
+        private void OnDisable()
+        {
+            _aura?.Clear();
         }
 
         private void Update()
@@ -165,6 +197,8 @@ namespace ProjectShaman.AI.Ghost
             }
 
             RefreshDebug();
+            TickSlow();
+            _aura?.Tick();
 
             if (_session == null)
             {
@@ -541,6 +575,7 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
+            EndChannel();
             _session.SetCarried(carriable, from);
             _carriedName = carriable.gameObject.name;
 
@@ -567,8 +602,206 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
-            _session.BeginChannel(Time.time);
+            // Carry: the channel is the pick-up, so the drop after carrying is instant
+            float minimum = _config != null ? _config.GhostMinChannelSeconds : 0f;
+            float duration = _session.IsCarrying ? 0f : Mathf.Max(minimum, _session.Action.Duration);
+            _session.BeginChannel(Time.time, duration);
+
+            // Still slowed by bean-mugwort from the walk here: the channel starts slow too
+            if (Time.time < _slowUntil)
+            {
+                _session.SlowChannel(Time.time, _slowRate, _slowUntil - Time.time);
+            }
+
+            if (duration > 0f)
+            {
+                AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} for {duration:F1}s");
+                OnChannelChanged?.Invoke(this);
+            }
+
             return true;
+        }
+
+        // Salt: whatever the ghost was channelling breaks off (no effect, cost not refunded), the ghost grows angrier (yin)
+        // and is flung somewhere else in its own range, out of the thrower's reach, where it picks a new target
+        public bool RepelBySalt(Vector3 throwerPosition, string reason)
+        {
+            if (!_isSimulating)
+            {
+                return false;
+            }
+
+            float anger = _config != null ? _config.GhostSaltAngerYin : 0f;
+            _ledger?.AddYin(_possession, anger, $"salt anger ({reason})");
+
+            Vector3 from = transform.position;
+            bool moved = TryPickRepelPosition(throwerPosition, out Vector3 to) && _movement.Warp(to);
+            AILog.Log(AILog.GHOST, _ghostId, moved
+                ? $"Repelled by salt ({reason}): yin +{anger:F0} pending, teleported {Vector3.Distance(from, to):F0}m to {to}"
+                : $"Repelled by salt ({reason}): yin +{anger:F0} pending, no reachable point to teleport to, stays");
+
+            if (moved)
+            {
+                OnTeleported?.Invoke(this, from, to);
+            }
+
+            if (_session != null)
+            {
+                FailCommand($"repelled by salt ({reason})");
+            }
+            else
+            {
+                _idle?.Stop("repelled by salt");
+                PushIdle();
+            }
+
+            return true;
+        }
+
+        // Lands in one of the village's places (PlaceArea, never a home) inside this ghost's range: a random one of those at
+        // least the configured distance from the thrower, else the farthest. The place is fixed but the point inside it is
+        // random, so players cannot learn the spot. Places are where villagers walk, so they join the village NavMesh;
+        // one full-path check per tried place is only a safeguard
+        private bool TryPickRepelPosition(Vector3 throwerPosition, out Vector3 position)
+        {
+            position = transform.position;
+            float minDistance = _config != null ? _config.GhostSaltTeleportMinDistance : 0f;
+
+            _repelPlaces.Clear();
+            foreach (PlaceType type in REPEL_PLACE_TYPES)
+            {
+                PlaceRegistry.CollectByType(type, _placeBuffer);
+                foreach (PlaceArea place in _placeBuffer)
+                {
+                    if (FlatDistance(place.Center, _center) <= _radius)
+                    {
+                        _repelPlaces.Add(place);
+                    }
+                }
+            }
+
+            if (_repelPlaces.Count == 0)
+            {
+                return false;
+            }
+
+            // Far enough ones first in random order, then the rest farthest first
+            _repelPlaces.Sort((a, b) => FlatDistance(b.Center, throwerPosition).CompareTo(FlatDistance(a.Center, throwerPosition)));
+            int far = 0;
+            while (far < _repelPlaces.Count && FlatDistance(_repelPlaces[far].Center, throwerPosition) >= minDistance)
+            {
+                far++;
+            }
+
+            for (int i = far - 1; i > 0; i--)
+            {
+                int j = _random.Next(i + 1);
+                (_repelPlaces[i], _repelPlaces[j]) = (_repelPlaces[j], _repelPlaces[i]);
+            }
+
+            int tries = Mathf.Min(REPEL_PLACE_TRIES, _repelPlaces.Count);
+            for (int i = 0; i < tries; i++)
+            {
+                Vector3 point = _repelPlaces[i].GetRandomPoint(_random);
+                if (IsReachable(point))
+                {
+                    position = point;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool IsReachable(Vector3 point)
+        {
+            if (_repelPath == null)
+            {
+                _repelPath = new NavMeshPath();
+            }
+
+            return NavMesh.CalculatePath(transform.position, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete;
+        }
+
+        private static float FlatDistance(Vector3 a, Vector3 b)
+        {
+            a.y = 0f;
+            b.y = 0f;
+            return Vector3.Distance(a, b);
+        }
+
+        // Bean-mugwort: the ghost moves and channels at rate for a while
+        public bool SlowDown(float rate, float seconds, string reason)
+        {
+            if (!_isSimulating || seconds <= 0f)
+            {
+                return false;
+            }
+
+            _slowRate = Mathf.Clamp(rate, 0.05f, 1f);
+            _slowUntil = Time.time + seconds;
+            _movement.SetSpeedMultiplier(_slowRate);
+
+            if (IsChanneling && _session.ChannelDuration > 0f)
+            {
+                _session.SlowChannel(Time.time, _slowRate, seconds);
+                OnChannelChanged?.Invoke(this);
+            }
+
+            AILog.Log(AILog.GHOST, _ghostId, $"Slowed x{_slowRate:F2} for {seconds:F1}s ({reason})");
+            return true;
+        }
+
+        private void TickSlow()
+        {
+            if (_slowUntil > 0f && Time.time >= _slowUntil)
+            {
+                _slowUntil = 0f;
+                _slowRate = 1f;
+                _movement.SetSpeedMultiplier(1f);
+            }
+        }
+
+        // Hold the channel where it is for a while; it resumes on its own
+        public bool PauseChannel(float seconds, string reason)
+        {
+            if (!IsChanneling || _session.ChannelDuration <= 0f || seconds <= 0f)
+            {
+                return false;
+            }
+
+            _session.PauseChannel(Time.time, seconds);
+            AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} paused {seconds:F1}s ({reason})");
+            OnChannelChanged?.Invoke(this);
+            return true;
+        }
+
+        // The bell: players around see this ghost glow (and its channel) for a while
+        public void Reveal(float seconds, string reason)
+        {
+            if (!_isSimulating || seconds <= 0f)
+            {
+                return;
+            }
+
+            AILog.Log(AILog.GHOST, _ghostId, $"Revealed for {seconds:F1}s ({reason})");
+            OnRevealed?.Invoke(this, seconds);
+        }
+
+        private void EndChannel()
+        {
+            if (_session == null || !_session.IsChanneling)
+            {
+                return;
+            }
+
+            bool hadTime = _session.ChannelDuration > 0f;
+            _session.EndChannel();
+
+            if (hadTime)
+            {
+                OnChannelEnded?.Invoke(this);
+            }
         }
 
         public bool TickChannel(out bool finished)
@@ -586,7 +819,7 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
-            finished = Time.time >= _session.ChannelEndTime;
+            finished = _session.IsChannelDone(Time.time);
             return true;
         }
 
@@ -664,6 +897,11 @@ namespace ProjectShaman.AI.Ghost
 
         public void FailCommand(string reason)
         {
+            FailCommand(reason, _config != null ? _config.GhostCommandRetrySeconds : 0f);
+        }
+
+        private void FailCommand(string reason, float retryDelay)
+        {
             if (_session == null)
             {
                 return;
@@ -676,13 +914,14 @@ namespace ProjectShaman.AI.Ghost
 
             _lastDecision = $"failed {_session} ({reason})";
             AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} failed ({reason}, cost not refunded)");
-            EndSession(_config != null ? _config.GhostCommandRetrySeconds : 0f);
+            EndSession(retryDelay);
         }
 
         public void ReleaseForDespawn()
         {
             FailCommand("morning");
             _idle?.Stop("morning");
+            _aura?.Clear();
             GhostTargetRegistry.ReleaseAll(_ghostId);
 
             int lost = _hunt != null ? _hunt.Abandon() : 0;
@@ -703,6 +942,8 @@ namespace ProjectShaman.AI.Ghost
 
         private void EndSession(float retryDelay)
         {
+            EndChannel();
+
             if (!(_session.Action.IsHunt && _hunt.Contains(_session.Target)))
             {
                 GhostTargetRegistry.Release(_session.Target, _ghostId);

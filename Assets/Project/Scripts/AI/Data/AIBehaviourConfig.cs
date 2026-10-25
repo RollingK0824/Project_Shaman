@@ -21,8 +21,24 @@ namespace ProjectShaman.AI.Data
         [Tooltip("A block with less than this share of its length left is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
+        [Tooltip("Clock hours one of which each villager must be home by (half-sijin rows on the schedule tab). The walk home is planned back from it")]
+        [SerializeField] private int[] _homeArriveHours = { 18, 19 };
+        [Tooltip("Clock hours one of which each villager goes to bed (night starts at 20). Awake villagers cannot be sleep-paralysed")]
+        [SerializeField] private int[] _bedHours = { 20, 21 };
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
         [SerializeField] private float _walkSpeedEstimate = 3.5f;
+
+        [Header("Villager Attributes")]
+        [Tooltip("Relative weights a villager's gender, class and age are rolled with (Joseon village: a few more men, commoners the most, " +
+                 "lowborn next, yangban the fewest; adults the most, children next, elders the fewest). A roll with no name or job left is rolled again (C112)")]
+        [SerializeField, Min(0f)] private float _maleWeight = 55f;
+        [SerializeField, Min(0f)] private float _femaleWeight = 45f;
+        [SerializeField, Min(0f)] private float _yangbanWeight = 15f;
+        [SerializeField, Min(0f)] private float _sangminWeight = 50f;
+        [SerializeField, Min(0f)] private float _cheonminWeight = 35f;
+        [SerializeField, Min(0f)] private float _elderWeight = 20f;
+        [SerializeField, Min(0f)] private float _adultWeight = 55f;
+        [SerializeField, Min(0f)] private float _childWeight = 25f;
 
         [Header("Tool")]
         [SerializeField] private float _toolSightRadius = 8f;
@@ -76,13 +92,27 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostActionCooldownMax = 30f;
         [SerializeField] private float _ghostCommandRetrySeconds = 1f;
         [SerializeField] private float _ghostCommandTimeoutSeconds = 30f;
+        [SerializeField] private float _ghostMinChannelSeconds = 1.5f;
+
+        [Header("Ghost Channel Items")]
+        [Tooltip("Yin a ghost gains when salt breaks it off (angered, it grows bolder)")]
+        [SerializeField] private float _ghostSaltAngerYin = 5f;
+        [Tooltip("Salt also sends the ghost away: a reachable point inside its own range at least this far from the player who threw it")]
+        [SerializeField] private float _ghostSaltTeleportMinDistance = 15f;
+        [SerializeField] private float _ghostBellRevealSeconds = 6f;
+        [Tooltip("After reacting to an item a ghost ignores that same item for this long")]
+        [SerializeField] private ItemReactionCooldowns _ghostItemCooldowns = new ItemReactionCooldowns(2f, 3f, 6f, 10f);
 
         [Header("Ghost Idle")]
         [SerializeField] private float _ghostStalkMinDistance = 3f;
         [SerializeField] private float _ghostStalkMaxDistance = 6f;
         [SerializeField] private float _ghostStalkSpeed = 3f;
         [SerializeField] private float _ghostStalkCreepSpeed = 1f;
+        [Tooltip("Stress per second on every player inside a ghost's presence radius (stalked or not)")]
         [SerializeField] private float _ghostStalkStressPerSecond = 0.5f;
+        [Tooltip("Presence radius at yin 0 and at max yin. Never below the stalk max distance, so a stalked player is always inside")]
+        [SerializeField] private float _ghostStressRadiusMin = 7f;
+        [SerializeField] private float _ghostStressRadiusMax = 12f;
         [SerializeField] private float _ghostWanderSpeed = 1.5f;
         [SerializeField] private float _ghostWanderPauseMin = 2f;
         [SerializeField] private float _ghostWanderPauseMax = 5f;
@@ -130,8 +160,10 @@ namespace ProjectShaman.AI.Data
         [Header("Player Item Reaction")]
         [Tooltip("Stress a villager takes when salt, bean-mugwort, the bell or the gong reaches them")]
         [SerializeField, Min(0f)] private float _itemStartleStress = 3f;
-        [Tooltip("After reacting to an item a villager ignores further items for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
-        [SerializeField, Min(0f)] private float _itemReactionCooldown = 6f;
+        [Tooltip("The bell's sound carries further (BellUseAction radius) so a ghost glows from afar; a villager is startled only this close to the player ringing it (C111)")]
+        [SerializeField, Min(0f)] private float _bellStartleRadius = 5f;
+        [Tooltip("After reacting to an item a villager ignores that same item for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
+        [SerializeField] private ItemReactionCooldowns _villagerItemCooldowns = new ItemReactionCooldowns(6f, 6f, 6f, 6f);
         [Tooltip("Host yin from which the ghost shows through the body (trembling); below it the host is startled like anyone")]
         [SerializeField, Min(0f)] private float _itemReactionYin = 40f;
         [Tooltip("Host yin from which the reaction turns violent (grotesque twisting, lashing out)")]
@@ -178,6 +210,31 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private Material _possessedDebugMaterial;
 
         public int CycleDays => _cycleDays;
+
+        public float WeightOf(VillagerGender gender)
+        {
+            return gender == VillagerGender.Male ? _maleWeight : _femaleWeight;
+        }
+
+        public float WeightOf(VillagerSocialClass socialClass)
+        {
+            switch (socialClass)
+            {
+                case VillagerSocialClass.Yangban: return _yangbanWeight;
+                case VillagerSocialClass.Sangmin: return _sangminWeight;
+                default: return _cheonminWeight;
+            }
+        }
+
+        public float WeightOf(VillagerAgeGroup ageGroup)
+        {
+            switch (ageGroup)
+            {
+                case VillagerAgeGroup.Elder: return _elderWeight;
+                case VillagerAgeGroup.Adult: return _adultWeight;
+                default: return _childWeight;
+            }
+        }
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
@@ -186,6 +243,8 @@ namespace ProjectShaman.AI.Data
         public float BlockLengthVariance => _blockLengthVariance;
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
+        public IReadOnlyList<int> HomeArriveHours => _homeArriveHours;
+        public IReadOnlyList<int> BedHours => _bedHours;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
         public float WalkSpeedEstimate => _walkSpeedEstimate;
         public float ToolSightRadius => _toolSightRadius;
@@ -225,11 +284,18 @@ namespace ProjectShaman.AI.Data
         public float GhostActionCooldownMax => Mathf.Max(GhostActionCooldownMin, _ghostActionCooldownMax);
         public float GhostCommandRetrySeconds => _ghostCommandRetrySeconds;
         public float GhostCommandTimeoutSeconds => _ghostCommandTimeoutSeconds;
+        public float GhostMinChannelSeconds => Mathf.Max(0f, _ghostMinChannelSeconds);
+        public float GhostSaltAngerYin => Mathf.Max(0f, _ghostSaltAngerYin);
+        public float GhostSaltTeleportMinDistance => Mathf.Max(0f, _ghostSaltTeleportMinDistance);
+        public ItemReactionCooldowns GhostItemCooldowns => _ghostItemCooldowns;
+        public float GhostBellRevealSeconds => Mathf.Max(0f, _ghostBellRevealSeconds);
         public float GhostStalkMinDistance => Mathf.Max(0f, _ghostStalkMinDistance);
         public float GhostStalkMaxDistance => Mathf.Max(GhostStalkMinDistance, _ghostStalkMaxDistance);
         public float GhostStalkSpeed => Mathf.Max(0.1f, _ghostStalkSpeed);
         public float GhostStalkCreepSpeed => Mathf.Max(0.1f, _ghostStalkCreepSpeed);
         public float GhostStalkStressPerSecond => Mathf.Max(0f, _ghostStalkStressPerSecond);
+        public float GhostStressRadiusMin => Mathf.Max(0f, _ghostStressRadiusMin);
+        public float GhostStressRadiusMax => Mathf.Max(GhostStressRadiusMin, _ghostStressRadiusMax);
         public float GhostWanderSpeed => Mathf.Max(0.1f, _ghostWanderSpeed);
         public float GhostWanderPauseMin => Mathf.Max(0f, _ghostWanderPauseMin);
         public float GhostWanderPauseMax => Mathf.Max(GhostWanderPauseMin, _ghostWanderPauseMax);
@@ -255,8 +321,9 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
-        public float ItemReactionCooldown => Mathf.Max(0f, _itemReactionCooldown);
+        public ItemReactionCooldowns VillagerItemCooldowns => _villagerItemCooldowns;
         public float ItemStartleStress => Mathf.Max(0f, _itemStartleStress);
+        public float BellStartleRadius => Mathf.Max(0f, _bellStartleRadius);
         public float ItemReactionYin => Mathf.Max(0f, _itemReactionYin);
         public float ItemViolentYin => Mathf.Max(ItemReactionYin, _itemViolentYin);
         public float VisionHalfAngle => _visionHalfAngle;

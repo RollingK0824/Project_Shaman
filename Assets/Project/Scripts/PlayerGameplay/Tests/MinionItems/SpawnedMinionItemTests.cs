@@ -148,25 +148,24 @@ public class SpawnedMinionItemTests
     }
 
     [UnityTest]
-    public IEnumerator BeanMugwort_RealProjectile_SlowsThenRestores()
+    // Minions ignore bean-mugwort (10/25): hitting a small flyer is too hard for a slow to be worth it
+    public IEnumerator BeanMugwort_RealProjectile_NoReactionOnMinion()
     {
         _owner.transform.position = _minion.transform.position - Vector3.forward * 2;
         float normal = _minion.Data.MoveSpeed;
         Assert.IsTrue(Use("BeanMugwort"));
-        for (int i = 0; i < 150 && _controls == 0; i++) yield return new WaitForFixedUpdate();
-        Assert.AreEqual(1, _controls, "The physical projectile must hit the real minion");
-        Assert.AreEqual(ItemControlKind.Slow, _lastControl.Kind);
+        for (int i = 0; i < 150; i++) yield return new WaitForFixedUpdate();
         yield return new WaitForSeconds(.35f);
-        Assert.AreEqual(normal * .6f, _agent.speed, .01f);
-        float slowedSpeed = _agent.speed;
-        yield return new WaitForSeconds(3.2f);
-        Assert.IsNotNull(_minion); Assert.AreEqual(normal, _agent.speed, .01f);
-        Assert.AreEqual(1, _consumed); Assert.AreEqual(1, _controls); Assert.AreEqual(0, _damageEvents);
-        Note("BEAN PASS: real projectile contact; speed " + normal + " -> " + slowedSpeed + " -> " + _agent.speed + "; consumed=1; damage=0");
+        Assert.IsNotNull(_minion);
+        Assert.AreEqual(0, _controls, "A minion must not react to bean-mugwort");
+        Assert.AreEqual(normal, _agent.speed, .01f);
+        Assert.AreEqual(0, _damageEvents);
+        Note("BEAN PASS: no control on the minion; speed stays " + _agent.speed + "; damage=0");
     }
 
     [UnityTest]
-    public IEnumerator Gong_AssetFlags_InterruptChaseAndAllowReacquisition()
+    // Gong = fear on a minion (10/25): it drops the chase and flies away from where the gong rang, then comes back
+    public IEnumerator Gong_AssetFlags_FearFleesThenAllowsReacquisition()
     {
         var data = Data("Gong");
         var senses = new SerializedObject(data.UseAction).FindProperty("_senses").intValue;
@@ -179,7 +178,11 @@ public class SpawnedMinionItemTests
         Assert.AreEqual(ItemSense.Vision | ItemSense.Hearing, _lastControl.Senses);
         yield return null; yield return null;
         Assert.AreEqual(MinionState.MoveToObjective, _minion.State);
-        float end = Time.time + 2.7f;
+        Vector3 gongAt = _owner.transform.position;
+        float before = Vector3.Distance(_minion.transform.position, gongAt);
+        yield return new WaitForSeconds(.8f);
+        Assert.Greater(Vector3.Distance(_minion.transform.position, gongAt), before, "A feared minion flies away from the gong");
+        float end = Time.time + 1.9f;
         while (Time.time < end)
         {
             _owner.transform.position = _minion.transform.position + Vector3.right * 2;
@@ -190,7 +193,7 @@ public class SpawnedMinionItemTests
         { _owner.transform.position = _minion.transform.position + Vector3.right * 2; yield return null; }
         Assert.AreEqual(MinionState.ChasePlayer, _minion.State);
         Assert.AreEqual(1, _controls); Assert.AreEqual(0, _damageEvents);
-        Note("GONG PASS: actual asset flags=3; chase dropped; aggro blocked during effect; reacquires after 3s; damage=0");
+        Note("GONG PASS: actual asset flags=3; chase dropped; flees from the gong; aggro blocked during fear; reacquires after 3s; damage=0");
     }
 
     [UnityTest]

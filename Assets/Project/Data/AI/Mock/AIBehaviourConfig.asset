@@ -21,6 +21,8 @@ MonoBehaviour:
   _blockLengthVariance: 0.35
   _minRemainingRatio: 0.5
   _homeReturnMarginSeconds: 10
+  _homeArriveHours: 1200000013000000
+  _bedHours: 1400000015000000
   _toolTidySecondsEstimate: 5
   _walkSpeedEstimate: 3.5
   _toolSightRadius: 8
@@ -71,11 +73,22 @@ MonoBehaviour:
   _ghostActionCooldownMax: 30
   _ghostCommandRetrySeconds: 1
   _ghostCommandTimeoutSeconds: 30
+  _ghostMinChannelSeconds: 1.5
+  _ghostSaltAngerYin: 5
+  _ghostSaltTeleportMinDistance: 15
+  _ghostBellRevealSeconds: 6
+  _ghostItemCooldowns:
+    Salt: 2
+    BeanMugwort: 3
+    Bell: 6
+    Gong: 10
   _ghostStalkMinDistance: 3
   _ghostStalkMaxDistance: 6
   _ghostStalkSpeed: 3
   _ghostStalkCreepSpeed: 1
   _ghostStalkStressPerSecond: 0.5
+  _ghostStressRadiusMin: 7
+  _ghostStressRadiusMax: 12
   _ghostWanderSpeed: 1.5
   _ghostWanderPauseMin: 2
   _ghostWanderPauseMax: 5
