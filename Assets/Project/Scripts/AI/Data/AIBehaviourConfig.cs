@@ -28,6 +28,18 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
         [SerializeField] private float _walkSpeedEstimate = 3.5f;
 
+        [Header("Villager Attributes")]
+        [Tooltip("Relative weights a villager's gender, class and age are rolled with (Joseon village: a few more men, commoners the most, " +
+                 "lowborn next, yangban the fewest; adults the most, children next, elders the fewest). A roll with no name or job left is rolled again (C112)")]
+        [SerializeField, Min(0f)] private float _maleWeight = 55f;
+        [SerializeField, Min(0f)] private float _femaleWeight = 45f;
+        [SerializeField, Min(0f)] private float _yangbanWeight = 15f;
+        [SerializeField, Min(0f)] private float _sangminWeight = 50f;
+        [SerializeField, Min(0f)] private float _cheonminWeight = 35f;
+        [SerializeField, Min(0f)] private float _elderWeight = 20f;
+        [SerializeField, Min(0f)] private float _adultWeight = 55f;
+        [SerializeField, Min(0f)] private float _childWeight = 25f;
+
         [Header("Tool")]
         [SerializeField] private float _toolSightRadius = 8f;
         [SerializeField] private float _toolSightInterval = 1f;
@@ -198,6 +210,31 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private Material _possessedDebugMaterial;
 
         public int CycleDays => _cycleDays;
+
+        public float WeightOf(VillagerGender gender)
+        {
+            return gender == VillagerGender.Male ? _maleWeight : _femaleWeight;
+        }
+
+        public float WeightOf(VillagerSocialClass socialClass)
+        {
+            switch (socialClass)
+            {
+                case VillagerSocialClass.Yangban: return _yangbanWeight;
+                case VillagerSocialClass.Sangmin: return _sangminWeight;
+                default: return _cheonminWeight;
+            }
+        }
+
+        public float WeightOf(VillagerAgeGroup ageGroup)
+        {
+            switch (ageGroup)
+            {
+                case VillagerAgeGroup.Elder: return _elderWeight;
+                case VillagerAgeGroup.Adult: return _adultWeight;
+                default: return _childWeight;
+            }
+        }
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
