@@ -1,5 +1,6 @@
 // A ghost revealed by the bell glows like a Minecraft "glowing" entity: only its outline, seen through walls.
-// Added as an extra material on the ghost's renderers while it is revealed (AI_RevealOutline).
+// AI_RevealOutline draws it on copies of the ghost's renderers while it is revealed, one material per sub-mesh,
+// split into two material instances (one pass each) so every part is masked before any band is drawn.
 // Pass 1 marks the ghost's own pixels in the stencil, pass 2 draws a slightly swollen copy everywhere else,
 // which leaves a band around the silhouette. Hard-edged meshes may show small gaps at their corners.
 Shader "ProjectShaman/AI/GhostRevealOutline"
