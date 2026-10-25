@@ -50,10 +50,17 @@ namespace ProjectShaman.AI
             switch (effect.Kind)
             {
                 case ItemControlKind.Slow: return React(PlayerItemKind.BeanMugwort, source);
-                case ItemControlKind.Stagger: return React(PlayerItemKind.Bell, source);
+                case ItemControlKind.Stagger: return IsWithinBellStartle(source) && React(PlayerItemKind.Bell, source);
                 case ItemControlKind.SensoryInterference: return React(PlayerItemKind.Gong, source);
                 default: return false;
             }
+        }
+
+        // The bell reaches further than it frightens: only a villager close to the ringer is startled
+        private bool IsWithinBellStartle(GameObject source)
+        {
+            return _config == null || source == null
+                || (source.transform.position - transform.position).sqrMagnitude <= _config.BellStartleRadius * _config.BellStartleRadius;
         }
 
         private bool React(PlayerItemKind item, GameObject user)

@@ -148,6 +148,8 @@ namespace ProjectShaman.AI.Data
         [Header("Player Item Reaction")]
         [Tooltip("Stress a villager takes when salt, bean-mugwort, the bell or the gong reaches them")]
         [SerializeField, Min(0f)] private float _itemStartleStress = 3f;
+        [Tooltip("The bell's sound carries further (BellUseAction radius) so a ghost glows from afar; a villager is startled only this close to the player ringing it (C111)")]
+        [SerializeField, Min(0f)] private float _bellStartleRadius = 5f;
         [Tooltip("After reacting to an item a villager ignores that same item for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
         [SerializeField] private ItemReactionCooldowns _villagerItemCooldowns = new ItemReactionCooldowns(6f, 6f, 6f, 6f);
         [Tooltip("Host yin from which the ghost shows through the body (trembling); below it the host is startled like anyone")]
@@ -284,6 +286,7 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
         public ItemReactionCooldowns VillagerItemCooldowns => _villagerItemCooldowns;
         public float ItemStartleStress => Mathf.Max(0f, _itemStartleStress);
+        public float BellStartleRadius => Mathf.Max(0f, _bellStartleRadius);
         public float ItemReactionYin => Mathf.Max(0f, _itemReactionYin);
         public float ItemViolentYin => Mathf.Max(ItemReactionYin, _itemViolentYin);
         public float VisionHalfAngle => _visionHalfAngle;

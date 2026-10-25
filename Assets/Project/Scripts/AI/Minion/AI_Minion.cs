@@ -26,6 +26,8 @@ namespace ProjectShaman.AI.Minion
         [SerializeField, Min(0f)] private float _pierceThroughDistance = 3f;
         [Tooltip("After piercing a player the minion hangs there this long (fade presentation), then despawns")]
         [SerializeField, Min(0f)] private float _fadeSeconds = 1.2f;
+        [Tooltip("The bell carries further so a ghost glows from afar; a minion is staggered only this close to the ringer")]
+        [SerializeField, Min(0f)] private float _bellStaggerRadius = 5f;
 
         [Header("Fear (gong)")]
         [Tooltip("While feared the minion flies to a point this far beyond itself, straight away from where the gong rang")]
@@ -377,6 +379,11 @@ namespace ProjectShaman.AI.Minion
             OnAttackStarted?.Invoke(this);
         }
 
+        private bool IsWithinBellStagger(GameObject source)
+        {
+            return source == null || (source.transform.position - transform.position).sqrMagnitude <= _bellStaggerRadius * _bellStaggerRadius;
+        }
+
         public bool TryApplyItemControl(ItemControlEffect effect, GameObject source)
         {
             if (!_isSimulating || _state == MinionState.Dead || _state == MinionState.Fading || !effect.IsValid)
@@ -393,7 +400,7 @@ namespace ProjectShaman.AI.Minion
                 // Bell: stagger, and a lunge on its way in is called off. Once through the player the hit already landed
                 case ItemControlKind.Stagger:
                     item = PlayerItemKind.Bell;
-                    if (_pierceHit || !_itemGate.IsReady(item))
+                    if (_pierceHit || !_itemGate.IsReady(item) || !IsWithinBellStagger(source))
                     {
                         return false;
                     }
