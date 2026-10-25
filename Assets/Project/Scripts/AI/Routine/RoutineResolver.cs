@@ -30,6 +30,14 @@ namespace ProjectShaman.AI.Routine
                 return false;
             }
 
+            return TryResolveEntry(profile, routine, dayCount, slot, serial, startTime, endTime, preferredStation, out resolved);
+        }
+
+        // Any routine entry, not only the scheduled one (a rest in place of a work that could not go on)
+        public bool TryResolveEntry(VillagerProfile profile, RoutineEntry routine, int dayCount, int slot, int serial, float startTime, float endTime, WorkStation preferredStation, out ResolvedRoutine resolved)
+        {
+            resolved = default;
+
             if (!PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
             {
                 AILog.Warn(AILog.ROUTINE, $"{profile.VillagerId} place '{routine.PlaceId}' not found for {routine.RoutineId}");

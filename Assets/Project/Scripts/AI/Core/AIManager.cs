@@ -133,7 +133,7 @@ namespace ProjectShaman.AI.Core
                 {
                     VillagerRuntime villager = new VillagerRuntime(core);
                     _profiles.Add(core.Profile);
-                    villager.RoutineFailedHandler = reason => SkipRoutine(villager, reason);
+                    villager.RoutineFailedHandler = reason => HandleRoutineFailed(villager, reason);
                     core.OnRoutineFailed += villager.RoutineFailedHandler;
                     SubscribeDeath(villager);
                     AttachStress(villager);
@@ -496,21 +496,28 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            if (!villager.TryGetBlockAt(now, out DailyBlock block) || block.Index == villager.LastBlockIndex)
+            if (!villager.TryGetBlockAt(now, out DailyBlock block))
             {
                 return;
             }
 
-            villager.LastBlockIndex = block.Index;
-
             float startTime = block.StartTime;
             float endTime = Mathf.Min(block.EndTime, villager.HomeReturnTime);
             float remaining = endTime - now;
-
             float minRemaining = _behaviourConfig.MinRemainingRatio * block.Length;
+
+            if (block.Index == villager.LastBlockIndex)
+            {
+                TryResumeWithTool(villager, block, remaining, minRemaining);
+                return;
+            }
+
+            villager.LastBlockIndex = block.Index;
+            villager.WaitingToolType = null;
+
             if (remaining < minRemaining)
             {
-                SkipRoutine(villager, $"block {block.Index} remaining {remaining:F1}s < {minRemaining:F1}s");
+                SkipRoutine(villager, block.Index, endTime, $"block {block.Index} remaining {remaining:F1}s < {minRemaining:F1}s");
                 return;
             }
 
@@ -531,8 +538,31 @@ namespace ProjectShaman.AI.Core
             }
             else
             {
-                SkipRoutine(villager, $"block {block.Index} resolve failed");
+                SkipRoutine(villager, block.Index, endTime, $"block {block.Index} resolve failed");
             }
+        }
+
+        // The tool a failed work was missing came back (a player handed it over, found later): the block's own routine
+        // starts again while enough of it is left (the same rule as a late start), else the tool goes back to its shed
+        private void TryResumeWithTool(VillagerRuntime villager, DailyBlock block, float remaining, float minRemaining)
+        {
+            string toolType = villager.WaitingToolType;
+            if (string.IsNullOrEmpty(toolType) || villager.ToolHandler == null || !villager.ToolHandler.IsHoldingType(toolType))
+            {
+                return;
+            }
+
+            villager.WaitingToolType = null;
+
+            if (remaining < minRemaining)
+            {
+                AILog.Log(AILog.MANAGER, villager.Id, $"Got '{toolType}' back, too late for block {block.Index} ({remaining:F1}s < {minRemaining:F1}s)");
+                villager.ToolHandler.PutAwayUnlessNeeded($"got '{toolType}' back too late");
+                return;
+            }
+
+            AILog.Log(AILog.MANAGER, villager.Id, $"Got '{toolType}' back, resuming block {block.Index} ({remaining:F1}s left)");
+            villager.LastBlockIndex = -1;
         }
 
         // The planned home time assumes the walk from the last routine's place. Wherever the villager actually is
@@ -737,12 +767,69 @@ namespace ProjectShaman.AI.Core
             villager.Core.ApplyRoutine(current);
         }
 
-        private void SkipRoutine(VillagerRuntime villager, string reason)
+        // A work that cannot go on (its tool not found): the villager rests until the block ends and waits for the tool
+        private void HandleRoutineFailed(VillagerRuntime villager, string reason)
+        {
+            ResolvedRoutine failed = villager.Current;
+            villager.WaitingToolType = failed.ToolTypeId;
+            SkipRoutine(villager, failed.Slot, failed.EndTime, reason);
+        }
+
+        // Rather than standing where it stopped, the villager rests nearby for what is left of the block (C110)
+        private void SkipRoutine(VillagerRuntime villager, int slot, float endTime, string reason)
         {
             ReleaseStation(villager);
             villager.Current = default;
+
+            if (TryApplyFallbackRest(villager, slot, endTime, reason))
+            {
+                return;
+            }
+
             villager.Core.ClearRoutine(villager.NextSerial(), $"skipped: {reason}");
             AILog.Log(AILog.MANAGER, villager.Id, $"Routine skipped ({reason})");
+        }
+
+        // The nearest rest place this villager may use (the same entries a schedule could give it)
+        private bool TryApplyFallbackRest(VillagerRuntime villager, int slot, float endTime, string reason)
+        {
+            float now = GetDayElapsed();
+            if (endTime <= now || _factory.DataProvider == null || villager.Profile == null)
+            {
+                return false;
+            }
+
+            Vector3 from = villager.Core.transform.position;
+            RoutineEntry best = null;
+            float bestSqr = float.MaxValue;
+
+            foreach (RoutineEntry routine in _factory.DataProvider.Routines)
+            {
+                if (routine == null || routine.Category != RoutineCategory.Rest || !routine.IsLoadableFor(villager.Profile.PublicInfo)
+                    || !PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
+                {
+                    continue;
+                }
+
+                float sqr = (place.Center - from).sqrMagnitude;
+                if (sqr < bestSqr)
+                {
+                    best = routine;
+                    bestSqr = sqr;
+                }
+            }
+
+            if (best == null || !_resolver.TryResolveEntry(villager.Profile, best, _time.DayCount, slot, villager.NextSerial(), now, endTime, null, out ResolvedRoutine resolved))
+            {
+                return false;
+            }
+
+            villager.Current = resolved;
+            villager.Core.ApplyRoutine(resolved);
+            _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
+            RecordMemory(villager, resolved);
+            AILog.Log(AILog.MANAGER, villager.Id, $"Routine replaced by rest {best.RoutineId} @ {best.PlaceId} until {endTime:F1}s ({reason})");
+            return true;
         }
 
         private void ReleaseStation(VillagerRuntime villager)
@@ -954,6 +1041,8 @@ namespace ProjectShaman.AI.Core
             public VillagerProfile Profile => Core.Profile;
             public string Id { get; }
             public int LastBlockIndex { get; set; } = -1;
+            // The tool a failed work of this block was missing; holding it again resumes the block
+            public string WaitingToolType { get; set; }
             public bool IsHomeOrdered { get; set; }
             public bool HasArrivedHome { get; set; }
             public float NextHomeCheckTime { get; set; }
@@ -990,6 +1079,7 @@ namespace ProjectShaman.AI.Core
             public void ResetForDayStart()
             {
                 LastBlockIndex = -1;
+                WaitingToolType = null;
                 IsHomeOrdered = false;
                 HasArrivedHome = false;
             }
