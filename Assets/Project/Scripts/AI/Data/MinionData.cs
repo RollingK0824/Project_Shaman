@@ -30,6 +30,10 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0.1f)] private float _objectiveContactDistance = 1.2f;
         [SerializeField, Min(0f)] private float _objectiveDamage = 1f;
 
+        [Header("Item Reaction")]
+        [Tooltip("After reacting to an item a minion ignores that same item for this long. Salt is damage and bean-mugwort does nothing, so only the bell and gong count")]
+        [SerializeField] private ItemReactionCooldowns _itemCooldowns = new ItemReactionCooldowns(0f, 0f, 1f, 5f);
+
         public float MoveSpeed => _moveSpeed;
         public float ChaseSpeed => _chaseSpeed;
         public float RepathInterval => _repathInterval;
@@ -46,5 +50,6 @@ namespace ProjectShaman.AI.Data
         public float AttackDamage => _attackDamage;
         public float ObjectiveContactDistance => _objectiveContactDistance;
         public float ObjectiveDamage => _objectiveDamage;
+        public ItemReactionCooldowns ItemCooldowns => _itemCooldowns;
     }
 }

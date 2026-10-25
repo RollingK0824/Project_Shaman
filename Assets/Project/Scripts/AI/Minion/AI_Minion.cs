@@ -27,6 +27,10 @@ namespace ProjectShaman.AI.Minion
         [Tooltip("After piercing a player the minion hangs there this long (fade presentation), then despawns")]
         [SerializeField, Min(0f)] private float _fadeSeconds = 1.2f;
 
+        [Header("Fear (gong)")]
+        [Tooltip("While feared the minion flies to a point this far beyond itself, straight away from where the gong rang")]
+        [SerializeField, Min(0.5f)] private float _fleeLookAhead = 4f;
+
         [Header("Runtime (server only)")]
         [SerializeField] private MinionState _state = MinionState.Inactive;
         [SerializeField] private string _targetName;
@@ -45,9 +49,9 @@ namespace ProjectShaman.AI.Minion
         private float _nextRepathTime;
         private float _nextAttackTime;
         private float _staggerUntil;
-        private float _slowUntil;
-        private float _slowMultiplier = 1f;
-        private float _blindUntil;
+        private float _fearUntil;
+        private Vector3 _fearSource;
+        private readonly ItemReactionGate _itemGate = new ItemReactionGate();
         private Vector3 _pierceEnd;
         private Vector3 _lastPiercePosition;
         private float _pierceUntil;
@@ -145,6 +149,12 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
+            if (Time.time < _fearUntil)
+            {
+                TickFlee();
+                return;
+            }
+
             switch (_state)
             {
                 case MinionState.MoveToObjective:
@@ -169,7 +179,7 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
-            if (Time.time >= _nextAggroCheckTime && Time.time >= _blindUntil)
+            if (Time.time >= _nextAggroCheckTime)
             {
                 _nextAggroCheckTime = Time.time + _data.AggroCheckInterval;
 
@@ -202,13 +212,6 @@ namespace ProjectShaman.AI.Minion
         {
             if (!_player.IsValid)
             {
-                EnterMoveToObjective();
-                return;
-            }
-
-            if (Time.time < _blindUntil)
-            {
-                AILog.Log(AILog.MINION, name, $"Chase on {_targetName} dropped (senses blocked), back to objective");
                 EnterMoveToObjective();
                 return;
             }
@@ -383,19 +386,22 @@ namespace ProjectShaman.AI.Minion
 
             float until = Time.time + effect.Duration;
             string sourceName = source != null ? source.name : "unknown";
+            PlayerItemKind item;
 
             switch (effect.Kind)
             {
+                // Bell: stagger, and a lunge on its way in is called off. Once through the player the hit already landed
                 case ItemControlKind.Stagger:
+                    item = PlayerItemKind.Bell;
+                    if (_pierceHit || !_itemGate.IsReady(item))
+                    {
+                        return false;
+                    }
+
                     _staggerUntil = Mathf.Max(_staggerUntil, until);
                     _movement.Stop();
 
-                    if (_state == MinionState.Attack && _pierceHit)
-                    {
-                        // Already through the player: the strike stands, it just stops short
-                        EnterFade();
-                    }
-                    else if (_state == MinionState.Attack)
+                    if (_state == MinionState.Attack)
                     {
                         _state = MinionState.ChasePlayer;
                         _nextAttackTime = Mathf.Max(_nextAttackTime, _staggerUntil);
@@ -404,23 +410,43 @@ namespace ProjectShaman.AI.Minion
                     _nextRepathTime = 0f;
                     break;
 
-                case ItemControlKind.Slow:
-                    _slowMultiplier = Time.time < _slowUntil ? Mathf.Min(_slowMultiplier, effect.SpeedMultiplier) : effect.SpeedMultiplier;
-                    _slowUntil = Mathf.Max(_slowUntil, until);
-                    _nextRepathTime = 0f;
-                    break;
-
+                // Gong: fear. It drops whatever it was after and flies away from where the gong rang
                 case ItemControlKind.SensoryInterference:
-                    _blindUntil = Mathf.Max(_blindUntil, until);
+                    item = PlayerItemKind.Gong;
+                    if (!_itemGate.IsReady(item))
+                    {
+                        return false;
+                    }
+
+                    if (_state == MinionState.Attack && _pierceHit)
+                    {
+                        // Already through the player: the strike stands, it fades as planned
+                        return false;
+                    }
+
+                    _fearUntil = Mathf.Max(_fearUntil, until);
+                    _fearSource = source != null ? source.transform.position : transform.position - transform.forward;
+                    _aggroBlockedUntil = Mathf.Max(_aggroBlockedUntil, _fearUntil);
+                    EnterMoveToObjective();
                     break;
 
+                // Bean-mugwort: a small flyer is too hard to hit for a slow to be worth it, so it does nothing here
                 default:
                     return false;
             }
 
+            _itemGate.Consume(item, _data.ItemCooldowns);
             AILog.Log(AILog.MINION, name, $"Item control {effect.Kind} {effect.Duration:F1}s by {sourceName}");
             OnControlApplied?.Invoke(this, effect);
             return true;
+        }
+
+        private void TickFlee()
+        {
+            Vector3 away = transform.position - _fearSource;
+            away.y = 0f;
+            away = away.sqrMagnitude > 0.0001f ? away.normalized : transform.forward;
+            MoveDirect(transform.position + away * _fleeLookAhead, _data.ChaseSpeed);
         }
 
         private void MoveToward(Vector3 destination, float speed)
@@ -434,11 +460,11 @@ namespace ProjectShaman.AI.Minion
             MoveDirect(destination, speed);
         }
 
-        // Every frame, no repath throttle (lunge, retreat)
+        // Every frame, no repath throttle (lunge, flee)
         private void MoveDirect(Vector3 destination, float speed)
         {
             _lastDestination = destination;
-            _movement.SetSpeed(Time.time < _slowUntil ? speed * _slowMultiplier : speed);
+            _movement.SetSpeed(speed);
             _movement.MoveTo(destination);
         }
 
