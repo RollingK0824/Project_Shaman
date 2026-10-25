@@ -78,6 +78,11 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostCommandTimeoutSeconds = 30f;
         [SerializeField] private float _ghostMinChannelSeconds = 1.5f;
 
+        [Header("Ghost Channel Items")]
+        [SerializeField] private float _ghostSaltRetreatSeconds = 8f;
+        [SerializeField, Range(0f, 1f)] private float _ghostBeanRewindRatio = 0.3f;
+        [SerializeField] private float _ghostBellRevealSeconds = 6f;
+
         [Header("Ghost Idle")]
         [SerializeField] private float _ghostStalkMinDistance = 3f;
         [SerializeField] private float _ghostStalkMaxDistance = 6f;
@@ -227,6 +232,9 @@ namespace ProjectShaman.AI.Data
         public float GhostCommandRetrySeconds => _ghostCommandRetrySeconds;
         public float GhostCommandTimeoutSeconds => _ghostCommandTimeoutSeconds;
         public float GhostMinChannelSeconds => Mathf.Max(0f, _ghostMinChannelSeconds);
+        public float GhostSaltRetreatSeconds => Mathf.Max(0f, _ghostSaltRetreatSeconds);
+        public float GhostBeanRewindRatio => Mathf.Clamp01(_ghostBeanRewindRatio);
+        public float GhostBellRevealSeconds => Mathf.Max(0f, _ghostBellRevealSeconds);
         public float GhostStalkMinDistance => Mathf.Max(0f, _ghostStalkMinDistance);
         public float GhostStalkMaxDistance => Mathf.Max(GhostStalkMinDistance, _ghostStalkMaxDistance);
         public float GhostStalkSpeed => Mathf.Max(0.1f, _ghostStalkSpeed);

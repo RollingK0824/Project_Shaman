@@ -20,11 +20,16 @@ namespace ProjectShaman.Network.AI
         private AI_GhostEntity _entity;
         private AI_ChannelGauge _gauge;
 
-        // Server NetworkTime of the current channel; end 0 = not channeling
-        [SyncVar] private double _channelStartTime;
-        [SyncVar] private double _channelEndTime;
+        // Channel snapshot at the last server change: elapsed seconds then, total seconds, pause end (NetworkTime).
+        // Duration 0 = not channeling
+        [SyncVar] private float _channelDuration;
+        [SyncVar] private float _channelElapsedAtSync;
+        [SyncVar] private double _channelSyncTime;
+        [SyncVar] private double _channelPausedUntil;
+        // Bell: until this NetworkTime every player sees the gauge, near or far
+        [SyncVar] private double _revealedUntil;
 
-        public bool IsChanneling => _channelEndTime > 0d;
+        public bool IsChanneling => _channelDuration > 0f;
 
         // 0..1 on every peer, -1 when not channeling
         public float ChannelProgress
@@ -36,8 +41,9 @@ namespace ProjectShaman.Network.AI
                     return -1f;
                 }
 
-                double length = _channelEndTime - _channelStartTime;
-                return length <= 0d ? 1f : Mathf.Clamp01((float)((NetworkTime.time - _channelStartTime) / length));
+                double since = NetworkTime.time - System.Math.Max(_channelSyncTime, _channelPausedUntil);
+                float elapsed = _channelElapsedAtSync + (float)System.Math.Max(0d, since);
+                return Mathf.Clamp01(elapsed / _channelDuration);
             }
         }
 
@@ -49,16 +55,18 @@ namespace ProjectShaman.Network.AI
         public override void OnStartServer()
         {
             base.OnStartServer();
-            _entity.OnChannelStarted += HandleServerChannelStarted;
+            _entity.OnChannelChanged += HandleServerChannelChanged;
             _entity.OnChannelEnded += HandleServerChannelEnded;
+            _entity.OnRevealed += HandleServerRevealed;
             _entity.SetSimulationActive(true);
             AILog.Log(AILog.NET, _entity.GhostId, "Ghost entity OnStartServer → Agent/BT enabled");
         }
 
         public override void OnStopServer()
         {
-            _entity.OnChannelStarted -= HandleServerChannelStarted;
+            _entity.OnChannelChanged -= HandleServerChannelChanged;
             _entity.OnChannelEnded -= HandleServerChannelEnded;
+            _entity.OnRevealed -= HandleServerRevealed;
             base.OnStopServer();
         }
 
@@ -74,7 +82,7 @@ namespace ProjectShaman.Network.AI
             _gauge = AI_ChannelGauge.Create(transform, _gaugeLocalPosition, _gaugeRadius, _gaugeWidth, _gaugeBackColor, _gaugeFillColor);
         }
 
-        // Only players near the ghost see how far its action has come
+        // Only players near the ghost see how far its action has come, unless a bell revealed it
         private void Update()
         {
             if (_gauge == null)
@@ -83,7 +91,8 @@ namespace ProjectShaman.Network.AI
             }
 
             float progress = ChannelProgress;
-            if (progress >= 0f && !IsViewerWithin(_gaugeShowDistance))
+            bool revealed = NetworkTime.time < _revealedUntil;
+            if (progress >= 0f && !revealed && !IsViewerWithin(_gaugeShowDistance))
             {
                 progress = -1f;
             }
@@ -97,16 +106,30 @@ namespace ProjectShaman.Network.AI
             return viewer != null && (viewer.transform.position - transform.position).sqrMagnitude <= distance * distance;
         }
 
-        private void HandleServerChannelStarted(AI_GhostEntity entity, float duration)
+        private void HandleServerChannelChanged(AI_GhostEntity entity)
         {
-            _channelStartTime = NetworkTime.time;
-            _channelEndTime = _channelStartTime + duration;
+            GhostActionSession session = entity.Session;
+            if (session == null || !session.IsChanneling)
+            {
+                return;
+            }
+
+            float now = Time.time;
+            double networkNow = NetworkTime.time;
+            _channelSyncTime = networkNow;
+            _channelElapsedAtSync = session.ChannelElapsed(now);
+            _channelPausedUntil = networkNow + Mathf.Max(0f, session.ChannelPausedUntil - now);
+            _channelDuration = session.ChannelDuration;
         }
 
         private void HandleServerChannelEnded(AI_GhostEntity entity)
         {
-            _channelStartTime = 0d;
-            _channelEndTime = 0d;
+            _channelDuration = 0f;
+        }
+
+        private void HandleServerRevealed(AI_GhostEntity entity, float seconds)
+        {
+            _revealedUntil = System.Math.Max(_revealedUntil, NetworkTime.time + seconds);
         }
     }
 }
