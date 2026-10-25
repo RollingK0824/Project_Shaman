@@ -67,6 +67,7 @@ namespace ProjectShaman.AI.Ghost
         private GhostHuntPlan _hunt;
         private GhostNightActionData _huntAction;
         private GhostIdleController _idle;
+        private GhostStressAura _aura;
         private float _lastPlayerAttackTime = float.NegativeInfinity;
         private bool _isSimulating;
         private float _nextDecisionTime;
@@ -114,6 +115,8 @@ namespace ProjectShaman.AI.Ghost
             _isHunter = _hunt.HasKills;
             _canChasePlayer = _isHunter && canChasePlayer;
             _idle = new GhostIdleController(this, _movement, config, _random);
+            _aura?.Clear();
+            _aura = new GhostStressAura(this, config, possession);
 
             _actions.Clear();
             _uses.Clear();
@@ -174,6 +177,16 @@ namespace ProjectShaman.AI.Ghost
 
             _behaviorAgent.enabled = active;
             _isSimulating = active;
+
+            if (!active)
+            {
+                _aura?.Clear();
+            }
+        }
+
+        private void OnDisable()
+        {
+            _aura?.Clear();
         }
 
         private void Update()
@@ -185,6 +198,7 @@ namespace ProjectShaman.AI.Ghost
 
             RefreshDebug();
             TickSlow();
+            _aura?.Tick();
 
             if (_session == null)
             {
@@ -907,6 +921,7 @@ namespace ProjectShaman.AI.Ghost
         {
             FailCommand("morning");
             _idle?.Stop("morning");
+            _aura?.Clear();
             GhostTargetRegistry.ReleaseAll(_ghostId);
 
             int lost = _hunt != null ? _hunt.Abandon() : 0;
