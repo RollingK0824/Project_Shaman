@@ -51,7 +51,7 @@ namespace ProjectShaman.AI
 
             if (context.Verb == GhostActionVerb.SleepParalysis)
             {
-                return _paralyzedNight != context.NightDay && IsAtHome(context.Ledger.Config.SleepParalysisHomeDistance);
+                return _paralyzedNight != context.NightDay && IsAsleep() && IsAtHome(context.Ledger.Config.SleepParalysisHomeDistance);
             }
 
             return true;
@@ -83,6 +83,19 @@ namespace ProjectShaman.AI
             }
 
             AILog.Log(AILog.GHOST, context.GhostId, $"Sleep paralysis on {villagerId}");
+        }
+
+        // Past the bed hour on the schedule tab: a villager still up at night cannot be pinned in its sleep
+        private bool IsAsleep()
+        {
+            TimeManager time = TimeManager.Existing;
+            if (time == null || _core.TodayBedHour <= 0)
+            {
+                return true;
+            }
+
+            float nightElapsed = (float)time.Elapsed - TimeManager.DAY_DURATION;
+            return nightElapsed < 0f || DayClock.NightToHour(nightElapsed) >= _core.TodayBedHour;
         }
 
         private bool IsAtHome(float distance)
