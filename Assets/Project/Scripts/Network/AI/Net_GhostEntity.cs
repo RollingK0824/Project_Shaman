@@ -1,3 +1,4 @@
+using System;
 using Mirror;
 using UnityEngine;
 using ProjectShaman.AI;
@@ -17,19 +18,32 @@ namespace ProjectShaman.Network.AI
         [SerializeField] private Color _gaugeBackColor = new Color(0.15f, 0.15f, 0.15f);
         [SerializeField] private Color _gaugeFillColor = new Color(0.75f, 0.25f, 0.95f);
 
+        [Header("Salt teleport")]
+        [Tooltip("Played where the ghost vanishes and where it appears. Empty = no effect yet")]
+        [SerializeField] private GameObject _teleportEffectPrefab;
+        [SerializeField, Min(0.1f)] private float _teleportEffectLifetime = 2f;
+
         private AI_GhostEntity _entity;
         private AI_ChannelGauge _gauge;
+        private AI_RevealOutline _outline;
+        private NetworkTransformBase _networkTransform;
 
-        // Channel snapshot at the last server change: elapsed seconds then, total seconds, pause end (NetworkTime).
-        // Duration 0 = not channeling
+        // Channel snapshot at the last server change: elapsed seconds then, total seconds, pause end and slow window
+        // (NetworkTime). Duration 0 = not channeling
         [SyncVar] private float _channelDuration;
         [SyncVar] private float _channelElapsedAtSync;
         [SyncVar] private double _channelSyncTime;
         [SyncVar] private double _channelPausedUntil;
-        // Bell: until this NetworkTime every player sees the gauge, near or far
+        [SyncVar] private float _channelSlowRate = 1f;
+        [SyncVar] private double _channelSlowUntil;
+        // Bell: until this NetworkTime the ghost is revealed (glow, gauge at any distance)
         [SyncVar] private double _revealedUntil;
 
+        // (from, to) on every client when salt flings the ghost elsewhere
+        public event Action<Vector3, Vector3> ClientTeleported;
+
         public bool IsChanneling => _channelDuration > 0f;
+        public bool IsRevealed => NetworkTime.time < _revealedUntil;
 
         // 0..1 on every peer, -1 when not channeling
         public float ChannelProgress
@@ -41,15 +55,15 @@ namespace ProjectShaman.Network.AI
                     return -1f;
                 }
 
-                double since = NetworkTime.time - System.Math.Max(_channelSyncTime, _channelPausedUntil);
-                float elapsed = _channelElapsedAtSync + (float)System.Math.Max(0d, since);
-                return Mathf.Clamp01(elapsed / _channelDuration);
+                double elapsed = GhostActionSession.ElapsedSince(_channelElapsedAtSync, _channelSyncTime, _channelPausedUntil, _channelSlowRate, _channelSlowUntil, NetworkTime.time);
+                return Mathf.Clamp01((float)(elapsed / _channelDuration));
             }
         }
 
         private void Awake()
         {
             _entity = GetComponent<AI_GhostEntity>();
+            _networkTransform = GetComponent<NetworkTransformBase>();
         }
 
         public override void OnStartServer()
@@ -58,6 +72,7 @@ namespace ProjectShaman.Network.AI
             _entity.OnChannelChanged += HandleServerChannelChanged;
             _entity.OnChannelEnded += HandleServerChannelEnded;
             _entity.OnRevealed += HandleServerRevealed;
+            _entity.OnTeleported += HandleServerTeleported;
             _entity.SetSimulationActive(true);
             AILog.Log(AILog.NET, _entity.GhostId, "Ghost entity OnStartServer → Agent/BT enabled");
         }
@@ -67,6 +82,7 @@ namespace ProjectShaman.Network.AI
             _entity.OnChannelChanged -= HandleServerChannelChanged;
             _entity.OnChannelEnded -= HandleServerChannelEnded;
             _entity.OnRevealed -= HandleServerRevealed;
+            _entity.OnTeleported -= HandleServerTeleported;
             base.OnStopServer();
         }
 
@@ -80,9 +96,11 @@ namespace ProjectShaman.Network.AI
             }
 
             _gauge = AI_ChannelGauge.Create(transform, _gaugeLocalPosition, _gaugeRadius, _gaugeWidth, _gaugeBackColor, _gaugeFillColor);
+            _outline = gameObject.AddComponent<AI_RevealOutline>();
         }
 
-        // Only players near the ghost see how far its action has come, unless a bell revealed it
+        // Only players near the ghost see how far its action has come, unless a bell revealed it.
+        // Revealed: every peer turns the glow outline on and off from the same synced end time (late joiners included)
         private void Update()
         {
             if (_gauge == null)
@@ -90,8 +108,10 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
+            bool revealed = IsRevealed;
+            _outline.Show(revealed);
+
             float progress = ChannelProgress;
-            bool revealed = NetworkTime.time < _revealedUntil;
             if (progress >= 0f && !revealed && !IsViewerWithin(_gaugeShowDistance))
             {
                 progress = -1f;
@@ -119,6 +139,8 @@ namespace ProjectShaman.Network.AI
             _channelSyncTime = networkNow;
             _channelElapsedAtSync = session.ChannelElapsed(now);
             _channelPausedUntil = networkNow + Mathf.Max(0f, session.ChannelPausedUntil - now);
+            _channelSlowRate = session.ChannelSlowRate;
+            _channelSlowUntil = networkNow + Mathf.Max(0f, session.ChannelSlowUntil - now);
             _channelDuration = session.ChannelDuration;
         }
 
@@ -129,7 +151,35 @@ namespace ProjectShaman.Network.AI
 
         private void HandleServerRevealed(AI_GhostEntity entity, float seconds)
         {
-            _revealedUntil = System.Math.Max(_revealedUntil, NetworkTime.time + seconds);
+            _revealedUntil = Math.Max(_revealedUntil, NetworkTime.time + seconds);
+        }
+
+        // The position is state (NetworkTransform), so it is teleported, not interpolated across the map; the puff of smoke
+        // at both ends happens once, so it is an RPC
+        private void HandleServerTeleported(AI_GhostEntity entity, Vector3 from, Vector3 to)
+        {
+            if (_networkTransform != null)
+            {
+                _networkTransform.ServerTeleport(to, transform.rotation);
+            }
+            else
+            {
+                AILog.Warn(AILog.NET, $"{_entity.GhostId} has no NetworkTransform, clients will see the ghost slide to {to}");
+            }
+
+            RpcTeleported(from, to);
+        }
+
+        [ClientRpc]
+        private void RpcTeleported(Vector3 from, Vector3 to)
+        {
+            if (_teleportEffectPrefab != null)
+            {
+                Destroy(Instantiate(_teleportEffectPrefab, from, Quaternion.identity), _teleportEffectLifetime);
+                Destroy(Instantiate(_teleportEffectPrefab, to, Quaternion.identity), _teleportEffectLifetime);
+            }
+
+            ClientTeleported?.Invoke(from, to);
         }
     }
 }

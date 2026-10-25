@@ -83,9 +83,13 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostMinChannelSeconds = 1.5f;
 
         [Header("Ghost Channel Items")]
-        [SerializeField] private float _ghostSaltRetreatSeconds = 8f;
-        [SerializeField, Range(0f, 1f)] private float _ghostBeanRewindRatio = 0.3f;
+        [Tooltip("Yin a ghost gains when salt breaks it off (angered, it grows bolder)")]
+        [SerializeField] private float _ghostSaltAngerYin = 5f;
+        [Tooltip("Salt also sends the ghost away: a reachable point inside its own range at least this far from the player who threw it")]
+        [SerializeField] private float _ghostSaltTeleportMinDistance = 15f;
         [SerializeField] private float _ghostBellRevealSeconds = 6f;
+        [Tooltip("After reacting to an item a ghost ignores that same item for this long")]
+        [SerializeField] private ItemReactionCooldowns _ghostItemCooldowns = new ItemReactionCooldowns(2f, 3f, 6f, 10f);
 
         [Header("Ghost Idle")]
         [SerializeField] private float _ghostStalkMinDistance = 3f;
@@ -140,8 +144,8 @@ namespace ProjectShaman.AI.Data
         [Header("Player Item Reaction")]
         [Tooltip("Stress a villager takes when salt, bean-mugwort, the bell or the gong reaches them")]
         [SerializeField, Min(0f)] private float _itemStartleStress = 3f;
-        [Tooltip("After reacting to an item a villager ignores further items for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
-        [SerializeField, Min(0f)] private float _itemReactionCooldown = 6f;
+        [Tooltip("After reacting to an item a villager ignores that same item for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
+        [SerializeField] private ItemReactionCooldowns _villagerItemCooldowns = new ItemReactionCooldowns(6f, 6f, 6f, 6f);
         [Tooltip("Host yin from which the ghost shows through the body (trembling); below it the host is startled like anyone")]
         [SerializeField, Min(0f)] private float _itemReactionYin = 40f;
         [Tooltip("Host yin from which the reaction turns violent (grotesque twisting, lashing out)")]
@@ -238,8 +242,9 @@ namespace ProjectShaman.AI.Data
         public float GhostCommandRetrySeconds => _ghostCommandRetrySeconds;
         public float GhostCommandTimeoutSeconds => _ghostCommandTimeoutSeconds;
         public float GhostMinChannelSeconds => Mathf.Max(0f, _ghostMinChannelSeconds);
-        public float GhostSaltRetreatSeconds => Mathf.Max(0f, _ghostSaltRetreatSeconds);
-        public float GhostBeanRewindRatio => Mathf.Clamp01(_ghostBeanRewindRatio);
+        public float GhostSaltAngerYin => Mathf.Max(0f, _ghostSaltAngerYin);
+        public float GhostSaltTeleportMinDistance => Mathf.Max(0f, _ghostSaltTeleportMinDistance);
+        public ItemReactionCooldowns GhostItemCooldowns => _ghostItemCooldowns;
         public float GhostBellRevealSeconds => Mathf.Max(0f, _ghostBellRevealSeconds);
         public float GhostStalkMinDistance => Mathf.Max(0f, _ghostStalkMinDistance);
         public float GhostStalkMaxDistance => Mathf.Max(GhostStalkMinDistance, _ghostStalkMaxDistance);
@@ -271,7 +276,7 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
-        public float ItemReactionCooldown => Mathf.Max(0f, _itemReactionCooldown);
+        public ItemReactionCooldowns VillagerItemCooldowns => _villagerItemCooldowns;
         public float ItemStartleStress => Mathf.Max(0f, _itemStartleStress);
         public float ItemReactionYin => Mathf.Max(0f, _itemReactionYin);
         public float ItemViolentYin => Mathf.Max(ItemReactionYin, _itemViolentYin);

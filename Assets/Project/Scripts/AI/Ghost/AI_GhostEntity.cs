@@ -22,6 +22,7 @@ namespace ProjectShaman.AI.Ghost
         private const float RANGE_TOLERANCE = 0.5f;
         private const float FOLLOW_UPDATE_DISTANCE = 0.5f;
         private const float IDLE_ARRIVE_DISTANCE = 0.8f;
+        private const int REPEL_POSITION_ATTEMPTS = 16;
 
         [SerializeField] private Transform _carrySocket;
 
@@ -67,11 +68,16 @@ namespace ProjectShaman.AI.Ghost
         private bool _isSimulating;
         private float _nextDecisionTime;
         private float _nextTargetCheckTime;
+        private float _slowRate = 1f;
+        private float _slowUntil;
+        private static NavMeshPath _repelPath;
 
         // Server: a channel with time started or its timing changed (read Session), and when it stops for any reason
         public event System.Action<AI_GhostEntity> OnChannelChanged;
         public event System.Action<AI_GhostEntity> OnChannelEnded;
         public event System.Action<AI_GhostEntity, float> OnRevealed;
+        // (ghost, from, to) when salt flings it elsewhere
+        public event System.Action<AI_GhostEntity, Vector3, Vector3> OnTeleported;
 
         public AIBehaviourConfig Config => _config;
 
@@ -173,6 +179,7 @@ namespace ProjectShaman.AI.Ghost
             }
 
             RefreshDebug();
+            TickSlow();
 
             if (_session == null)
             {
@@ -581,6 +588,12 @@ namespace ProjectShaman.AI.Ghost
             float duration = _session.IsCarrying ? 0f : Mathf.Max(minimum, _session.Action.Duration);
             _session.BeginChannel(Time.time, duration);
 
+            // Still slowed by bean-mugwort from the walk here: the channel starts slow too
+            if (Time.time < _slowUntil)
+            {
+                _session.SlowChannel(Time.time, _slowRate, _slowUntil - Time.time);
+            }
+
             if (duration > 0f)
             {
                 AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} for {duration:F1}s");
@@ -590,31 +603,128 @@ namespace ProjectShaman.AI.Ghost
             return true;
         }
 
-        // Something outside the ghost (a player item) broke the channel: no effect, cost not refunded.
-        // The ghost holds off for retryDelay before choosing again
-        public bool InterruptChannel(string reason, float retryDelay)
+        // Salt: whatever the ghost was channelling breaks off (no effect, cost not refunded), the ghost grows angrier (yin)
+        // and is flung somewhere else in its own range, out of the thrower's reach, where it picks a new target
+        public bool RepelBySalt(Vector3 throwerPosition, string reason)
         {
-            if (!IsChanneling)
+            if (!_isSimulating)
             {
                 return false;
             }
 
-            FailCommand($"channel interrupted ({reason})", retryDelay);
+            float anger = _config != null ? _config.GhostSaltAngerYin : 0f;
+            _ledger?.AddYin(_possession, anger, $"salt anger ({reason})");
+
+            Vector3 from = transform.position;
+            bool moved = TryPickRepelPosition(throwerPosition, out Vector3 to) && _movement.Warp(to);
+            AILog.Log(AILog.GHOST, _ghostId, moved
+                ? $"Repelled by salt ({reason}): yin +{anger:F0} pending, teleported {Vector3.Distance(from, to):F0}m to {to}"
+                : $"Repelled by salt ({reason}): yin +{anger:F0} pending, no reachable point to teleport to, stays");
+
+            if (moved)
+            {
+                OnTeleported?.Invoke(this, from, to);
+            }
+
+            if (_session != null)
+            {
+                FailCommand($"repelled by salt ({reason})");
+            }
+            else
+            {
+                _idle?.Stop("repelled by salt");
+                PushIdle();
+            }
+
             return true;
         }
 
-        // Push the channel back by a share of its length (progress never below 0)
-        public bool RewindChannel(float ratio, string reason)
+        // A random point in this ghost's range at least the configured distance from the thrower, which is on the NavMesh
+        // and joined to the village by a full path (a roof or a closed yard has its own NavMesh island the ghost could not
+        // leave). Falls back to the farthest such point when none is far enough
+        private bool TryPickRepelPosition(Vector3 throwerPosition, out Vector3 position)
         {
-            if (!IsChanneling || _session.ChannelDuration <= 0f)
+            position = transform.position;
+            float minDistance = _config != null ? _config.GhostSaltTeleportMinDistance : 0f;
+            float best = -1f;
+
+            for (int i = 0; i < REPEL_POSITION_ATTEMPTS; i++)
+            {
+                float angle = (float)_random.NextDouble() * Mathf.PI * 2f;
+                float reach = Mathf.Sqrt((float)_random.NextDouble()) * _radius;
+                Vector3 candidate = _center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * reach;
+
+                if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) || !IsJoined(hit.position))
+                {
+                    continue;
+                }
+
+                float distance = FlatDistance(hit.position, throwerPosition);
+                if (distance >= minDistance)
+                {
+                    position = hit.position;
+                    return true;
+                }
+
+                if (distance > best)
+                {
+                    best = distance;
+                    position = hit.position;
+                }
+            }
+
+            return best >= 0f;
+        }
+
+        // Reachable both from where the ghost is and from its range's centre
+        private bool IsJoined(Vector3 point)
+        {
+            if (_repelPath == null)
+            {
+                _repelPath = new NavMeshPath();
+            }
+
+            return NavMesh.CalculatePath(transform.position, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete
+                && NavMesh.CalculatePath(_center, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete;
+        }
+
+        private static float FlatDistance(Vector3 a, Vector3 b)
+        {
+            a.y = 0f;
+            b.y = 0f;
+            return Vector3.Distance(a, b);
+        }
+
+        // Bean-mugwort: the ghost moves and channels at rate for a while
+        public bool SlowDown(float rate, float seconds, string reason)
+        {
+            if (!_isSimulating || seconds <= 0f)
             {
                 return false;
             }
 
-            _session.RewindChannel(Time.time, _session.ChannelDuration * Mathf.Clamp01(ratio));
-            AILog.Log(AILog.GHOST, _ghostId, $"Channel {_session} rewound {ratio:P0} ({reason}), now {_session.ChannelProgress(Time.time):P0}");
-            OnChannelChanged?.Invoke(this);
+            _slowRate = Mathf.Clamp(rate, 0.05f, 1f);
+            _slowUntil = Time.time + seconds;
+            _movement.SetSpeedMultiplier(_slowRate);
+
+            if (IsChanneling && _session.ChannelDuration > 0f)
+            {
+                _session.SlowChannel(Time.time, _slowRate, seconds);
+                OnChannelChanged?.Invoke(this);
+            }
+
+            AILog.Log(AILog.GHOST, _ghostId, $"Slowed x{_slowRate:F2} for {seconds:F1}s ({reason})");
             return true;
+        }
+
+        private void TickSlow()
+        {
+            if (_slowUntil > 0f && Time.time >= _slowUntil)
+            {
+                _slowUntil = 0f;
+                _slowRate = 1f;
+                _movement.SetSpeedMultiplier(1f);
+            }
         }
 
         // Hold the channel where it is for a while; it resumes on its own
@@ -631,7 +741,7 @@ namespace ProjectShaman.AI.Ghost
             return true;
         }
 
-        // Every player sees this ghost's channel for a while, however far away
+        // The bell: players around see this ghost glow (and its channel) for a while
         public void Reveal(float seconds, string reason)
         {
             if (!_isSimulating || seconds <= 0f)
