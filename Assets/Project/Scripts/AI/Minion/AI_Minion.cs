@@ -12,18 +12,20 @@ namespace ProjectShaman.AI.Minion
     {
         private const float RANGE_TOLERANCE = 0.3f;
         private const float REPATH_MOVE_DISTANCE = 0.5f;
+        private const float PIERCE_HEIGHT_TOLERANCE = 2f;
+        // Extra time over the straight-line flight before a lunge is called finished (the flyer curves and accelerates)
+        private const float PIERCE_TIME_MARGIN = 0.6f;
 
         [SerializeField] private MinionData _data;
 
-        [Header("Swoop attack")]
-        [Tooltip("Flat distance to the player from which the minion lunges in (the hit is still judged against AttackRange)")]
+        [Header("Pierce attack")]
+        [Tooltip("Flat distance to the player from which the minion lunges in (the hit is judged against AttackRange)")]
         [SerializeField, Min(0.1f)] private float _lungeStartDistance = 3f;
         [SerializeField, Min(0.1f)] private float _lungeSpeed = 9f;
-        [Tooltip("After each strike the minion pulls up and away for this long before coming round again")]
-        [SerializeField, Min(0f)] private float _retreatSeconds = 0.8f;
-        [SerializeField, Min(0f)] private float _retreatDistance = 4f;
-        [SerializeField, Min(0f)] private float _retreatHeight = 3f;
-        [SerializeField, Min(0.1f)] private float _retreatSpeed = 6f;
+        [Tooltip("The lunge is aimed this far past the player, so the minion flies straight through the body")]
+        [SerializeField, Min(0f)] private float _pierceThroughDistance = 3f;
+        [Tooltip("After piercing a player the minion hangs there this long (fade presentation), then despawns")]
+        [SerializeField, Min(0f)] private float _fadeSeconds = 1.2f;
 
         [Header("Runtime (server only)")]
         [SerializeField] private MinionState _state = MinionState.Inactive;
@@ -42,13 +44,15 @@ namespace ProjectShaman.AI.Minion
         private float _aggroBlockedUntil;
         private float _nextRepathTime;
         private float _nextAttackTime;
-        private float _attackHitTime;
         private float _staggerUntil;
         private float _slowUntil;
         private float _slowMultiplier = 1f;
         private float _blindUntil;
-        private float _retreatUntil;
-        private Vector3 _retreatPoint;
+        private Vector3 _pierceEnd;
+        private Vector3 _lastPiercePosition;
+        private float _pierceUntil;
+        private bool _pierceHit;
+        private float _fadeEndTime;
 
         public MinionState State => _state;
         public MinionData Data => _data;
@@ -57,6 +61,8 @@ namespace ProjectShaman.AI.Minion
         public event Action<AI_Minion> OnAttackStarted;
         public event Action<AI_Minion, bool> OnAttackResolved;
         public event Action<AI_Minion, ItemControlEffect> OnControlApplied;
+        // (minion, seconds until despawn) once it has pierced a player
+        public event Action<AI_Minion, float> OnPierced;
 
         private void Awake()
         {
@@ -123,6 +129,16 @@ namespace ProjectShaman.AI.Minion
             }
 
             _distanceToObjective = MinionBattlefield.FlatDistance(transform.position, _battlefield.Objective.position);
+
+            if (_state == MinionState.Fading)
+            {
+                if (Time.time >= _fadeEndTime)
+                {
+                    Remove("pierced a player");
+                }
+
+                return;
+            }
 
             if (Time.time < _staggerUntil)
             {
@@ -197,12 +213,6 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
-            if (Time.time < _retreatUntil)
-            {
-                MoveDirect(_retreatPoint, _retreatSpeed);
-                return;
-            }
-
             Vector3 playerPosition = _player.Position;
             float distance = MinionBattlefield.FlatDistance(transform.position, playerPosition);
 
@@ -240,51 +250,74 @@ namespace ProjectShaman.AI.Minion
             return _data.TargetMode != MinionTargetMode.PlayerFirst && MinionBattlefield.FlatDistance(transform.position, _chaseOrigin) > _data.LeashDistance;
         }
 
+        // The lunge is committed to a line through the player: it hits once on the way through, never turns to follow
         private void TickAttack()
         {
-            if (!_player.IsValid)
+            Vector3 position = transform.position;
+
+            if (!_pierceHit && _player.IsValid && PassedThrough(_lastPiercePosition, position, _player.Position))
             {
-                EnterMoveToObjective();
-                return;
-            }
-
-            // Windup = the lunge: straight at the player, fast
-            Vector3 playerPosition = _player.Position;
-
-            if (Time.time < _attackHitTime)
-            {
-                MoveDirect(playerPosition, _lungeSpeed);
-                return;
-            }
-
-            float distance = MinionBattlefield.FlatDistance(transform.position, playerPosition);
-            _nextAttackTime = Time.time + _data.AttackInterval;
-
-            bool hit = distance <= _data.AttackRange + RANGE_TOLERANCE;
-
-            if (hit)
-            {
+                _pierceHit = true;
                 _player.Damageable.ReceiveDamage(_data.AttackDamage, gameObject);
-                AILog.Log(AILog.MINION, name, $"Attack {_targetName} damage={_data.AttackDamage:F1} ({DamageTypeTag.Resolve(gameObject)})");
+                AILog.Log(AILog.MINION, name, $"Pierced {_targetName} damage={_data.AttackDamage:F1} ({DamageTypeTag.Resolve(gameObject)})");
+                OnAttackResolved?.Invoke(this, true);
+            }
+
+            _lastPiercePosition = position;
+
+            bool through = MinionBattlefield.FlatDistance(position, _pierceEnd) <= RANGE_TOLERANCE || Time.time >= _pierceUntil;
+            if (!through)
+            {
+                MoveDirect(_pierceEnd, _lungeSpeed);
+                return;
+            }
+
+            if (_pierceHit)
+            {
+                EnterFade();
+                return;
+            }
+
+            // Missed (the player stepped aside): come round and try again
+            _nextAttackTime = Time.time + _data.AttackInterval;
+            AILog.Log(AILog.MINION, name, $"Pierce on {_targetName} missed");
+            OnAttackResolved?.Invoke(this, false);
+
+            if (_player.IsValid)
+            {
+                _state = MinionState.ChasePlayer;
             }
             else
             {
-                AILog.Log(AILog.MINION, name, $"Attack on {_targetName} missed (distance {distance:F1}m)");
+                EnterMoveToObjective();
             }
-
-            BeginRetreat(playerPosition);
-            _state = MinionState.ChasePlayer;
-            OnAttackResolved?.Invoke(this, hit);
         }
 
-        // Pull up and away from the player, then come round for the next pass
-        private void BeginRetreat(Vector3 playerPosition)
+        // Did this frame's flight segment come within AttackRange of the player (flat), at about body height?
+        private bool PassedThrough(Vector3 from, Vector3 to, Vector3 playerPosition)
         {
-            Vector3 away = transform.position - playerPosition;
-            away.y = 0f;
-            away = away.sqrMagnitude > 0.0001f ? away.normalized : -transform.forward;
-            _retreatPoint = transform.position + away * _retreatDistance + Vector3.up * _retreatHeight;
-            _retreatUntil = Time.time + _retreatSeconds;
+            if (Mathf.Abs(to.y - playerPosition.y) > PIERCE_HEIGHT_TOLERANCE)
+            {
+                return false;
+            }
+
+            Vector2 a = new Vector2(from.x, from.z);
+            Vector2 b = new Vector2(to.x, to.z);
+            Vector2 p = new Vector2(playerPosition.x, playerPosition.z);
+            Vector2 segment = b - a;
+            float lengthSquared = segment.sqrMagnitude;
+            float t = lengthSquared > 0.0001f ? Mathf.Clamp01(Vector2.Dot(p - a, segment) / lengthSquared) : 0f;
+            return Vector2.Distance(a + segment * t, p) <= _data.AttackRange;
+        }
+
+        private void EnterFade()
+        {
+            _state = MinionState.Fading;
+            _movement.Stop();
+            _player = default;
+            _fadeEndTime = Time.time + _fadeSeconds;
+            AILog.Log(AILog.MINION, name, $"Fading out ({_fadeSeconds:F1}s)");
+            OnPierced?.Invoke(this, _fadeSeconds);
         }
 
         private void HitObjective()
@@ -325,14 +358,25 @@ namespace ProjectShaman.AI.Minion
 
         private void EnterAttack()
         {
+            Vector3 position = transform.position;
+            Vector3 playerPosition = _player.Position;
+            Vector3 direction = playerPosition - position;
+            direction.y = 0f;
+            direction = direction.sqrMagnitude > 0.0001f ? direction.normalized : transform.forward;
+
             _state = MinionState.Attack;
-            _attackHitTime = Time.time + _data.AttackWindup;
+            _pierceHit = false;
+            _lastPiercePosition = position;
+            _pierceEnd = playerPosition + direction * _pierceThroughDistance;
+            float length = MinionBattlefield.FlatDistance(position, _pierceEnd);
+            _pierceUntil = Time.time + length / _lungeSpeed + PIERCE_TIME_MARGIN;
+            FaceToward(playerPosition);
             OnAttackStarted?.Invoke(this);
         }
 
         public bool TryApplyItemControl(ItemControlEffect effect, GameObject source)
         {
-            if (!_isSimulating || _state == MinionState.Dead || !effect.IsValid)
+            if (!_isSimulating || _state == MinionState.Dead || _state == MinionState.Fading || !effect.IsValid)
             {
                 return false;
             }
@@ -346,7 +390,12 @@ namespace ProjectShaman.AI.Minion
                     _staggerUntil = Mathf.Max(_staggerUntil, until);
                     _movement.Stop();
 
-                    if (_state == MinionState.Attack)
+                    if (_state == MinionState.Attack && _pierceHit)
+                    {
+                        // Already through the player: the strike stands, it just stops short
+                        EnterFade();
+                    }
+                    else if (_state == MinionState.Attack)
                     {
                         _state = MinionState.ChasePlayer;
                         _nextAttackTime = Mathf.Max(_nextAttackTime, _staggerUntil);
