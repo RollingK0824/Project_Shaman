@@ -5,6 +5,7 @@ using Unity.Behavior;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Ghost
 {
@@ -22,7 +23,9 @@ namespace ProjectShaman.AI.Ghost
         private const float RANGE_TOLERANCE = 0.5f;
         private const float FOLLOW_UPDATE_DISTANCE = 0.5f;
         private const float IDLE_ARRIVE_DISTANCE = 0.8f;
-        private const int REPEL_POSITION_ATTEMPTS = 16;
+        private const int REPEL_PLACE_TRIES = 3;
+        // Salt never throws a ghost into a house
+        private static readonly PlaceType[] REPEL_PLACE_TYPES = { PlaceType.Work, PlaceType.Rest, PlaceType.Storage, PlaceType.Accumulation, PlaceType.Area };
 
         [SerializeField] private Transform _carrySocket;
 
@@ -71,6 +74,8 @@ namespace ProjectShaman.AI.Ghost
         private float _slowRate = 1f;
         private float _slowUntil;
         private static NavMeshPath _repelPath;
+        private static readonly List<PlaceArea> _placeBuffer = new List<PlaceArea>();
+        private static readonly List<PlaceArea> _repelPlaces = new List<PlaceArea>();
 
         // Server: a channel with time started or its timing changed (read Session), and when it stops for any reason
         public event System.Action<AI_GhostEntity> OnChannelChanged;
@@ -639,53 +644,69 @@ namespace ProjectShaman.AI.Ghost
             return true;
         }
 
-        // A random point in this ghost's range at least the configured distance from the thrower, which is on the NavMesh
-        // and joined to the village by a full path (a roof or a closed yard has its own NavMesh island the ghost could not
-        // leave). Falls back to the farthest such point when none is far enough
+        // Lands in one of the village's places (PlaceArea, never a home) inside this ghost's range: a random one of those at
+        // least the configured distance from the thrower, else the farthest. The place is fixed but the point inside it is
+        // random, so players cannot learn the spot. Places are where villagers walk, so they join the village NavMesh;
+        // one full-path check per tried place is only a safeguard
         private bool TryPickRepelPosition(Vector3 throwerPosition, out Vector3 position)
         {
             position = transform.position;
             float minDistance = _config != null ? _config.GhostSaltTeleportMinDistance : 0f;
-            float best = -1f;
 
-            for (int i = 0; i < REPEL_POSITION_ATTEMPTS; i++)
+            _repelPlaces.Clear();
+            foreach (PlaceType type in REPEL_PLACE_TYPES)
             {
-                float angle = (float)_random.NextDouble() * Mathf.PI * 2f;
-                float reach = Mathf.Sqrt((float)_random.NextDouble()) * _radius;
-                Vector3 candidate = _center + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * reach;
-
-                if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) || !IsJoined(hit.position))
+                PlaceRegistry.CollectByType(type, _placeBuffer);
+                foreach (PlaceArea place in _placeBuffer)
                 {
-                    continue;
-                }
-
-                float distance = FlatDistance(hit.position, throwerPosition);
-                if (distance >= minDistance)
-                {
-                    position = hit.position;
-                    return true;
-                }
-
-                if (distance > best)
-                {
-                    best = distance;
-                    position = hit.position;
+                    if (FlatDistance(place.Center, _center) <= _radius)
+                    {
+                        _repelPlaces.Add(place);
+                    }
                 }
             }
 
-            return best >= 0f;
+            if (_repelPlaces.Count == 0)
+            {
+                return false;
+            }
+
+            // Far enough ones first in random order, then the rest farthest first
+            _repelPlaces.Sort((a, b) => FlatDistance(b.Center, throwerPosition).CompareTo(FlatDistance(a.Center, throwerPosition)));
+            int far = 0;
+            while (far < _repelPlaces.Count && FlatDistance(_repelPlaces[far].Center, throwerPosition) >= minDistance)
+            {
+                far++;
+            }
+
+            for (int i = far - 1; i > 0; i--)
+            {
+                int j = _random.Next(i + 1);
+                (_repelPlaces[i], _repelPlaces[j]) = (_repelPlaces[j], _repelPlaces[i]);
+            }
+
+            int tries = Mathf.Min(REPEL_PLACE_TRIES, _repelPlaces.Count);
+            for (int i = 0; i < tries; i++)
+            {
+                Vector3 point = _repelPlaces[i].GetRandomPoint(_random);
+                if (IsReachable(point))
+                {
+                    position = point;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
-        // Reachable both from where the ghost is and from its range's centre
-        private bool IsJoined(Vector3 point)
+        private bool IsReachable(Vector3 point)
         {
             if (_repelPath == null)
             {
                 _repelPath = new NavMeshPath();
             }
 
-            return NavMesh.CalculatePath(transform.position, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete
-                && NavMesh.CalculatePath(_center, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete;
+            return NavMesh.CalculatePath(transform.position, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete;
         }
 
         private static float FlatDistance(Vector3 a, Vector3 b)
