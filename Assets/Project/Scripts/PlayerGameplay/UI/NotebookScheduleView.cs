@@ -36,11 +36,13 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private static readonly Color INK = PlayerItemUIStyle.NotebookInk;
     private static readonly Color RULE = new(.20f, .14f, .10f, .85f);
     private static readonly Color RULE_FAINT = new(.20f, .14f, .10f, .30f);
-    private static readonly Color WORK_WASH = new(.38f, .32f, .25f, .42f);
-    private static readonly Color REST_WASH = new(.66f, .26f, .17f, .34f);
+    // Washes hint at the activity: work red (busy), rest green (at ease), home and sleep ink (nothing going on)
+    private static readonly Color WORK_WASH = new(.66f, .24f, .16f, .38f);
+    private static readonly Color REST_WASH = new(.32f, .50f, .28f, .36f);
     private static readonly Color SELECT_WASH = new(.59f, .20f, .14f, .40f);
-    private static readonly Color HOME_WASH = new(.30f, .36f, .30f, .30f);
-    private static readonly Color SLEEP_WASH = new(.18f, .20f, .32f, .34f);
+    private static readonly Color HOME_WASH = new(.24f, .21f, .19f, .30f);
+    private static readonly Color SLEEP_WASH = new(.14f, .12f, .11f, .40f);
+    private static readonly Color NIGHT_SHADE = new(.20f, .14f, .10f, .10f);
     private static readonly Color SCROLL_TRACK = new(.20f, .14f, .10f, .12f);
     private static readonly Color SCROLL_HANDLE = new(.20f, .14f, .10f, .55f);
 
@@ -146,6 +148,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
         AddScrollbar(_tableScroll, TABLE_WIDTH, visible);
         _table = PlayerItemUIStyle.NotebookRect(content, "Timetable", 0, 0, TABLE_INNER_WIDTH, height);
 
+        // Night (술시 정 ~ 인시) is the paper a shade darker, under everything else, instead of a rule across the entries
+        var night = PlayerItemUIStyle.NotebookRect(_table, "NightShade", 0, DayHours * HOUR_HEIGHT, TABLE_INNER_WIDTH, (TABLE_ROWS - DayHours) * HOUR_HEIGHT);
+        var nightImage = night.gameObject.AddComponent<Image>();
+        nightImage.color = NIGHT_SHADE;
+        nightImage.raycastTarget = false;
+
         for (int offset = 0; offset < TABLE_ROWS; offset += 2)
         {
             int rows = Mathf.Min(2, TABLE_ROWS - offset);
@@ -166,8 +174,6 @@ public sealed class NotebookScheduleView : MonoBehaviour
             if (offset > 0) Rule(_table, "SijinRule" + offset / 2, _ruleThin, RULE_FAINT, 4, y, TABLE_INNER_WIDTH - 8, 6);
         }
 
-        // Night falls at 술시 정: a full rule there
-        Rule(_table, "NightRule", _rule, RULE, 4, DayHours * HOUR_HEIGHT, TABLE_INNER_WIDTH - 8, 7);
         // The frame stays on the page while the rows scroll under it
         Rule(transform, "TimetableTopRule", _rule, RULE, TABLE_X - 6, TABLE_Y - 6, TABLE_WIDTH + 12, 9);
         Rule(transform, "TimetableBottomRule", _rule, RULE, TABLE_X - 6, TABLE_Y + visible - 3, TABLE_WIDTH + 12, 9);
