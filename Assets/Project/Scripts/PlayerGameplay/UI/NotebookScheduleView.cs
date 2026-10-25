@@ -279,11 +279,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
                 if (ShowBlock(shown, routine.DisplayName, MapAreaRegistry.NameOf(routine.PlaceId), wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
             }
 
-            // Home by its hour, in bed from its hour until 묘시 초
+            // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap
+            // above it): "집" with the hour it gets in by, then bed from its hour until 묘시 초
             if (today.home > 0 && today.bed > today.home)
             {
-                if (ShowBlock(shown, "귀가", $"{HalfSijinName(today.home)}까지 집에", HOME_WASH, today.home, today.bed)) shown++;
-                if (ShowBlock(shown, "취침", HalfSijinName(today.bed), SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
+                if (ShowBlock(shown, "집", $"{HalfSijinName(today.home)} 귀가", HOME_WASH, today.home, today.bed)) shown++;
+                if (ShowBlock(shown, "취침", $"{HalfSijinName(today.bed)}부터", SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
             }
         }
 
