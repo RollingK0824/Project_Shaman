@@ -41,7 +41,6 @@ namespace ProjectShaman.AI.Work
         private float _nextTime;
         private float _approachDeadline;
         private bool _gotAnswer;
-        private int _askedRoutineSerial = -1;
         private Vector3 _meetPoint;
         private int _askedDay = -1;
         private readonly HashSet<string> _askedToday = new HashSet<string>();
@@ -58,11 +57,11 @@ namespace ProjectShaman.AI.Work
             _conversation = owner.GetComponent<AI_Conversation>();
         }
 
-        // Once per routine; false means the caller should give up and raise the request
+        // Each villager is asked about a tool once a day; the search calls this between spots until its time is over (C109).
+        // False means nobody is left to ask (or the interaction is busy)
         public bool TryStart(string toolType)
         {
-            int routineSerial = _owner.Core.CurrentRoutine.Serial;
-            if (IsActive || _interaction == null || _conversation == null || routineSerial == _askedRoutineSerial)
+            if (IsActive || _interaction == null || _conversation == null)
             {
                 return false;
             }
@@ -81,7 +80,6 @@ namespace ProjectShaman.AI.Work
                 return false;
             }
 
-            _askedRoutineSerial = routineSerial;
             _askedToday.Add(AskedKey(toolType, partner.VillagerId));
             _meetPoint = partner.transform.position;
             _partner = partner;
@@ -91,6 +89,26 @@ namespace ProjectShaman.AI.Work
             _approachDeadline = Time.time + APPROACH_TIMEOUT;
             _phase = Phase.Approaching;
             AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' → walking to {partner.VillagerId}");
+            return true;
+        }
+
+        // Who would be asked next and how far away, without starting anything (the search weighs it against its next spot)
+        public bool TryFindPartner(string toolType, out float distance)
+        {
+            distance = 0f;
+            if (IsActive || _interaction == null || _conversation == null)
+            {
+                return false;
+            }
+
+            RefreshAskedDay();
+            AI_Conversation partner = FindPartner(toolType);
+            if (partner == null)
+            {
+                return false;
+            }
+
+            distance = Vector3.Distance(partner.transform.position, _owner.transform.position);
             return true;
         }
 

@@ -24,7 +24,7 @@ namespace ProjectShaman.AI
         private AI_Conversation _conversation;
         private AIBehaviourConfig _config;
         private System.Random _random;
-        private float _nextReactionTime;
+        private readonly ItemReactionGate _gate = new ItemReactionGate();
 
         private void Awake()
         {
@@ -50,10 +50,17 @@ namespace ProjectShaman.AI
             switch (effect.Kind)
             {
                 case ItemControlKind.Slow: return React(PlayerItemKind.BeanMugwort, source);
-                case ItemControlKind.Stagger: return React(PlayerItemKind.Bell, source);
+                case ItemControlKind.Stagger: return IsWithinBellStartle(source) && React(PlayerItemKind.Bell, source);
                 case ItemControlKind.SensoryInterference: return React(PlayerItemKind.Gong, source);
                 default: return false;
             }
+        }
+
+        // The bell reaches further than it frightens: only a villager close to the ringer is startled
+        private bool IsWithinBellStartle(GameObject source)
+        {
+            return _config == null || source == null
+                || (source.transform.position - transform.position).sqrMagnitude <= _config.BellStartleRadius * _config.BellStartleRadius;
         }
 
         private bool React(PlayerItemKind item, GameObject user)
@@ -63,13 +70,13 @@ namespace ProjectShaman.AI
                 return false;
             }
 
-            // Already shaken a moment ago: the item makes no further impression (bell and salt have no cooldown of their own)
-            if (Time.time < _nextReactionTime)
+            // Shaken by this same item a moment ago: it makes no further impression (bell and salt have no cooldown of their own)
+            if (!_gate.IsReady(item))
             {
                 return false;
             }
 
-            _nextReactionTime = Time.time + _config.ItemReactionCooldown;
+            _gate.Consume(item, _config.VillagerItemCooldowns);
 
             string villagerId = _core.LogId;
             string userName = user != null ? user.name : "?";
