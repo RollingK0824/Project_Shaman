@@ -352,6 +352,15 @@ namespace ProjectShaman.AI.Core
         {
             Dictionary<string, List<string>> result = new Dictionary<string, List<string>>();
 
+            // A tool pointing at a shed that is not in the scene can never be put away (scene setup, fix in the Editor)
+            foreach (ToolItem tool in ToolRegistry.All)
+            {
+                if (tool != null && !string.IsNullOrEmpty(tool.HomeStoragePlaceId) && !PlaceRegistry.TryGet(tool.HomeStoragePlaceId, out _))
+                {
+                    AILog.Warn(AILog.MANAGER, $"Tool {tool.InstanceId} home storage '{tool.HomeStoragePlaceId}' not in scene, it cannot be put away");
+                }
+            }
+
             if (_factory.DataProvider == null)
             {
                 return result;
