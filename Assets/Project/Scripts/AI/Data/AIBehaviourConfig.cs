@@ -140,8 +140,8 @@ namespace ProjectShaman.AI.Data
         [Header("Player Item Reaction")]
         [Tooltip("Stress a villager takes when salt, bean-mugwort, the bell or the gong reaches them")]
         [SerializeField, Min(0f)] private float _itemStartleStress = 3f;
-        [Tooltip("After reacting to an item a villager ignores further items for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
-        [SerializeField, Min(0f)] private float _itemReactionCooldown = 6f;
+        [Tooltip("After reacting to an item a villager ignores that same item for this long, so spamming a cooldown-free item cannot pile on stress or show a host at will")]
+        [SerializeField] private ItemReactionCooldowns _villagerItemCooldowns = new ItemReactionCooldowns(6f, 6f, 6f, 6f);
         [Tooltip("Host yin from which the ghost shows through the body (trembling); below it the host is startled like anyone")]
         [SerializeField, Min(0f)] private float _itemReactionYin = 40f;
         [Tooltip("Host yin from which the reaction turns violent (grotesque twisting, lashing out)")]
@@ -271,7 +271,7 @@ namespace ProjectShaman.AI.Data
         public float VillagerStressLimit => Mathf.Clamp(_villagerStressLimit, 0f, VillagerStressMax);
         public float VillagerStressAnxious => Mathf.Clamp(_villagerStressAnxious, 0f, VillagerStressLimit);
         public float VillagerStressMorningDecay => Mathf.Max(0f, _villagerStressMorningDecay);
-        public float ItemReactionCooldown => Mathf.Max(0f, _itemReactionCooldown);
+        public ItemReactionCooldowns VillagerItemCooldowns => _villagerItemCooldowns;
         public float ItemStartleStress => Mathf.Max(0f, _itemStartleStress);
         public float ItemReactionYin => Mathf.Max(0f, _itemReactionYin);
         public float ItemViolentYin => Mathf.Max(ItemReactionYin, _itemViolentYin);

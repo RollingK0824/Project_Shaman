@@ -24,7 +24,7 @@ namespace ProjectShaman.AI
         private AI_Conversation _conversation;
         private AIBehaviourConfig _config;
         private System.Random _random;
-        private float _nextReactionTime;
+        private readonly ItemReactionGate _gate = new ItemReactionGate();
 
         private void Awake()
         {
@@ -63,13 +63,13 @@ namespace ProjectShaman.AI
                 return false;
             }
 
-            // Already shaken a moment ago: the item makes no further impression (bell and salt have no cooldown of their own)
-            if (Time.time < _nextReactionTime)
+            // Shaken by this same item a moment ago: it makes no further impression (bell and salt have no cooldown of their own)
+            if (!_gate.IsReady(item))
             {
                 return false;
             }
 
-            _nextReactionTime = Time.time + _config.ItemReactionCooldown;
+            _gate.Consume(item, _config.VillagerItemCooldowns);
 
             string villagerId = _core.LogId;
             string userName = user != null ? user.name : "?";
