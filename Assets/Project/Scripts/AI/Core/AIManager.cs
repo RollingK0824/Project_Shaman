@@ -390,12 +390,14 @@ namespace ProjectShaman.AI.Core
         {
             foreach (VillagerRuntime villager in _villagers)
             {
-                float homeReturnTime = CalculateHomeReturnTime(villager, dayCount);
+                PickHomeHours(villager, dayCount, out int homeHour, out int bedHour);
+                float homeArriveTime = DayClock.ToDayElapsed(homeHour);
+                float homeReturnTime = CalculateHomeReturnTime(villager, dayCount, homeArriveTime);
                 List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig, homeReturnTime, out string blockNote);
                 blocks.RemoveAll(block => block.EndTime <= fromTime);
-                villager.SetToday(blocks, homeReturnTime);
+                villager.SetToday(blocks, homeReturnTime, homeArriveTime);
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
-                villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks));
+                villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks), homeHour, bedHour);
                 PlanCorruption(villager, dayCount);
 
                 if (villager.Memory != null)
@@ -407,7 +409,7 @@ namespace ProjectShaman.AI.Core
                 {
                     villager.Stress.ApplyMorningDecay();
                 }
-                AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] {blockNote} homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s)");
+                AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] {blockNote} homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s) home by {homeHour}h, bed {bedHour}h");
             }
         }
 
@@ -525,7 +527,7 @@ namespace ProjectShaman.AI.Core
         }
 
         // The planned home time assumes the walk from the last routine's place. Wherever the villager actually is
-        // (a far fallback, a search that wandered), it also sets off once the walk from here would end after dark.
+        // (a far fallback, a search that wandered), it also sets off once the walk from here would end after its home-by hour.
         private bool MustLeaveForHome(VillagerRuntime villager, float now)
         {
             if (now < villager.NextHomeCheckTime)
@@ -536,12 +538,12 @@ namespace ProjectShaman.AI.Core
             villager.NextHomeCheckTime = now + HOME_CHECK_INTERVAL;
             float walk = PathLength(villager.Core.transform.position, villager.Profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
             float lead = _behaviourConfig.ToolTidySecondsEstimate + walk + _behaviourConfig.HomeReturnMarginSeconds;
-            if (now + lead < TimeManager.DAY_DURATION)
+            if (now + lead < villager.HomeArriveTime)
             {
                 return false;
             }
 
-            AILog.Log(AILog.MANAGER, villager.Id, $"Leaving for home early: {walk:F0}s walk from here, {TimeManager.DAY_DURATION - now:F0}s of daylight left");
+            AILog.Log(AILog.MANAGER, villager.Id, $"Leaving for home early: {walk:F0}s walk from here, {villager.HomeArriveTime - now:F0}s left before home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h");
             return true;
         }
 
@@ -554,7 +556,9 @@ namespace ProjectShaman.AI.Core
             }
 
             villager.HasArrivedHome = true;
-            AILog.Log(AILog.MANAGER, villager.Id, $"Arrived home at {DayClock.ToHour(now):F1}h ({now:F1}s), {TimeManager.DAY_DURATION - now:F0}s before night");
+            float early = villager.HomeArriveTime - now;
+            string verdict = early >= 0f ? $"{early:F0}s before" : $"LATE by {-early:F0}s for";
+            AILog.Log(AILog.MANAGER, villager.Id, $"Arrived home at {DayClock.ToHour(now):F1}h ({now:F1}s), {verdict} home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h");
         }
 
         private void LogVillagersOutside()
@@ -800,7 +804,7 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
-            // Only if the detour still ends at home before dark (delays during the day eat the budget)
+            // Only if the detour still ends at home by the home-by hour (delays during the day eat the budget)
             float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
             Vector3 housePoint = house.GetHomePoint();
             if (!HasCompletePath(villager.Core.transform.position, housePoint))
@@ -811,10 +815,10 @@ namespace ProjectShaman.AI.Core
 
             float needed = (PathLength(villager.Core.transform.position, housePoint) + PathLength(housePoint, villager.Profile.HomePosition)) / speed
                 + _behaviourConfig.NeighbourVisitLingerSeconds + _behaviourConfig.HomeReturnMarginSeconds;
-            float daylight = TimeManager.DAY_DURATION - GetDayElapsed();
-            if (needed > daylight)
+            float left = villager.HomeArriveTime - GetDayElapsed();
+            if (needed > left)
             {
-                AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: needs {needed:F0}s, {daylight:F0}s of daylight left");
+                AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: needs {needed:F0}s, {left:F0}s left before home-by");
                 return;
             }
 
@@ -830,7 +834,21 @@ namespace ProjectShaman.AI.Core
             return unchecked(_factory.Seed * 486187739 + villager.Profile.Index * 16777619 + dayCount * 31);
         }
 
-        private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount)
+        // Each villager's home-by and bed hours, fixed for the day and shown on the schedule tab (half-sijin rows)
+        private void PickHomeHours(VillagerRuntime villager, int dayCount, out int homeHour, out int bedHour)
+        {
+            System.Random random = new System.Random(unchecked(GetBlockSeed(villager, dayCount) * 7 + 1));
+            homeHour = Mathf.Clamp(PickHour(random, _behaviourConfig.HomeArriveHours, DayClock.DAY_END_HOUR - 1), DayClock.DAY_START_HOUR + 1, DayClock.DAY_END_HOUR);
+            bedHour = Mathf.Max(DayClock.DAY_END_HOUR, PickHour(random, _behaviourConfig.BedHours, DayClock.DAY_END_HOUR));
+        }
+
+        private static int PickHour(System.Random random, IReadOnlyList<int> hours, int fallback)
+        {
+            return hours != null && hours.Count > 0 ? hours[random.Next(hours.Count)] : fallback;
+        }
+
+        // When to set off so the villager is home by homeArriveTime (walk from the last routine's place + look-in + margin)
+        private float CalculateHomeReturnTime(VillagerRuntime villager, int dayCount, float homeArriveTime)
         {
             float travelDistance = 0f;
             float visitSeconds = 0f;
@@ -864,7 +882,7 @@ namespace ProjectShaman.AI.Core
             }
 
             float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + visitSeconds + _behaviourConfig.HomeReturnMarginSeconds;
-            return Mathf.Max(0f, TimeManager.DAY_DURATION - lead);
+            return Mathf.Max(0f, homeArriveTime - lead);
         }
 
         // A walk that really reaches the point: a partial path only gets as far as a wall and the villager would stand there
@@ -931,6 +949,7 @@ namespace ProjectShaman.AI.Core
             public bool HasArrivedHome { get; set; }
             public float NextHomeCheckTime { get; set; }
             public float HomeReturnTime { get; private set; }
+            public float HomeArriveTime { get; private set; } = TimeManager.DAY_DURATION;
             public IReadOnlyList<DailyBlock> TodayBlocks => _todayBlocks;
             public float NextStationRetryTime { get; set; }
             public ResolvedRoutine Current { get; set; }
@@ -952,10 +971,11 @@ namespace ProjectShaman.AI.Core
                 return _serial;
             }
 
-            public void SetToday(List<DailyBlock> blocks, float homeReturnTime)
+            public void SetToday(List<DailyBlock> blocks, float homeReturnTime, float homeArriveTime)
             {
                 _todayBlocks = blocks;
                 HomeReturnTime = homeReturnTime;
+                HomeArriveTime = homeArriveTime;
             }
 
             public void ResetForDayStart()
