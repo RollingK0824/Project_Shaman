@@ -6,7 +6,9 @@ namespace ProjectShaman.AI.Defines
         MoveToObjective,
         ChasePlayer,
         Attack,
-        Dead
+        Dead,
+        // Pierced a player, presentation playing, despawns when it ends
+        Fading
     }
 
     public enum MinionTargetMode

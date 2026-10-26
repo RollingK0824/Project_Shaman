@@ -248,9 +248,9 @@ namespace ProjectShaman.AI.Core
 
             for (int attempt = 1; attempt <= MAX_ROLL_ATTEMPTS; attempt++)
             {
-                info.Gender = RollEnum<VillagerGender>();
-                info.SocialClass = RollEnum<VillagerSocialClass>();
-                info.AgeGroup = RollEnum<VillagerAgeGroup>();
+                info.Gender = RollWeighted<VillagerGender>(_behaviourConfig.WeightOf);
+                info.SocialClass = RollWeighted<VillagerSocialClass>(_behaviourConfig.WeightOf);
+                info.AgeGroup = RollWeighted<VillagerAgeGroup>(_behaviourConfig.WeightOf);
 
                 if (CollectAvailableNames(info).Count == 0)
                 {
@@ -447,10 +447,33 @@ namespace ProjectShaman.AI.Core
             return point != null ? point.position : transform.position;
         }
 
-        private T RollEnum<T>() where T : Enum
+        // All weights zero → every value alike
+        private T RollWeighted<T>(Func<T, float> weightOf) where T : Enum
         {
             Array values = Enum.GetValues(typeof(T));
-            return (T)values.GetValue(_random.Next(values.Length));
+            float total = 0f;
+
+            foreach (T value in values)
+            {
+                total += Mathf.Max(0f, weightOf(value));
+            }
+
+            if (total <= 0f)
+            {
+                return (T)values.GetValue(_random.Next(values.Length));
+            }
+
+            double pick = _random.NextDouble() * total;
+            foreach (T value in values)
+            {
+                pick -= Mathf.Max(0f, weightOf(value));
+                if (pick < 0d)
+                {
+                    return value;
+                }
+            }
+
+            return (T)values.GetValue(values.Length - 1);
         }
 
         private AI_Core InstantiateVillager(VillagerProfile profile)

@@ -76,7 +76,7 @@ QA
 - Play 테스트 인스턴스에서만 관련 없는 Notebook/Local UI/Sight scanning/자동 Stress HP 피해를 비활성화했습니다.
 - 기존 NetworkAnimator.Animator 미할당 오류가 테스트 중 관찰됐으며 이번 작업에서는 수정하지 않았습니다.
 - 전체 기존 408 회귀 테스트는 실행하지 않았습니다.
-- Assets/Project/Tests/PlayMode/StressSystemTests.cs의
+- Assets/Project/Scripts/Tests/PlayMode/StressSystemTests.cs의
   FeedbackScalesAndRecoversWithoutLosingHitFeedback은 Mid=50에서 오디오 재생을 기대합니다.
   최신 요구사항은 Mid 무음 / High 재생이므로 기준 갱신이 필요합니다. 허용 범위 밖이라 수정하지 않았습니다.
 

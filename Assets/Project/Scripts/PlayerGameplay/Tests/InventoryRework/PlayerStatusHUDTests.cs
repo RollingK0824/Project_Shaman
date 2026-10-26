@@ -106,7 +106,7 @@ public class PlayerStatusHUDTests
         var camera=Keep(new GameObject("Status preview camera")).AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.19f,.22f,.25f);
         camera.transform.position=inventory.transform.position+new Vector3(0,1.2f,-5);camera.transform.LookAt(inventory.transform.position+Vector3.up);
         var ward=CreateWard(60);var visual=ward.GetComponentInChildren<BarrierWardVisual>();Assert.IsTrue(visual.IsShowing);
-        var material=AssetDatabase.LoadAssetAtPath<Material>("Assets/Project/Prefabs/Items/Talismans/Materials/BarrierShell.mat");var color=material.GetColor("_BaseColor");Assert.Less(Mathf.Abs(color.r-color.b),.06f);Assert.Less(color.maxColorComponent,.7f);Assert.IsFalse(ShaderUtil.ShaderHasError(material.shader));
+        var material=AssetDatabase.LoadAssetAtPath<Material>("Assets/Project/Visuals/Materials/Items/Talisman/BarrierShell.mat");var color=material.GetColor("_BaseColor");Assert.Less(Mathf.Abs(color.r-color.b),.06f);Assert.Less(color.maxColorComponent,.7f);Assert.IsFalse(ShaderUtil.ShaderHasError(material.shader));
         effects.TryApply(Data<TalismanEffectDefinition>("Talismans/Effects/move_speed.asset"));
         inventory.TryAddItem(Data<ItemData>("LampOilMaterial.asset"));inventory.TryAddItem(Data<ItemData>("CoarseSaltMaterial.asset"),2);inventory.TryAddItem(Data<ItemData>("Talismans/BarrierTalisman.asset"));
         stress.SetStress(50);yield return new WaitForSeconds(.5f);yield return new WaitForEndOfFrame();

@@ -11,14 +11,16 @@ using ProjectShaman.Map;
 
 // Villager schedule spread: villagers on the left page as a small register (이름·직업·신분·성별·나이),
 // the chosen villager's day as a timetable on the right.
-// Drawn in ink on the notebook paper: one row per half sijin (초/정) of the day, each routine a brush wash
-// spanning its rows. Night is the same for everyone and is left out. Only the planned schedule is shown.
+// Drawn in ink on the notebook paper: one row per half sijin (초/정) of all twelve sijin from 묘시 초, each routine a brush
+// wash spanning its rows, then when the villager is home by and when it goes to bed. The table scrolls; the day fits the page.
+// Only the planned schedule is shown.
 public sealed class NotebookScheduleView : MonoBehaviour
 {
-    // Day hours 05~20 start at 묘시 초; every sijin is two hours (초, 정)
-    private static readonly string[] SIJIN = { "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시" };
+    // Rows run 05~05 from 묘시 초; every sijin is two hours (초, 정)
+    private static readonly string[] SIJIN = { "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시", "해시", "자시", "축시", "인시" };
     private const int FIRST_SIJIN_ZODIAC = 3;   // 묘시 is the fourth animal after 자·축·인
     private const float ZODIAC_SIZE = 46f;
+    private const int TABLE_ROWS = 24;
 
     private const float LIST_X = 30f, LIST_Y = 136f, LIST_WIDTH = 420f, LIST_HEIGHT = 470f, LIST_ROW_HEIGHT = 42f;
     private const float HEADER_Y = 100f, SCROLLBAR_WIDTH = 6f, ROW_WIDTH = LIST_WIDTH - SCROLLBAR_WIDTH - 8f;
@@ -28,13 +30,19 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private static readonly float[] COLUMN_WIDTH = { 128f, 98f, 56f, 40f, 52f };
     private const float TABLE_X = 548f, TABLE_Y = 104f, TABLE_WIDTH = 424f;
     private const float TIME_WIDTH = 126f, HOUR_HEIGHT = 31f, BLOCK_INSET = 3f;
+    // Room on the right of the table for its scrollbar
+    private const float TABLE_INNER_WIDTH = TABLE_WIDTH - SCROLLBAR_WIDTH - 4f;
 
     private static readonly Color INK = PlayerItemUIStyle.NotebookInk;
     private static readonly Color RULE = new(.20f, .14f, .10f, .85f);
     private static readonly Color RULE_FAINT = new(.20f, .14f, .10f, .30f);
-    private static readonly Color WORK_WASH = new(.38f, .32f, .25f, .42f);
-    private static readonly Color REST_WASH = new(.66f, .26f, .17f, .34f);
+    // Washes hint at the activity: work red (busy), rest green (at ease), home and sleep ink (nothing going on)
+    private static readonly Color WORK_WASH = new(.66f, .24f, .16f, .38f);
+    private static readonly Color REST_WASH = new(.32f, .50f, .28f, .36f);
     private static readonly Color SELECT_WASH = new(.59f, .20f, .14f, .40f);
+    private static readonly Color HOME_WASH = new(.24f, .21f, .19f, .30f);
+    private static readonly Color SLEEP_WASH = new(.14f, .12f, .11f, .40f);
+    private static readonly Color NIGHT_SHADE = new(.20f, .14f, .10f, .10f);
     private static readonly Color SCROLL_TRACK = new(.20f, .14f, .10f, .12f);
     private static readonly Color SCROLL_HANDLE = new(.20f, .14f, .10f, .55f);
 
@@ -43,11 +51,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private readonly List<Image> _rowMarks = new();
     private readonly List<(Image wash, TMP_Text label)> _blocks = new();
     // Last block hours seen per villager, kept when their object is gone so a hidden death changes nothing here
-    private readonly Dictionary<string, (int day, int[] hours)> _hours = new();
+    private readonly Dictionary<string, (int day, int[] hours, int home, int bed)> _hours = new();
     private TMP_FontAsset _font;
     private NotebookScheduleArt _art;
     private Sprite _wash, _rule, _ruleThin, _select, _underline;
     private RectTransform _listContent, _table;
+    private ScrollRect _tableScroll;
     private TMP_Text _dayLabel, _title, _note;
     private string _selectedId;
     private float _nextRefresh;
@@ -72,7 +81,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
         _listContent = PlayerItemUIStyle.NotebookScroll(transform, "VillagerList", LIST_X, LIST_Y, LIST_WIDTH, LIST_HEIGHT, out ScrollRect listScroll);
         _listContent.parent.parent.GetComponent<Image>().color = Color.clear;
         listScroll.scrollSensitivity = LIST_ROW_HEIGHT;
-        AddScrollbar(listScroll);
+        AddScrollbar(listScroll, LIST_WIDTH, LIST_HEIGHT);
 
         // Right page: the chosen villager's day
         _title = Heading("VillagerDay", "주민을 고르세요", 540);
@@ -107,15 +116,15 @@ public sealed class NotebookScheduleView : MonoBehaviour
         Rule(header, "HeaderRule", _rule, RULE, 0, LIST_Y - HEADER_Y - 3, ROW_WIDTH, 8);
     }
 
-    // Thin ink bar on the list's right edge so it is clear how far the list has moved; hidden when everyone fits
-    private void AddScrollbar(ScrollRect scroll)
+    // Thin ink bar on a scroll's right edge so it is clear how far it has moved; hidden when everything fits
+    private void AddScrollbar(ScrollRect scroll, float width, float height)
     {
-        var track = PlayerItemUIStyle.NotebookRect(scroll.transform, "Scrollbar", LIST_WIDTH - SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH, LIST_HEIGHT);
+        var track = PlayerItemUIStyle.NotebookRect(scroll.transform, "Scrollbar", width - SCROLLBAR_WIDTH, 0, SCROLLBAR_WIDTH, height);
         track.gameObject.AddComponent<Image>().color = SCROLL_TRACK;
 
-        var area = PlayerItemUIStyle.NotebookRect(track, "SlidingArea", 0, 0, SCROLLBAR_WIDTH, LIST_HEIGHT);
+        var area = PlayerItemUIStyle.NotebookRect(track, "SlidingArea", 0, 0, SCROLLBAR_WIDTH, height);
         area.anchorMin = Vector2.zero; area.anchorMax = Vector2.one; area.offsetMin = area.offsetMax = Vector2.zero;
-        var handle = PlayerItemUIStyle.NotebookRect(area, "Handle", 0, 0, SCROLLBAR_WIDTH, LIST_HEIGHT);
+        var handle = PlayerItemUIStyle.NotebookRect(area, "Handle", 0, 0, SCROLLBAR_WIDTH, height);
         handle.pivot = new Vector2(.5f, .5f); handle.anchoredPosition = Vector2.zero; handle.sizeDelta = Vector2.zero;
         var handleImage = handle.gameObject.AddComponent<Image>(); handleImage.color = SCROLL_HANDLE;
 
@@ -126,18 +135,31 @@ public sealed class NotebookScheduleView : MonoBehaviour
         scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
     }
 
-    // Time column with each sijin's animal and name, ink rules at the sijin edges, and an empty field for the brush washes
+    // Time column with each sijin's animal and name, ink rules at the sijin edges, and an empty field for the brush washes.
+    // The day's height shows at once; the night rows are scrolled to
     private void BuildTable()
     {
-        float height = DayHours * HOUR_HEIGHT;
-        _table = PlayerItemUIStyle.NotebookRect(transform, "Timetable", TABLE_X, TABLE_Y, TABLE_WIDTH, height);
+        float visible = DayHours * HOUR_HEIGHT;
+        float height = TABLE_ROWS * HOUR_HEIGHT;
+        var content = PlayerItemUIStyle.NotebookScroll(transform, "TimetableScroll", TABLE_X, TABLE_Y, TABLE_WIDTH, visible, out _tableScroll);
+        content.parent.parent.GetComponent<Image>().color = Color.clear;
+        content.sizeDelta = new Vector2(TABLE_INNER_WIDTH, height);
+        _tableScroll.scrollSensitivity = HOUR_HEIGHT;
+        AddScrollbar(_tableScroll, TABLE_WIDTH, visible);
+        _table = PlayerItemUIStyle.NotebookRect(content, "Timetable", 0, 0, TABLE_INNER_WIDTH, height);
 
-        for (int offset = 0; offset < DayHours; offset += 2)
+        // Night (술시 정 ~ 인시) is the paper a shade darker, under everything else, instead of a rule across the entries
+        var night = PlayerItemUIStyle.NotebookRect(_table, "NightShade", 0, DayHours * HOUR_HEIGHT, TABLE_INNER_WIDTH, (TABLE_ROWS - DayHours) * HOUR_HEIGHT);
+        var nightImage = night.gameObject.AddComponent<Image>();
+        nightImage.color = NIGHT_SHADE;
+        nightImage.raycastTarget = false;
+
+        for (int offset = 0; offset < TABLE_ROWS; offset += 2)
         {
-            int rows = Mathf.Min(2, DayHours - offset);
+            int rows = Mathf.Min(2, TABLE_ROWS - offset);
             float y = offset * HOUR_HEIGHT;
             float icon = Mathf.Min(ZODIAC_SIZE, rows * HOUR_HEIGHT - 6);
-            Sprite animal = _art != null ? _art.Zodiac(FIRST_SIJIN_ZODIAC + offset / 2) : null;
+            Sprite animal = _art != null ? _art.Zodiac((FIRST_SIJIN_ZODIAC + offset / 2) % SIJIN.Length) : null;
             if (animal != null)
             {
                 var zodiac = Picture(_table, "Zodiac" + offset / 2, animal, Color.white, 4 + (ZODIAC_SIZE - icon) / 2, y + (rows * HOUR_HEIGHT - icon) / 2, icon, icon, Image.Type.Simple);
@@ -149,11 +171,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
                 var mark = Text(_table, $"Half{offset + half}", half == 0 ? "초" : "정", TIME_WIDTH - 26, y + half * HOUR_HEIGHT, 22, HOUR_HEIGHT, 13, TextAlignmentOptions.Center);
                 mark.color = PlayerItemUIStyle.NotebookMuted;
             }
-            if (offset > 0) Rule(_table, "SijinRule" + offset / 2, _ruleThin, RULE_FAINT, 4, y, TABLE_WIDTH - 8, 6);
+            if (offset > 0) Rule(_table, "SijinRule" + offset / 2, _ruleThin, RULE_FAINT, 4, y, TABLE_INNER_WIDTH - 8, 6);
         }
 
-        Rule(_table, "TopRule", _rule, RULE, -6, -6, TABLE_WIDTH + 12, 9);
-        Rule(_table, "BottomRule", _rule, RULE, -6, height - 3, TABLE_WIDTH + 12, 9);
+        // The frame stays on the page while the rows scroll under it
+        Rule(transform, "TimetableTopRule", _rule, RULE, TABLE_X - 6, TABLE_Y - 6, TABLE_WIDTH + 12, 9);
+        Rule(transform, "TimetableBottomRule", _rule, RULE, TABLE_X - 6, TABLE_Y + visible - 3, TABLE_WIDTH + 12, 9);
         // The thin rule turned upright between the time column and the routines
         var divider = Rule(_table, "TimeDivider", _ruleThin, RULE_FAINT, 0, 0, height, 6).rectTransform;
         divider.pivot = new Vector2(.5f, .5f);
@@ -247,22 +270,39 @@ public sealed class NotebookScheduleView : MonoBehaviour
         else
         {
             _title.text = $"{villager.DisplayName}의 하루";
-            _note.text = "빈 칸은 오가거나 쉬는 때 · 술시 정부터 집에 머묾";
+            _note.text = "빈 칸은 오가는 때 · 귀가 시각까지 집에 닿음";
             for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
             {
                 RoutineSlotInfo routine = villager.Schedule.Get(today.day, slot);
-                if (!routine.IsEmpty && ShowBlock(shown, routine, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                if (routine.IsEmpty) continue;
+                Color wash = routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
+                if (ShowBlock(shown, routine.DisplayName, MapAreaRegistry.NameOf(routine.PlaceId), wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+            }
+
+            // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap
+            // above it): "집" with the hour it gets in by, then bed from its hour until 묘시 초
+            if (today.home > 0 && today.bed > today.home)
+            {
+                if (ShowBlock(shown, "집", $"{HalfSijinName(today.home)} 귀가", HOME_WASH, today.home, today.bed)) shown++;
+                if (ShowBlock(shown, "취침", $"{HalfSijinName(today.bed)}부터", SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
             }
         }
 
         for (int i = shown; i < _blocks.Count; i++) _blocks[i].wash.gameObject.SetActive(false);
     }
 
-    // One routine as a brush wash over the hours it covers
-    private bool ShowBlock(int index, RoutineSlotInfo routine, int startHour, int endHour)
+    // "유시 정" for 18: the half-sijin row an hour starts (hours past midnight count on, 01 = 25)
+    private static string HalfSijinName(int hour)
     {
-        int from = Mathf.Clamp(startHour - DayClock.DAY_START_HOUR, 0, DayHours);
-        int to = Mathf.Clamp(endHour - DayClock.DAY_START_HOUR, from, DayHours);
+        int row = ((hour - DayClock.DAY_START_HOUR) % TABLE_ROWS + TABLE_ROWS) % TABLE_ROWS;
+        return $"{SIJIN[row / 2]} {(row % 2 == 0 ? "초" : "정")}";
+    }
+
+    // One entry as a brush wash over the hours it covers
+    private bool ShowBlock(int index, string title, string subtitle, Color color, int startHour, int endHour)
+    {
+        int from = Mathf.Clamp(startHour - DayClock.DAY_START_HOUR, 0, TABLE_ROWS);
+        int to = Mathf.Clamp(endHour - DayClock.DAY_START_HOUR, from, TABLE_ROWS);
         if (to <= from) return false;
 
         while (_blocks.Count <= index)
@@ -275,15 +315,14 @@ public sealed class NotebookScheduleView : MonoBehaviour
         }
 
         var (image, text) = _blocks[index];
-        float width = TABLE_WIDTH - TIME_WIDTH - BLOCK_INSET * 2;
+        float width = TABLE_INNER_WIDTH - TIME_WIDTH - BLOCK_INSET * 2;
         float height = (to - from) * HOUR_HEIGHT - BLOCK_INSET * 2;
         PlayerItemUIStyle.Place(image.rectTransform, new Vector2(0, 1), new Vector2(0, 1),
             new Vector2(TIME_WIDTH + BLOCK_INSET, -(from * HOUR_HEIGHT + BLOCK_INSET)), new Vector2(width, height));
         text.rectTransform.sizeDelta = new Vector2(width - 20, height - 8);
 
-        string place = MapAreaRegistry.NameOf(routine.PlaceId);
-        image.color = _wash == null ? Color.clear : routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
-        text.text = string.IsNullOrEmpty(place) ? routine.DisplayName : $"{routine.DisplayName}\n<size=72%>{place}</size>";
+        image.color = _wash == null ? Color.clear : color;
+        text.text = string.IsNullOrEmpty(subtitle) ? title : $"{title}\n<size=72%>{subtitle}</size>";
         image.gameObject.SetActive(true);
         return true;
     }
@@ -293,7 +332,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
         foreach (AI_Core core in FindObjectsByType<AI_Core>(FindObjectsSortMode.None))
         {
             if (core.PublicInfo == null || string.IsNullOrEmpty(core.PublicInfo.VillagerId)) continue;
-            if (core.TodayBlocksDay > 0) _hours[core.PublicInfo.VillagerId] = (core.TodayBlocksDay, new List<int>(core.TodayBlockHours).ToArray());
+            if (core.TodayBlocksDay > 0) _hours[core.PublicInfo.VillagerId] = (core.TodayBlocksDay, new List<int>(core.TodayBlockHours).ToArray(), core.TodayHomeHour, core.TodayBedHour);
         }
     }
 
@@ -338,5 +377,20 @@ public sealed class NotebookScheduleView : MonoBehaviour
         if (registry == null || index >= registry.Villagers.Count) return;
         _selectedId = registry.Villagers[index].VillagerId;
         Refresh();
+        ScrollToNow();
+    }
+
+    // Brings the rows around the current hour into view (at night the table would otherwise open on the day)
+    private void ScrollToNow()
+    {
+        TimeManager time = TimeManager.Existing;
+        float hidden = (TABLE_ROWS - DayHours) * HOUR_HEIGHT;
+        if (_tableScroll == null || time == null || hidden <= 0f) return;
+
+        float elapsed = (float)time.Elapsed;
+        float hour = elapsed < TimeManager.DAY_DURATION ? DayClock.ToHour(elapsed) : DayClock.NightToHour(elapsed - TimeManager.DAY_DURATION);
+        float row = Mathf.Clamp(hour - DayClock.DAY_START_HOUR, 0f, TABLE_ROWS);
+        float top = Mathf.Clamp((row - DayHours * .5f) * HOUR_HEIGHT, 0f, hidden);
+        _tableScroll.verticalNormalizedPosition = 1f - top / hidden;
     }
 }

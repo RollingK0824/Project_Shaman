@@ -1,6 +1,6 @@
 # Player Item UI — 6.5단계
 
-기존 Inventory / QuickSlot / Crafting 데이터와 API를 유지하며 표시만 정돈했다. 기준 폰트는 기존 `Prefabs/UI/Fonts/PlayerItemFont.asset`이다. 새 폰트·Canvas·UI 프레임워크를 추가하지 않는다.
+기존 Inventory / QuickSlot / Crafting 데이터와 API를 유지하며 표시만 정돈했다. 기준 폰트는 기존 `Visuals/Fonts/PlayerItemFont.asset`이다. 새 폰트·Canvas·UI 프레임워크를 추가하지 않는다.
 
 ## 크기와 배치
 
