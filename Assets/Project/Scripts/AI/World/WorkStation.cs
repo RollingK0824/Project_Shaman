@@ -62,7 +62,6 @@ namespace ProjectShaman.AI.World
             }
 
             _acceptedHitCount++;
-            AILog.Log(AILog.WORK, actorId, $"Station {StationId} hit by '{actionId}' (#{_acceptedHitCount})");
             OnWorkAccepted?.Invoke(actorId, actionId);
         }
 

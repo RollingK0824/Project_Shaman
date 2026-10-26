@@ -164,3 +164,7 @@ Tools/GitSetup/lfs-folderstore.exe -lfs -filter binary
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     -unity-yaml !eol binary
 Assets/**/Terrain/**/*.asset -unity-yaml !eol binary
+
+# GitHub LFS 예산 초과(2026-10)로 이 폴더의 바이너리는 일반 Git에 보관
+Assets/ThirdParty/CH_Male_Villager/**/*.[pP][nN][gG] -lfs -filter binary
+Assets/ThirdParty/CH_Male_Villager/**/*.[fF][bB][xX] -lfs -filter binary

@@ -75,6 +75,7 @@ namespace ProjectShaman.AI.Ghost
         private float _slowRate = 1f;
         private float _slowUntil;
         private static NavMeshPath _repelPath;
+        private static NavMeshPath _carryPath;
         private static readonly List<PlaceArea> _placeBuffer = new List<PlaceArea>();
         private static readonly List<PlaceArea> _repelPlaces = new List<PlaceArea>();
 
@@ -721,6 +722,52 @@ namespace ProjectShaman.AI.Ghost
             }
 
             return NavMesh.CalculatePath(transform.position, point, NavMesh.AllAreas, _repelPath) && _repelPath.status == NavMeshPathStatus.PathComplete;
+        }
+
+        // Carry: the walk there, the pick-up channel and the longest hide walk must fit in the command time left.
+        // Path length, not straight distance, so a tool behind a wall or across the stream does not count as near
+        public bool CanCarryInTime(GhostNightActionData action, Vector3 targetPosition)
+        {
+            if (action == null || action.Shape != GhostActionShape.Carry || _config == null || _movement.DefaultSpeed <= 0f)
+            {
+                return true;
+            }
+
+            if (!TryGetPathLength(targetPosition, out float walkDistance))
+            {
+                return false;
+            }
+
+            float speed = _movement.DefaultSpeed;
+            float elapsed = _session != null && _session.Action == action ? Time.time - _session.StartTime : 0f;
+            float channel = Mathf.Max(_config.GhostMinChannelSeconds, action.Duration);
+            float needed = walkDistance / speed + channel + _config.GhostHideMaxDistance / speed;
+            return needed <= _config.GhostCommandTimeoutSeconds - elapsed;
+        }
+
+        private bool TryGetPathLength(Vector3 point, out float length)
+        {
+            length = 0f;
+
+            if (_carryPath == null)
+            {
+                _carryPath = new NavMeshPath();
+            }
+
+            if (!NavMesh.SamplePosition(point, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas)
+                || !NavMesh.CalculatePath(transform.position, hit.position, NavMesh.AllAreas, _carryPath)
+                || _carryPath.status != NavMeshPathStatus.PathComplete)
+            {
+                return false;
+            }
+
+            Vector3[] corners = _carryPath.corners;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                length += Vector3.Distance(corners[i - 1], corners[i]);
+            }
+
+            return true;
         }
 
         private static float FlatDistance(Vector3 a, Vector3 b)
