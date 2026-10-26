@@ -1,0 +1,58 @@
+Player/Item build fixes — Network 연결 사항 (2026-10-24)
+
+이번 변경은 PlayerGameplay / Player Item 데이터 및 프리팹에 한정됩니다.
+Network / AI / Core / 팀원 씬·프리팹은 수정하지 않았습니다.
+
+1. 부적 제작
+- Debug 폴더가 .gitignore의 [Dd]ebug/에 걸려 한지와 부적 레시피가 팀원에게 전달되지 않았습니다.
+- 기존 GUID와 현재 재료 수량을 유지해 다음으로 이동했습니다.
+  Data/Items/PaperMaterial.asset (+아이콘)
+  Data/Items/Resources/PlayerCrafting/RegistryTalismanRecipe.asset
+  Data/Items/Resources/PlayerCrafting/BarrierTalismanRecipe.asset
+- PlayerLocalUIBootstrap.CraftingRecipes가 누락된 부적 2개를 정해진 순서로 덧붙입니다.
+  기존 NetPlayerCrafting이 사용하는 목록/인덱스가 서버와 클라이언트에서 동일하게 계산됩니다.
+  NetPlayer_Base의 기존 0=소금, 1=팥쑥, 2=초롱불 인덱스는 유지됩니다. 3=효과부적, 4=결계부적 추가.
+  초롱불은 disabled=true: UI에서 제외되고 TryGetCosts/TryCraft에서도 거절됩니다.
+- 필요한 담당자 작업: NetItemDatabase.asset에 PaperMaterial.asset를 마지막에 추가.
+  기존 ID 순서는 절대 바꾸지 말아 주세요. 한지 월드 아이템의 서버 등록/스폰도 확인 필요.
+  현재 한지 GUID f246216710936a7439b7e8214f08856f는 네트워크 DB에 없습니다.
+- 서버/클라이언트 모두 같은 새 버전으로 빌드해야 합니다. 로컬과 NetPlayer는 원래 목록이 다릅니다.
+
+2. 초롱불 F 벽 부착
+- PlayerInteractor가 기존 대상의 상호작용을 우선하고, 대상이 없는 벽에서만
+  PlayerLanternPlacement.Target의 '초롱불 벽에 걸기' 안내/요청을 처리합니다.
+- 오프라인: F 획득 → 장착 → 벽 F → 실제 월드 초롱불 생성 + 소지품 1개 제거.
+  재획득은 기존 WorldItem의 F 줍기 경로입니다. 실패하면 소지품/퀵슬롯을 보존합니다.
+- 온라인은 로컬 생성/차감을 하지 않습니다. 연결 전에는 미연결 안내를 표시합니다.
+- 로컬 PlayerLanternPlacement.PlacementRequested(long requestId, Ray aim) 구독 → Command.
+- 서버에서 송신 Player, 라운드, 생존, NetPlayerEquipment.EquippedItem(초롱불), 재사용 ID를 검증.
+- 해당 Player의 TryPlaceAuthoritative(requestId, aim, authorize, resolvePrefab, publish, rollback,
+  out placed, authoritativeEquippedItem: equipment.EquippedItem) 호출.
+  authorize는 현재 장착 상태와 게임 권한을 다시 확인하는 delegate.
+  resolvePrefab은 기존 등록된 NetLanternWorldItem을 반환.
+  publish는 NetworkServer.Spawn 및 부착 상태 동기화, 성공 여부 반환.
+  rollback은 실패 시 생성 오브젝트를 네트워크 despawn.
+- 벽/거리/가림/여유 공간은 Player 쪽에서 재검사합니다. 임의 클라이언트 최종 위치를 그대로 쓰지 않습니다.
+- 부착 위치/회전과 mounted 상태를 동기화하고, 모든 클라이언트/늦게 들어온 클라이언트에서
+  LanternWorldPresentation.SetMounted(true)를 적용해 낙하/중력 시뮬레이션을 막아 주세요.
+- 서버 원격 Player는 로컬 EquippedItemData가 없을 수 있으므로 마지막 인자에 서버 장비 데이터를 전달해야 합니다.
+- 별도 재료 차감/Consume/ReportUse를 추가하지 마세요. TryDropUnit이 소지품 이전을 원자적으로 처리합니다.
+
+3. 음기향
+- PlayerItemController.Awake에서 PlayerYinIncenseSense를 준비합니다.
+- 서버/오프라인 TrySampleAuthoritative(out Vector3 direction, out bool near)는 낮/밤 제한 없이
+  현재 살아 있는 미퇴마 숙주를 반경 15m에서 탐색합니다. 음기 최소치 제한 없음.
+  1.5m 이내에서는 direction=zero, near=true로 수직 상승합니다. Inspector에서 거리 조정 가능.
+- 순수 클라이언트는 숙주 Profile/AI_Possession을 읽을 수 없습니다.
+  로컬 SenseRequested(최대 초당 4회) → 서버에서 실제 음기향 장착/생존/요청 빈도 검증 →
+  해당 Player의 TrySampleAuthoritative → TargetRpc로 방향/near만 반환 →
+  ApplyAuthoritativeSense(direction, near) 호출.
+- 다른 플레이어에게도 같은 연기 방향을 보이려면 그 Player의 관찰 클라이언트에도 결과만 전달합니다.
+- 유효기간 기본 .75초. 갱신 중단 시 수직 연기로 돌아갑니다.
+- 숙주 ID/정체/전체 Profile 동기화는 필요하지 않습니다.
+- 전달 연결 전 원격 클라이언트에서는 숙주 방향 탐지가 완성되지 않은 상태입니다.
+
+4. 1인칭 그림자
+- PlayerViewModeController가 로컬 몸체를 ShadowsOnly로 숨깁니다.
+  3인칭/비활성화 시 원래 그림자와 숨김 설정을 복원합니다. 별도 Network 변경은 없습니다.
+- 조명 그림자, URP shadow distance/quality가 꺼진 맵에서는 그림자가 표시되지 않습니다.

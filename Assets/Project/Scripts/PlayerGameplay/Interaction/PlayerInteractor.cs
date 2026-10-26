@@ -18,9 +18,12 @@ public class PlayerInteractor : MonoBehaviour
 
     private PlayerInputReader _inputReader;
     private PlayerViewModeController _viewModeController;
+    private PlayerLanternPlacement _lanternPlacement;
 
     private void Awake()
     {
+        _lanternPlacement = GetComponent<PlayerLanternPlacement>();
+        if (_lanternPlacement == null) _lanternPlacement = gameObject.AddComponent<PlayerLanternPlacement>();
         _inputReader =
             GetComponent<PlayerInputReader>();
 
@@ -57,9 +60,10 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        SetCurrentTarget(
-            FindInteractable()
-        );
+        var target = FindInteractable();
+        if (target == null && _lanternPlacement != null && _lanternPlacement.Target.CanInteract(gameObject))
+            target = _lanternPlacement.Target;
+        SetCurrentTarget(target);
     }
 
     private void SetCurrentTarget(
@@ -195,8 +199,7 @@ public class PlayerInteractor : MonoBehaviour
             return;
         }
 
-        if (_viewModeController != null && _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.ThirdPerson)
-            UpdateTarget(); // Revalidate the third-person target on F.
+        UpdateTarget(); // Revalidate before F; pickup and placement cannot both fire.
 
         if (CurrentTarget == null)
         {

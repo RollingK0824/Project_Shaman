@@ -66,6 +66,8 @@ public class PlayerItemController : MonoBehaviour
 
     private void Awake()
     {
+        if (GetComponent<PlayerYinIncenseSense>() == null)
+            gameObject.AddComponent<PlayerYinIncenseSense>();
         if (GetComponent<PlayerHouseBarrierPlacement>() == null)
             gameObject.AddComponent<PlayerHouseBarrierPlacement>();
         _inputReader =

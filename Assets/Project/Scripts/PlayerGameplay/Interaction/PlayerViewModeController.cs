@@ -1,4 +1,6 @@
 using UnityEngine;
+using UnityEngine.Rendering;
+using System.Collections.Generic;
 
 // Resolve camera obstruction after the camera pivot and hit/stress feedback have moved.
 [DefaultExecutionOrder(100)]
@@ -35,6 +37,7 @@ public class PlayerViewModeController : MonoBehaviour
     [SerializeField] private Renderer[] _playerBodyRenderers;
 
     [SerializeField] private bool _hideBodyInFirstPerson = true;
+    private readonly Dictionary<Renderer, (ShadowCastingMode shadows, bool hidden)> _bodyVisibility = new();
 
     [Header("First Person Wall Protection")]
     [SerializeField, Range(.01f, .1f)] private float _firstPersonNearClip = .05f;
@@ -134,8 +137,7 @@ public class PlayerViewModeController : MonoBehaviour
         if (_inputReader != null) _inputReader.ViewTogglePressed -= HandleViewToggle;
         EndCurrentMode();
         RestoreNearClip();
-        if (_playerBodyRenderers != null)
-            foreach (var body in _playerBodyRenderers) if (body != null) body.forceRenderingOff = false;
+        RestoreBodyVisibility();
     }
 
     // =========================================================
@@ -289,6 +291,7 @@ public class PlayerViewModeController : MonoBehaviour
     {
         if (!_hideBodyInFirstPerson)
         {
+            RestoreBodyVisibility();
             return;
         }
 
@@ -303,8 +306,26 @@ public class PlayerViewModeController : MonoBehaviour
                 continue;
             }
 
-            bodyRenderer.forceRenderingOff = !visible;
+            if (!_bodyVisibility.TryGetValue(bodyRenderer, out var original))
+            {
+                original = (bodyRenderer.shadowCastingMode, bodyRenderer.forceRenderingOff);
+                _bodyVisibility.Add(bodyRenderer, original);
+            }
+            bodyRenderer.shadowCastingMode = visible || original.shadows == ShadowCastingMode.Off
+                ? original.shadows : ShadowCastingMode.ShadowsOnly;
+            bodyRenderer.forceRenderingOff = original.hidden || (!visible && original.shadows == ShadowCastingMode.Off);
         }
+    }
+
+    private void RestoreBodyVisibility()
+    {
+        foreach (var entry in _bodyVisibility)
+            if (entry.Key != null)
+            {
+                entry.Key.shadowCastingMode = entry.Value.shadows;
+                entry.Key.forceRenderingOff = entry.Value.hidden;
+            }
+        _bodyVisibility.Clear();
     }
 
     // =========================================================
