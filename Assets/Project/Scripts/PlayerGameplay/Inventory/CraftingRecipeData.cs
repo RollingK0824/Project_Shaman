@@ -18,6 +18,9 @@ public class CraftingRecipeData : ScriptableObject
     [SerializeField] private CraftingIngredient[] _ingredients = Array.Empty<CraftingIngredient>();
     [SerializeField] private ItemData _resultItem;
     [SerializeField, Min(1)] private int _resultAmount = 1;
+    [Tooltip("Retain the asset/index for old references, but hide and reject retired recipes.")]
+    [SerializeField] private bool _disabled;
+    public bool IsAvailable => !_disabled;
 
     public string DisplayName => string.IsNullOrWhiteSpace(_displayName) && _resultItem != null ? _resultItem.DisplayName : _displayName;
     public Sprite Icon => _icon != null ? _icon : _resultItem != null ? _resultItem.Icon : null;
@@ -31,7 +34,7 @@ public class CraftingRecipeData : ScriptableObject
     public bool TryGetCosts(Dictionary<ItemData, int> costs)
     {
         costs.Clear();
-        if (_resultItem == null || _resultAmount <= 0 || _ingredients == null || _ingredients.Length == 0) return false;
+        if (_disabled || _resultItem == null || _resultAmount <= 0 || _ingredients == null || _ingredients.Length == 0) return false;
         foreach (var ingredient in _ingredients)
         {
             if (ingredient.Item == null || ingredient.Amount <= 0) { costs.Clear(); return false; }

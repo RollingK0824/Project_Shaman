@@ -54,7 +54,7 @@ public class CraftingPanelUI : MonoBehaviour
     public void SetRecipes(IEnumerable<CraftingRecipeData> recipes)
     {
         _recipes = recipes == null ? new List<CraftingRecipeData>() : new List<CraftingRecipeData>(recipes);
-        _recipes.RemoveAll(recipe => recipe == null);
+        _recipes.RemoveAll(recipe => recipe == null || !recipe.IsAvailable);
         _selectedIndex = 0;
         _feedback = null;
         RefreshSelector();
