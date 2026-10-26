@@ -16,7 +16,27 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     [SerializeField] private CraftingPanelUI _craftingPanelPrefab;
     [SerializeField] private List<CraftingRecipeData> _craftingRecipes = new();
     public CraftingPanelUI CraftingPanelPrefab => _craftingPanelPrefab;
-    public IReadOnlyList<CraftingRecipeData> CraftingRecipes => _craftingRecipes;
+    public IReadOnlyList<CraftingRecipeData> CraftingRecipes
+    {
+        get
+        {
+            // Also runs on the server before its first request. Preserve serialized
+            // indices (including retired recipes) used by NetPlayerCrafting.
+            if (!_recipesReady)
+            {
+                _recipesReady = true;
+                AddShippedRecipe("RegistryTalismanRecipe");
+                AddShippedRecipe("BarrierTalismanRecipe");
+            }
+            return _craftingRecipes;
+        }
+    }
+    private bool _recipesReady;
+    private void AddShippedRecipe(string name)
+    {
+        var recipe = Resources.Load<CraftingRecipeData>("PlayerCrafting/" + name);
+        if (recipe != null && !_craftingRecipes.Contains(recipe)) _craftingRecipes.Add(recipe);
+    }
 
     [SerializeField] private GameObject _notebookPrefab;
     [SerializeField] private InventoryPanelUI _inventoryPanelPrefab;

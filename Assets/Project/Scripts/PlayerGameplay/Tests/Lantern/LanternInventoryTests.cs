@@ -17,13 +17,25 @@ public class LanternInventoryTests
     {
         shared=Make("QA Shared").AddComponent<SharedMaterialInventory>();
         inv=Make("QA Crafter").AddComponent<PlayerInventory>();inv.BindSharedMaterials(shared);craft=inv.gameObject.AddComponent<PlayerCraftingController>();
-        lamp=Load<ItemData>("LanternItemData.asset");oil=Load<ItemData>("LampOilMaterial.asset");paper=Load<ItemData>("Debug/Test_Paper.asset");salt=Load<ItemData>("CoarseSaltMaterial.asset");blank=Load<TalismanItemData>("Talismans/RegistryTalisman.asset");recipe=Load<CraftingRecipeData>("LanternRecipe.asset");
+        lamp=Load<ItemData>("LanternItemData.asset");oil=Load<ItemData>("LampOilMaterial.asset");paper=Load<ItemData>("PaperMaterial.asset");salt=Load<ItemData>("CoarseSaltMaterial.asset");blank=Load<TalismanItemData>("Talismans/RegistryTalisman.asset");recipe=Load<CraftingRecipeData>("LanternRecipe.asset");
         Assert.IsNotNull(recipe);
+        // Keep the historical mixed-resource transaction regression fixture,
+        // independently of the now-retired production lantern recipe.
+        recipe = UnityEngine.Object.Instantiate(recipe);
+        var serialized = new SerializedObject(recipe);
+        serialized.FindProperty("_disabled").boolValue = false;
+        serialized.ApplyModifiedPropertiesWithoutUndo();
     }
-    [TearDown] public void TearDown(){for(int i=_objects.Count-1;i>=0;i--)if(_objects[i])UnityEngine.Object.DestroyImmediate(_objects[i]);_objects.Clear();}
+    [TearDown] public void TearDown(){if(recipe)UnityEngine.Object.DestroyImmediate(recipe);for(int i=_objects.Count-1;i>=0;i--)if(_objects[i])UnityEngine.Object.DestroyImmediate(_objects[i]);_objects.Clear();}
     void Fill(int paperCount=2,int oilCount=1,int saltCount=1,int blankCount=1)
     {if(paperCount>0)Assert.IsTrue(inv.TryAddItem(paper,paperCount));if(oilCount>0)Assert.IsTrue(inv.TryAddItem(oil,oilCount));if(saltCount>0)Assert.IsTrue(inv.TryAddItem(salt,saltCount));if(blankCount>0)Assert.IsTrue(inv.TryAddItem(blank,blankCount));}
     int[] Counts()=>new[]{inv.GetItemCount(paper),inv.GetItemCount(oil),inv.GetItemCount(salt),inv.GetItemCount(blank),inv.GetItemCount(lamp)};
+    [Test] public void ProductionLanternRecipeRejectsEvenWithAllMaterials()
+    {
+        Fill(); var before=Counts(); var production=Load<CraftingRecipeData>("LanternRecipe.asset");
+        Assert.IsFalse(production.IsAvailable); Assert.IsFalse(craft.RequestCraft(production));
+        Assert.IsFalse(craft.TryCraft(production)); CollectionAssert.AreEqual(before,Counts());
+    }
     [Test] public void OilPickupIsSharedOnlyAndCannotEquip()
     {
         Make("QA Offline Judge").AddComponent<LocalGameplayJudge>();
@@ -97,7 +109,7 @@ public class LanternInventoryTests
     }
     [Test] public void ExistingFourRecipesStillCraft()
     {
-        foreach(var path in new[]{"SaltRecipe.asset","BeanMugwortRecipe.asset","Debug/Test_RegistryTalismanRecipe.asset","Debug/Test_BarrierTalismanRecipe.asset"})
+        foreach(var path in new[]{"SaltRecipe.asset","BeanMugwortRecipe.asset","Resources/PlayerCrafting/RegistryTalismanRecipe.asset","Resources/PlayerCrafting/BarrierTalismanRecipe.asset"})
         {
             var old=Load<CraftingRecipeData>(path);var costs=new Dictionary<ItemData,int>();Assert.IsTrue(old.TryGetCosts(costs));foreach(var c in costs)Assert.IsTrue(inv.TryAddItem(c.Key,c.Value));int before=inv.GetItemCount(old.ResultItem);Assert.IsTrue(craft.TryCraft(old));Assert.AreEqual(before+old.ResultAmount,inv.GetItemCount(old.ResultItem));
         }

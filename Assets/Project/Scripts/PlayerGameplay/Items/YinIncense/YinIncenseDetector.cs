@@ -1,6 +1,6 @@
-﻿using UnityEngine;
+using UnityEngine;
 
-public class YinIncenseDetector : MonoBehaviour
+public class YinIncenseDetector : MonoBehaviour, IItemVisualContext
 {
     [Header("Smoke Direction")]
     [SerializeField]
@@ -13,6 +13,12 @@ public class YinIncenseDetector : MonoBehaviour
 
     private ParticleSystem _smoke;
     private Vector3 _currentDirection;
+    private PlayerYinIncenseSense _sense;
+    private bool _wasNear;
+    public void BindItemVisual(ItemData item, GameObject owner)
+    {
+        _sense = owner != null ? owner.GetComponent<PlayerYinIncenseSense>() : null;
+    }
 
 
     private void Awake()
@@ -64,6 +70,19 @@ public class YinIncenseDetector : MonoBehaviour
                 targetDirection.Normalize();
             }
         }
+
+        bool near = false;
+        if (_sense != null) _sense.Read(out targetDirection, out near);
+        else if (source != null)
+        {
+            var delta = source.transform.position - transform.position;
+            delta.y = 0f;
+            near = delta.sqrMagnitude <= 2.25f;
+        }
+        // Remove old sideways velocity once on entering the near-host zone.
+        if (near && !_wasNear) _smoke.Clear();
+        _wasNear = near;
+        if (near) { targetDirection = Vector3.zero; _currentDirection = Vector3.zero; }
 
         _currentDirection =
             Vector3.Lerp(

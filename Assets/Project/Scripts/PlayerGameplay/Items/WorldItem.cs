@@ -14,6 +14,8 @@ public class WorldItem : MonoBehaviour, IInteractable
     {
         // 풀에서 재사용할 때 이전 획득 상태를 남기지 않습니다.
         _isCollected = false;
+        if (_itemData != null && _itemData.ItemId == "item_lantern" && GetComponent<LanternWorldPresentation>() == null)
+            gameObject.AddComponent<LanternWorldPresentation>();
     }
 
     public string InteractionPrompt
