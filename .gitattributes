@@ -147,6 +147,8 @@ Packages/packages-lock.json linguist-generated
 # Executable/Installer
 *.apk                   lfs
 *.exe                   lfs
+# LFS 설정 전에 받아야 하는 Google Drive LFS 전송 도구(setup_git.bat)는 일반 Git에 보관
+Tools/GitSetup/lfs-folderstore.exe -lfs -filter binary
 
 # Documents
 *.pdf                   lfs
