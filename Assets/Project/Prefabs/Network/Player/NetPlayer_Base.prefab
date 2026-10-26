@@ -579,6 +579,7 @@ GameObject:
   - component: {fileID: 3119850079899015170}
   - component: {fileID: 3151669207077357859}
   - component: {fileID: 1463238138606123897}
+  - component: {fileID: -4600253240461387966}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -1469,6 +1470,23 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+--- !u!114 &-4600253240461387966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e7089fa475408246911c24095df081f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerHouseBarrier
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _dataBase: {fileID: 11400000, guid: bd35ab6adfe38c54a811627ac6bc3d23, type: 2}
+  _maxAimOriginDistance: 3
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0
