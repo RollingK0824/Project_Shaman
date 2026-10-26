@@ -66,7 +66,8 @@ namespace ProjectShaman.AI.World
 
         public bool CanBeTargeted(in GhostActionContext context)
         {
-            return context.Verb == GhostActionVerb.HideTool && IsAvailableFor(context.GhostId) && _ghostHiddenNight != context.NightDay;
+            return context.Verb == GhostActionVerb.HideTool && IsAvailableFor(context.GhostId) && _ghostHiddenNight != context.NightDay
+                && (context.Entity == null || context.Entity.CanCarryInTime(context.Action, transform.position));
         }
 
         public int GetPriority(in GhostActionContext context)
