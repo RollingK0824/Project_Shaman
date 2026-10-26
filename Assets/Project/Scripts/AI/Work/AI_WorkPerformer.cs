@@ -117,9 +117,9 @@ namespace ProjectShaman.AI.Work
         {
             _hitCount++;
 
+            // Each hit is counted, not logged: EndWork reports the total
             if (_station == null)
             {
-                AILog.Log(AILog.WORK, _core.LogId, $"Hit #{_hitCount} (no station)");
                 return;
             }
 
