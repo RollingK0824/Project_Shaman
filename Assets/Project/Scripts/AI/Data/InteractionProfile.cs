@@ -36,5 +36,11 @@ namespace ProjectShaman.AI.Data
         public bool HasNoticeRadius => _noticeRadius > 0f;
         public float WitnessStress => _witnessStress;
         public float DetailedWitnessStress => _detailedWitnessStress;
+
+        // For profiles made in code (no asset to set it on)
+        internal void SetPriority(int priority)
+        {
+            _priority = Mathf.Clamp(priority, 0, 100);
+        }
     }
 }

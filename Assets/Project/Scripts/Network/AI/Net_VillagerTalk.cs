@@ -281,7 +281,8 @@ namespace ProjectShaman.Network.AI
                 _conversation.Leave("player came about a request");
             }
 
-            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.For(player), InteractionResponse.Stop, _dialogueHoldSeconds);
+            // A request outranks an everyday interaction: a villager looking in on a neighbour on the way home stops for it
+            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.ForRequest(player), InteractionResponse.Stop, _dialogueHoldSeconds);
             _holdSerial = _holdsVillager ? _interaction.Serial : -1;
             _dialogueConnection = sender;
             _dialoguePlayer = player;
@@ -366,7 +367,7 @@ namespace ProjectShaman.Network.AI
                 _conversation.Leave("player brought a tool");
             }
 
-            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.For(player), InteractionResponse.Stop, _dialogueHoldSeconds);
+            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.ForRequest(player), InteractionResponse.Stop, _dialogueHoldSeconds);
             _holdSerial = _holdsVillager ? _interaction.Serial : -1;
             _dialogueConnection = sender;
             _dialoguePlayer = player;
