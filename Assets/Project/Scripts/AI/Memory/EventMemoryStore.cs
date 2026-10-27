@@ -92,6 +92,7 @@ namespace ProjectShaman.AI.Memory
             results.AddRange(Get(MemoryKind.TraceWitness));
             results.AddRange(Get(MemoryKind.Absent));
             results.AddRange(Get(MemoryKind.Death));
+            results.AddRange(Get(MemoryKind.GhostSighting));
             results.Sort((a, b) => b.RecordedTime.CompareTo(a.RecordedTime));
         }
 

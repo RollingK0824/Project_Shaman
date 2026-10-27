@@ -9,7 +9,8 @@ namespace ProjectShaman.AI.Defines
         SleepParalysis,
         Witness,
         Absent,
-        Death
+        Death,
+        GhostSighting
     }
 
     public enum MemorySource

@@ -89,6 +89,7 @@ namespace ProjectShaman.AI.Ghost
         public AIBehaviourConfig Config => _config;
 
         public string GhostId => _ghostId;
+        public string HostVillagerId => _hostVillagerId;
         public bool IsChanneling => _session != null && _session.IsChanneling;
         public Vector3 Center => _center;
         public float Radius => _radius;
