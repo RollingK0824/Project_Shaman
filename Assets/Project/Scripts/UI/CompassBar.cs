@@ -29,9 +29,12 @@ public class CompassBar : MonoBehaviour
     [SerializeField]
     private string[] _labels = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
 
-    // Height of the quest marks on the strip, relative to the labels' line
+    // Quest marks sit in a row just under the bar, outside the strip's mask (it would clip them)
     [SerializeField]
-    private float _questIconOffsetY = -18f;
+    private float _questIconOffsetY = -30f;
+
+    [SerializeField]
+    private float _questIconFontSize = 26f;
 
     private readonly List<TMP_Text> _questIcons = new List<TMP_Text>();
     private NetworkIdentity _cachedPlayer;
@@ -62,7 +65,8 @@ public class CompassBar : MonoBehaviour
         PlaceQuestIcons(view.position, heading);
     }
 
-    // Quest marks on the strip: "!" an offer can be taken there, "?" a quest can be reported there
+    // Quest marks under the bar: "!" an offer can be taken there, "?" a quest can be reported there.
+    // One beyond the bar's width waits at that edge, so the player knows which way to turn
     private void PlaceQuestIcons(Vector3 from, float heading)
     {
         if (_labelTemplate == null)
@@ -71,6 +75,8 @@ public class CompassBar : MonoBehaviour
         }
 
         IReadOnlyList<AI_QuestMarker> markers = AI_QuestMarker.Shown;
+        RectTransform bar = (RectTransform)transform;
+        float halfWidth = bar.rect.width * 0.5f;
         int used = 0;
 
         foreach (AI_QuestMarker marker in markers)
@@ -83,18 +89,18 @@ public class CompassBar : MonoBehaviour
 
             if (used == _questIcons.Count)
             {
-                TMP_Text created = Instantiate(_labelTemplate, _strip);
+                TMP_Text created = Instantiate(_labelTemplate, bar);
                 created.fontStyle = FontStyles.Bold;
+                created.fontSize = _questIconFontSize;
                 _questIcons.Add(created);
             }
 
             TMP_Text icon = _questIcons[used++];
             icon.text = marker.Symbol;
             icon.color = marker.Color;
-            // Placed beside the current heading, so the strip's -180..540 layout never has to wrap it
-            float bearing = heading + Mathf.DeltaAngle(heading, GetHeading(offset));
-            Place(icon.rectTransform, bearing);
-            icon.rectTransform.anchoredPosition = new Vector2(icon.rectTransform.anchoredPosition.x, _questIconOffsetY);
+            float x = Mathf.Clamp(Mathf.DeltaAngle(heading, GetHeading(offset)) * _pixelsPerDegree, -halfWidth, halfWidth);
+            icon.gameObject.SetActive(true);
+            icon.rectTransform.anchoredPosition = new Vector2(x, _questIconOffsetY);
         }
 
         for (int i = used; i < _questIcons.Count; i++)
