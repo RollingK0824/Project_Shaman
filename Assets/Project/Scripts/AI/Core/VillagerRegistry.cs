@@ -91,6 +91,34 @@ namespace ProjectShaman.AI.Core
             }
         }
 
+        // Today's free time as the village sees it: hour pairs, what is done there and the place (null: nowhere planned)
+        internal void SetFreeTime(string villagerId, int day, int[] hours, string[] names, string[] placeIds)
+        {
+            if (!string.IsNullOrEmpty(villagerId) && _byId.TryGetValue(villagerId, out VillagerEntry entry))
+            {
+                entry.FreeDay = day;
+                entry.FreeHours = hours;
+                entry.FreeNames = names;
+                entry.FreePlaceIds = placeIds;
+            }
+        }
+
+        public bool TryGetFreeTime(string villagerId, int day, out int[] hours, out string[] names, out string[] placeIds)
+        {
+            hours = null;
+            names = null;
+            placeIds = null;
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.FreeDay != day || entry.FreeHours == null)
+            {
+                return false;
+            }
+
+            hours = entry.FreeHours;
+            names = entry.FreeNames;
+            placeIds = entry.FreePlaceIds;
+            return true;
+        }
+
         // A work block of today given up for a missing tool (the villager rests instead, at restPlaceId when it found
         // a rest place), or taken up again
         internal void SetSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
@@ -230,6 +258,10 @@ namespace ProjectShaman.AI.Core
             public int BedHour { get; set; }
             public int RestedSlotMask { get; set; }
             public Dictionary<int, string> RestPlaceIds { get; } = new Dictionary<int, string>();
+            public int FreeDay { get; set; }
+            public int[] FreeHours { get; set; }
+            public string[] FreeNames { get; set; }
+            public string[] FreePlaceIds { get; set; }
 
             public VillagerEntry(VillagerPublicInfo info, VillagerScheduleView schedule)
             {

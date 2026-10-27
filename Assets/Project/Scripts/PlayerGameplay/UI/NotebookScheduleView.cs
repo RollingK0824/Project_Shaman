@@ -270,7 +270,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
         else
         {
             _title.text = $"{villager.DisplayName}의 하루";
-            _note.text = "빈 칸은 자유 시간·오가는 때 · 귀가 시각까지 집에 닿음";
+            _note.text = "빈 칸은 오가는 때 · 귀가 시각까지 집에 닿음";
             VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
             for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
             {
@@ -290,6 +290,17 @@ public sealed class NotebookScheduleView : MonoBehaviour
                 // A routine naming a place group (tree shade) shows the group's name: which one it goes to is picked on the day
                 string placeName = MapAreaRegistry.NameOf(routine.PlaceId) ?? ProjectShaman.AI.World.PlaceRegistry.NameOf(routine.PlaceId);
                 if (ShowBlock(shown, routine.DisplayName, placeName, wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+            }
+
+            // Free time between and after the blocks, where it was planned this morning (C130): an evening out before
+            // a late walk home reads "마실"
+            if (registry != null && registry.TryGetFreeTime(villager.VillagerId, today.day, out int[] freeHours, out string[] freeNames, out string[] freePlaces))
+            {
+                for (int i = 0; i * 2 + 1 < freeHours.Length && i < freeNames.Length; i++)
+                {
+                    string freePlace = freePlaces != null && i < freePlaces.Length && !string.IsNullOrEmpty(freePlaces[i]) ? MapAreaRegistry.NameOf(freePlaces[i]) : null;
+                    if (ShowBlock(shown, freeNames[i], freePlace, REST_WASH, freeHours[i * 2], freeHours[i * 2 + 1])) shown++;
+                }
             }
 
             // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap
