@@ -1031,7 +1031,7 @@ namespace ProjectShaman.AI.Core
 
             if (best == null)
             {
-                AILog.Warn(AILog.MANAGER, villager.Id, $"No rest ({reason}): no rest place in the scene for its rest routines (groups: {DescribeGroupsOrNone()})");
+                AILog.Warn(AILog.MANAGER, $"{villager.Id} no rest ({reason}): no rest place in the scene for its rest routines (groups: {DescribeGroupsOrNone()})");
                 return false;
             }
 
