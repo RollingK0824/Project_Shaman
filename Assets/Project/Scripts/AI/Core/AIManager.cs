@@ -1126,10 +1126,11 @@ namespace ProjectShaman.AI.Core
             homeHour = Mathf.Clamp(PickHour(random, _behaviourConfig.HomeArriveHours, DayClock.DAY_END_HOUR - 1), DayClock.DAY_START_HOUR + 1, DayClock.DAY_END_HOUR);
             bedHour = Mathf.Max(DayClock.DAY_END_HOUR, PickHour(random, _behaviourConfig.BedHours, DayClock.DAY_END_HOUR));
 
-            // Now and then a villager stays out past dark and walks home at night, where it may meet a ghost (C122)
+            // Now and then a villager stays out past dark and walks home at night, where it may meet a ghost (C122).
+            // Home by 21~23h: it sets off at dusk at the latest (CalculateHomeReturnTime) and is not hurried on the way
             if (random.NextDouble() < _behaviourConfig.StayOutLateChance)
             {
-                homeHour = DayClock.DAY_END_HOUR + 1;
+                homeHour = random.Next(DayClock.DAY_END_HOUR + 1, DayClock.DAY_END_HOUR + 4);
                 bedHour = Mathf.Max(bedHour, homeHour);
             }
         }
@@ -1174,7 +1175,9 @@ namespace ProjectShaman.AI.Core
             }
 
             float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + visitSeconds + _behaviourConfig.HomeReturnMarginSeconds;
-            return Mathf.Max(0f, homeArriveTime - lead);
+            // Nightfall sends everyone home, so even one due home late sets off before dusk (by the same margin)
+            float latest = DayClock.ToDayElapsed(DayClock.DAY_END_HOUR) - _behaviourConfig.HomeReturnMarginSeconds;
+            return Mathf.Clamp(homeArriveTime - lead, 0f, Mathf.Max(0f, latest));
         }
 
         // A walk that really reaches the point: a partial path only gets as far as a wall and the villager would stand there
