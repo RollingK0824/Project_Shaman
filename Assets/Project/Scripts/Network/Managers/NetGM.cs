@@ -299,14 +299,11 @@ public class NetGM : NetworkBehaviour
     [Server]
     private void HandleGameOverOnServer()
     {
-        if (_returnToLobbyTime > 0) return;
+        if (_gameOverTime > 0) return;
 
         _gameOverTime = NetworkTime.time;
-        _returnToLobbyTime = NetworkTime.time + _returnToLobbyDelay;
 
-        Debug.Log($"[NetGM] 게임 종료: {GameManager.Instance.CurrentGameState} -> {_returnToLobbyDelay:0}초 후 로비 복귀");
-
-        StartCoroutine(ReturnToLobbyAfterDelay());
+        Debug.Log($"[NetGM] 게임 종료: {GameManager.Instance.CurrentGameState} -> 호스트 로비 복귀 대기");
     }
 
     private IEnumerator ReturnToLobbyAfterDelay()
@@ -321,7 +318,7 @@ public class NetGM : NetworkBehaviour
     [Server]
     public void ServerReturnToLobby()
     {
-        if (_returningToLobby || _returnToLobbyTime <= 0) return;
+        if (_returningToLobby || _gameOverTime <= 0) return;
         _returningToLobby = true;
 
         if (NetworkManager.singleton is RoomManager roomManager)
