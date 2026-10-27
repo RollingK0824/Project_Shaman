@@ -1,0 +1,36 @@
+사망 애니메이션 네트워크 확인 요청 (2026-10-27)
+
+현재 연결은 이미 있습니다. 새 사망 RPC/클라이언트 피해 판정을 추가할 필요는 없습니다.
+서버 PlayerHealth.ApplyDeath(source)
+ -> PlayerEvents.DeathConfirmed
+ -> NetPlayerStatus._isDead SyncVar
+ -> OnIsDeadChanged / OnStartClient
+ -> PlayerHealth.ApplyReplicatedDeath()
+ -> PlayerDeathVisual.ApplyDeathVisual()
+
+확인된 설정 누락:
+Assets/Project/Prefabs/Network/Player/NetPlayer_Base.prefab의 PlayerDeathVisual._deathState가 비어 있습니다.
+NetPlayer1~4는 이 프리팹을 상속하며 해당 값의 오버라이드가 없어, 현재 코드상 애니메이션 대신 즉시 HideVisual로 들어갑니다.
+Network 프리팹은 담당 영역이므로 이번 작업에서는 수정하지 않았습니다.
+
+담당자 수정/확인 사항:
+- NetPlayer_Base의 Death State = Base Layer.Death, Death Layer = 0, Hide After Seconds = 5.2
+  (일반 Player (1)~(4).prefab과 같은 설정).
+- NetPlayer1~4의 PlayerDeathVisual.Animator가 각 CharacterVisual의 실제 Animator인지 확인.
+- Animator Controller = PlayerLocomotion.controller 또는 Base Layer.Death가 있는 호환 Controller.
+  Death 모션 = PL_2@Dying Backwards. Death 상태 자체에 outgoing transition은 없습니다.
+- 사망 확정 직후 Player/CharacterVisual 비활성화나 NetworkServer.Destroy/UnSpawn을 하지 말 것.
+  연출 종료 전까지 PlayerDeathVisual과 Animator가 활성 상태여야 합니다.
+- 관전 전환은 로컬 소유자에게만 적용하고 다른 클라이언트의 사망 연출은 유지.
+- 별도 Animator.Play/CrossFade RPC를 겹쳐 보내지 말 것. IsDead/Applied guard가 중복 적용을 방지합니다.
+- 현재 사망 timestamp는 동기화하지 않으므로, 이미 죽은 Player를 뒤늦게 스폰받으면 OnStartClient에서 사망 모션을 처음부터 재생합니다.
+  늦은 참가자에게 즉시 숨김 또는 남은 시간만 재생할지는 팀 정책 확인이 필요합니다.
+
+멀티플레이 검증:
+호스트 사망을 클라이언트에서 / 클라이언트 사망을 호스트와 다른 클라이언트에서 확인.
+아이템 장착 중 사망, 동일 사망 통보 중복, 관전 전환, 5.2초 후 숨김, 늦은 참가 순서 확인.
+이번 작업은 코드/프리팹 연결 조사이며 실제 2인 접속 검증은 수행하지 않았습니다.
+
+초롱불 참고:
+현재 Network/**에서 PlayerLanternPlacement.PlacementRequested / TryPlaceAuthoritative 연결은 검색되지 않았습니다.
+이번 위치 수정은 Player 측 로컬/서버 공용 배치 계산이며, 온라인 전달은 기존 Items/BUILD_FIXES_HANDOFF.txt의 계약을 따릅니다.
