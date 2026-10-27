@@ -514,7 +514,7 @@ namespace ProjectShaman.Network.AI
             {
                 if (_dialogueConnection.identity != null)
                 {
-                    TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : "살펴 가시오.");
+                    TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : VillagerDialogueService.Farewell(_conversation));
                 }
 
                 EndDialogue(lost ? "villager called away" : far ? "player walked off" : "idle");

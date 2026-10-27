@@ -78,6 +78,13 @@ namespace ProjectShaman.AI.Dialogue
             return DialogueLibrary.Line("greet", _random);
         }
 
+        // In the house for the evening the villager is about to turn in, and says so
+        public static string Farewell(AI_Conversation villager)
+        {
+            bool atHome = villager != null && villager.Core != null && villager.Core.IsHomeForNight;
+            return DialogueLibrary.Line(atHome ? "bye.home" : "bye", _random);
+        }
+
         public static bool HasQuestionsLeft(AI_Conversation villager, AIBehaviourConfig config)
         {
             return AskedToday(villager) < config.PlayerQuestionsPerDay;
@@ -108,7 +115,7 @@ namespace ProjectShaman.AI.Dialogue
             if (topicId == ASK_BYE)
             {
                 ends = true;
-                return DialogueLibrary.Line("bye", _random);
+                return Farewell(villager);
             }
 
             if (!HasQuestionsLeft(villager, config))
