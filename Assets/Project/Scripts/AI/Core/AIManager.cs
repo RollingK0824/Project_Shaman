@@ -452,6 +452,7 @@ namespace ProjectShaman.AI.Core
             {
                 ReleaseStation(villager);
                 StopRunning(villager, "day start");
+                villager.Core.SetAsleep(false);
                 villager.ResetForDayStart();
                 villager.Core.ClearRoutine(villager.NextSerial(), "day start");
                 villager.Core.SetMustGoHome(false);
@@ -645,6 +646,11 @@ namespace ProjectShaman.AI.Core
             if (villager.HasArrivedHome)
             {
                 StopRunning(villager, "home");
+                if (IsAsleepAtHome(villager))
+                {
+                    villager.Core.SetAsleep(true);
+                }
+
                 return;
             }
 

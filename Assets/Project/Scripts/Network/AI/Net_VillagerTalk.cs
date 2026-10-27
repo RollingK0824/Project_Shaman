@@ -46,6 +46,7 @@ namespace ProjectShaman.Network.AI
         private float _dialogueDeadline;
         private AI_QuestMarker _marker;
         private QuestManager _subscribedQuests;
+        private readonly System.Random _random = new System.Random();
 
         [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasQuestOffer;
         // An accepted quest is finished by coming back to this villager (delivery to the giver ...)
@@ -65,6 +66,7 @@ namespace ProjectShaman.Network.AI
             if (_core != null)
             {
                 _core.OnMustGoHomeChanged += HandleMustGoHomeChanged;
+                _core.OnAsleepChanged += HandleAsleepChanged;
             }
 
             _subscribedQuests = QuestManager.Existing;
@@ -86,6 +88,7 @@ namespace ProjectShaman.Network.AI
             if (_core != null)
             {
                 _core.OnMustGoHomeChanged -= HandleMustGoHomeChanged;
+                _core.OnAsleepChanged -= HandleAsleepChanged;
             }
 
             if (_subscribedQuests == null)
@@ -118,14 +121,22 @@ namespace ProjectShaman.Network.AI
             RefreshQuestMarker();
         }
 
+        private void HandleAsleepChanged(bool asleep)
+        {
+            RefreshQuestMarker();
+        }
+
+        private bool IsAsleep => _core != null && _core.IsAsleep;
+
         // Sent home for the evening (until the next day start) the villager cannot take an offer: "!" waits for the morning
         private bool IsHomeBound => _core != null && _core.MustGoHome;
 
         private void RefreshQuestMarker()
         {
             string villagerId = _conversation.VillagerId;
-            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsHomeBound;
-            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId);
+            // Asleep the villager can neither ask nor take anything: both marks wait for the morning
+            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsHomeBound && !IsAsleep;
+            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId) && !IsAsleep;
         }
 
         private void OnQuestMarkerChanged(bool oldValue, bool newValue)
@@ -181,6 +192,13 @@ namespace ProjectShaman.Network.AI
 
             uint playerId = player.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
             string villagerId = _conversation.VillagerId;
+
+            // Asleep in the house: no window, no hand-over, it does not count as a talk. A mumble shows it is asleep
+            if (IsAsleep)
+            {
+                _conversation.Say(DialogueLibrary.Line("sleep", _random), $"asleep, {player.name} tried to talk");
+                return;
+            }
 
             // A villager sent home (walking back, then in for the night) does not stop for a window: they only answer
             // in passing (the usual line). An offer waits for the morning

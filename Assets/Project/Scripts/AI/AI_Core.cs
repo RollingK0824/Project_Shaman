@@ -212,6 +212,22 @@ namespace ProjectShaman.AI
             _routineDebug.StartOffsetSeconds = offsetSeconds;
         }
 
+        // Server: in the house past the bed hour, until the day starts (AIManager decides)
+        public bool IsAsleep { get; private set; }
+        public event Action<bool> OnAsleepChanged;
+
+        public void SetAsleep(bool asleep)
+        {
+            if (IsAsleep == asleep)
+            {
+                return;
+            }
+
+            IsAsleep = asleep;
+            AILog.Log(AILog.CORE, LogId, asleep ? "Fell asleep" : "Woke up");
+            OnAsleepChanged?.Invoke(asleep);
+        }
+
         public void SetMustGoHome(bool mustGoHome)
         {
             SetBlackboardVariable(BB_MUST_GO_HOME, mustGoHome);
