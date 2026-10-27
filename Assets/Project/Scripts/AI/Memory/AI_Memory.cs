@@ -108,7 +108,7 @@ namespace ProjectShaman.AI.Memory
             }
 
             string detail = routine.IsCorrupted ? $"{routine.ActionId} corrupted={routine.CorruptionAxis}" : routine.ActionId;
-            Record(MemoryKind.Routine, routine.Source.RoutineId, routine.Source.PlaceId, routine.TargetPosition, detail);
+            Record(MemoryKind.Routine, routine.Source.RoutineId, routine.PlaceId, routine.TargetPosition, detail);
         }
 
         public void RecordToolLost(string toolTypeId)

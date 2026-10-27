@@ -91,7 +91,7 @@ namespace ProjectShaman.AI.Work
 
             _owner.Perception.ScanTools(Position, Config.ToolSightRadius);
 
-            string placeId = routine.Source != null ? routine.Source.PlaceId : null;
+            string placeId = routine.Source != null ? routine.PlaceId : null;
             IReadOnlyList<ToolSighting> sightings = _owner.Memory.ToolSightings.Get(RequiredToolType);
             CollectOpenSightings(sightings);
             ToolSearchPlanner.BuildCandidates(RequiredToolType, _openSightings, placeId, _owner.Context.ToolUsePlaces, Position, SPOT_MERGE_DISTANCE, Now,

@@ -173,12 +173,14 @@ namespace ProjectShaman.AI.Core
 
         private int GetPlaceCapacity(string placeId)
         {
-            if (PlaceRegistry.TryGet(placeId, out PlaceArea place))
+            // A place, or a group's members together (tree shade spread over the scene)
+            int capacity = PlaceRegistry.CapacityOf(placeId);
+            if (capacity > 0)
             {
-                return place.Capacity;
+                return capacity;
             }
 
-            AILog.Warn(AILog.ROUTINE, $"Place '{placeId}' not registered, routines using it are excluded");
+            AILog.Warn(AILog.ROUTINE, $"Place '{placeId}' not registered and no place of group '{placeId}' in the scene, routines using it are excluded");
             return 0;
         }
 
