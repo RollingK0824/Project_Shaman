@@ -270,7 +270,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
         else
         {
             _title.text = $"{villager.DisplayName}의 하루";
-            _note.text = "빈 칸은 자유 시간·오가는 때 · 귀가 시각까지 집에 닿음";
+            _note.text = "빈 칸은 오가는 때 · 일과는 도착하면 시작 · 밤이 되면 귀가";
             VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
             for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
             {
@@ -291,6 +291,14 @@ public sealed class NotebookScheduleView : MonoBehaviour
                 string placeName = MapAreaRegistry.NameOf(routine.PlaceId) ?? ProjectShaman.AI.World.PlaceRegistry.NameOf(routine.PlaceId);
                 if (ShowBlock(shown, routine.DisplayName, placeName, wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
             }
+
+            // After the day's routines: free time until nightfall sends it home (C131). Where it spends it is its own pick
+            int lastEnd = 0;
+            for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
+            {
+                if (today.hours[slot * 2 + 1] > today.hours[slot * 2]) lastEnd = Mathf.Max(lastEnd, today.hours[slot * 2 + 1]);
+            }
+            if (lastEnd > 0 && today.home > lastEnd && ShowBlock(shown, "자유 시간", null, REST_WASH, lastEnd, today.home)) shown++;
 
             // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap
             // above it): "집" with the hour it gets in by, then bed from its hour until 묘시 초
