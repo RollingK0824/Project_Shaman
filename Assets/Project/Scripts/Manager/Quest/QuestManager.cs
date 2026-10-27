@@ -195,7 +195,8 @@ public class QuestManager : SceneSingleton<QuestManager>
     // Both are resolved here, at offer time, so "!" and dialogue can already describe the request.
     public bool TryOffer(string giverId, string questId, string targetId, string contextId)
     {
-        if (!IsServerSide || !IsDay() || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
+        // 진행 중 퀘스트가 가득 차면 받을 수 없는 의뢰(실패 패널티만 남음)가 생기지 않도록 거절
+        if (!IsServerSide || !IsDay() || ActiveCount >= _maxActive || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
         {
             return false;
         }
@@ -313,6 +314,12 @@ public class QuestManager : SceneSingleton<QuestManager>
         for (int i = _quests.Count - 1; i >= 0; i--)
         {
             QuestInstance quest = _quests[i];
+
+            // 실패 시점을 AI 쪽이 정하는 의뢰 (TryFailQuest)
+            if (quest.Definition.FailedByGiver)
+            {
+                continue;
+            }
 
             if (quest.State == QuestState.Active || (quest.State == QuestState.Offered && quest.Definition.ExpiresAtNight))
             {
@@ -499,6 +506,25 @@ public class QuestManager : SceneSingleton<QuestManager>
             DayIssued = quest.DayIssued,
             AcceptedBy = quest.AcceptedBy
         };
+    }
+
+    // AI 쪽 판정: 도구 전달 의뢰의 기한(같은 도구가 필요한 다음 일과)이 지나면 호출. 받았든 안 받았든 실패 (패널티)
+    public bool TryFailQuest(int instanceId)
+    {
+        if (!IsServerSide)
+        {
+            return false;
+        }
+
+        foreach (QuestInstance quest in _quests)
+        {
+            if (quest.InstanceId == instanceId && (quest.State == QuestState.Offered || quest.State == QuestState.Active))
+            {
+                End(quest, QuestState.Failed);
+                return true;
+            }
+        }
+        return false;
     }
 
     // 퀘스트 대상 오브젝트가 퀘스트와 무관하게 사라짐(다른 방법으로 해결, 파괴 등) → 완료할 수 없으므로 삭제

@@ -71,9 +71,10 @@ Shader "Unreal/PBR_Roof"
             // GraphKeywords: <None>
 
             // Defines
-            #define _SURFACE_TYPE_TRANSPARENT 1
+            //#define _SURFACE_TYPE_TRANSPARENT 1 // opaque pass; define disabled SSAO
             #define _NORMALMAP 1
             #define _NORMAL_DROPOFF_TS 1
+            #define VARYINGS_NEED_CULLFACE
             #define ATTRIBUTES_NEED_NORMAL
             #define ATTRIBUTES_NEED_TANGENT
             #define ATTRIBUTES_NEED_TEXCOORD0
@@ -276,6 +277,14 @@ Shader "Unreal/PBR_Roof"
             #endif
             #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
             output.cullFace = input.cullFace;
+            #endif
+            #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
+            // Cull Off: flip back faces so normals face the viewer (keeps bitangent unchanged)
+            if (!IS_FRONT_VFACE(input.cullFace, true, false))
+            {
+                output.normalWS = -output.normalWS;
+                output.tangentWS.w = -output.tangentWS.w;
+            }
             #endif
             return output;
         }
@@ -1345,6 +1354,7 @@ Shader "Unreal/PBR_Roof"
             #define _SURFACE_TYPE_TRANSPARENT 1
             #define _NORMALMAP 1
             #define _NORMAL_DROPOFF_TS 1
+            #define VARYINGS_NEED_CULLFACE
             #define ATTRIBUTES_NEED_NORMAL
             #define ATTRIBUTES_NEED_TANGENT
             #define ATTRIBUTES_NEED_TEXCOORD0
@@ -1471,6 +1481,14 @@ Shader "Unreal/PBR_Roof"
             #endif
             #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
             output.cullFace = input.cullFace;
+            #endif
+            #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
+            // Cull Off: flip back faces so normals face the viewer (keeps bitangent unchanged)
+            if (!IS_FRONT_VFACE(input.cullFace, true, false))
+            {
+                output.normalWS = -output.normalWS;
+                output.tangentWS.w = -output.tangentWS.w;
+            }
             #endif
             return output;
         }
@@ -2141,9 +2159,10 @@ Shader "Unreal/PBR_Roof"
             // GraphKeywords: <None>
 
             // Defines
-            #define _SURFACE_TYPE_TRANSPARENT 1
+            //#define _SURFACE_TYPE_TRANSPARENT 1 // opaque pass; define disabled SSAO
             #define _NORMALMAP 1
             #define _NORMAL_DROPOFF_TS 1
+            #define VARYINGS_NEED_CULLFACE
             #define ATTRIBUTES_NEED_NORMAL
             #define ATTRIBUTES_NEED_TANGENT
             #define ATTRIBUTES_NEED_TEXCOORD0
@@ -2346,6 +2365,14 @@ Shader "Unreal/PBR_Roof"
             #endif
             #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
             output.cullFace = input.cullFace;
+            #endif
+            #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
+            // Cull Off: flip back faces so normals face the viewer (keeps bitangent unchanged)
+            if (!IS_FRONT_VFACE(input.cullFace, true, false))
+            {
+                output.normalWS = -output.normalWS;
+                output.tangentWS.w = -output.tangentWS.w;
+            }
             #endif
             return output;
         }
@@ -3020,6 +3047,7 @@ Shader "Unreal/PBR_Roof"
             #define _SURFACE_TYPE_TRANSPARENT 1
             #define _NORMALMAP 1
             #define _NORMAL_DROPOFF_TS 1
+            #define VARYINGS_NEED_CULLFACE
             #define ATTRIBUTES_NEED_NORMAL
             #define ATTRIBUTES_NEED_TANGENT
             #define ATTRIBUTES_NEED_TEXCOORD0
@@ -3144,6 +3172,14 @@ Shader "Unreal/PBR_Roof"
             #endif
             #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
             output.cullFace = input.cullFace;
+            #endif
+            #if defined(SHADER_STAGE_FRAGMENT) && defined(VARYINGS_NEED_CULLFACE)
+            // Cull Off: flip back faces so normals face the viewer (keeps bitangent unchanged)
+            if (!IS_FRONT_VFACE(input.cullFace, true, false))
+            {
+                output.normalWS = -output.normalWS;
+                output.tangentWS.w = -output.tangentWS.w;
+            }
             #endif
             return output;
         }
