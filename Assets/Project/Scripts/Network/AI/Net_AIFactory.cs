@@ -29,7 +29,6 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerExorcised += HandleExorcised;
             AIEvents.OnVillagerDayPlanned += HandleDayPlanned;
             AIEvents.OnVillagerSlotRested += HandleSlotRested;
-            AIEvents.OnVillagerFreeTimePlanned += HandleFreeTimePlanned;
             _factory.CreateVillagers(this);
             ServerBindQuests();
         }
@@ -57,7 +56,6 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerExorcised -= HandleExorcised;
             AIEvents.OnVillagerDayPlanned -= HandleDayPlanned;
             AIEvents.OnVillagerSlotRested -= HandleSlotRested;
-            AIEvents.OnVillagerFreeTimePlanned -= HandleFreeTimePlanned;
             ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
@@ -101,20 +99,6 @@ namespace ProjectShaman.Network.AI
             if (!isServer)
             {
                 _factory.Registry?.SetDayHours(villagerId, day, blockHours, homeHour, bedHour);
-            }
-        }
-
-        private void HandleFreeTimePlanned(string villagerId, int day, int[] hours, string[] names, string[] placeIds)
-        {
-            RpcVillagerFreeTimePlanned(villagerId, day, hours, names, placeIds);
-        }
-
-        [ClientRpc]
-        private void RpcVillagerFreeTimePlanned(string villagerId, int day, int[] hours, string[] names, string[] placeIds)
-        {
-            if (!isServer)
-            {
-                _factory.Registry?.SetFreeTime(villagerId, day, hours, names, placeIds);
             }
         }
 

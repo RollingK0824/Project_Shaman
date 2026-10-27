@@ -30,18 +30,6 @@ namespace ProjectShaman.AI.Core
         private const float STALL_LOG_SECONDS = 3f;
         // Free time shorter than this is not worth a trip: the villager stays as it is
         private const float FREE_TIME_MIN_SECONDS = 8f;
-        // Schedule tab names for free time: an evening out before a late walk home, or a gap with no rest place to go to
-        private const string OUTING_NAME = "마실";
-        private const string FREE_TIME_NAME = "쉬기";
-
-        // A planned free-time gap and where the villager spends it (null: nowhere it may rest, it stays put)
-        public struct FreeSlot
-        {
-            public float Start;
-            public float End;
-            public RoutineEntry Rest;
-            public bool IsOuting;
-        }
 
         private static NavMeshPath _pathBuffer;
 
@@ -429,14 +417,12 @@ namespace ProjectShaman.AI.Core
                 float homeArriveTime = DayClock.ToDayElapsed(homeHour);
                 float homeReturnTime = CalculateHomeReturnTime(villager, dayCount, homeArriveTime);
                 List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager.Profile, dayCount), _behaviourConfig, homeReturnTime, out string blockNote);
-                List<FreeSlot> freeSlots = PlanFreeTime(villager.Profile, dayCount, blocks, homeReturnTime, homeHour > DayClock.DAY_END_HOUR);
                 blocks.RemoveAll(block => block.EndTime <= fromTime);
-                villager.SetToday(blocks, freeSlots, homeReturnTime, homeArriveTime);
+                villager.SetToday(blocks, homeReturnTime, homeArriveTime);
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
                 int[] blockHours = DailyBlock.ToHourPairs(blocks);
                 villager.Core.SetTodayBlocks(dayCount, blockHours, homeHour, bedHour);
                 PublishDayHours(villager.Id, dayCount, blockHours, homeHour, bedHour);
-                PublishFreeTime(villager.Id, dayCount, blocks, freeSlots);
                 PlanCorruption(villager, dayCount);
 
                 if (villager.Memory != null)
@@ -459,7 +445,6 @@ namespace ProjectShaman.AI.Core
                 float homeReturnTime = DayClock.ToDayElapsed(homeHour) - dead.HomeWalkSeconds;
                 List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(dead.Profile, dayCount), _behaviourConfig, homeReturnTime, out _);
                 PublishDayHours(dead.Profile.VillagerId, dayCount, DailyBlock.ToHourPairs(blocks), homeHour, bedHour);
-                PublishFreeTime(dead.Profile.VillagerId, dayCount, blocks, PlanFreeTime(dead.Profile, dayCount, blocks, homeReturnTime, homeHour > DayClock.DAY_END_HOUR));
             }
         }
 
@@ -1023,9 +1008,10 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, villager.Id, $"Routine skipped ({reason})");
         }
 
-        // Between blocks and after the last one: free time until the next block or the walk home. The villager goes to the
-        // rest place planned for it this morning (PlanFreeTime); there it talks (rumours spread) and its work tool is put
-        // away on the way. Before the first block it is still at home
+        // The nearest rest place this villager may use (the same entries a schedule could give it)
+        // Between blocks and after the last one: free time until the next block or the walk home. The villager goes off
+        // to a rest place of its own picking; there it talks (rumours spread) and its work tool is put away on the way.
+        // Before the first block it is still at home
         private void TickFreeTime(VillagerRuntime villager, float now)
         {
             if (villager.IsFree || villager.LastBlockIndex < 0)
@@ -1053,13 +1039,7 @@ namespace ProjectShaman.AI.Core
             ReleaseStation(villager);
             villager.Current = default;
 
-            string reason = $"free time {until - now:F0}s";
-            RoutineEntry planned = villager.PlannedRestAt(now);
-            bool rested = planned != null
-                ? TryApplyRest(villager, villager.LastBlockIndex, until, planned, reason)
-                : TryApplyFallbackRest(villager, villager.LastBlockIndex, until, reason, anyPlace: true);
-
-            if (!rested)
+            if (!TryApplyFallbackRest(villager, villager.LastBlockIndex, until, $"free time {until - now:F0}s", anyPlace: true))
             {
                 villager.Core.ClearRoutine(villager.NextSerial(), "free time, no rest place");
             }
@@ -1130,14 +1110,7 @@ namespace ProjectShaman.AI.Core
                 return false;
             }
 
-            return TryApplyRest(villager, slot, endTime, best, reason);
-        }
-
-        private bool TryApplyRest(VillagerRuntime villager, int slot, float endTime, RoutineEntry rest, string reason)
-        {
-            float now = GetDayElapsed();
-            Vector3 from = villager.Core.transform.position;
-            if (!_resolver.TryResolveEntry(villager.Profile, rest, _time.DayCount, slot, villager.NextSerial(), now, endTime, null, from, out ResolvedRoutine resolved))
+            if (!_resolver.TryResolveEntry(villager.Profile, best, _time.DayCount, slot, villager.NextSerial(), now, endTime, null, from, out ResolvedRoutine resolved))
             {
                 return false;
             }
@@ -1146,87 +1119,9 @@ namespace ProjectShaman.AI.Core
             villager.Core.ApplyRoutine(resolved);
             _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
             RecordMemory(villager, resolved);
-            string placeNote = resolved.PlaceId != rest.PlaceId ? $"{resolved.PlaceId} (nearest of group {rest.PlaceId})" : resolved.PlaceId;
-            AILog.Log(AILog.MANAGER, villager.Id, $"Routine replaced by rest {rest.RoutineId} @ {placeNote} until {endTime:F1}s ({reason})");
+            string placeNote = resolved.PlaceId != best.PlaceId ? $"{resolved.PlaceId} (nearest of group {best.PlaceId})" : resolved.PlaceId;
+            AILog.Log(AILog.MANAGER, villager.Id, $"Routine replaced by rest {best.RoutineId} @ {placeNote} until {endTime:F1}s ({reason})");
             return true;
-        }
-
-        // Free time is planned with the day (C130): each gap after a block of at least FREE_TIME_MIN_SECONDS gets a
-        // gathering rest place picked now, so the schedule tab can show where the villager will be. The spread-out
-        // places of a group (tree shade) are left out: free time is for meeting people (rumours)
-        private List<FreeSlot> PlanFreeTime(VillagerProfile profile, int dayCount, List<DailyBlock> blocks, float homeReturnTime, bool staysOutLate)
-        {
-            List<FreeSlot> slots = new List<FreeSlot>();
-            List<RoutineEntry> rests = new List<RoutineEntry>();
-            if (_factory.DataProvider != null)
-            {
-                foreach (RoutineEntry routine in _factory.DataProvider.Routines)
-                {
-                    if (routine != null && routine.Category == RoutineCategory.Rest && routine.IsLoadableFor(profile.PublicInfo)
-                        && !PlaceRegistry.IsGroup(routine.PlaceId) && PlaceRegistry.TryGet(routine.PlaceId, out _))
-                    {
-                        rests.Add(routine);
-                    }
-                }
-            }
-
-            System.Random random = new System.Random(unchecked(GetBlockSeed(profile, dayCount) * 31 + 7));
-            for (int i = 0; i < blocks.Count; i++)
-            {
-                bool isLast = i == blocks.Count - 1;
-                float start = blocks[i].EndTime;
-                float end = isLast ? homeReturnTime : blocks[i + 1].StartTime;
-                if (end - start < FREE_TIME_MIN_SECONDS)
-                {
-                    continue;
-                }
-
-                slots.Add(new FreeSlot
-                {
-                    Start = start,
-                    End = end,
-                    Rest = rests.Count > 0 ? rests[random.Next(rests.Count)] : null,
-                    IsOuting = isLast && staysOutLate
-                });
-            }
-
-            return slots;
-        }
-
-        // Free time on the schedule tab: what the villager does there and where, in the hours between its blocks
-        private void PublishFreeTime(string villagerId, int dayCount, List<DailyBlock> blocks, List<FreeSlot> slots)
-        {
-            int[] hours = new int[slots.Count * 2];
-            string[] names = new string[slots.Count];
-            string[] placeIds = new string[slots.Count];
-
-            for (int i = 0; i < slots.Count; i++)
-            {
-                FreeSlot slot = slots[i];
-                int startHour = Mathf.RoundToInt(DayClock.ToHour(slot.Start));
-                int endHour = Mathf.RoundToInt(DayClock.ToHour(slot.End));
-
-                // Kept clear of the blocks' own hour rows
-                foreach (DailyBlock block in blocks)
-                {
-                    if (block.EndTime <= slot.Start + 0.01f)
-                    {
-                        startHour = Mathf.Max(startHour, block.EndHour);
-                    }
-                    else if (block.StartTime >= slot.End - 0.01f)
-                    {
-                        endHour = Mathf.Min(endHour, block.StartHour);
-                    }
-                }
-
-                hours[i * 2] = startHour;
-                hours[i * 2 + 1] = endHour;
-                names[i] = slot.IsOuting ? OUTING_NAME : slot.Rest != null ? slot.Rest.DisplayName : FREE_TIME_NAME;
-                placeIds[i] = slot.Rest != null ? slot.Rest.PlaceId : null;
-            }
-
-            Registry?.SetFreeTime(villagerId, dayCount, hours, names, placeIds);
-            AIEvents.RaiseFreeTimePlanned(villagerId, dayCount, hours, names, placeIds);
         }
 
         private void ReleaseStation(VillagerRuntime villager)
@@ -1443,7 +1338,6 @@ namespace ProjectShaman.AI.Core
         {
             private int _serial;
             private List<DailyBlock> _todayBlocks = new List<DailyBlock>();
-            private List<FreeSlot> _todayFree = new List<FreeSlot>();
 
             public AI_Core Core { get; }
             public AI_ToolHandler ToolHandler { get; }
@@ -1494,26 +1388,11 @@ namespace ProjectShaman.AI.Core
                 return _serial;
             }
 
-            public void SetToday(List<DailyBlock> blocks, List<FreeSlot> freeSlots, float homeReturnTime, float homeArriveTime)
+            public void SetToday(List<DailyBlock> blocks, float homeReturnTime, float homeArriveTime)
             {
                 _todayBlocks = blocks;
-                _todayFree = freeSlots;
                 HomeReturnTime = homeReturnTime;
                 HomeArriveTime = homeArriveTime;
-            }
-
-            // The rest planned for the free-time gap now falls in, null if none
-            public RoutineEntry PlannedRestAt(float time)
-            {
-                foreach (FreeSlot slot in _todayFree)
-                {
-                    if (time >= slot.Start && time < slot.End)
-                    {
-                        return slot.Rest;
-                    }
-                }
-
-                return null;
             }
 
             public void ResetForDayStart()
