@@ -292,8 +292,10 @@ public sealed class NotebookScheduleView : MonoBehaviour
             if (today.home > 0 && today.bed >= today.home)
             {
                 if (ShowBlock(shown, "집", $"{HalfSijinName(today.home)} 귀가", HOME_WASH, today.home, today.bed)) shown++;
-                string bedNote = today.bed == today.home ? $"{HalfSijinName(today.bed)} 귀가 후 바로" : $"{HalfSijinName(today.bed)}부터";
-                if (ShowBlock(shown, "취침", bedNote, SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
+                bool sleepsOnArrival = today.bed == today.home;
+                string bedTitle = sleepsOnArrival ? "귀가 · 취침" : "취침";
+                string bedNote = sleepsOnArrival ? $"{HalfSijinName(today.bed)} 귀가, 바로 잠" : $"{HalfSijinName(today.bed)}부터";
+                if (ShowBlock(shown, bedTitle, bedNote, SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
             }
         }
 
