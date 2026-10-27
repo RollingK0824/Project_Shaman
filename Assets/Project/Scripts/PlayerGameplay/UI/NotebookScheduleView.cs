@@ -297,8 +297,9 @@ public sealed class NotebookScheduleView : MonoBehaviour
             // A villager out late goes to bed as it gets in (C128): no stay at home, the bed row says when it got in
             if (today.home > 0 && today.bed >= today.home)
             {
-                // Same as the routines: what it does, then where
-                if (ShowBlock(shown, "귀가", "집", HOME_WASH, today.home, today.bed)) shown++;
+                // Same as the routines: what it does, then where. In until bed it is up and can be talked to; 취침 is when
+                // it really falls asleep (a host's ghost comes out then)
+                if (ShowBlock(shown, "휴식", "집", HOME_WASH, today.home, today.bed)) shown++;
                 string bedTitle = today.bed == today.home ? "귀가 · 취침" : "취침";
                 if (ShowBlock(shown, bedTitle, "집", SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
             }
