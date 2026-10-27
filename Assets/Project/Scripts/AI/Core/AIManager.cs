@@ -642,6 +642,13 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, villager.Id, $"Stopped running ({reason})");
         }
 
+        // Asleep = in the house and past the bed hour. A ghost leaves its host only then (C121)
+        public bool IsAsleepAtHome(VillagerRuntime villager)
+        {
+            return villager != null && villager.Core != null && villager.HasArrivedHome
+                && (villager.Core.TodayBedHour <= 0 || DayClock.IsPastBedHour(villager.Core.TodayBedHour));
+        }
+
         // "Home" is the same radius sleep paralysis uses to count a villager as in the house
         private void LogHomeArrival(VillagerRuntime villager, float now)
         {

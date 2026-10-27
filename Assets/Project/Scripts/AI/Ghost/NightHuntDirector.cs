@@ -21,6 +21,7 @@ namespace ProjectShaman.AI.Ghost
         {
             public AI_Possession Possession;
             public AI_Core Host;
+            public AIManager.VillagerRuntime HostRuntime;
             public float Radius;
             public int HuntKills;
             public bool HuntIgnoresRadius;
@@ -33,6 +34,7 @@ namespace ProjectShaman.AI.Ghost
         private TimeManager _time;
         private NightOutcomeLedger _ledger;
         private float _pendingSpawnTime = -1f;
+        private bool _isHuntTokenAssigned;
 
         public IReadOnlyList<GhostNightActionData> NightActions => _nightActions;
 
@@ -135,10 +137,11 @@ namespace ProjectShaman.AI.Ghost
 
                 float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(possession.Yin, _behaviourConfig));
                 AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount} (yin {possession.Yin:F0}, radius {radius:F1}m)");
-                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, Radius = radius });
+                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, HostRuntime = host, Radius = radius });
             }
 
             _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
+            _isHuntTokenAssigned = false;
         }
 
         public void ExcludeGhostTonight(string ghostId)
@@ -281,19 +284,35 @@ namespace ProjectShaman.AI.Ghost
                 return;
             }
 
-            _pendingSpawnTime = -1f;
-
-            if (_pendingEntities.Count > 0)
+            // The token is drawn once for the night among every ghost, before any has left its host
+            if (!_isHuntTokenAssigned)
             {
-                AssignHuntToken();
+                _isHuntTokenAssigned = true;
+                if (_pendingEntities.Count > 0)
+                {
+                    AssignHuntToken();
+                }
             }
 
-            foreach (PendingEntity pending in _pendingEntities)
+            // A ghost leaves its host while the host sleeps at home (C121): a host held up on the way home
+            // brings its ghost out late, and no host is treated differently on the way
+            for (int i = _pendingEntities.Count - 1; i >= 0; i--)
             {
+                PendingEntity pending = _pendingEntities[i];
+                if (!_manager.IsAsleepAtHome(pending.HostRuntime))
+                {
+                    continue;
+                }
+
+                _pendingEntities.RemoveAt(i);
+                AILog.Log(AILog.GHOST, pending.Possession.GhostId, $"{pending.Host.LogId} asleep at home, the ghost comes out");
                 SpawnEntity(pending);
             }
 
-            _pendingEntities.Clear();
+            if (_pendingEntities.Count == 0)
+            {
+                _pendingSpawnTime = -1f;
+            }
         }
 
         private void SpawnEntity(PendingEntity pending)
@@ -324,6 +343,12 @@ namespace ProjectShaman.AI.Ghost
 
         private void HandleDayStart()
         {
+            // A host must always reach home: one that never slept there is a bug to fix, not a case to cover (C121)
+            foreach (PendingEntity pending in _pendingEntities)
+            {
+                AILog.Error(AILog.GHOST, $"[{pending.Possession.GhostId}] {pending.Host.LogId} never fell asleep at home, no ghost came out last night");
+            }
+
             _pendingSpawnTime = -1f;
             _pendingEntities.Clear();
 
