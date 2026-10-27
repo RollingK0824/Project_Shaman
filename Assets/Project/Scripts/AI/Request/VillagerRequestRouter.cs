@@ -184,8 +184,12 @@ namespace ProjectShaman.AI.Request
             if (TryFindToolRequest(villagerId, toolTypeId, out int instanceId, out int requestDay)
                 && TimeManager.Instance != null && TimeManager.Instance.DayCount > requestDay)
             {
+                // Nobody took it: withdrawn without a penalty. Taken and not brought back: failed
                 AILog.Log(AILog.REQUEST, villagerId, $"Needed the {toolTypeId} again and it was not brought back, request expired");
-                _quests.TryFailQuest(instanceId);
+                if (!_quests.TryCancelQuest(instanceId))
+                {
+                    _quests.TryFailQuest(instanceId);
+                }
             }
         }
 
