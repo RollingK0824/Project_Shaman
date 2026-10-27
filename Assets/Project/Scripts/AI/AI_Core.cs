@@ -228,6 +228,14 @@ namespace ProjectShaman.AI
             OnAsleepChanged?.Invoke(asleep);
         }
 
+        // In the house for the evening (until the next day start); awake until IsAsleep. A player may still drop in and talk
+        public bool IsHomeForNight { get; private set; }
+
+        public void SetHomeForNight(bool atHome)
+        {
+            IsHomeForNight = atHome;
+        }
+
         public void SetMustGoHome(bool mustGoHome)
         {
             SetBlackboardVariable(BB_MUST_GO_HOME, mustGoHome);

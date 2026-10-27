@@ -16,6 +16,7 @@ namespace ProjectShaman.AI.Interaction
         private static readonly string[] BUSY_BARKS = { "지금 바빠유!", "이따 다시 와주시겠소" };
         private static readonly string[] HOME_BARKS = { "해가 지는구먼, 들어가 봐야겠소" };
         private static readonly string[] GREETING_BARKS = { "무슨 일이오?", "어서 오시오" };
+        private static readonly System.Random _lineRandom = new System.Random();
 
         [SerializeField] private InteractionProfile _profile;
 
@@ -173,6 +174,12 @@ namespace ProjectShaman.AI.Interaction
         // Resting (alone or in a rest chat) and not heading home: a player can sit down and talk
         public bool CanTalkWithPlayer()
         {
+            // Home for the evening and still up: it opens the door and talks (asleep it only mumbles, Net_VillagerTalk)
+            if (_core != null && _core.IsSimulating && _context != null && _core.IsHomeForNight)
+            {
+                return !_core.IsAsleep && !IsInSession && !_interaction.IsInteracting;
+            }
+
             if (_core == null || !_core.IsSimulating || !_core.HasRoutine || _context == null)
             {
                 return false;
@@ -195,6 +202,13 @@ namespace ProjectShaman.AI.Interaction
             if (IsInSession || activity == VillagerActivity.Conversation)
             {
                 AILog.Log(AILog.INTERACTION, VillagerId, $"Ignored {playerName} (already in conversation)");
+                return;
+            }
+
+            // Already in: no "must get home" any more, just a late caller at the door
+            if (_core != null && _core.IsHomeForNight)
+            {
+                Say(ProjectShaman.AI.Dialogue.DialogueLibrary.Line("greet.home", _lineRandom), $"at home, busy for {playerName}");
                 return;
             }
 

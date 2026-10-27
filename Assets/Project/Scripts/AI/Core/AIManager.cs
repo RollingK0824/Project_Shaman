@@ -456,6 +456,7 @@ namespace ProjectShaman.AI.Core
                 ReleaseStation(villager);
                 StopRunning(villager, "day start");
                 villager.Core.SetAsleep(false);
+                villager.Core.SetHomeForNight(false);
                 villager.ResetForDayStart();
                 villager.Core.ClearRoutine(villager.NextSerial(), "day start");
                 villager.Core.SetMustGoHome(false);
@@ -727,6 +728,7 @@ namespace ProjectShaman.AI.Core
             }
 
             villager.HasArrivedHome = true;
+            villager.Core.SetHomeForNight(true);
             float early = villager.HomeArriveTime - now;
             string verdict = early >= 0f ? $"{early:F0}s before" : $"LATE by {-early:F0}s for";
             AILog.Log(AILog.MANAGER, villager.Id, $"Arrived home at {DayClock.ToHour(now):F1}h ({now:F1}s), {verdict} home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h");
