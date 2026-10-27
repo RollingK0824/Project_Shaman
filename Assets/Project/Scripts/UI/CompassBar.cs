@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Mirror;
+using ProjectShaman.AI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,6 +29,11 @@ public class CompassBar : MonoBehaviour
     [SerializeField]
     private string[] _labels = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
 
+    // Height of the quest marks on the strip, relative to the labels' line
+    [SerializeField]
+    private float _questIconOffsetY = -18f;
+
+    private readonly List<TMP_Text> _questIcons = new List<TMP_Text>();
     private NetworkIdentity _cachedPlayer;
     private PlayerSpectatorController _spectator;
     private Camera _playerCamera;
@@ -52,6 +59,48 @@ public class CompassBar : MonoBehaviour
 
         float heading = GetHeading(forward);
         _strip.anchoredPosition = new Vector2(-heading * _pixelsPerDegree, _strip.anchoredPosition.y);
+        PlaceQuestIcons(view.position, heading);
+    }
+
+    // Quest marks on the strip: "!" an offer can be taken there, "?" a quest can be reported there
+    private void PlaceQuestIcons(Vector3 from, float heading)
+    {
+        if (_labelTemplate == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<AI_QuestMarker> markers = AI_QuestMarker.Shown;
+        int used = 0;
+
+        foreach (AI_QuestMarker marker in markers)
+        {
+            Vector3 offset = marker.transform.position - from;
+            if (offset.x * offset.x + offset.z * offset.z < 0.01f)
+            {
+                continue;
+            }
+
+            if (used == _questIcons.Count)
+            {
+                TMP_Text created = Instantiate(_labelTemplate, _strip);
+                created.fontStyle = FontStyles.Bold;
+                _questIcons.Add(created);
+            }
+
+            TMP_Text icon = _questIcons[used++];
+            icon.text = marker.Symbol;
+            icon.color = marker.Color;
+            // Placed beside the current heading, so the strip's -180..540 layout never has to wrap it
+            float bearing = heading + Mathf.DeltaAngle(heading, GetHeading(offset));
+            Place(icon.rectTransform, bearing);
+            icon.rectTransform.anchoredPosition = new Vector2(icon.rectTransform.anchoredPosition.x, _questIconOffsetY);
+        }
+
+        for (int i = used; i < _questIcons.Count; i++)
+        {
+            _questIcons[i].gameObject.SetActive(false);
+        }
     }
 
     public static float GetHeading(Vector3 forward)
