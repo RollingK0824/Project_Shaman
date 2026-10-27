@@ -26,6 +26,7 @@ namespace ProjectShaman.AI.Request
             public string TargetId;
             public string ContextId;
             public string BundleKey;
+            public int Day;
         }
 
         private readonly AIBehaviourConfig _config;
@@ -139,20 +140,38 @@ namespace ProjectShaman.AI.Request
             }
         }
 
-        // The deadline of a FindTool request (C120): the next routine that needs the tool searched again and gave up.
-        // Until then the villager did not need it, so the request outlasts nights and may run for days.
-        // The tool is still missing, so the villager asks again right after
-        private void ExpireFindTool(string villagerId, string toolTypeId)
+        // Asked today for this tool and still waiting: the rest of today's work with it is given up, not searched again
+        public bool IsWaitingForTool(string villagerId, string toolTypeId, int day)
         {
-            bool hasRequest = false;
+            return FindToolRequestDay(villagerId, toolTypeId) == day;
+        }
+
+        // Day the open FindTool request for this tool was made, 0 if none
+        private int FindToolRequestDay(string villagerId, string toolTypeId)
+        {
+            if (string.IsNullOrEmpty(toolTypeId))
+            {
+                return 0;
+            }
+
             foreach (RequestOrigin origin in _origins.Values)
             {
                 if (origin.Kind == FIND_TOOL && origin.GiverId == villagerId && origin.TargetId == toolTypeId)
                 {
-                    hasRequest = true;
-                    break;
+                    return origin.Day;
                 }
             }
+
+            return 0;
+        }
+
+        // The deadline of a FindTool request (C120): the first routine on a later day that needs the tool searched again
+        // and gave up. The rest of the asking day is waited out (IsWaitingForTool), so the request outlasts nights and
+        // may run for days. The tool is still missing, so the villager asks again right after
+        private void ExpireFindTool(string villagerId, string toolTypeId)
+        {
+            int requestDay = FindToolRequestDay(villagerId, toolTypeId);
+            bool hasRequest = requestDay > 0 && TimeManager.Instance != null && TimeManager.Instance.DayCount > requestDay;
 
             // Outside the loop: the quest ending removes its origin
             if (hasRequest)
@@ -381,6 +400,7 @@ namespace ProjectShaman.AI.Request
         {
             if (_pending != null)
             {
+                _pending.Day = quest.DayIssued;
                 _origins[quest.InstanceId] = _pending;
             }
         }

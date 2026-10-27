@@ -271,10 +271,17 @@ public sealed class NotebookScheduleView : MonoBehaviour
         {
             _title.text = $"{villager.DisplayName}의 하루";
             _note.text = "빈 칸은 오가는 때 · 귀가 시각까지 집에 닿음";
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
             for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
             {
                 RoutineSlotInfo routine = villager.Schedule.Get(today.day, slot);
                 if (routine.IsEmpty) continue;
+                // A work given up today for a missing tool: the villager rests there instead (C120)
+                if (registry != null && registry.IsSlotRested(villager.VillagerId, today.day, slot))
+                {
+                    if (ShowBlock(shown, "휴식", $"{routine.DisplayName} 못 함 · 도구 없음", REST_WASH, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                    continue;
+                }
                 Color wash = routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
                 if (ShowBlock(shown, routine.DisplayName, MapAreaRegistry.NameOf(routine.PlaceId), wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
             }

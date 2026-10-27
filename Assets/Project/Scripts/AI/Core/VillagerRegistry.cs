@@ -78,11 +78,33 @@ namespace ProjectShaman.AI.Core
         {
             if (!string.IsNullOrEmpty(villagerId) && _byId.TryGetValue(villagerId, out VillagerEntry entry))
             {
+                if (entry.Day != day)
+                {
+                    entry.RestedSlotMask = 0;
+                }
+
                 entry.Day = day;
                 entry.BlockHours = blockHours;
                 entry.HomeHour = homeHour;
                 entry.BedHour = bedHour;
             }
+        }
+
+        // A work block of today given up for a missing tool (the villager rests instead), or taken up again
+        internal void SetSlotRested(string villagerId, int day, int slot, bool rested)
+        {
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.Day != day || slot < 0 || slot >= 32)
+            {
+                return;
+            }
+
+            entry.RestedSlotMask = rested ? entry.RestedSlotMask | (1 << slot) : entry.RestedSlotMask & ~(1 << slot);
+        }
+
+        public bool IsSlotRested(string villagerId, int day, int slot)
+        {
+            return !string.IsNullOrEmpty(villagerId) && _byId.TryGetValue(villagerId, out VillagerEntry entry)
+                && entry.Day == day && slot >= 0 && slot < 32 && (entry.RestedSlotMask & (1 << slot)) != 0;
         }
 
         public bool TryGetDayHours(string villagerId, out int day, out int[] blockHours, out int homeHour, out int bedHour)
@@ -183,6 +205,7 @@ namespace ProjectShaman.AI.Core
             public int[] BlockHours { get; set; }
             public int HomeHour { get; set; }
             public int BedHour { get; set; }
+            public int RestedSlotMask { get; set; }
 
             public VillagerEntry(VillagerPublicInfo info, VillagerScheduleView schedule)
             {

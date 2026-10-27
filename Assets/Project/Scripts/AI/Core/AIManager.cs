@@ -569,6 +569,18 @@ namespace ProjectShaman.AI.Core
                 }
 
                 villager.Current = resolved;
+
+                // The tool was searched for and asked about earlier today: the villager rests and waits for it instead of
+                // searching again (a player handing it over resumes the block, TryResumeWithTool)
+                if (_requests != null && _requests.IsWaitingForTool(villager.Id, resolved.ToolTypeId, _time.DayCount)
+                    && (villager.ToolHandler == null || !villager.ToolHandler.IsHoldingType(resolved.ToolTypeId)))
+                {
+                    villager.WaitingToolType = resolved.ToolTypeId;
+                    MarkRestedForTool(villager, block.Index, true);
+                    SkipRoutine(villager, block.Index, endTime, $"still waiting for '{resolved.ToolTypeId}' asked about today");
+                    return;
+                }
+
                 villager.Core.ApplyRoutine(resolved);
                 _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
                 RecordMemory(villager, resolved);
@@ -599,6 +611,7 @@ namespace ProjectShaman.AI.Core
             }
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Got '{toolType}' back, resuming block {block.Index} ({remaining:F1}s left)");
+            MarkRestedForTool(villager, block.Index, false);
             villager.LastBlockIndex = -1;
         }
 
@@ -858,7 +871,15 @@ namespace ProjectShaman.AI.Core
         {
             ResolvedRoutine failed = villager.Current;
             villager.WaitingToolType = failed.ToolTypeId;
+            MarkRestedForTool(villager, failed.Slot, true);
             SkipRoutine(villager, failed.Slot, failed.EndTime, reason);
+        }
+
+        // The schedule tab shows the block as rest while the villager waits: everyone can see it is not at that work
+        private void MarkRestedForTool(VillagerRuntime villager, int slot, bool rested)
+        {
+            Registry?.SetSlotRested(villager.Id, _time.DayCount, slot, rested);
+            AIEvents.RaiseSlotRested(villager.Id, _time.DayCount, slot, rested);
         }
 
         // Rather than standing where it stopped, the villager rests nearby for what is left of the block (C110)
