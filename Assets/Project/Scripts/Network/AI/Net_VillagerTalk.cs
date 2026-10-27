@@ -128,14 +128,12 @@ namespace ProjectShaman.Network.AI
 
         private bool IsAsleep => _core != null && _core.IsAsleep;
 
-        // Sent home for the evening (until the next day start) the villager cannot take an offer: "!" waits for the morning
-        private bool IsHomeBound => _core != null && _core.MustGoHome;
-
         private void RefreshQuestMarker()
         {
             string villagerId = _conversation.VillagerId;
-            // Asleep the villager can neither ask nor take anything: both marks wait for the morning
-            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsHomeBound && !IsAsleep;
+            // Asleep the villager can neither ask nor take anything. Going home it still can: an offer not taken fails
+            // at nightfall (C129), so hiding "!" in the evening would take it away
+            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsAsleep;
             _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId) && !IsAsleep;
         }
 
@@ -200,12 +198,10 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
-            // A villager sent home (walking back, then in for the night) does not stop for a window: they only answer
-            // in passing (the usual line). An offer waits for the morning
-            bool goingHome = IsHomeBound || _conversation.CurrentActivity() == VillagerActivity.ReturningHome;
-            // A pending offer opens the quest window (accept / decline) instead of the usual greeting
+            // A pending offer opens the quest window (accept / decline) instead of the usual greeting, going home included:
+            // the villager stops for it like for a tool brought back
             QuestManager quests = QuestManager.Existing;
-            IQuestView offer = !goingHome && quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
+            IQuestView offer = quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
             // Bringing back the tool this villager asked for comes before anything else, going home included:
             // the villager stops for it even if that makes them late (C120)
             IQuestView delivery = FindToolDelivery(quests, villagerId, player, out Net_ToolItem carried);
