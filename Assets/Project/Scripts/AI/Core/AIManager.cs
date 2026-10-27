@@ -25,6 +25,9 @@ namespace ProjectShaman.AI.Core
 
         private const float STATION_RETRY_INTERVAL = 0.5f;
         private const float HOME_CHECK_INTERVAL = 1f;
+        // Stall log on the way home (diagnostics only, nothing acts on it)
+        private const float STALL_MOVE_DISTANCE = 0.5f;
+        private const float STALL_LOG_SECONDS = 3f;
         // Free time shorter than this is not worth a trip: the villager stays as it is
         private const float FREE_TIME_MIN_SECONDS = 8f;
 
@@ -660,6 +663,8 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
+            LogHomewardStall(villager, now);
+
             if (villager.IsRunningLate || villager.Movement == null || now < villager.NextHomeCheckTime)
             {
                 return;
@@ -676,6 +681,32 @@ namespace ProjectShaman.AI.Core
             villager.Movement.SetSpeed(villager.Movement.DefaultSpeed * _behaviourConfig.LateRunSpeedMultiplier);
             AILog.Log(AILog.MANAGER, villager.Id, $"Running home: {walk:F0}s walk left, {villager.HomeArriveTime - now:F0}s before home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h " +
                 $"[{DescribePath(villager.Core.transform.position, villager.Profile.HomePosition)}, agent speed {villager.Movement.DefaultSpeed:F1} → {villager.Movement.DefaultSpeed * _behaviourConfig.LateRunSpeedMultiplier:F1}]");
+        }
+
+        // Diagnostics only: a villager sent home that has not got anywhere for a while is logged once per stall, with what
+        // its agent, interaction and tool handler are doing, so a standing-still villager can be told apart from a slow one
+        private void LogHomewardStall(VillagerRuntime villager, float now)
+        {
+            Vector3 position = villager.Core.transform.position;
+            if (villager.StallSince < 0f || (position - villager.StallAnchor).sqrMagnitude > STALL_MOVE_DISTANCE * STALL_MOVE_DISTANCE)
+            {
+                villager.StallAnchor = position;
+                villager.StallSince = now;
+                villager.IsStallLogged = false;
+                return;
+            }
+
+            if (villager.IsStallLogged || now - villager.StallSince < STALL_LOG_SECONDS)
+            {
+                return;
+            }
+
+            villager.IsStallLogged = true;
+            string interaction = villager.Interaction != null && villager.Interaction.IsInteracting ? villager.Interaction.Active.InteractableId : "none";
+            string activity = villager.Conversation != null ? villager.Conversation.CurrentActivity().ToString() : "-";
+            string tool = villager.ToolHandler != null && villager.ToolHandler.IsHolding ? "holding a tool" : "empty-handed";
+            AILog.Warn(AILog.MANAGER, $"{villager.Id} not moving on the way home for {now - villager.StallSince:F0}s, {Vector3.Distance(position, villager.Profile.HomePosition):F1}m from home " +
+                $"[agent {(villager.Movement != null ? villager.Movement.DescribeAgent() : "none")}; interaction {interaction}; activity {activity}; {tool}; speed x{Time.timeScale:0.#}]");
         }
 
         // Diagnostics for the run-home estimate: what PathLength measured against the straight line
@@ -1286,6 +1317,9 @@ namespace ProjectShaman.AI.Core
             public bool HasArrivedHome { get; set; }
             public bool IsRunningLate { get; set; }
             public float NextHomeCheckTime { get; set; }
+            public Vector3 StallAnchor { get; set; }
+            public float StallSince { get; set; } = -1f;
+            public bool IsStallLogged { get; set; }
             public float HomeReturnTime { get; private set; }
             public float HomeArriveTime { get; private set; } = TimeManager.DAY_DURATION;
             public IReadOnlyList<DailyBlock> TodayBlocks => _todayBlocks;
@@ -1326,6 +1360,8 @@ namespace ProjectShaman.AI.Core
                 HasArrivedHome = false;
                 // The clock starts over each day: a check time left from last evening (or night) would hold off the next ones
                 NextHomeCheckTime = 0f;
+                StallSince = -1f;
+                IsStallLogged = false;
             }
 
             public bool TryGetBlockAt(float time, out DailyBlock block)
