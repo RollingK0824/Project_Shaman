@@ -130,11 +130,35 @@ namespace ProjectShaman.AI.Request
         {
             if (requestType == FIND_TOOL)
             {
+                ExpireFindTool(villagerId, detail);
                 Offer(villagerId, new RequestOrigin { Kind = FIND_TOOL, Detail = detail, TargetId = detail });
             }
             else if (requestType == CHECK_ON)
             {
                 OfferCheckOn(villagerId, detail);
+            }
+        }
+
+        // The deadline of a FindTool request (C120): the next routine that needs the tool searched again and gave up.
+        // Until then the villager did not need it, so the request outlasts nights and may run for days.
+        // The tool is still missing, so the villager asks again right after
+        private void ExpireFindTool(string villagerId, string toolTypeId)
+        {
+            bool hasRequest = false;
+            foreach (RequestOrigin origin in _origins.Values)
+            {
+                if (origin.Kind == FIND_TOOL && origin.GiverId == villagerId && origin.TargetId == toolTypeId)
+                {
+                    hasRequest = true;
+                    break;
+                }
+            }
+
+            // Outside the loop: the quest ending removes its origin
+            if (hasRequest)
+            {
+                AILog.Log(AILog.REQUEST, villagerId, $"Needed the {toolTypeId} again and it was not brought back, request expired");
+                _quests.ExpireOpenQuest(villagerId, toolTypeId);
             }
         }
 
