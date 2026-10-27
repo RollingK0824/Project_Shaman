@@ -668,7 +668,30 @@ namespace ProjectShaman.AI.Core
 
             villager.IsRunningLate = true;
             villager.Movement.SetSpeed(villager.Movement.DefaultSpeed * _behaviourConfig.LateRunSpeedMultiplier);
-            AILog.Log(AILog.MANAGER, villager.Id, $"Running home: {walk:F0}s walk left, {villager.HomeArriveTime - now:F0}s before home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h");
+            AILog.Log(AILog.MANAGER, villager.Id, $"Running home: {walk:F0}s walk left, {villager.HomeArriveTime - now:F0}s before home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h " +
+                $"[{DescribePath(villager.Core.transform.position, villager.Profile.HomePosition)}, agent speed {villager.Movement.DefaultSpeed:F1} → {villager.Movement.DefaultSpeed * _behaviourConfig.LateRunSpeedMultiplier:F1}]");
+        }
+
+        // Diagnostics for the run-home estimate: what PathLength measured against the straight line
+        private static string DescribePath(Vector3 from, Vector3 to)
+        {
+            float straight = Vector3.Distance(from, to);
+            NavMeshPath path = new NavMeshPath();
+
+            if (!NavMesh.CalculatePath(from, to, NavMesh.AllAreas, path))
+            {
+                return $"straight {straight:F1}m, no path (straight line used)";
+            }
+
+            Vector3[] corners = path.corners;
+            float length = 0f;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                length += Vector3.Distance(corners[i - 1], corners[i]);
+            }
+
+            float endGap = corners.Length > 0 ? Vector3.Distance(corners[corners.Length - 1], to) : straight;
+            return $"straight {straight:F1}m, path {length:F1}m {path.status} ({corners.Length} corners, ends {endGap:F1}m from home)";
         }
 
         private static void StopRunning(VillagerRuntime villager, string reason)
