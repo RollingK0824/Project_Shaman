@@ -291,22 +291,14 @@ public sealed class NotebookScheduleView : MonoBehaviour
             // A villager out late goes to bed as it gets in (C128): no stay at home, the bed row says when it got in
             if (today.home > 0 && today.bed >= today.home)
             {
-                if (ShowBlock(shown, "집", $"{HalfSijinName(today.home)} 귀가", HOME_WASH, today.home, today.bed)) shown++;
-                bool sleepsOnArrival = today.bed == today.home;
-                string bedTitle = sleepsOnArrival ? "귀가 · 취침" : "취침";
-                string bedNote = sleepsOnArrival ? $"{HalfSijinName(today.bed)} 귀가, 바로 잠" : $"{HalfSijinName(today.bed)}부터";
-                if (ShowBlock(shown, bedTitle, bedNote, SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
+                // Same as the routines: what it does, then where
+                if (ShowBlock(shown, "귀가", "집", HOME_WASH, today.home, today.bed)) shown++;
+                string bedTitle = today.bed == today.home ? "귀가 · 취침" : "취침";
+                if (ShowBlock(shown, bedTitle, "집", SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
             }
         }
 
         for (int i = shown; i < _blocks.Count; i++) _blocks[i].wash.gameObject.SetActive(false);
-    }
-
-    // "유시 정" for 18: the half-sijin row an hour starts (hours past midnight count on, 01 = 25)
-    private static string HalfSijinName(int hour)
-    {
-        int row = ((hour - DayClock.DAY_START_HOUR) % TABLE_ROWS + TABLE_ROWS) % TABLE_ROWS;
-        return $"{SIJIN[row / 2]} {(row % 2 == 0 ? "초" : "정")}";
     }
 
     // One entry as a brush wash over the hours it covers
