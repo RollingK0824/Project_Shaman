@@ -27,6 +27,7 @@ namespace ProjectShaman.AI.Request
             public string ContextId;
             public string BundleKey;
             public int Day;
+            public bool Urgent;     // gut of a marked villager
         }
 
         // Something villagers saw, asked about next morning (C129). Kept until it is asked or its target is gone
@@ -309,7 +310,8 @@ namespace ProjectShaman.AI.Request
             AskCandidates();
         }
 
-        // A villager not calm this morning asks for a gut. Rebuilt each morning from the stress it has now
+        // A villager not calm this morning asks for a gut; one at the limit is marked and asks first of all.
+        // Rebuilt each morning from the stress it has now
         private void RememberGuts()
         {
             _candidateBuffer.Clear();
@@ -334,7 +336,8 @@ namespace ProjectShaman.AI.Request
                     continue;
                 }
 
-                Remember($"{GUT}:{core.LogId}", core.LogId, new RequestOrigin { Kind = GUT });
+                stress.JudgeMorningMark();
+                Remember($"{GUT}:{core.LogId}", core.LogId, new RequestOrigin { Kind = GUT, Urgent = stress.IsMarked });
             }
         }
 
@@ -538,7 +541,7 @@ namespace ProjectShaman.AI.Request
             }
         }
 
-        // Body and missing villager > trace > gut > lost tool
+        // Body, missing villager and a marked villager's gut > trace > gut > lost tool
         private const int PRIORITY_MAX = 4;
 
         private static int PriorityOf(RequestOrigin origin)
@@ -551,7 +554,7 @@ namespace ProjectShaman.AI.Request
                 case TRACE_CLEANSE:
                     return origin.TargetId == GhostTraceKind.VillagerCorpse.ToString() ? 4 : 3;
                 case GUT:
-                    return 2;
+                    return origin.Urgent ? 4 : 2;
                 default:
                     return 1;
             }
