@@ -1185,15 +1185,15 @@ namespace ProjectShaman.AI.Core
         {
             System.Random random = new System.Random(unchecked(GetBlockSeed(profile, dayCount) * 7 + 1));
             homeHour = Mathf.Clamp(PickHour(random, _behaviourConfig.HomeArriveHours, DayClock.DAY_END_HOUR - 1), DayClock.DAY_START_HOUR + 1, DayClock.DAY_END_HOUR);
-            bedHour = Mathf.Max(DayClock.DAY_END_HOUR, PickHour(random, _behaviourConfig.BedHours, DayClock.DAY_END_HOUR));
-
             // Now and then a villager stays out past dark and walks home at night, where it may meet a ghost (C122).
             // Home by 21~23h: it sets off at dusk at the latest (CalculateHomeReturnTime) and is not hurried on the way
             if (random.NextDouble() < _behaviourConfig.StayOutLateChance)
             {
                 homeHour = random.Next(DayClock.DAY_END_HOUR + 1, DayClock.DAY_END_HOUR + 4);
-                bedHour = Mathf.Max(bedHour, homeHour);
             }
+
+            // Everyone in the house goes to sleep as night falls; one still out sleeps as it gets in
+            bedHour = Mathf.Max(DayClock.DAY_END_HOUR, homeHour);
         }
 
         private static int PickHour(System.Random random, IReadOnlyList<int> hours, int fallback)

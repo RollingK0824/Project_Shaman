@@ -27,8 +27,6 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
         [Tooltip("Clock hours one of which each villager must be home by (half-sijin rows on the schedule tab). The walk home is planned back from it")]
         [SerializeField] private int[] _homeArriveHours = { 18, 19 };
-        [Tooltip("Clock hours one of which each villager goes to bed (night starts at 20). Awake villagers cannot be sleep-paralysed")]
-        [SerializeField] private int[] _bedHours = { 20, 21 };
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
         [SerializeField] private float _walkSpeedEstimate = 3.5f;
         [Tooltip("A villager who will not make the home-by hour at a walk runs at this many times the walk speed (C121)")]
@@ -258,7 +256,6 @@ namespace ProjectShaman.AI.Data
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
         public IReadOnlyList<int> HomeArriveHours => _homeArriveHours;
-        public IReadOnlyList<int> BedHours => _bedHours;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
         public float WalkSpeedEstimate => _walkSpeedEstimate;
         public float LateRunSpeedMultiplier => _lateRunSpeedMultiplier;
