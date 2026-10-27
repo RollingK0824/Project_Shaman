@@ -334,6 +334,17 @@ public sealed class NotebookScheduleView : MonoBehaviour
             if (core.PublicInfo == null || string.IsNullOrEmpty(core.PublicInfo.VillagerId)) continue;
             if (core.TodayBlocksDay > 0) _hours[core.PublicInfo.VillagerId] = (core.TodayBlocksDay, new List<int>(core.TodayBlockHours).ToArray(), core.TodayHomeHour, core.TodayBedHour);
         }
+
+        // A villager killed in the night has no object left; until its death is known its day still shows as usual,
+        // so the tab never gives a death away (the hint is the villagers' "not seen all day")
+        VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+        if (registry == null) return;
+        foreach (IVillagerView villager in registry.Villagers)
+        {
+            if (!registry.TryGetDayHours(villager.VillagerId, out int day, out int[] hours, out int home, out int bed) || hours == null) continue;
+            if (_hours.TryGetValue(villager.VillagerId, out var cached) && cached.day >= day) continue;
+            _hours[villager.VillagerId] = (day, hours, home, bed);
+        }
     }
 
     private void AddRow()

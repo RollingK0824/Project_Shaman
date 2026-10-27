@@ -27,6 +27,7 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerDied += HandleVillagerDied;
             AIEvents.OnVillagerDeathKnown += HandleDeathKnown;
             AIEvents.OnVillagerExorcised += HandleExorcised;
+            AIEvents.OnVillagerDayPlanned += HandleDayPlanned;
             _factory.CreateVillagers(this);
             ServerBindQuests();
         }
@@ -41,6 +42,7 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerDied -= HandleVillagerDied;
             AIEvents.OnVillagerDeathKnown -= HandleDeathKnown;
             AIEvents.OnVillagerExorcised -= HandleExorcised;
+            AIEvents.OnVillagerDayPlanned -= HandleDayPlanned;
             ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
@@ -81,6 +83,21 @@ namespace ProjectShaman.Network.AI
         private void HandleExorcised(string villagerId)
         {
             RpcVillagerExorcised(villagerId);
+        }
+
+        // Every villager's day, the dead not yet known included: their own objects are gone, so the hours come through here
+        private void HandleDayPlanned(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        {
+            RpcVillagerDayPlanned(villagerId, day, blockHours, homeHour, bedHour);
+        }
+
+        [ClientRpc]
+        private void RpcVillagerDayPlanned(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.SetDayHours(villagerId, day, blockHours, homeHour, bedHour);
+            }
         }
 
         [ClientRpc]

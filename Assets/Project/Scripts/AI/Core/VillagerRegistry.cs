@@ -72,6 +72,38 @@ namespace ProjectShaman.AI.Core
             OnRegistered?.Invoke(entry);
         }
 
+        // Today's block hours as the village sees them. Kept for a dead villager whose death is not yet known,
+        // so the schedule tab does not give the death away before a body is found
+        internal void SetDayHours(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        {
+            if (!string.IsNullOrEmpty(villagerId) && _byId.TryGetValue(villagerId, out VillagerEntry entry))
+            {
+                entry.Day = day;
+                entry.BlockHours = blockHours;
+                entry.HomeHour = homeHour;
+                entry.BedHour = bedHour;
+            }
+        }
+
+        public bool TryGetDayHours(string villagerId, out int day, out int[] blockHours, out int homeHour, out int bedHour)
+        {
+            day = 0;
+            blockHours = null;
+            homeHour = 0;
+            bedHour = 0;
+
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.Day <= 0)
+            {
+                return false;
+            }
+
+            day = entry.Day;
+            blockHours = entry.BlockHours;
+            homeHour = entry.HomeHour;
+            bedHour = entry.BedHour;
+            return true;
+        }
+
         internal void MarkDead(string villagerId)
         {
             if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || !entry.IsAlive)
@@ -147,6 +179,10 @@ namespace ProjectShaman.AI.Core
             public bool IsDeathKnown { get; set; }
             public bool IsExorcised { get; set; }
             public VillagerScheduleView Schedule { get; }
+            public int Day { get; set; }
+            public int[] BlockHours { get; set; }
+            public int HomeHour { get; set; }
+            public int BedHour { get; set; }
 
             public VillagerEntry(VillagerPublicInfo info, VillagerScheduleView schedule)
             {

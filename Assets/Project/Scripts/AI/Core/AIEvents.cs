@@ -9,6 +9,13 @@ namespace ProjectShaman.AI.Core
         public static event System.Action<string, string> OnVillagerDied;
         public static event System.Action<string> OnVillagerDeathKnown;
         public static event System.Action<string> OnVillagerExorcised;
+        // (villagerId, day, block hour pairs, home hour, bed hour): the day's hours shown on the schedule tab
+        public static event System.Action<string, int, int[], int, int> OnVillagerDayPlanned;
+
+        public static void RaiseDayPlanned(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        {
+            OnVillagerDayPlanned?.Invoke(villagerId, day, blockHours, homeHour, bedHour);
+        }
 
         public static void RaiseExorcised(string villagerId)
         {
