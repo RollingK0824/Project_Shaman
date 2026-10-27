@@ -288,10 +288,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
 
             // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap
             // above it): "집" with the hour it gets in by, then bed from its hour until 묘시 초
-            if (today.home > 0 && today.bed > today.home)
+            // A villager out late goes to bed as it gets in (C128): no stay at home, the bed row says when it got in
+            if (today.home > 0 && today.bed >= today.home)
             {
                 if (ShowBlock(shown, "집", $"{HalfSijinName(today.home)} 귀가", HOME_WASH, today.home, today.bed)) shown++;
-                if (ShowBlock(shown, "취침", $"{HalfSijinName(today.bed)}부터", SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
+                string bedNote = today.bed == today.home ? $"{HalfSijinName(today.bed)} 귀가 후 바로" : $"{HalfSijinName(today.bed)}부터";
+                if (ShowBlock(shown, "취침", bedNote, SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
             }
         }
 
