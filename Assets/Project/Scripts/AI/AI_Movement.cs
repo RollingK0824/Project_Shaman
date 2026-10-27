@@ -25,6 +25,7 @@ namespace ProjectShaman.AI
             }
         }
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
+        public float DefaultSpeed => defaultSpeed;
 
         void Awake()
         {
