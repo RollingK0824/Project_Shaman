@@ -25,6 +25,8 @@ namespace ProjectShaman.AI.Core
 
         private const float STATION_RETRY_INTERVAL = 0.5f;
         private const float HOME_CHECK_INTERVAL = 1f;
+        // Free time shorter than this is not worth a trip: the villager stays as it is
+        private const float FREE_TIME_MIN_SECONDS = 8f;
 
         private static NavMeshPath _pathBuffer;
 
@@ -536,6 +538,7 @@ namespace ProjectShaman.AI.Core
 
             if (!villager.TryGetBlockAt(now, out DailyBlock block))
             {
+                TickFreeTime(villager, now);
                 return;
             }
 
@@ -551,6 +554,7 @@ namespace ProjectShaman.AI.Core
             }
 
             villager.LastBlockIndex = block.Index;
+            villager.IsFree = false;
             villager.WaitingToolType = null;
 
             if (remaining < minRemaining)
@@ -927,7 +931,43 @@ namespace ProjectShaman.AI.Core
         }
 
         // The nearest rest place this villager may use (the same entries a schedule could give it)
-        private bool TryApplyFallbackRest(VillagerRuntime villager, int slot, float endTime, string reason)
+        // Between blocks and after the last one: free time until the next block or the walk home. The villager goes off
+        // to a rest place of its own picking; there it talks (rumours spread) and its work tool is put away on the way.
+        // Before the first block it is still at home
+        private void TickFreeTime(VillagerRuntime villager, float now)
+        {
+            if (villager.IsFree || villager.LastBlockIndex < 0)
+            {
+                return;
+            }
+
+            float until = villager.HomeReturnTime;
+            foreach (DailyBlock next in villager.TodayBlocks)
+            {
+                if (next.StartTime > now)
+                {
+                    until = Mathf.Min(until, next.StartTime);
+                    break;
+                }
+            }
+
+            if (until - now < FREE_TIME_MIN_SECONDS)
+            {
+                return;
+            }
+
+            villager.IsFree = true;
+            villager.WaitingToolType = null;
+            ReleaseStation(villager);
+            villager.Current = default;
+
+            if (!TryApplyFallbackRest(villager, villager.LastBlockIndex, until, $"free time {until - now:F0}s", anyPlace: true))
+            {
+                villager.Core.ClearRoutine(villager.NextSerial(), "free time, no rest place");
+            }
+        }
+
+        private bool TryApplyFallbackRest(VillagerRuntime villager, int slot, float endTime, string reason, bool anyPlace = false)
         {
             float now = GetDayElapsed();
             if (endTime <= now || _factory.DataProvider == null || villager.Profile == null)
@@ -938,12 +978,25 @@ namespace ProjectShaman.AI.Core
             Vector3 from = villager.Core.transform.position;
             RoutineEntry best = null;
             float bestSqr = float.MaxValue;
+            int candidates = 0;
 
             foreach (RoutineEntry routine in _factory.DataProvider.Routines)
             {
                 if (routine == null || routine.Category != RoutineCategory.Rest || !routine.IsLoadableFor(villager.Profile.PublicInfo)
                     || !PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
                 {
+                    continue;
+                }
+
+                // Free time: any rest place it may use, each equally likely (reservoir pick). Otherwise the nearest
+                if (anyPlace)
+                {
+                    candidates++;
+                    if (Random.Range(0, candidates) == 0)
+                    {
+                        best = routine;
+                    }
+
                     continue;
                 }
 
@@ -1184,6 +1237,8 @@ namespace ProjectShaman.AI.Core
             public VillagerProfile Profile => Core.Profile;
             public string Id { get; }
             public int LastBlockIndex { get; set; } = -1;
+            // In free time between blocks (or after the last one, before the walk home)
+            public bool IsFree { get; set; }
             // The tool a failed work of this block was missing; holding it again resumes the block
             public string WaitingToolType { get; set; }
             public AI_Movement Movement { get; }
@@ -1225,6 +1280,7 @@ namespace ProjectShaman.AI.Core
             public void ResetForDayStart()
             {
                 LastBlockIndex = -1;
+                IsFree = false;
                 WaitingToolType = null;
                 IsHomeOrdered = false;
                 HasArrivedHome = false;
