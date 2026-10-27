@@ -342,25 +342,28 @@ namespace ProjectShaman.AI.Request
         }
 
         // Most urgent first, each to a villager who remembers it and has no request yet (one per villager).
-        // What finds no giver stays for the next morning, unless its trace or body is gone by then
+        // At the same urgency the one fewer villagers could ask goes first, so a gut only its owner can ask is not
+        // crowded out by a body others saw too. What finds no giver stays for the next morning, unless its trace or
+        // body is gone or everyone who saw it is dead by then
         private void AskCandidates()
         {
             _candidateBuffer.Clear();
-            for (int priority = PRIORITY_MAX; priority >= 1; priority--)
+            foreach (RequestCandidate candidate in _candidates.Values)
             {
-                foreach (RequestCandidate candidate in _candidates.Values)
-                {
-                    if (PriorityOf(candidate.Origin) == priority)
-                    {
-                        _candidateBuffer.Add(candidate);
-                    }
-                }
+                candidate.Givers.RemoveAll(giverId => !IsAlive(giverId));
+                _candidateBuffer.Add(candidate);
             }
+
+            _candidateBuffer.Sort((a, b) =>
+            {
+                int byPriority = PriorityOf(b.Origin).CompareTo(PriorityOf(a.Origin));
+                return byPriority != 0 ? byPriority : a.Givers.Count.CompareTo(b.Givers.Count);
+            });
 
             foreach (RequestCandidate candidate in _candidateBuffer)
             {
                 RequestOrigin origin = candidate.Origin;
-                if (!string.IsNullOrEmpty(origin.ContextId) && !QuestTargets.TryGet(origin.ContextId, out _))
+                if (candidate.Givers.Count == 0 || (!string.IsNullOrEmpty(origin.ContextId) && !QuestTargets.TryGet(origin.ContextId, out _)))
                 {
                     _candidates.Remove(candidate.Key);
                     continue;
@@ -415,6 +418,13 @@ namespace ProjectShaman.AI.Request
             }
 
             return false;
+        }
+
+        // A villager killed or voted out leaves its object; one still here may be lying dead
+        private bool IsAlive(string villagerId)
+        {
+            AI_Stress stress = FindStress(villagerId);
+            return stress != null && !(stress.TryGetComponent(out AI_Status status) && status.IsDead);
         }
 
         private bool HasRequest(string giverId)
@@ -542,8 +552,6 @@ namespace ProjectShaman.AI.Request
         }
 
         // Body, missing villager and a marked villager's gut > trace > gut > lost tool
-        private const int PRIORITY_MAX = 4;
-
         private static int PriorityOf(RequestOrigin origin)
         {
             switch (origin.Kind)
