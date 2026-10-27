@@ -102,17 +102,17 @@ namespace ProjectShaman.Network.AI
             }
         }
 
-        private void HandleSlotRested(string villagerId, int day, int slot, bool rested)
+        private void HandleSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
         {
-            RpcVillagerSlotRested(villagerId, day, slot, rested);
+            RpcVillagerSlotRested(villagerId, day, slot, rested, restPlaceId);
         }
 
         [ClientRpc]
-        private void RpcVillagerSlotRested(string villagerId, int day, int slot, bool rested)
+        private void RpcVillagerSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
         {
             if (!isServer)
             {
-                _factory.Registry?.SetSlotRested(villagerId, day, slot, rested);
+                _factory.Registry?.SetSlotRested(villagerId, day, slot, rested, restPlaceId);
             }
         }
 
