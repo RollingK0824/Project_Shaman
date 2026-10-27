@@ -59,6 +59,10 @@ public class TimeManager : SceneSingleton<TimeManager>
         _elapsedAtRebase = elapsedAtRebase;
         Time.timeScale = Speed;
         Debug.Log($"[TimeManager] 시간 배속 x{Speed:0.#}");
+        // Also in the AI session log: above x3 agents take steps past their arrival radius, so lateness and
+        // approach timeouts from then on are not real
+        string note = Speed > 3f ? " (above x3 movement and arrival timings are unreliable)" : string.Empty;
+        ProjectShaman.AI.Core.AILog.Log(ProjectShaman.AI.Core.AILog.TIME_TO_AI, $"Game speed x{Speed:0.#}{note}");
     }
 
     private void OnDestroy()
