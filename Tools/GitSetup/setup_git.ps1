@@ -200,63 +200,6 @@ git config --local merge.unityyamlmerge.recursive "binary"
 git config --local mergetool.unityyamlmerge.cmd $mergetoolCmd
 git config --local mergetool.unityyamlmerge.trustExitCode "false"
 
-# 6. Git LFS 저장 위치를 Google Drive 공유 폴더로 설정 (GitHub LFS 용량 초과 대응)
-$lfsFolderName = "Project_ShamanLFS"
-$lfsStoreExe = Join-Path $PSScriptRoot "lfs-folderstore.exe"
-$lfsFolderPath = $null
-
-function Find-LfsDriveFolder {
-    param(
-        [string]$folderName
-    )
-
-    # Google Drive for desktop: 스트리밍(G: 등 가상 드라이브) 또는 미러링(사용자 폴더) 모드
-    $myDriveNames = @("내 드라이브", "My Drive")
-    $roots = [System.IO.DriveInfo]::GetDrives() | Where-Object { $_.IsReady } | ForEach-Object { $_.RootDirectory.FullName }
-    $roots += [Environment]::GetFolderPath("UserProfile")
-
-    foreach ($root in $roots) {
-        foreach ($myDrive in $myDriveNames) {
-            $candidate = Join-Path (Join-Path $root $myDrive) $folderName
-            if (Test-Path $candidate -PathType Container) {
-                return $candidate
-            }
-        }
-    }
-
-    return $null
-}
-
-if (-not (Test-Path $lfsStoreExe)) {
-    Write-Host "[X] $lfsStoreExe 가 없습니다. Google Drive LFS 설정을 건너뜁니다." -ForegroundColor Red
-} else {
-    Write-Host "Google Drive LFS 폴더($lfsFolderName) 탐색 중..." -ForegroundColor Gray
-    $lfsFolderPath = Find-LfsDriveFolder -folderName $lfsFolderName
-
-    if (-not $lfsFolderPath) {
-        Write-Host "[!] Google Drive의 $lfsFolderName 폴더를 자동으로 찾지 못했습니다." -ForegroundColor Yellow
-        Write-Host "    PC용 Google Drive 설치, 공유 폴더 '바로가기 추가 → 내 드라이브'를 확인해주세요." -ForegroundColor Yellow
-        $manualPath = Read-Host "탐색기에 보이는 $lfsFolderName 폴더 전체 경로를 입력해주세요 (건너뛰려면 Enter)"
-        if ($manualPath -and (Test-Path $manualPath.Trim('"', "'") -PathType Container)) {
-            $lfsFolderPath = $manualPath.Trim('"', "'")
-        }
-    }
-
-    if ($lfsFolderPath) {
-        # git-lfs는 sh -c로 실행하므로 공백이 있는 경로를 작은따옴표로 감싼다
-        $escapedStoreExe = $lfsStoreExe.Replace('\', '/')
-        $escapedLfsFolder = $lfsFolderPath.TrimEnd('\').Replace('\', '/')
-
-        git config --local lfs.customtransfer.lfs-folder.path $escapedStoreExe
-        git config --local lfs.customtransfer.lfs-folder.args "'$escapedLfsFolder'"
-        git config --local lfs.standalonetransferagent lfs-folder
-        Write-Host "[✓] Google Drive LFS 폴더: $lfsFolderPath" -ForegroundColor Green
-    } else {
-        Write-Host "[X] 유효한 Google Drive 폴더가 지정되지 않아 LFS 저장 위치를 설정하지 않았습니다." -ForegroundColor Red
-        Write-Host "    이 상태로는 새 텍스처·모델을 받거나 올릴 수 없습니다. 폴더 준비 후 다시 실행해주세요." -ForegroundColor Red
-    }
-}
-
 $userProfile = [Environment]::GetFolderPath("UserProfile")
 $globalGitConfigFile = Join-Path $userProfile ".gitconfig"
 
@@ -270,11 +213,5 @@ Write-Host "• Global 설정 파일: $globalGitConfigFile" -ForegroundColor Cya
 Write-Host "• Local 설정 파일: $gitRoot\.git\config" -ForegroundColor Cyan
 Write-Host "• merge.unityyamlmerge.driver 설정 완료" -ForegroundColor White
 Write-Host "• mergetool.unityyamlmerge.cmd 설정 완료" -ForegroundColor White
-if ($lfsFolderPath) {
-    Write-Host "• Git LFS 저장 위치: $lfsFolderPath (lfs-folderstore)" -ForegroundColor Cyan
-    Write-Host "• 텍스처·모델 받기: git lfs pull" -ForegroundColor White
-} else {
-    Write-Host "• Git LFS 저장 위치: 설정 안 됨 (Google Drive 폴더 준비 후 다시 실행)" -ForegroundColor Yellow
-}
 Write-Host "=========================================================" -ForegroundColor Green
 Write-Host ""
