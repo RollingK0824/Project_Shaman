@@ -200,6 +200,18 @@ git config --local merge.unityyamlmerge.recursive "binary"
 git config --local mergetool.unityyamlmerge.cmd $mergetoolCmd
 git config --local mergetool.unityyamlmerge.trustExitCode "false"
 
+$driveLfsAgent = git config --local --get lfs.standalonetransferagent 2>$null
+$driveLfsTransfer = git config --local --get-regexp "^lfs\.customtransfer\.lfs-folder\." 2>$null
+if ($driveLfsAgent -or $driveLfsTransfer) {
+    if ($driveLfsAgent) {
+        git config --local --unset lfs.standalonetransferagent
+    }
+    if ($driveLfsTransfer) {
+        git config --local --remove-section lfs.customtransfer.lfs-folder
+    }
+    Write-Host "[✓] 이전 Google Drive LFS 설정 제거 (GitHub LFS 사용)" -ForegroundColor Green
+}
+
 $userProfile = [Environment]::GetFolderPath("UserProfile")
 $globalGitConfigFile = Join-Path $userProfile ".gitconfig"
 
