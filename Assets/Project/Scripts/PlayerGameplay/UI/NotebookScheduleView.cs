@@ -287,7 +287,9 @@ public sealed class NotebookScheduleView : MonoBehaviour
                     continue;
                 }
                 Color wash = routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
-                if (ShowBlock(shown, routine.DisplayName, MapAreaRegistry.NameOf(routine.PlaceId), wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                // A routine naming a place group (tree shade) shows the group's name: which one it goes to is picked on the day
+                string placeName = MapAreaRegistry.NameOf(routine.PlaceId) ?? ProjectShaman.AI.World.PlaceRegistry.NameOf(routine.PlaceId);
+                if (ShowBlock(shown, routine.DisplayName, placeName, wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
             }
 
             // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap

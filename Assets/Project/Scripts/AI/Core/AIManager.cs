@@ -157,6 +157,7 @@ namespace ProjectShaman.AI.Core
             _absence = IsAuthority() ? new AbsenceTracker(_factory.Registry) : null;
 
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
+            AILog.Log(AILog.PLACE, $"Place groups: {DescribeGroupsOrNone()}");
 
             UnsubscribeTime();
             _time.OnNewDay += HandleNewDay;
@@ -566,7 +567,7 @@ namespace ProjectShaman.AI.Core
             WorkStation previousStation = villager.Current.Station;
 
             int serial = villager.NextSerial();
-            if (_resolver.TryResolve(villager.Profile, _time.DayCount, block.Index, serial, startTime, endTime, previousStation, out ResolvedRoutine resolved))
+            if (_resolver.TryResolve(villager.Profile, _time.DayCount, block.Index, serial, startTime, endTime, previousStation, villager.Core.transform.position, out ResolvedRoutine resolved))
             {
                 if (previousStation != null && previousStation != resolved.Station)
                 {
@@ -884,7 +885,7 @@ namespace ProjectShaman.AI.Core
 
             villager.NextStationRetryTime = Time.time + STATION_RETRY_INTERVAL;
 
-            if (!PlaceRegistry.TryGet(current.Source.PlaceId, out PlaceArea place) || !place.TryReserveStation(villager.Id, current.ActionId, out WorkStation station))
+            if (!PlaceRegistry.TryGet(current.PlaceId, out PlaceArea place) || !place.TryReserveStation(villager.Id, current.ActionId, out WorkStation station))
             {
                 return;
             }
@@ -912,7 +913,7 @@ namespace ProjectShaman.AI.Core
         // and where it went to rest (SkipRoutine has picked it by now; none if no rest place was found)
         private void MarkRestedForTool(VillagerRuntime villager, int slot, bool rested)
         {
-            string restPlaceId = rested && villager.Current.Source != null ? villager.Current.Source.PlaceId : null;
+            string restPlaceId = rested && villager.Current.Source != null ? villager.Current.PlaceId : null;
             Registry?.SetSlotRested(villager.Id, _time.DayCount, slot, rested, restPlaceId);
             AIEvents.RaiseSlotRested(villager.Id, _time.DayCount, slot, rested, restPlaceId);
         }
@@ -969,11 +970,23 @@ namespace ProjectShaman.AI.Core
             }
         }
 
+        private static string DescribeGroupsOrNone()
+        {
+            string groups = PlaceRegistry.DescribeGroups();
+            return string.IsNullOrEmpty(groups) ? "none placed" : groups;
+        }
+
         private bool TryApplyFallbackRest(VillagerRuntime villager, int slot, float endTime, string reason, bool anyPlace = false)
         {
             float now = GetDayElapsed();
-            if (endTime <= now || _factory.DataProvider == null || villager.Profile == null)
+            if (_factory.DataProvider == null || villager.Profile == null)
             {
+                return false;
+            }
+
+            if (endTime <= now)
+            {
+                AILog.Log(AILog.MANAGER, villager.Id, $"No rest ({reason}): the block is already over");
                 return false;
             }
 
@@ -984,8 +997,14 @@ namespace ProjectShaman.AI.Core
 
             foreach (RoutineEntry routine in _factory.DataProvider.Routines)
             {
-                if (routine == null || routine.Category != RoutineCategory.Rest || !routine.IsLoadableFor(villager.Profile.PublicInfo)
-                    || !PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
+                if (routine == null || routine.Category != RoutineCategory.Rest || !routine.IsLoadableFor(villager.Profile.PublicInfo))
+                {
+                    continue;
+                }
+
+                // Free time is for gathering (rumours), so the spread-out places of a group (tree shade) are left out
+                bool isGroup = PlaceRegistry.IsGroup(routine.PlaceId);
+                if ((anyPlace && isGroup) || !PlaceRegistry.TryPick(routine.PlaceId, from, out PlaceArea place))
                 {
                     continue;
                 }
@@ -1010,7 +1029,13 @@ namespace ProjectShaman.AI.Core
                 }
             }
 
-            if (best == null || !_resolver.TryResolveEntry(villager.Profile, best, _time.DayCount, slot, villager.NextSerial(), now, endTime, null, out ResolvedRoutine resolved))
+            if (best == null)
+            {
+                AILog.Warn(AILog.MANAGER, villager.Id, $"No rest ({reason}): no rest place in the scene for its rest routines (groups: {DescribeGroupsOrNone()})");
+                return false;
+            }
+
+            if (!_resolver.TryResolveEntry(villager.Profile, best, _time.DayCount, slot, villager.NextSerial(), now, endTime, null, from, out ResolvedRoutine resolved))
             {
                 return false;
             }
@@ -1019,7 +1044,8 @@ namespace ProjectShaman.AI.Core
             villager.Core.ApplyRoutine(resolved);
             _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
             RecordMemory(villager, resolved);
-            AILog.Log(AILog.MANAGER, villager.Id, $"Routine replaced by rest {best.RoutineId} @ {best.PlaceId} until {endTime:F1}s ({reason})");
+            string placeNote = resolved.PlaceId != best.PlaceId ? $"{resolved.PlaceId} (nearest of group {best.PlaceId})" : resolved.PlaceId;
+            AILog.Log(AILog.MANAGER, villager.Id, $"Routine replaced by rest {best.RoutineId} @ {placeNote} until {endTime:F1}s ({reason})");
             return true;
         }
 
@@ -1150,7 +1176,7 @@ namespace ProjectShaman.AI.Core
             VillagerSchedule schedule = villager.Profile.Schedule;
             RoutineEntry lastRoutine = schedule != null ? schedule.Get(dayCount, _behaviourConfig.RoutinesPerDay - 1) : null;
 
-            if (lastRoutine != null && PlaceRegistry.TryGet(lastRoutine.PlaceId, out PlaceArea place))
+            if (lastRoutine != null && PlaceRegistry.TryPick(lastRoutine.PlaceId, villager.Profile.HomePosition, out PlaceArea place))
             {
                 Vector3 home = villager.Profile.HomePosition;
                 travelDistance = PathLength(place.Center, home);
