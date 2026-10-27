@@ -5,12 +5,10 @@ using ProjectShaman.AI.Data;
 
 namespace ProjectShaman.AI.Routine
 {
-    // Plans one villager's day in seconds on the base split (blocks 0.4 + 0.4, spare 0.2 of the day).
-    // The walk to a place is part of its block (it starts when the villager sets off).
-    // The walk home eats nearly all of the spare, so the spread between villagers is cut from the blocks instead:
-    // each villager gets its own start delay and its own length for every block but the last (up to
-    // BlockLengthVariance shorter), and the last block takes what is left before the walk home (never below
-    // MinRoutineSeconds). Where a block ends and the next begins therefore differs from villager to villager.
+    // Plans one villager's day in seconds: a start delay, then each routine block followed by free time, up to the walk home.
+    // The walk to a place is part of its block (it starts when the villager sets off). Per villager and day the free share
+    // (FreeTimeRatioMin..Max of the working day) and the block lengths (up to BlockLengthVariance shorter) are rolled,
+    // and the free time is split at random after the blocks, so villagers switch, rest and head home at different moments.
     public static class DailyBlockPlanner
     {
         public static List<DailyBlock> Build(int seed, AIBehaviourConfig config, float homeReturnTime, out string note)
@@ -22,42 +20,50 @@ namespace ProjectShaman.AI.Routine
             float minLength = config.MinRoutineSeconds;
             System.Random random = new System.Random(seed);
 
+            float delay = Next(random, Mathf.Min(config.MaxStartDelaySeconds, Mathf.Max(0f, end - count * minLength)));
+            float window = Mathf.Max(0f, end - delay);
+            float freeRatio = Mathf.Lerp(config.FreeTimeRatioMin, config.FreeTimeRatioMax, (float)random.NextDouble());
+            float work = Mathf.Max(Mathf.Min(window, count * minLength), window * (1f - freeRatio));
+
+            // Block lengths share the work time by random weights, each kept within [minLength, length];
+            // what a cap leaves over becomes free time too
             float[] lengths = new float[count];
-            float leading = 0f;
-            for (int i = 0; i < count - 1; i++)
+            float weightSum = 0f;
+            for (int i = 0; i < count; i++)
             {
-                lengths[i] = Mathf.Max(minLength, length * (1f - config.BlockLengthVariance * (float)random.NextDouble()));
-                leading += lengths[i];
+                lengths[i] = 1f - config.BlockLengthVariance * (float)random.NextDouble();
+                weightSum += lengths[i];
             }
 
-            // The last block must still fit its minimum: shorten the leading ones toward theirs if not
-            float over = leading + minLength - end;
-            for (int i = 0; i < count - 1 && over > 0f; i++)
+            float used = 0f;
+            for (int i = 0; i < count; i++)
             {
-                float cut = Mathf.Min(over, lengths[i] - minLength);
-                lengths[i] -= cut;
-                leading -= cut;
-                over -= cut;
+                lengths[i] = Mathf.Clamp(work * lengths[i] / weightSum, Mathf.Min(minLength, work / count), length);
+                used += lengths[i];
             }
 
-            float room = Mathf.Max(0f, end - leading - minLength);
-            float delay = Next(random, Mathf.Min(config.MaxStartDelaySeconds, room));
-            float rest = end - delay - leading;
-            float gap = Next(random, Mathf.Max(0f, rest - length));
-            lengths[count - 1] = Mathf.Min(length, Mathf.Max(0f, rest - gap));
+            // Free time after each block (the last one's runs up to the walk home)
+            float free = Mathf.Max(0f, window - used);
+            float[] frees = new float[count];
+            float freeWeightSum = 0f;
+            for (int i = 0; i < count; i++)
+            {
+                frees[i] = (float)random.NextDouble();
+                freeWeightSum += frees[i];
+            }
 
-            note = $"delay={delay:F0}s lengths=[{Join(lengths)}]s gap={gap:F0}s";
+            for (int i = 0; i < count; i++)
+            {
+                frees[i] = freeWeightSum > 0f ? free * frees[i] / freeWeightSum : free / count;
+            }
+
+            note = $"delay={delay:F0}s lengths=[{Join(lengths)}]s free=[{Join(frees)}]s";
 
             List<DailyBlock> blocks = new List<DailyBlock>(count);
             float time = delay;
 
             for (int i = 0; i < count; i++)
             {
-                if (i == count - 1)
-                {
-                    time += gap;
-                }
-
                 float startTime = time;
                 float endTime = Mathf.Min(time + lengths[i], dayEnd);
                 if (startTime >= endTime)
@@ -79,7 +85,7 @@ namespace ProjectShaman.AI.Routine
                     DepartTime = startTime
                 });
 
-                time = endTime;
+                time = endTime + frees[i];
             }
 
             return blocks;

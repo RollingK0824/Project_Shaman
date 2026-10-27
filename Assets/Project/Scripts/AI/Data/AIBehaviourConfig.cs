@@ -18,6 +18,10 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int _maxStartDelayHours = 2;
         [Tooltip("Every block but the last is randomly up to this share shorter per villager, so villagers do not all switch routines at the same moment")]
         [SerializeField, Range(0f, 0.5f)] private float _blockLengthVariance = 0.35f;
+        [Tooltip("Share of the working day (first start to the walk home) left as free time, rolled per villager per day and spread " +
+                 "randomly after each block: the villager wanders to a rest place, talks, puts its tool away")]
+        [SerializeField, Range(0f, 0.6f)] private float _freeTimeRatioMin = 0.1f;
+        [SerializeField, Range(0f, 0.6f)] private float _freeTimeRatioMax = 0.3f;
         [Tooltip("A block with less than this share of its length left is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [SerializeField] private float _homeReturnMarginSeconds = 10f;
@@ -245,6 +249,8 @@ namespace ProjectShaman.AI.Data
         public float MinRoutineSeconds => RoutineSeconds * _minRoutineRatio;
         public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
         public float BlockLengthVariance => _blockLengthVariance;
+        public float FreeTimeRatioMin => Mathf.Min(_freeTimeRatioMin, _freeTimeRatioMax);
+        public float FreeTimeRatioMax => Mathf.Max(_freeTimeRatioMin, _freeTimeRatioMax);
         public float MinRemainingRatio => _minRemainingRatio;
         public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
         public IReadOnlyList<int> HomeArriveHours => _homeArriveHours;
