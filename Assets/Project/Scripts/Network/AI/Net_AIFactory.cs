@@ -28,6 +28,7 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerDeathKnown += HandleDeathKnown;
             AIEvents.OnVillagerExorcised += HandleExorcised;
             AIEvents.OnVillagerDayPlanned += HandleDayPlanned;
+            AIEvents.OnVillagerSlotRested += HandleSlotRested;
             _factory.CreateVillagers(this);
             ServerBindQuests();
         }
@@ -43,6 +44,7 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerDeathKnown -= HandleDeathKnown;
             AIEvents.OnVillagerExorcised -= HandleExorcised;
             AIEvents.OnVillagerDayPlanned -= HandleDayPlanned;
+            AIEvents.OnVillagerSlotRested -= HandleSlotRested;
             ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
@@ -97,6 +99,20 @@ namespace ProjectShaman.Network.AI
             if (!isServer)
             {
                 _factory.Registry?.SetDayHours(villagerId, day, blockHours, homeHour, bedHour);
+            }
+        }
+
+        private void HandleSlotRested(string villagerId, int day, int slot, bool rested)
+        {
+            RpcVillagerSlotRested(villagerId, day, slot, rested);
+        }
+
+        [ClientRpc]
+        private void RpcVillagerSlotRested(string villagerId, int day, int slot, bool rested)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.SetSlotRested(villagerId, day, slot, rested);
             }
         }
 

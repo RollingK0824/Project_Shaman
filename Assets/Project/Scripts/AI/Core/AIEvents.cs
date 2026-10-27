@@ -12,6 +12,15 @@ namespace ProjectShaman.AI.Core
         // (villagerId, day, block hour pairs, home hour, bed hour): the day's hours shown on the schedule tab
         public static event System.Action<string, int, int[], int, int> OnVillagerDayPlanned;
 
+        // (villagerId, day, slot, rested): a work block given up for a missing tool (shown as rest on the schedule tab),
+        // or taken up again once the tool is back
+        public static event System.Action<string, int, int, bool> OnVillagerSlotRested;
+
+        public static void RaiseSlotRested(string villagerId, int day, int slot, bool rested)
+        {
+            OnVillagerSlotRested?.Invoke(villagerId, day, slot, rested);
+        }
+
         public static void RaiseDayPlanned(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
         {
             OnVillagerDayPlanned?.Invoke(villagerId, day, blockHours, homeHour, bedHour);
