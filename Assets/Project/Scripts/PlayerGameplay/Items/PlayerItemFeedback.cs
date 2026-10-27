@@ -55,7 +55,8 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     {
         bool local=PlayerLocalPresentation.IsLocal(gameObject) && PlayerActionGuard.CanAct(gameObject);
         var item=_items != null ? _items.EquippedItemData : null;
-        bool visible=local && Supported(item) && (_input == null || !_input.GameplayInputBlocked);
+        bool lanternMessage=item != null && item.ItemId == "item_lantern" && Time.time<_messageUntil;
+        bool visible=local && (Supported(item) || lanternMessage) && (_input == null || !_input.GameplayInputBlocked);
         if (_status != null)
         {
             (_statusRoot != null ? _statusRoot : _status.gameObject).SetActive(visible);

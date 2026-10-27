@@ -203,6 +203,7 @@ public class PlayerNotebookUI : MonoBehaviour
             for (int i = 0; i < _slotButtons.Count; i++)
                 _slotButtons[i].interactable = i < 6 ? canAssign : i == 6 ? canAssign && IsSelectedAssigned(inventory) :
                     inventory.Drops.CanDrop(_selectedItem, out _);
+            RefreshSlotSelection(inventory);
             bool draw = _selectedItem is TalismanItemData talisman && talisman.AllowDrawing;
             _drawButton.gameObject.SetActive(draw);
             _drawButton.interactable = draw && inventory.Contains(_selectedItem) && PlayerActionGuard.CanAct(_owner.gameObject);
@@ -271,6 +272,13 @@ public class PlayerNotebookUI : MonoBehaviour
             PlayerItemUIStyle.Place((RectTransform)buttonObject.transform, new Vector2(.5f, 0f), new Vector2(.5f, 0f), new Vector2(i >= 6 ? (i == 6 ? -125 : 125) : x, i >= 6 ? 0 : 44), new Vector2(i >= 6 ? 150f : 66f, 38f));
             var button = buttonObject.GetComponent<Button>(); button.targetGraphic = buttonObject.GetComponent<Image>();
             button.targetGraphic.color = new Color(.23f, .19f, .15f, 1f);
+            if (i < 6)
+            {
+                var outline = buttonObject.AddComponent<Outline>();
+                outline.effectColor = new Color(.86f, .63f, .28f, 1f);
+                outline.effectDistance = new Vector2(2f, -2f);
+                outline.enabled = false;
+            }
             button.onClick.AddListener(() => { if (slot == 7) DropSelected(); else AssignSelected(slot); }); button.interactable = false;
             var colors = button.colors; colors.disabledColor = new Color(.5f, .5f, .5f, .45f); button.colors = colors;
             var text = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
@@ -293,6 +301,21 @@ public class PlayerNotebookUI : MonoBehaviour
         var drops = _owner.GetComponent<PlayerInventory>().Drops;
         _selectionText.text = item == null ? "개인 아이템을 선택하세요." : drops.CanDrop(item, out var reason)
             ? item.DisplayName + " · 퀵슬롯 등록 / 1개 버리기" : item.DisplayName + " · " + reason;
+        RefreshSlotSelection(_owner.GetComponent<PlayerInventory>());
+    }
+
+    private void RefreshSlotSelection(PlayerInventory inventory)
+    {
+        // Show the selected item's actual assignment, not the button's keyboard/mouse focus.
+        bool owned = inventory != null && _selectedItem != null && inventory.Contains(_selectedItem);
+        for (int i = 0; i < Mathf.Min(6, _slotButtons.Count); i++)
+        {
+            var button = _slotButtons[i];
+            bool selected = owned && inventory.GetQuickSlotItem(i) == _selectedItem &&
+                string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(i));
+            button.targetGraphic.color = selected ? new Color(.62f, .39f, .13f, 1f) : new Color(.23f, .19f, .15f, 1f);
+            if (button.TryGetComponent<Outline>(out var outline)) outline.enabled = selected;
+        }
     }
 
     private bool IsSelectedAssigned(PlayerInventory inventory)
@@ -327,6 +350,7 @@ public class PlayerNotebookUI : MonoBehaviour
                 if (inventory.GetQuickSlotItem(i) == _selectedItem && string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(i))) inventory.ClearQuickSlot(i);
             _selectionText.text = _selectedItem.DisplayName + " · 등록 해제 (소지품 보관)";
         }
+        RefreshSlotSelection(inventory);
     }
 
     private void CreateRewardButton()
