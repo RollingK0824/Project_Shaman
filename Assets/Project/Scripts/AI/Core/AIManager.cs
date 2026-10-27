@@ -418,8 +418,8 @@ namespace ProjectShaman.AI.Core
                 float wakeTime = Mathf.Max(fromTime, DailyBlockPlanner.PickWakeTime(GetBlockSeed(villager.Profile, dayCount), _behaviourConfig));
                 List<DailyBlock> blocks = NewBlocks();
                 EstimateBlocks(villager.Profile, dayCount, blocks, 0, wakeTime);
-                villager.SetToday(blocks, wakeTime, PickHomeLeaveTime(villager.Profile, dayCount));
-                villager.HomeHour = EstimateHomeHour(villager.Profile, dayCount, blocks, villager.HomeLeaveTime);
+                villager.SetToday(blocks, wakeTime, HomeLeaveTime);
+                villager.HomeHour = EstimateHomeHour(blocks, villager.HomeLeaveTime);
                 villager.Core.SetDailyStartOffset(wakeTime);
                 PublishBlocks(villager, dayCount);
                 PlanCorruption(villager, dayCount);
@@ -443,42 +443,28 @@ namespace ProjectShaman.AI.Core
             {
                 List<DailyBlock> blocks = NewBlocks();
                 EstimateBlocks(dead.Profile, dayCount, blocks, 0, DailyBlockPlanner.PickWakeTime(GetBlockSeed(dead.Profile, dayCount), _behaviourConfig));
-                int homeHour = EstimateHomeHour(dead.Profile, dayCount, blocks, PickHomeLeaveTime(dead.Profile, dayCount));
+                int homeHour = EstimateHomeHour(blocks, HomeLeaveTime);
                 PublishDayHours(dead.Profile.VillagerId, dayCount, DailyBlock.ToHourPairs(blocks), homeHour, DayClock.DAY_END_HOUR);
             }
         }
 
-        // One of HomeLeaveHours per villager and day
-        private float PickHomeLeaveTime(VillagerProfile profile, int dayCount)
-        {
-            IReadOnlyList<int> hours = _behaviourConfig.HomeLeaveHours;
-            if (hours == null || hours.Count == 0)
-            {
-                return TimeManager.DAY_DURATION;
-            }
+        // The whole village heads home at the same hour (HomeLeaveHour)
+        private float HomeLeaveTime => Mathf.Min(DayClock.ToDayElapsed(_behaviourConfig.HomeLeaveHour), TimeManager.DAY_DURATION);
 
-            System.Random random = new System.Random(unchecked(GetBlockSeed(profile, dayCount) * 7 + 1));
-            return Mathf.Min(DayClock.ToDayElapsed(hours[random.Next(hours.Count)]), TimeManager.DAY_DURATION);
-        }
-
-        // The hour it is expected in: it leaves at its leave time, or once its last routine is done if that runs later,
-        // and walks home from there. Nightfall at the latest (then home and bed are the same row)
-        private int EstimateHomeHour(VillagerProfile profile, int dayCount, IReadOnlyList<DailyBlock> blocks, float leaveTime)
+        // The schedule tab's home row: the village's home hour for everyone, later only for one whose last routine is
+        // expected to run past it (then from the hour it ends). The walk home is not drawn. Nightfall at the latest
+        private static int EstimateHomeHour(IReadOnlyList<DailyBlock> blocks, float leaveTime)
         {
-            float lastEnd = 0f;
-            int lastIndex = -1;
-            for (int i = 0; i < blocks.Count; i++)
+            int homeHour = Mathf.RoundToInt(DayClock.ToHour(leaveTime));
+            foreach (DailyBlock block in blocks)
             {
-                if (blocks[i].EndTime > blocks[i].StartTime && blocks[i].EndTime >= lastEnd)
+                if (block.EndTime > block.StartTime && block.EndTime > leaveTime)
                 {
-                    lastEnd = blocks[i].EndTime;
-                    lastIndex = i;
+                    homeHour = Mathf.Max(homeHour, block.EndHour);
                 }
             }
 
-            Vector3 from = lastIndex >= 0 ? RoutinePosition(profile, dayCount, lastIndex, profile.HomePosition) : profile.HomePosition;
-            float arrive = Mathf.Max(leaveTime, lastEnd) + PathLength(from, profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
-            return Mathf.Min(Mathf.RoundToInt(DayClock.ToHour(arrive)), DayClock.DAY_END_HOUR);
+            return Mathf.Min(homeHour, DayClock.DAY_END_HOUR);
         }
 
         private List<DailyBlock> NewBlocks()
@@ -805,7 +791,7 @@ namespace ProjectShaman.AI.Core
             DailyBlock planned = villager.TodayBlocks[index];
             villager.SetBlock(index, DailyBlockPlanner.Make(index, shownStart, Mathf.Min(shownStart + length, TimeManager.DAY_DURATION)));
             EstimateBlocks(villager.Profile, _time.DayCount, villager.EditableBlocks, index + 1, villager.TodayBlocks[index].EndTime);
-            villager.HomeHour = EstimateHomeHour(villager.Profile, _time.DayCount, villager.TodayBlocks, villager.HomeLeaveTime);
+            villager.HomeHour = EstimateHomeHour(villager.TodayBlocks, villager.HomeLeaveTime);
             PublishBlocks(villager, _time.DayCount);
             AILog.Log(AILog.MANAGER, villager.Id, $"Block {index} started at {DayClock.ToHour(now):F1}h ({reason}), planned {DayClock.ToHour(planned.StartTime):F1}h, ends {DayClock.ToHour(villager.BlockEndTime):F1}h");
         }
