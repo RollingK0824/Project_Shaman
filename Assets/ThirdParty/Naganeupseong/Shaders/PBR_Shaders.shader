@@ -70,7 +70,7 @@ Shader "Unreal/PBR_Shaders"
             // GraphKeywords: <None>
 
             // Defines
-            #define _SURFACE_TYPE_TRANSPARENT 1
+            //#define _SURFACE_TYPE_TRANSPARENT 1 // opaque pass; define disabled SSAO
             #define _NORMALMAP 1
             #define _NORMAL_DROPOFF_TS 1
             #define ATTRIBUTES_NEED_NORMAL
@@ -2140,7 +2140,7 @@ Shader "Unreal/PBR_Shaders"
             // GraphKeywords: <None>
 
             // Defines
-            #define _SURFACE_TYPE_TRANSPARENT 1
+            //#define _SURFACE_TYPE_TRANSPARENT 1 // opaque pass; define disabled SSAO
             #define _NORMALMAP 1
             #define _NORMAL_DROPOFF_TS 1
             #define ATTRIBUTES_NEED_NORMAL
