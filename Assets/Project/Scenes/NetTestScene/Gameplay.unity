@@ -35,7 +35,7 @@ RenderSettings:
   m_DefaultReflectionMode: 0
   m_DefaultReflectionResolution: 128
   m_ReflectionBounces: 1
-  m_ReflectionIntensity: 0.244
+  m_ReflectionIntensity: 0.45
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 2096961661}
   m_UseRadianceAmbientProbe: 0
@@ -65168,7 +65168,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2096961658}
   serializedVersion: 2
-  m_LocalRotation: {x: -0.06537271, y: 0.9194962, z: -0.34668583, w: -0.17338452}
+  m_LocalRotation: {x: -0.00461187, y: 0.91357726, z: -0.40650707, w: -0.0103646405}
   m_LocalPosition: {x: 0, y: 3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -65283,12 +65283,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::DayNightCycleController
   directionalLight: {fileID: 2096961661}
   skyboxMaterial: {fileID: 2100000, guid: 4f3279aeeec5bf44fae5430c2877d7c4, type: 2}
-  cycleProgress: 0.365
+  cycleProgress: 0.257
   autoSimulatePreview: 1
-  previewCycleDuration: 24
+  previewCycleDuration: 10
   startAzimuthAngle: -65
   endAzimuthAngle: 65
-  skyboxVerticalArcDegrees: 8
+  skyboxVerticalArcDegrees: 7.7
   minLightElevation: 10
   maxLightElevation: 48
   dayLightColor: {r: 0.95, g: 0.91, b: 0.85, a: 1}
@@ -65300,6 +65300,36 @@ MonoBehaviour:
   nightAmbientColor: {r: 0.08285868, g: 0.1003227, b: 0.13207549, a: 1}
   dayFogColor: {r: 0.51, g: 0.54, b: 0.6, a: 1}
   nightFogColor: {r: 0.06, g: 0.09, b: 0.14, a: 1}
+  moonPhases:
+  - name: NewMoon
+    nightCubemap: {fileID: 8900000, guid: c3e370cf87664091b3127198db921a94, type: 3}
+    moonBrightness: 0
+    skyboxExposure: 1
+  - name: WaxingCrescent
+    nightCubemap: {fileID: 8900000, guid: 242ce9f60ea948369a357b1078370f71, type: 3}
+    moonBrightness: 0.269
+    skyboxExposure: 0.52
+  - name: FirstQuarter
+    nightCubemap: {fileID: 8900000, guid: 46a5e30e8ee942818a1a41b46f7f9be0, type: 3}
+    moonBrightness: 0.522
+    skyboxExposure: 0.78
+  - name: FullMoon
+    nightCubemap: {fileID: 8900000, guid: 522145c801a948cc804b50b29f1402e3, type: 3}
+    moonBrightness: 0.806
+    skyboxExposure: 0.94
+  - name: LastQuarter
+    nightCubemap: {fileID: 8900000, guid: a448961a2f73491ebba2183507578dac, type: 3}
+    moonBrightness: 0.522
+    skyboxExposure: 0.78
+  - name: WaningCrescent
+    nightCubemap: {fileID: 8900000, guid: fe39b42b30ad410d8474864ccd7a9aaa, type: 3}
+    moonBrightness: 0.269
+    skyboxExposure: 0.52
+  startMoonPhaseIndex: 0
+  previewMoonPhaseIndex: 0
+  dayReflectionIntensity: 0.45
+  newMoonReflectionIntensity: 0.014
+  fullMoonReflectionIntensity: 0.907
 --- !u!1001 &2098143728
 PrefabInstance:
   m_ObjectHideFlags: 0
