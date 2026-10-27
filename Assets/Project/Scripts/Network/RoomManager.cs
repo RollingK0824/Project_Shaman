@@ -145,6 +145,14 @@ public class RoomManager : NetworkRoomManager
     // 호스트의 OnClientChangeScene은 서버 로딩이 시작된 뒤에 오므로, 멈춤보다 늦지 않게 여기서 먼저 표시
     public override void OnServerChangeScene(string newSceneName)
     {
+        if (newSceneName == RoomScene)
+        {
+            foreach (var slot in roomSlots)
+            {
+                if (slot is RoomPlayer player) player.gameName = string.Empty;
+            }
+        }
+
         base.OnServerChangeScene(newSceneName);
         if (NetworkClient.active && newSceneName == GameplayScene) BeginGameLoading();
     }
@@ -278,6 +286,15 @@ public class RoomManager : NetworkRoomManager
     // "정확히 몇명이어야 시작" 같은 조건을 추가하고 싶을 때만 override를 사용하자
     public override void OnRoomServerPlayersReady()
     {
+        // [서버] 이름이 없는 사람이 있으면 시작하지 않고 그 사람의 준비를 풀어 둠 (UI를 거치지 않은 준비 요청 대비)
+        foreach (RoomPlayer rp in roomSlots.OfType<RoomPlayer>())
+        {
+            if (rp.HasGameName) continue;
+
+            Debug.LogWarning($"[RoomManager] 이름 없는 플레이어가 있어 시작하지 않음 (slot {rp.index})");
+            return;
+        }
+
         if (roomSlots.Count < minPlayers)
         {
             if (roomSlots.Count > 0)
@@ -328,7 +345,8 @@ public class RoomManager : NetworkRoomManager
 
         if (roomPlayerComp != null && status != null)
         {
-            status.ServerInitialize(roomPlayerComp.nickname, roomPlayerComp.characterId, roomPlayerComp.colorId);
+            string playerName = roomPlayerComp.HasGameName ? roomPlayerComp.gameName : roomPlayerComp.nickname;
+            status.ServerInitialize(playerName, roomPlayerComp.characterId, roomPlayerComp.colorId);
         }
         else
         {

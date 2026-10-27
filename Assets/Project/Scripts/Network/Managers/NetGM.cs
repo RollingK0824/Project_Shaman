@@ -36,13 +36,6 @@ public class NetGM : NetworkBehaviour
     [Header("초기 개체 수")]
     [SerializeField, Min(1)] private int _initialNpcCount = 20;
 
-    [Header("게임 종료")]
-    [SerializeField, Min(0f)] private float _returnToLobbyDelay = 5f;
-
-    [SyncVar] private double _returnToLobbyTime;
-
-    public double ReturnToLobbyTime => _returnToLobbyTime;
-
     [SyncVar] private double _gameOverTime; // 승패가 난 시각 (플레이 시간 계산용)
 
     public double GameOverTime => _gameOverTime;
@@ -157,6 +150,7 @@ public class NetGM : NetworkBehaviour
     {
         base.OnStartServer();
 
+        AIEvents.OnVillagerExorcised += HandleVillagerExorcised;
         PlayerRoster.Changed += HandleRosterChanged;
 
         _serverGameManager = GameManager.Instance;
@@ -194,6 +188,7 @@ public class NetGM : NetworkBehaviour
 
     public override void OnStopServer()
     {
+        AIEvents.OnVillagerExorcised -= HandleVillagerExorcised;
         PlayerRoster.Changed -= HandleRosterChanged;
 
         if (_serverGameManager != null)
@@ -208,6 +203,11 @@ public class NetGM : NetworkBehaviour
         }
 
         base.OnStopServer();
+    }
+
+    private void HandleVillagerExorcised(string villagerId)
+    {
+        ServerReportGhostExorcised();
     }
 
     public override void OnStartClient()
@@ -299,29 +299,18 @@ public class NetGM : NetworkBehaviour
     [Server]
     private void HandleGameOverOnServer()
     {
-        if (_returnToLobbyTime > 0) return;
+        if (_gameOverTime > 0) return;
 
         _gameOverTime = NetworkTime.time;
-        _returnToLobbyTime = NetworkTime.time + _returnToLobbyDelay;
 
-        Debug.Log($"[NetGM] 게임 종료: {GameManager.Instance.CurrentGameState} -> {_returnToLobbyDelay:0}초 후 로비 복귀");
-
-        StartCoroutine(ReturnToLobbyAfterDelay());
+        Debug.Log($"[NetGM] 게임 종료: {GameManager.Instance.CurrentGameState} -> 호스트 로비 복귀 대기");
     }
 
-    private IEnumerator ReturnToLobbyAfterDelay()
-    {
-        yield return new WaitForSeconds(_returnToLobbyDelay);
-
-        if (!NetworkServer.active) yield break;
-
-        ServerReturnToLobby();
-    }
 
     [Server]
     public void ServerReturnToLobby()
     {
-        if (_returningToLobby || _returnToLobbyTime <= 0) return;
+        if (_returningToLobby || _gameOverTime <= 0) return;
         _returningToLobby = true;
 
         if (NetworkManager.singleton is RoomManager roomManager)

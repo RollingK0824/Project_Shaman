@@ -227,6 +227,13 @@ public static class GraphicOptions
             return;
         }
 
+        // The character preview needs its transparent RenderTexture, so keep its
+        // own post-processing and anti-aliasing settings.
+        if (camera.GetComponentInParent<LobbyCharacterPreview>() != null)
+        {
+            return;
+        }
+
         UniversalAdditionalCameraData data = camera.GetUniversalAdditionalCameraData();
         if (data == null || data.renderType != CameraRenderType.Base)
         {
