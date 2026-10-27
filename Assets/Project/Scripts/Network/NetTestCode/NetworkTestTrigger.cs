@@ -115,6 +115,23 @@ public class NetworkTestTrigger : MonoBehaviour
         _itemSpawner.ServerDespawnAll();
     }
 
+    private static readonly float[] TIME_SPEEDS = { 1f, 2f, 3f, 4f, 5f, 10f };
+
+    // [호스트] 시간 빨리 감기
+    private void ServerSetTimeSpeed(float speed)
+    {
+        if (!NetworkServer.active) return;
+
+        NetTimeManager netTime = FindFirstObjectByType<NetTimeManager>();
+        if (netTime == null)
+        {
+            Debug.LogWarning("[TEST] NetTimeManager가 씬에 없어 빨리 감기 불가");
+            return;
+        }
+
+        netTime.ServerSetSpeed(speed);
+    }
+
     // [호스트] -: 귀신 하나 퇴마. 귀신 수만큼 퇴마하면 승리
     private void ServerExorciseGhost()
     {
@@ -228,6 +245,16 @@ public class NetworkTestTrigger : MonoBehaviour
         if (GUILayout.Button("9  아이템 스폰")) ServerSpawnItem();
         if (GUILayout.Button("0  아이템 전부 회수")) ServerDespawnAllItems();
         if (GUILayout.Button("-  귀신 퇴마")) ServerExorciseGhost();
+
+        // 시계와 게임 속도를 같은 비율로 빨리 감음 (모든 PC에 동기화)
+        float speed = TimeManager.Instance != null ? TimeManager.Instance.Speed : 1f;
+        GUILayout.Label($"시간 배속 x{speed:0.#}");
+        GUILayout.BeginHorizontal();
+        foreach (float option in TIME_SPEEDS)
+        {
+            if (GUILayout.Button($"x{option:0}")) ServerSetTimeSpeed(option);
+        }
+        GUILayout.EndHorizontal();
         GUI.enabled = true;
 
         GUILayout.EndScrollView();

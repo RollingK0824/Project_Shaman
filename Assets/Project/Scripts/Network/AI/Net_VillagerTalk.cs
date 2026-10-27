@@ -7,6 +7,7 @@ using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Dialogue;
 using System.Collections.Generic;
 using ProjectShaman.AI.Interaction;
+using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Work;
 using ProjectShaman.AI.World;
 
@@ -45,6 +46,7 @@ namespace ProjectShaman.Network.AI
         private float _dialogueDeadline;
         private AI_QuestMarker _marker;
         private QuestManager _subscribedQuests;
+        private readonly System.Random _random = new System.Random();
 
         [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasQuestOffer;
         // An accepted quest is finished by coming back to this villager (delivery to the giver ...)
@@ -64,6 +66,7 @@ namespace ProjectShaman.Network.AI
             if (_core != null)
             {
                 _core.OnMustGoHomeChanged += HandleMustGoHomeChanged;
+                _core.OnAsleepChanged += HandleAsleepChanged;
             }
 
             _subscribedQuests = QuestManager.Existing;
@@ -85,6 +88,7 @@ namespace ProjectShaman.Network.AI
             if (_core != null)
             {
                 _core.OnMustGoHomeChanged -= HandleMustGoHomeChanged;
+                _core.OnAsleepChanged -= HandleAsleepChanged;
             }
 
             if (_subscribedQuests == null)
@@ -117,14 +121,20 @@ namespace ProjectShaman.Network.AI
             RefreshQuestMarker();
         }
 
-        // Sent home for the evening (until the next day start) the villager cannot take an offer: "!" waits for the morning
-        private bool IsHomeBound => _core != null && _core.MustGoHome;
+        private void HandleAsleepChanged(bool asleep)
+        {
+            RefreshQuestMarker();
+        }
+
+        private bool IsAsleep => _core != null && _core.IsAsleep;
 
         private void RefreshQuestMarker()
         {
             string villagerId = _conversation.VillagerId;
-            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsHomeBound;
-            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId);
+            // Asleep the villager can neither ask nor take anything. Going home it still can: an offer not taken fails
+            // at nightfall (C129), so hiding "!" in the evening would take it away
+            _hasQuestOffer = _subscribedQuests != null && _subscribedQuests.HasOffer(villagerId) && !IsAsleep;
+            _hasActiveQuest = _subscribedQuests != null && _subscribedQuests.HasActiveAt(villagerId) && !IsAsleep;
         }
 
         private void OnQuestMarkerChanged(bool oldValue, bool newValue)
@@ -181,15 +191,20 @@ namespace ProjectShaman.Network.AI
             uint playerId = player.TryGetComponent(out NetworkIdentity identity) ? identity.netId : 0;
             string villagerId = _conversation.VillagerId;
 
-            // A villager sent home (walking back, then in for the night) does not stop for a window: they only answer
-            // in passing (the usual line). An offer waits for the morning
-            bool goingHome = IsHomeBound || _conversation.CurrentActivity() == VillagerActivity.ReturningHome;
-            // A pending offer opens the quest window (accept / decline) instead of the usual greeting
+            // Asleep in the house: no window, no hand-over, it does not count as a talk. A mumble shows it is asleep
+            if (IsAsleep)
+            {
+                _conversation.Say(DialogueLibrary.Line("sleep", _random), $"asleep, {player.name} tried to talk");
+                return;
+            }
+
+            // A pending offer opens the quest window (accept / decline) instead of the usual greeting, going home included:
+            // the villager stops for it like for a tool brought back
             QuestManager quests = QuestManager.Existing;
-            IQuestView offer = !goingHome && quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
-            // Bringing back the tool this villager asked for comes before anything else
-            Net_ToolItem carried = null;
-            IQuestView delivery = goingHome ? null : FindToolDelivery(quests, villagerId, player, out carried);
+            IQuestView offer = quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
+            // Bringing back the tool this villager asked for comes before anything else, going home included:
+            // the villager stops for it even if that makes them late (C120)
+            IQuestView delivery = FindToolDelivery(quests, villagerId, player, out Net_ToolItem carried);
 
             if (_dialogueConnection != null && _dialogueConnection != sender)
             {
@@ -253,7 +268,9 @@ namespace ProjectShaman.Network.AI
 
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
-            TargetOpenDialogue(sender, _conversation.DisplayName, greeting ?? VillagerDialogueService.Greeting(), ids, labels);
+            // Called on at home in the evening: a late-caller greeting instead of the daytime one
+            string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random) : VillagerDialogueService.Greeting());
+            TargetOpenDialogue(sender, _conversation.DisplayName, opening, ids, labels);
             return true;
         }
 
@@ -266,7 +283,8 @@ namespace ProjectShaman.Network.AI
                 _conversation.Leave("player came about a request");
             }
 
-            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.For(player), InteractionResponse.Stop, _dialogueHoldSeconds);
+            // A request outranks an everyday interaction: a villager looking in on a neighbour on the way home stops for it
+            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.ForRequest(player), InteractionResponse.Stop, _dialogueHoldSeconds);
             _holdSerial = _holdsVillager ? _interaction.Serial : -1;
             _dialogueConnection = sender;
             _dialoguePlayer = player;
@@ -278,9 +296,15 @@ namespace ProjectShaman.Network.AI
             TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
         }
 
-        private static string DescribeOffer(IQuestView offer)
+        private string DescribeOffer(IQuestView offer)
         {
             string text = $"<b>{offer.TitleText}</b>\n{offer.ObjectiveText}";
+            string deadline = DescribeToolDeadline(offer);
+            if (deadline != null)
+            {
+                text += $"\n{deadline}";
+            }
+
             QuestEffect reward = offer.Definition.Reward;
             if (!string.IsNullOrEmpty(reward.Description))
             {
@@ -288,6 +312,30 @@ namespace ProjectShaman.Network.AI
             }
 
             return text;
+        }
+
+        // A FindTool request lasts until the villager next needs the tool (C120): said up front so the end is no surprise
+        private string DescribeToolDeadline(IQuestView offer)
+        {
+            if (offer.Definition.ObjectiveType != QuestActions.DELIVER || _core == null || _core.Profile == null || _core.Profile.Schedule == null)
+            {
+                return null;
+            }
+
+            // The asking day is given up (the villager rests through its work with that tool), so the deadline is the
+            // first use on a later day. Asked on an earlier day and still open: the next use from now
+            ResolvedRoutine current = _core.CurrentRoutine;
+            VillagerSchedule schedule = _core.Profile.Schedule;
+            bool askedToday = offer.DayIssued == current.DayCount;
+            int fromSlot = askedToday ? schedule.SlotsPerDay - 1 : current.Slot;
+            if (current.DayCount <= 0 || !schedule.TryFindNextToolUse(current.DayCount, fromSlot, offer.TargetId, out int daysAhead, out RoutineEntry routine))
+            {
+                return null;
+            }
+
+            string when = daysAhead == 0 ? "이따" : daysAhead == 1 ? "내일" : daysAhead == 2 ? "모레" : $"{daysAhead}일 뒤";
+            string work = string.IsNullOrEmpty(routine.DisplayName) ? routine.RoutineId : routine.DisplayName;
+            return $"{(askedToday ? "오늘 일은 글렀고, " : string.Empty)}{when} {work} 전까지만 찾아 주면 되오.";
         }
 
         private void AnswerQuestOffer(NetworkConnectionToClient sender, string topicId)
@@ -321,7 +369,7 @@ namespace ProjectShaman.Network.AI
                 _conversation.Leave("player brought a tool");
             }
 
-            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.For(player), InteractionResponse.Stop, _dialogueHoldSeconds);
+            _holdsVillager = _interaction != null && _interaction.TryBegin(PlayerTalkTarget.ForRequest(player), InteractionResponse.Stop, _dialogueHoldSeconds);
             _holdSerial = _holdsVillager ? _interaction.Serial : -1;
             _dialogueConnection = sender;
             _dialoguePlayer = player;
@@ -466,7 +514,7 @@ namespace ProjectShaman.Network.AI
             {
                 if (_dialogueConnection.identity != null)
                 {
-                    TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : "살펴 가시오.");
+                    TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : VillagerDialogueService.Farewell(_conversation));
                 }
 
                 EndDialogue(lost ? "villager called away" : far ? "player walked off" : "idle");

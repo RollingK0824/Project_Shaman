@@ -8,6 +8,8 @@ namespace ProjectShaman.AI.Routine
     public struct ResolvedRoutine
     {
         public RoutineEntry Source;
+        // The place actually gone to: Source.PlaceId, or the member picked when it names a place group
+        public string PlaceId;
         public int DayCount;
         public int Slot;
         public int Serial;

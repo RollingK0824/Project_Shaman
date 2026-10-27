@@ -33,6 +33,7 @@ namespace ProjectShaman.Network.AI
 
         // Today's block hours change every morning; the day and home/bed hours are written first so the hours hook sees them
         [SyncVar] private int _syncBlocksDay;
+        [SyncVar] private int _syncLeaveHour;
         [SyncVar] private int _syncHomeHour;
         [SyncVar] private int _syncBedHour;
         [SyncVar(hook = nameof(OnBlockHoursChanged))] private int[] _syncBlockHours;
@@ -86,7 +87,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.ApplyNetworkState(_networkState);
                     aiCore.ApplyNetworkSchedule(VillagerScheduleView.FromFlat(_syncCycleDays, _syncSlotsPerDay, _syncSchedule));
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
-                    aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours, _syncHomeHour, _syncBedHour);
+                    aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours, _syncLeaveHour, _syncHomeHour, _syncBedHour);
                     ApplyPossessionMark(_syncPossessionMarked);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
@@ -184,6 +185,7 @@ namespace ProjectShaman.Network.AI
         private void WriteTodayBlocks()
         {
             _syncBlocksDay = aiCore.TodayBlocksDay;
+            _syncLeaveHour = aiCore.TodayLeaveHour;
             _syncHomeHour = aiCore.TodayHomeHour;
             _syncBedHour = aiCore.TodayBedHour;
             _syncBlockHours = new List<int>(aiCore.TodayBlockHours).ToArray();
@@ -193,7 +195,7 @@ namespace ProjectShaman.Network.AI
         {
             if (!isServer && aiCore != null)
             {
-                aiCore.SetTodayBlocks(_syncBlocksDay, newValue, _syncHomeHour, _syncBedHour);
+                aiCore.SetTodayBlocks(_syncBlocksDay, newValue, _syncLeaveHour, _syncHomeHour, _syncBedHour);
             }
         }
 

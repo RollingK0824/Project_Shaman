@@ -60,7 +60,7 @@ namespace ProjectShaman.AI.Routine
             Serial = resolved.Serial;
             RoutineId = resolved.Source != null ? resolved.Source.RoutineId : string.Empty;
             DisplayName = resolved.Source != null ? resolved.Source.DisplayName : string.Empty;
-            PlaceId = resolved.Source != null ? resolved.Source.PlaceId : string.Empty;
+            PlaceId = resolved.Source != null ? resolved.PlaceId : string.Empty;
             Category = resolved.Category;
             TargetPosition = resolved.TargetPosition;
             StartTime = resolved.StartTime;

@@ -28,8 +28,16 @@ namespace ProjectShaman.Network.AI
 
         // An accepted quest is finished here (clear, cleanse, check on the missing villager)
         [SyncVar(hook = nameof(OnActiveQuestChanged))] private bool _hasActiveQuest;
+        // Whose body it is, so the prompt can name it on every client ("노첨지의 시신 치우기")
+        [SyncVar] private string _victimId;
 
-        public string InteractionPrompt => _interactionPrompt;
+        public string InteractionPrompt => string.IsNullOrEmpty(_victimId) ? _interactionPrompt : $"{VictimName()}의 시신 {_interactionPrompt}";
+
+        private string VictimName()
+        {
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            return registry != null && registry.TryGet(_victimId, out ProjectShaman.AI.Interfaces.IVillagerView view) && !string.IsNullOrEmpty(view.DisplayName) ? view.DisplayName : _victimId;
+        }
 
         private void Awake()
         {
@@ -100,6 +108,12 @@ namespace ProjectShaman.Network.AI
         [ServerCallback]
         private void Update()
         {
+            // The victim is set after the spawn (GhostTrace.SetVictim)
+            if (_victimId != _trace.VictimId)
+            {
+                _victimId = _trace.VictimId;
+            }
+
             if (!_trace.IsActive || Time.time < _nextInspectCheck)
             {
                 return;

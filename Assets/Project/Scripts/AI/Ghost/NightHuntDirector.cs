@@ -21,6 +21,7 @@ namespace ProjectShaman.AI.Ghost
         {
             public AI_Possession Possession;
             public AI_Core Host;
+            public AIManager.VillagerRuntime HostRuntime;
             public float Radius;
             public int HuntKills;
             public bool HuntIgnoresRadius;
@@ -32,7 +33,11 @@ namespace ProjectShaman.AI.Ghost
         private readonly HashSet<string> _excludedGhostIds = new HashSet<string>();
         private TimeManager _time;
         private NightOutcomeLedger _ledger;
+        private const float SIGHTING_EYE_OFFSET = 1f;
+
         private float _pendingSpawnTime = -1f;
+        private bool _isHuntTokenAssigned;
+        private float _nextSightingScanTime;
 
         public IReadOnlyList<GhostNightActionData> NightActions => _nightActions;
 
@@ -135,10 +140,11 @@ namespace ProjectShaman.AI.Ghost
 
                 float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(possession.Yin, _behaviourConfig));
                 AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount} (yin {possession.Yin:F0}, radius {radius:F1}m)");
-                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, Radius = radius });
+                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, HostRuntime = host, Radius = radius });
             }
 
             _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
+            _isHuntTokenAssigned = false;
         }
 
         public void ExcludeGhostTonight(string ghostId)
@@ -276,24 +282,91 @@ namespace ProjectShaman.AI.Ghost
 
         private void Update()
         {
+            SpawnSleepingHosts();
+            ScanSightings();
+        }
+
+        // A villager still out at night who sees a ghost remembers where (C122). No other effect: the stress is the cost,
+        // a death mark it may bring is the stress's doing. Villagers in their houses see nothing
+        private void ScanSightings()
+        {
+            if (_entities.Count == 0 || Time.time < _nextSightingScanTime)
+            {
+                return;
+            }
+
+            _nextSightingScanTime = Time.time + _behaviourConfig.ObservationInterval;
+            float radiusSqr = _behaviourConfig.GhostSightingRadius * _behaviourConfig.GhostSightingRadius;
+
+            foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
+            {
+                if (villager.Core == null || villager.Memory == null || villager.Perception == null || villager.HasArrivedHome
+                    || villager.Profile.IsPossessed || !_ledger.IsAlive(villager.Core))
+                {
+                    continue;
+                }
+
+                Vector3 from = villager.Core.transform.position;
+
+                foreach (AI_GhostEntity entity in _entities)
+                {
+                    if (entity == null)
+                    {
+                        continue;
+                    }
+
+                    Vector3 position = entity.transform.position;
+                    if ((position - from).sqrMagnitude > radiusSqr || !villager.Perception.CanSee(position + Vector3.up * SIGHTING_EYE_OFFSET))
+                    {
+                        continue;
+                    }
+
+                    if (villager.Memory.RecordGhostSighting(entity.HostVillagerId, position))
+                    {
+                        AILog.Log(AILog.GHOST, entity.GhostId, $"Seen by {villager.Id} on the way home");
+                        villager.Conversation?.Say("귀, 귀신이다!", "saw a ghost");
+                        AIEvents.RaiseStress(villager.Id, $"saw ghost {entity.GhostId}", _behaviourConfig.GhostSightingStress);
+                    }
+                }
+            }
+        }
+
+        private void SpawnSleepingHosts()
+        {
             if (_pendingSpawnTime < 0f || Time.time < _pendingSpawnTime)
             {
                 return;
             }
 
-            _pendingSpawnTime = -1f;
-
-            if (_pendingEntities.Count > 0)
+            // The token is drawn once for the night among every ghost, before any has left its host
+            if (!_isHuntTokenAssigned)
             {
-                AssignHuntToken();
+                _isHuntTokenAssigned = true;
+                if (_pendingEntities.Count > 0)
+                {
+                    AssignHuntToken();
+                }
             }
 
-            foreach (PendingEntity pending in _pendingEntities)
+            // A ghost leaves its host while the host sleeps at home (C121): a host held up on the way home
+            // brings its ghost out late, and no host is treated differently on the way
+            for (int i = _pendingEntities.Count - 1; i >= 0; i--)
             {
+                PendingEntity pending = _pendingEntities[i];
+                if (!_manager.IsAsleepAtHome(pending.HostRuntime))
+                {
+                    continue;
+                }
+
+                _pendingEntities.RemoveAt(i);
+                AILog.Log(AILog.GHOST, pending.Possession.GhostId, $"{pending.Host.LogId} asleep at home, the ghost comes out");
                 SpawnEntity(pending);
             }
 
-            _pendingEntities.Clear();
+            if (_pendingEntities.Count == 0)
+            {
+                _pendingSpawnTime = -1f;
+            }
         }
 
         private void SpawnEntity(PendingEntity pending)
@@ -324,6 +397,12 @@ namespace ProjectShaman.AI.Ghost
 
         private void HandleDayStart()
         {
+            // A host must always reach home: one that never slept there is a bug to fix, not a case to cover (C121)
+            foreach (PendingEntity pending in _pendingEntities)
+            {
+                AILog.Error(AILog.GHOST, $"[{pending.Possession.GhostId}] {pending.Host.LogId} never fell asleep at home, no ghost came out last night");
+            }
+
             _pendingSpawnTime = -1f;
             _pendingEntities.Clear();
 

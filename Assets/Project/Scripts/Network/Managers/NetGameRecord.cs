@@ -28,7 +28,7 @@ public struct GameResult
     public int tracesHandled;
     public int tracesTotal;
     public int questsCompleted;
-    public int questsAccepted;
+    public int questsIssued;    // 주민이 낸 의뢰 (받지 않은 것 포함, 패널티 없이 거둔 것 제외)
 
     public GhostResult[] ghosts;
     public PlayerResult[] players;
@@ -52,7 +52,7 @@ public class NetGameRecord : NetworkBehaviour
 
     private int _tracesTotal;
     private int _tracesHandled;
-    private int _questsAccepted;
+    private int _questsIssued;
     private int _questsCompleted;
 
     private AIFactory _aiFactory;
@@ -73,7 +73,7 @@ public class NetGameRecord : NetworkBehaviour
         _quests = QuestManager.Existing;
         if (_quests != null)
         {
-            _quests.QuestStarted += HandleQuestStarted;
+            _quests.QuestOffered += HandleQuestOffered;
             _quests.QuestEnded += HandleQuestEnded;
         }
 
@@ -96,7 +96,7 @@ public class NetGameRecord : NetworkBehaviour
 
         if (_quests != null)
         {
-            _quests.QuestStarted -= HandleQuestStarted;
+            _quests.QuestOffered -= HandleQuestOffered;
             _quests.QuestEnded -= HandleQuestEnded;
         }
 
@@ -147,10 +147,12 @@ public class NetGameRecord : NetworkBehaviour
         }
     }
 
-    private void HandleQuestStarted(IQuestView quest) => _questsAccepted++;
+    // 받지 않아도 밤이 되면 실패하므로 낸 의뢰를 모두 셈. 더 급한 의뢰에 밀리거나 의뢰인 사망 등으로 패널티 없이 거둔 것은 뺌
+    private void HandleQuestOffered(IQuestView quest) => _questsIssued++;
     private void HandleQuestEnded(IQuestView quest)
     {
         if (quest.State == QuestState.Completed) _questsCompleted++;
+        else if (quest.State == QuestState.Cancelled) _questsIssued--;
     }
 
     // [서버] 승패가 난 순간 한번에 확정
@@ -184,11 +186,11 @@ public class NetGameRecord : NetworkBehaviour
             tracesHandled = _tracesHandled,
             tracesTotal = _tracesTotal,
             questsCompleted = _questsCompleted,
-            questsAccepted = _questsAccepted,
+            questsIssued = Mathf.Max(0, _questsIssued),
             ghosts = ghosts,
             players = players
         };
 
-        Debug.Log($"[NetGameRecord] 결과 확정: 원귀 {ghosts.Length}, 흔적 {_tracesHandled}/{_tracesTotal}, 의뢰 {_questsCompleted}/{_questsAccepted}");
+        Debug.Log($"[NetGameRecord] 결과 확정: 원귀 {ghosts.Length}, 흔적 {_tracesHandled}/{_tracesTotal}, 의뢰 {_questsCompleted}/{_questsIssued}");
     }
 }

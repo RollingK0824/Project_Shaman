@@ -27,13 +27,26 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerDied += HandleVillagerDied;
             AIEvents.OnVillagerDeathKnown += HandleDeathKnown;
             AIEvents.OnVillagerExorcised += HandleExorcised;
+            AIEvents.OnVillagerDayPlanned += HandleDayPlanned;
+            AIEvents.OnVillagerSlotRested += HandleSlotRested;
             _factory.CreateVillagers(this);
             ServerBindQuests();
         }
 
+        // The lose check counts every death, known to the village or not (only the vote lists wait for the body)
         private void HandleVillagerDied(string villagerId, string reason)
         {
             RpcVillagerDied(villagerId);
+
+            NetGM gameManager = FindFirstObjectByType<NetGM>();
+            if (gameManager == null)
+            {
+                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
+                return;
+            }
+
+            gameManager.ServerReportNpcDied();
+            AILog.Log(AILog.NET, villagerId, "Death reported to NetGM");
         }
 
         public override void OnStopServer()
@@ -41,6 +54,8 @@ namespace ProjectShaman.Network.AI
             AIEvents.OnVillagerDied -= HandleVillagerDied;
             AIEvents.OnVillagerDeathKnown -= HandleDeathKnown;
             AIEvents.OnVillagerExorcised -= HandleExorcised;
+            AIEvents.OnVillagerDayPlanned -= HandleDayPlanned;
+            AIEvents.OnVillagerSlotRested -= HandleSlotRested;
             ServerUnbindQuests();
             AILog.Log(AILog.NET, "Server stopped → AIFactory.ResetFactory");
             _factory.ResetFactory();
@@ -61,26 +76,44 @@ namespace ProjectShaman.Network.AI
             base.OnStopClient();
         }
 
-        // A death counts for the game once it is known (body cleared by a player, or found dead when voted out),
-        // not when the ghost kills: until then the village does not know anyone is gone
+        // The village learns of a death (body cleared, or found dead when voted out): it leaves the vote lists
         private void HandleDeathKnown(string villagerId)
         {
             RpcVillagerDeathKnown(villagerId);
-
-            NetGM gameManager = FindFirstObjectByType<NetGM>();
-            if (gameManager == null)
-            {
-                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
-                return;
-            }
-
-            gameManager.ServerReportNpcDied();
-            AILog.Log(AILog.NET, villagerId, "Death (now known) reported to NetGM");
         }
 
         private void HandleExorcised(string villagerId)
         {
             RpcVillagerExorcised(villagerId);
+        }
+
+        // Every villager's day, the dead not yet known included: their own objects are gone, so the hours come through here
+        private void HandleDayPlanned(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
+        {
+            RpcVillagerDayPlanned(villagerId, day, blockHours, leaveHour, homeHour, bedHour);
+        }
+
+        [ClientRpc]
+        private void RpcVillagerDayPlanned(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.SetDayHours(villagerId, day, blockHours, leaveHour, homeHour, bedHour);
+            }
+        }
+
+        private void HandleSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
+        {
+            RpcVillagerSlotRested(villagerId, day, slot, rested, restPlaceId);
+        }
+
+        [ClientRpc]
+        private void RpcVillagerSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
+        {
+            if (!isServer)
+            {
+                _factory.Registry?.SetSlotRested(villagerId, day, slot, rested, restPlaceId);
+            }
         }
 
         [ClientRpc]

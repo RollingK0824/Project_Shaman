@@ -115,13 +115,25 @@ namespace ProjectShaman.AI.Stress
             _state = next;
             AILog.Log(AILog.STRESS, VillagerId, $"State {previous} → {next} ({_value:F1})");
 
-            // Stress limit = death mark: the ghost hunts this villager first from tonight. The mark stays even if stress eases
-            if (next == VillagerStressState.Breaking && _ghostTarget != null && !_ghostTarget.IsMarked)
+            // Eased below the limit (a gut done): the death mark goes with it
+            if (previous == VillagerStressState.Breaking && _ghostTarget != null && _ghostTarget.IsMarked)
             {
-                _ghostTarget.SetMarked(true);
+                _ghostTarget.SetMarked(false);
             }
             OnStateChanged?.Invoke(this, previous, next);
         }
+
+        // Stress limit = death mark, judged in the morning (C129): the ghost hunts this villager first tonight
+        // unless a gut brings the stress down today
+        public void JudgeMorningMark()
+        {
+            if (_state == VillagerStressState.Breaking && _ghostTarget != null && !_ghostTarget.IsMarked)
+            {
+                _ghostTarget.SetMarked(true);
+            }
+        }
+
+        public bool IsMarked => _ghostTarget != null && _ghostTarget.IsMarked;
 
         private VillagerStressState EvaluateState()
         {

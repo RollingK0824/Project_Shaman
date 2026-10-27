@@ -72,6 +72,86 @@ namespace ProjectShaman.AI.Core
             OnRegistered?.Invoke(entry);
         }
 
+        // Today's block hours as the village sees them. Kept for a dead villager whose death is not yet known,
+        // so the schedule tab does not give the death away before a body is found
+        internal void SetDayHours(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
+        {
+            if (!string.IsNullOrEmpty(villagerId) && _byId.TryGetValue(villagerId, out VillagerEntry entry))
+            {
+                if (entry.Day != day)
+                {
+                    entry.RestedSlotMask = 0;
+                    entry.RestPlaceIds.Clear();
+                }
+
+                entry.Day = day;
+                entry.BlockHours = blockHours;
+                entry.LeaveHour = leaveHour;
+                entry.HomeHour = homeHour;
+                entry.BedHour = bedHour;
+            }
+        }
+
+        // A work block of today given up for a missing tool (the villager rests instead, at restPlaceId when it found
+        // a rest place), or taken up again
+        internal void SetSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
+        {
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.Day != day || slot < 0 || slot >= 32)
+            {
+                return;
+            }
+
+            entry.RestedSlotMask = rested ? entry.RestedSlotMask | (1 << slot) : entry.RestedSlotMask & ~(1 << slot);
+            if (rested && !string.IsNullOrEmpty(restPlaceId))
+            {
+                entry.RestPlaceIds[slot] = restPlaceId;
+            }
+            else
+            {
+                entry.RestPlaceIds.Remove(slot);
+            }
+        }
+
+        public bool IsSlotRested(string villagerId, int day, int slot)
+        {
+            return IsSlotRested(villagerId, day, slot, out _);
+        }
+
+        // restPlaceId is null when the villager found no rest place and stays where it stopped
+        public bool IsSlotRested(string villagerId, int day, int slot, out string restPlaceId)
+        {
+            restPlaceId = null;
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry)
+                || entry.Day != day || slot < 0 || slot >= 32 || (entry.RestedSlotMask & (1 << slot)) == 0)
+            {
+                return false;
+            }
+
+            entry.RestPlaceIds.TryGetValue(slot, out restPlaceId);
+            return true;
+        }
+
+        public bool TryGetDayHours(string villagerId, out int day, out int[] blockHours, out int leaveHour, out int homeHour, out int bedHour)
+        {
+            day = 0;
+            blockHours = null;
+            leaveHour = 0;
+            homeHour = 0;
+            bedHour = 0;
+
+            if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || entry.Day <= 0)
+            {
+                return false;
+            }
+
+            day = entry.Day;
+            blockHours = entry.BlockHours;
+            leaveHour = entry.LeaveHour;
+            homeHour = entry.HomeHour;
+            bedHour = entry.BedHour;
+            return true;
+        }
+
         internal void MarkDead(string villagerId)
         {
             if (string.IsNullOrEmpty(villagerId) || !_byId.TryGetValue(villagerId, out VillagerEntry entry) || !entry.IsAlive)
@@ -147,6 +227,13 @@ namespace ProjectShaman.AI.Core
             public bool IsDeathKnown { get; set; }
             public bool IsExorcised { get; set; }
             public VillagerScheduleView Schedule { get; }
+            public int Day { get; set; }
+            public int[] BlockHours { get; set; }
+            public int LeaveHour { get; set; }
+            public int HomeHour { get; set; }
+            public int BedHour { get; set; }
+            public int RestedSlotMask { get; set; }
+            public Dictionary<int, string> RestPlaceIds { get; } = new Dictionary<int, string>();
 
             public VillagerEntry(VillagerPublicInfo info, VillagerScheduleView schedule)
             {
