@@ -13,11 +13,6 @@ namespace ProjectShaman.AI.Routine
 
         public float Length => EndTime - StartTime;
 
-        public bool Contains(float time)
-        {
-            return time >= DepartTime && time < EndTime;
-        }
-
         // [start0, end0, start1, end1, ...] in clock hours; the pair's position is the block index (= schedule slot)
         public static int[] ToHourPairs(IReadOnlyList<DailyBlock> blocks)
         {

@@ -5,100 +5,48 @@ using ProjectShaman.AI.Data;
 
 namespace ProjectShaman.AI.Routine
 {
-    // Plans one villager's day in seconds: a start delay, then each routine block followed by free time, up to the walk home.
-    // The walk to a place is part of its block (it starts when the villager sets off). Per villager and day the free share
-    // (FreeTimeRatioMin..Max of the working day) and the block lengths (up to BlockLengthVariance shorter) are rolled,
-    // and the free time is split at random after the blocks, so villagers switch, rest and head home at different moments.
+    // A villager's day runs in order (C131): it gets up, goes to routine A, works it for its fixed length, tidies up,
+    // goes to B, works it, then has free time until nightfall sends it home. Only the order and the lengths are fixed;
+    // a block starts when the villager is really there. The times here are estimates for the schedule tab, laid one
+    // after another from the wake-up (or from a block that has really started)
     public static class DailyBlockPlanner
     {
-        public static List<DailyBlock> Build(int seed, AIBehaviourConfig config, float homeReturnTime, out string note)
+        // Up to MaxStartDelaySeconds into the day, so villagers do not all set off at once
+        public static float PickWakeTime(int seed, AIBehaviourConfig config)
         {
-            int count = config.RoutinesPerDay;
+            return (float)new System.Random(seed).NextDouble() * config.MaxStartDelaySeconds;
+        }
+
+        // Blocks from `index` on, each after the previous one's end (or `time`) plus leadSeconds(i): the tidy-up and the walk
+        // to its place. A block that would not begin before nightfall gets no hours (the tab shows nothing for it)
+        public static void Lay(List<DailyBlock> blocks, int index, float time, float length, System.Func<int, float> leadSeconds)
+        {
             float dayEnd = TimeManager.DAY_DURATION;
-            float end = Mathf.Clamp(homeReturnTime, 0f, dayEnd);
-            float length = config.RoutineSeconds;
-            float minLength = config.MinRoutineSeconds;
-            System.Random random = new System.Random(seed);
-
-            float delay = Next(random, Mathf.Min(config.MaxStartDelaySeconds, Mathf.Max(0f, end - count * minLength)));
-            float window = Mathf.Max(0f, end - delay);
-            float freeRatio = Mathf.Lerp(config.FreeTimeRatioMin, config.FreeTimeRatioMax, (float)random.NextDouble());
-            float work = Mathf.Max(Mathf.Min(window, count * minLength), window * (1f - freeRatio));
-
-            // Block lengths share the work time by random weights, each kept within [minLength, length];
-            // what a cap leaves over becomes free time too
-            float[] lengths = new float[count];
-            float weightSum = 0f;
-            for (int i = 0; i < count; i++)
+            for (int i = index; i < blocks.Count; i++)
             {
-                lengths[i] = 1f - config.BlockLengthVariance * (float)random.NextDouble();
-                weightSum += lengths[i];
+                float start = Mathf.Min(time + leadSeconds(i), dayEnd);
+                blocks[i] = Make(i, start, Mathf.Min(start + length, dayEnd));
+                time = blocks[i].EndTime;
             }
-
-            float used = 0f;
-            for (int i = 0; i < count; i++)
-            {
-                lengths[i] = Mathf.Clamp(work * lengths[i] / weightSum, Mathf.Min(minLength, work / count), length);
-                used += lengths[i];
-            }
-
-            // Free time after each block (the last one's runs up to the walk home)
-            float free = Mathf.Max(0f, window - used);
-            float[] frees = new float[count];
-            float freeWeightSum = 0f;
-            for (int i = 0; i < count; i++)
-            {
-                frees[i] = (float)random.NextDouble();
-                freeWeightSum += frees[i];
-            }
-
-            for (int i = 0; i < count; i++)
-            {
-                frees[i] = freeWeightSum > 0f ? free * frees[i] / freeWeightSum : free / count;
-            }
-
-            note = $"delay={delay:F0}s lengths=[{Join(lengths)}]s free=[{Join(frees)}]s";
-
-            List<DailyBlock> blocks = new List<DailyBlock>(count);
-            float time = delay;
-
-            for (int i = 0; i < count; i++)
-            {
-                float startTime = time;
-                float endTime = Mathf.Min(time + lengths[i], dayEnd);
-                if (startTime >= endTime)
-                {
-                    break;
-                }
-
-                // Hours only label the schedule tab; the villager runs on the seconds
-                int startHour = Mathf.RoundToInt(DayClock.ToHour(startTime));
-                int endHour = Mathf.Max(startHour + 1, Mathf.RoundToInt(DayClock.ToHour(endTime)));
-
-                blocks.Add(new DailyBlock
-                {
-                    Index = i,
-                    StartHour = startHour,
-                    EndHour = Mathf.Min(endHour, DayClock.DAY_END_HOUR),
-                    StartTime = startTime,
-                    EndTime = endTime,
-                    DepartTime = startTime
-                });
-
-                time = endTime + frees[i];
-            }
-
-            return blocks;
         }
 
-        private static string Join(float[] seconds)
+        public static DailyBlock Make(int index, float startTime, float endTime)
         {
-            return string.Join(",", System.Array.ConvertAll(seconds, s => s.ToString("F0")));
-        }
+            // Hours only label the schedule tab; the villager runs on the seconds
+            int startHour = Mathf.RoundToInt(DayClock.ToHour(startTime));
+            int endHour = endTime > startTime
+                ? Mathf.Min(Mathf.Max(startHour + 1, Mathf.RoundToInt(DayClock.ToHour(endTime))), DayClock.DAY_END_HOUR)
+                : startHour;
 
-        private static float Next(System.Random random, float max)
-        {
-            return max > 0f ? (float)random.NextDouble() * max : 0f;
+            return new DailyBlock
+            {
+                Index = index,
+                StartHour = startHour,
+                EndHour = Mathf.Max(startHour, endHour),
+                StartTime = startTime,
+                EndTime = endTime,
+                DepartTime = startTime
+            };
         }
     }
 }

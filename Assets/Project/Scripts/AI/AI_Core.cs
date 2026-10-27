@@ -175,6 +175,9 @@ namespace ProjectShaman.AI
             OnRoutineCleared?.Invoke(reason);
         }
 
+        // The possession stand-still already spent on the current routine (0 if none, or not yet)
+        public float ConsumedStartDelaySeconds => HasRoutine && _startDelayConsumedSerial == CurrentRoutine.Serial ? CurrentRoutine.StartDelaySeconds : 0f;
+
         public bool TryConsumeStartDelay(out float delay)
         {
             delay = 0f;
