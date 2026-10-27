@@ -16,6 +16,14 @@ namespace ProjectShaman.AI.Core
         // on the schedule tab, with where the villager went), or taken up again once the tool is back
         public static event System.Action<string, int, int, bool, string> OnVillagerSlotRested;
 
+        // (villagerId, day, free-time hour pairs, what is done, place id or null): today's free time on the schedule tab
+        public static event System.Action<string, int, int[], string[], string[]> OnVillagerFreeTimePlanned;
+
+        public static void RaiseFreeTimePlanned(string villagerId, int day, int[] hours, string[] names, string[] placeIds)
+        {
+            OnVillagerFreeTimePlanned?.Invoke(villagerId, day, hours, names, placeIds);
+        }
+
         public static void RaiseSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
         {
             OnVillagerSlotRested?.Invoke(villagerId, day, slot, rested, restPlaceId);
