@@ -187,9 +187,9 @@ namespace ProjectShaman.Network.AI
             // A pending offer opens the quest window (accept / decline) instead of the usual greeting
             QuestManager quests = QuestManager.Existing;
             IQuestView offer = !goingHome && quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
-            // Bringing back the tool this villager asked for comes before anything else
-            Net_ToolItem carried = null;
-            IQuestView delivery = goingHome ? null : FindToolDelivery(quests, villagerId, player, out carried);
+            // Bringing back the tool this villager asked for comes before anything else, going home included:
+            // the villager stops for it even if that makes them late (C120)
+            IQuestView delivery = FindToolDelivery(quests, villagerId, player, out Net_ToolItem carried);
 
             if (_dialogueConnection != null && _dialogueConnection != sender)
             {
