@@ -13,24 +13,6 @@ MonoBehaviour:
   m_Name: QuestData
   m_EditorClassIdentifier: Project.Runtime::QuestDatabase
   _quests:
-  - Id: q_salt_delivery
-    Title: "\uC18C\uAE08 \uAD6C\uD574\uC624\uAE30"
-    Objective: "\uC18C\uAE08 2\uAC1C\uB97C \uC758\uB8B0\uC778\uC5D0\uAC8C \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
-    ObjectiveType: Deliver
-    TargetId: item_salt
-    ContextId: $giver
-    RequiredAmount: 2
-    ExpiresAtNight: 0
-    Reward:
-      Type: Item
-      Id: item_thing
-      Amount: 1
-      Description: "\uD5A5 1\uAC1C"
-    Penalty:
-      Type: Stress
-      Id: 
-      Amount: 20
-      Description: "\uC2A4\uD2B8\uB808\uC2A4 +20"
   - Id: q_find_tool
     Title: "{target} \uCC3E\uAE30"
     Objective: "{giver:\uC774} \uC783\uC5B4\uBC84\uB9B0 {target:\uC744} \uCC3E\uC544 \uAC00\uC838\uB2E4\uC8FC\uC138\uC694."
