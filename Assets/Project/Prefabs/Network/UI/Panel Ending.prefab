@@ -501,7 +501,7 @@ GameObject:
   - component: {fileID: 6435620920090416909}
   - component: {fileID: 2711679587411048982}
   m_Layer: 5
-  m_Name: Panel Ghost02
+  m_Name: Panel Player2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1141,7 +1141,7 @@ GameObject:
   - component: {fileID: 3283324189734601184}
   - component: {fileID: 7905338992100642837}
   m_Layer: 5
-  m_Name: Panel Ghost02
+  m_Name: Panel Ghost2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1492,7 +1492,7 @@ GameObject:
   - component: {fileID: 5279623992080358700}
   - component: {fileID: 6871063319377727146}
   m_Layer: 5
-  m_Name: Panel Ghost03
+  m_Name: Panel Player3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1571,7 +1571,7 @@ GameObject:
   - component: {fileID: 3981659458849653957}
   - component: {fileID: 4128655902911457756}
   m_Layer: 5
-  m_Name: Button (1)
+  m_Name: Button MainMenu
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1678,7 +1678,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 3981659458849653957}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: EndingUI, Project.Runtime
+        m_MethodName: OnClickMainMenu
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &2776848910327153505
 GameObject:
   m_ObjectHideFlags: 0
@@ -1965,7 +1977,7 @@ GameObject:
   - component: {fileID: 1510225246953788327}
   - component: {fileID: 8556790182238990741}
   m_Layer: 5
-  m_Name: Panel (2)
+  m_Name: Panel Quest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2227,7 +2239,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 0.392}
+  m_Color: {r: 1, g: 1, b: 1, a: 0}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
@@ -2411,7 +2423,7 @@ GameObject:
   - component: {fileID: 6080293607905292072}
   - component: {fileID: 3717624970784918824}
   m_Layer: 5
-  m_Name: Panel Ghost03
+  m_Name: Panel Ghost3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2700,7 +2712,7 @@ GameObject:
   - component: {fileID: 4302159709995261433}
   - component: {fileID: 456005238435903755}
   m_Layer: 5
-  m_Name: 'Text '
+  m_Name: Text Trace
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2837,7 +2849,7 @@ GameObject:
   - component: {fileID: 1771623589701099714}
   - component: {fileID: 2978715191335898003}
   m_Layer: 5
-  m_Name: Text Day
+  m_Name: Text PlayTime
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -2890,7 +2902,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uB137\uC9F8 \uB0A0 \uBC24"
+  m_text: "\uD50C\uB808\uC774 \uC2DC\uAC04  "
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
   m_sharedMaterial: {fileID: -4329709167382420363, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
@@ -3404,7 +3416,7 @@ GameObject:
   - component: {fileID: 3421473531986682916}
   - component: {fileID: 3332944728675868633}
   m_Layer: 5
-  m_Name: Image (1)
+  m_Name: Image Line2
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3616,7 +3628,7 @@ GameObject:
   - component: {fileID: 506288201097559438}
   - component: {fileID: 3326968942649522996}
   m_Layer: 5
-  m_Name: Image (2)
+  m_Name: Image Line3
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3691,7 +3703,7 @@ GameObject:
   - component: {fileID: 7363079072090892419}
   - component: {fileID: 606455655818624836}
   m_Layer: 5
-  m_Name: Panel Ghost01
+  m_Name: Panel Ghost1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -3843,7 +3855,7 @@ GameObject:
   - component: {fileID: 3020534914213974490}
   - component: {fileID: 7636122238522555609}
   m_Layer: 5
-  m_Name: Panel (1)
+  m_Name: Panel Trace
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4133,7 +4145,7 @@ GameObject:
   - component: {fileID: 7706912431646214166}
   - component: {fileID: 2073868917566257645}
   m_Layer: 5
-  m_Name: Text (TMP)
+  m_Name: Text ReturnToLobby
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -4910,7 +4922,7 @@ GameObject:
   - component: {fileID: 705784246091371717}
   - component: {fileID: 8894513432317085387}
   m_Layer: 5
-  m_Name: Panel
+  m_Name: Panel DeadNpc
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6079,7 +6091,7 @@ GameObject:
   - component: {fileID: 7367439379545580301}
   - component: {fileID: 7979974334663593586}
   m_Layer: 5
-  m_Name: 'Text '
+  m_Name: Text Quest
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6428,7 +6440,7 @@ GameObject:
   - component: {fileID: 2108055590475980182}
   - component: {fileID: 7650852333430408295}
   m_Layer: 5
-  m_Name: Panel Ghost04
+  m_Name: Panel Ghost4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6708,7 +6720,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uCC98\uC74C\uC73C\uB85C"
+  m_text: "\uBA54\uC778 \uBA54\uB274\uB85C"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
   m_sharedMaterial: {fileID: -4329709167382420363, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
@@ -6793,7 +6805,7 @@ GameObject:
   - component: {fileID: 1448112298536533316}
   - component: {fileID: 5987836852891827244}
   m_Layer: 5
-  m_Name: Button
+  m_Name: Button ReturnToLobby
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -6900,7 +6912,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1448112298536533316}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 0}
+        m_TargetAssemblyTypeName: EndingUI, Project.Runtime
+        m_MethodName: OnClickLobby
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!1 &8581242499267999177
 GameObject:
   m_ObjectHideFlags: 0
@@ -7050,7 +7074,7 @@ GameObject:
   - component: {fileID: 6925518958753132625}
   - component: {fileID: 4293195727781946120}
   m_Layer: 5
-  m_Name: Panel Ghost01
+  m_Name: Panel Player1
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -7226,7 +7250,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -54, y: 0}
+  m_AnchoredPosition: {x: -47, y: 0}
   m_SizeDelta: {x: 200, y: 50}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &2339990595180327400
@@ -7257,7 +7281,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "\uCC3E\uC740 \uD754\uC801"
+  m_text: "\uC815\uB9AC\uD55C \uD754\uC801"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
   m_sharedMaterial: {fileID: -4329709167382420363, guid: 17af941c60f11b84cbfc00074a11b9b7, type: 2}
@@ -7341,7 +7365,7 @@ GameObject:
   - component: {fileID: 6749193873780044859}
   - component: {fileID: 8047625327581291141}
   m_Layer: 5
-  m_Name: Panel Ghost04
+  m_Name: Panel Player4
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

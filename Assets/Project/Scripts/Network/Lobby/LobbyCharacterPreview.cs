@@ -11,6 +11,8 @@ public class LobbyCharacterPreview : MonoBehaviour
 
     private void Awake()
     {
+        // URP HDR 중간 버퍼(B10G11R11)에는 알파가 없어 배경이 투명하게 빠지지 않음 → 프리뷰 카메라만 HDR 끔
+        if (_camera != null) _camera.allowHDR = false;
         Show(-1);
     }
 
