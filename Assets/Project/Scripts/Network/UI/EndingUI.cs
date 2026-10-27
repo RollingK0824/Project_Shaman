@@ -6,16 +6,14 @@ using System;
 
 // 게임 종료 결과 화면 (게임 씬 전용)
 // [서버·클라] GameManager가 게임 종료가 되면 표시. 수치는 NetGM 스냅샷·NetGameStartGate에서 읽음
-// 로비 복귀: 호스트는 버튼으로 즉시, 아니면 NetGM 카운트다운이 끝날 때 서버가 모두 이동
+// 로비 복귀: 호스트가 로비 버튼을 누르면 모두 이동
 public class EndingUI : MonoBehaviour
 {
     [SerializeField] private GameObject _panel;
 
     [Header("결과")]
     [SerializeField] private TMP_Text _resultMessageText;
-    [SerializeField] private TMP_Text _ghostCountText;
     [SerializeField] private TMP_Text _playTimeText;
-    [SerializeField] private Image[] _ghostSlots;
     [SerializeField] private Color _exorcisedColor = Color.white;
     [SerializeField] private Color _remainingColor = new Color(1f, 1f, 1f, 0.25f);
 
@@ -24,7 +22,9 @@ public class EndingUI : MonoBehaviour
     [SerializeField] private TMP_Text _lobbyButtonText;
 
     [Header("기록")]
-    [SerializeField] private TMP_Text _recordText;  // "희생된 주민 6 | 정리한 흔적 12 / 18 | 해결 의뢰 7 / 9"
+    [SerializeField] private TMP_Text _deadNpcText;  // 희생된 주민 값
+    [SerializeField] private TMP_Text _traceText;    // 흔적 값
+    [SerializeField] private TMP_Text _questText;    // 해결 의뢰 값
 
     [Header("원귀 현황")]
     [SerializeField] private GhostResultSlot[] _ghostResultSlots;
@@ -104,15 +104,11 @@ public class EndingUI : MonoBehaviour
         // 패배 사유는 GameManager 판정 규칙(주민 절반 이하 / 플레이어 전멸)과 같아야 함
         _resultMessageText.text = gm.CurrentGameState == GameState.Win ? "모든 원귀를 퇴마하였습니다." : gm.NpcCount <= gm.NpcTotal / 2 ? "마을 주민의 절반이 희생되었습니다." : "조사단이 전멸하였습니다.";
 
-        int total = _netGM != null ? _netGM.GhostTotal : 0;
-        int exorcised = Mathf.Max(0, total - gm.GhostCount);
 
         ApplyResultOnce();
 
         _playTimeText.text = FormatPlayerTime();
 
-        double remaining = _netGM != null ? System.Math.Max(0, _netGM.ReturnToLobbyTime - NetworkTime.time) : 0;
-        int second = (int)System.Math.Ceiling(remaining);
         bool isHost = NetworkServer.active;
         _lobbyButton.interactable = isHost;
         _lobbyButtonText.text = isHost ? "로비로 이동" : "호스트 대기 중";
@@ -126,6 +122,9 @@ public class EndingUI : MonoBehaviour
         GameResult result = NetGameRecord.Instance.Result;
         if (!result.valid) return; // 아직 도착 전이면 다음 프레임에 다시 확인
         _resultApplied = true;
+        _deadNpcText.text = result.villagersLost.ToString();
+        _traceText.text = $"{result.tracesHandled} / {result.tracesTotal}";
+        _questText.text = $"{result.questsCompleted} / {result.questsAccepted}";
 
         GhostResult[] ghosts = result.ghosts ?? Array.Empty<GhostResult>();
         for (int i = 0; i < _ghostResultSlots.Length; i++)

@@ -36,13 +36,6 @@ public class NetGM : NetworkBehaviour
     [Header("초기 개체 수")]
     [SerializeField, Min(1)] private int _initialNpcCount = 20;
 
-    [Header("게임 종료")]
-    [SerializeField, Min(0f)] private float _returnToLobbyDelay = 5f;
-
-    [SyncVar] private double _returnToLobbyTime;
-
-    public double ReturnToLobbyTime => _returnToLobbyTime;
-
     [SyncVar] private double _gameOverTime; // 승패가 난 시각 (플레이 시간 계산용)
 
     public double GameOverTime => _gameOverTime;
@@ -306,14 +299,6 @@ public class NetGM : NetworkBehaviour
         Debug.Log($"[NetGM] 게임 종료: {GameManager.Instance.CurrentGameState} -> 호스트 로비 복귀 대기");
     }
 
-    private IEnumerator ReturnToLobbyAfterDelay()
-    {
-        yield return new WaitForSeconds(_returnToLobbyDelay);
-
-        if (!NetworkServer.active) yield break;
-
-        ServerReturnToLobby();
-    }
 
     [Server]
     public void ServerReturnToLobby()

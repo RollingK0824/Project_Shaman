@@ -6,6 +6,9 @@ using System.Linq;
 public class RoomPlayer : NetworkRoomPlayer
 {
     [SyncVar(hook = nameof(OnNicknameChanged))] public string nickname;
+    // 인게임에서 쓰는 이름 (한글 2~4자). 서버가 검사한 값만 들어감
+    [SyncVar(hook = nameof(OnGameNameChanged))] public string gameName;
+    
     [SyncVar(hook = nameof(OnRoomMaxPlayersChanged))] public int roomMaxPlayers;
     public const int CHARACTER_COUNT = 4;
     // 로비엣 ㅓ고른 캐릭터 (0 ~ 3 == NetPlayer1 ~ 4 - 1) = 서버가 아직 배정 전
@@ -14,7 +17,7 @@ public class RoomPlayer : NetworkRoomPlayer
 
     public static event Action NotEnoughPlayers;
     public static event Action LobbyChanged;
-
+    public bool HasGameName => PlayerNameRule.IsValid(gameName);
 
     public override void Start()
     {
@@ -44,6 +47,9 @@ public class RoomPlayer : NetworkRoomPlayer
                 : UserData.Nickname;
 
             CmdSetNickname(myName);
+
+            string savedName = PlayerPrefs.GetString(PlayerNameRule.PrefsKey, "");
+            if (PlayerNameRule.IsValid(savedName)) CmdSetGameName(savedName);
         }
 
     }
@@ -165,6 +171,23 @@ public class RoomPlayer : NetworkRoomPlayer
     void CmdSetNickname(string name)
     {
         nickname = name;
+    }
+
+    // [서버] 준비 중엔 변경 불가, 규칙에 맞는 이름만 받음
+    [Command]
+    public void CmdSetGameName(string name)
+    {
+        if (readyToBegin) return;
+
+        name = name != null ? name.Trim() : null;
+        if (!PlayerNameRule.IsValid(name)) return;
+
+        gameName = name;
+    }
+
+    private void OnGameNameChanged(string oldValue, string newValue)
+    {
+        LobbyChanged?.Invoke();
     }
 
     [ClientRpc]
