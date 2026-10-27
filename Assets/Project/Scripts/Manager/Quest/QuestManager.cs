@@ -302,6 +302,7 @@ public class QuestManager : SceneSingleton<QuestManager>
 
     // 진행 중인 퀘스트는 실패 (패널티). 받지 않은 의뢰는 남겨 두었다가 다음 날 아침 다시 받을 수 있다
     // (ExpiresAtNight 의뢰는 그날로 실패, 의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다)
+    // OutlastsNight 퀘스트는 밤을 넘긴다: 기한은 ExpireOpenQuest가 정한다
     private void HandleNightStart()
     {
         if (!IsServerSide)
@@ -313,6 +314,11 @@ public class QuestManager : SceneSingleton<QuestManager>
         for (int i = _quests.Count - 1; i >= 0; i--)
         {
             QuestInstance quest = _quests[i];
+
+            if (quest.Definition.OutlastsNight)
+            {
+                continue;
+            }
 
             if (quest.State == QuestState.Active || (quest.State == QuestState.Offered && quest.Definition.ExpiresAtNight))
             {
@@ -518,6 +524,17 @@ public class QuestManager : SceneSingleton<QuestManager>
                 End(quest, QuestState.Cancelled);
             }
         }
+    }
+
+    // 기한이 된 의뢰: 받은 퀘스트는 실패(패널티), 아무도 받지 않은 의뢰는 취소
+    public void ExpireOpenQuest(string giverId, string targetId)
+    {
+        if (!IsServerSide || !TryGetOpenQuest(giverId, out QuestInstance quest) || quest.TargetId != targetId)
+        {
+            return;
+        }
+
+        End(quest, quest.State == QuestState.Active ? QuestState.Failed : QuestState.Cancelled);
     }
 
     private string ResolveItemName(string id)

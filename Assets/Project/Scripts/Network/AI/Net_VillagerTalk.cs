@@ -7,6 +7,7 @@ using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Dialogue;
 using System.Collections.Generic;
 using ProjectShaman.AI.Interaction;
+using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Work;
 using ProjectShaman.AI.World;
 
@@ -278,9 +279,15 @@ namespace ProjectShaman.Network.AI
             TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
         }
 
-        private static string DescribeOffer(IQuestView offer)
+        private string DescribeOffer(IQuestView offer)
         {
             string text = $"<b>{offer.TitleText}</b>\n{offer.ObjectiveText}";
+            string deadline = DescribeToolDeadline(offer);
+            if (deadline != null)
+            {
+                text += $"\n{deadline}";
+            }
+
             QuestEffect reward = offer.Definition.Reward;
             if (!string.IsNullOrEmpty(reward.Description))
             {
@@ -288,6 +295,25 @@ namespace ProjectShaman.Network.AI
             }
 
             return text;
+        }
+
+        // A FindTool request lasts until the villager next needs the tool (C120): said up front so the end is no surprise
+        private string DescribeToolDeadline(IQuestView offer)
+        {
+            if (offer.Definition.ObjectiveType != QuestActions.DELIVER || _core == null || _core.Profile == null || _core.Profile.Schedule == null)
+            {
+                return null;
+            }
+
+            ResolvedRoutine current = _core.CurrentRoutine;
+            if (current.DayCount <= 0 || !_core.Profile.Schedule.TryFindNextToolUse(current.DayCount, current.Slot, offer.TargetId, out int daysAhead, out RoutineEntry routine))
+            {
+                return null;
+            }
+
+            string when = daysAhead == 0 ? "이따" : daysAhead == 1 ? "내일" : daysAhead == 2 ? "모레" : $"{daysAhead}일 뒤";
+            string work = string.IsNullOrEmpty(routine.DisplayName) ? routine.RoutineId : routine.DisplayName;
+            return $"{when} {work} 전까지만 찾아 주면 되오.";
         }
 
         private void AnswerQuestOffer(NetworkConnectionToClient sender, string topicId)
