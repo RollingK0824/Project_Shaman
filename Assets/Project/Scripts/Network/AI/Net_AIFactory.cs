@@ -33,9 +33,20 @@ namespace ProjectShaman.Network.AI
             ServerBindQuests();
         }
 
+        // The lose check counts every death, known to the village or not (only the vote lists wait for the body)
         private void HandleVillagerDied(string villagerId, string reason)
         {
             RpcVillagerDied(villagerId);
+
+            NetGM gameManager = FindFirstObjectByType<NetGM>();
+            if (gameManager == null)
+            {
+                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
+                return;
+            }
+
+            gameManager.ServerReportNpcDied();
+            AILog.Log(AILog.NET, villagerId, "Death reported to NetGM");
         }
 
         public override void OnStopServer()
@@ -65,21 +76,10 @@ namespace ProjectShaman.Network.AI
             base.OnStopClient();
         }
 
-        // A death counts for the game once it is known (body cleared by a player, or found dead when voted out),
-        // not when the ghost kills: until then the village does not know anyone is gone
+        // The village learns of a death (body cleared, or found dead when voted out): it leaves the vote lists
         private void HandleDeathKnown(string villagerId)
         {
             RpcVillagerDeathKnown(villagerId);
-
-            NetGM gameManager = FindFirstObjectByType<NetGM>();
-            if (gameManager == null)
-            {
-                AILog.Log(AILog.STUB, villagerId, "NetGM not in scene, death report skipped");
-                return;
-            }
-
-            gameManager.ServerReportNpcDied();
-            AILog.Log(AILog.NET, villagerId, "Death (now known) reported to NetGM");
         }
 
         private void HandleExorcised(string villagerId)
