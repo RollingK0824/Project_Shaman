@@ -391,6 +391,7 @@ namespace ProjectShaman.AI.Request
             }
 
             origin.GiverId = giverId;
+            YieldLowerRequest(giverId, origin);
             _pending = origin;
             bool offered = _quests.TryOffer(giverId, questId, origin.TargetId, origin.ContextId);
             _pending = null;
@@ -405,6 +406,46 @@ namespace ProjectShaman.AI.Request
             }
 
             return offered;
+        }
+
+        // One open request per villager: a more urgent one takes the place of one nobody has taken yet.
+        // A request a player took stays (they are on it), and the newer one is refused as before
+        private void YieldLowerRequest(string giverId, RequestOrigin incoming)
+        {
+            foreach (KeyValuePair<int, RequestOrigin> pair in _origins)
+            {
+                RequestOrigin open = pair.Value;
+                if (open.GiverId != giverId)
+                {
+                    continue;
+                }
+
+                // The cancel ends the quest, which removes its origin: no more looping after it
+                int instanceId = pair.Key;
+                if (PriorityOf(open) < PriorityOf(incoming) && _quests.TryCancelQuest(instanceId))
+                {
+                    AILog.Log(AILog.REQUEST, giverId, $"Request {open.Kind} (#{instanceId}) gave way to the more urgent {incoming.Kind}");
+                }
+
+                return;
+            }
+        }
+
+        // Body and missing villager > trace > gut > lost tool
+        private static int PriorityOf(RequestOrigin origin)
+        {
+            switch (origin.Kind)
+            {
+                case CHECK_ON:
+                    return 4;
+                case TRACE:
+                case TRACE_CLEANSE:
+                    return origin.TargetId == GhostTraceKind.VillagerCorpse.ToString() ? 4 : 3;
+                case GUT:
+                    return 2;
+                default:
+                    return 1;
+            }
         }
 
         // QuestOffered fires inside TryOffer, so the pending origin belongs to this instance
