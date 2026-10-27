@@ -305,15 +305,20 @@ namespace ProjectShaman.Network.AI
                 return null;
             }
 
+            // The asking day is given up (the villager rests through its work with that tool), so the deadline is the
+            // first use on a later day. Asked on an earlier day and still open: the next use from now
             ResolvedRoutine current = _core.CurrentRoutine;
-            if (current.DayCount <= 0 || !_core.Profile.Schedule.TryFindNextToolUse(current.DayCount, current.Slot, offer.TargetId, out int daysAhead, out RoutineEntry routine))
+            VillagerSchedule schedule = _core.Profile.Schedule;
+            bool askedToday = offer.DayIssued == current.DayCount;
+            int fromSlot = askedToday ? schedule.SlotsPerDay - 1 : current.Slot;
+            if (current.DayCount <= 0 || !schedule.TryFindNextToolUse(current.DayCount, fromSlot, offer.TargetId, out int daysAhead, out RoutineEntry routine))
             {
                 return null;
             }
 
             string when = daysAhead == 0 ? "이따" : daysAhead == 1 ? "내일" : daysAhead == 2 ? "모레" : $"{daysAhead}일 뒤";
             string work = string.IsNullOrEmpty(routine.DisplayName) ? routine.RoutineId : routine.DisplayName;
-            return $"{when} {work} 전까지만 찾아 주면 되오.";
+            return $"{(askedToday ? "오늘 일은 글렀고, " : string.Empty)}{when} {work} 전까지만 찾아 주면 되오.";
         }
 
         private void AnswerQuestOffer(NetworkConnectionToClient sender, string topicId)

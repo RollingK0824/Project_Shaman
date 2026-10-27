@@ -569,6 +569,17 @@ namespace ProjectShaman.AI.Core
                 }
 
                 villager.Current = resolved;
+
+                // The tool was searched for and asked about earlier today: the villager rests and waits for it instead of
+                // searching again (a player handing it over resumes the block, TryResumeWithTool)
+                if (_requests != null && _requests.IsWaitingForTool(villager.Id, resolved.ToolTypeId, _time.DayCount)
+                    && (villager.ToolHandler == null || !villager.ToolHandler.IsHoldingType(resolved.ToolTypeId)))
+                {
+                    villager.WaitingToolType = resolved.ToolTypeId;
+                    SkipRoutine(villager, block.Index, endTime, $"still waiting for '{resolved.ToolTypeId}' asked about today");
+                    return;
+                }
+
                 villager.Core.ApplyRoutine(resolved);
                 _observation?.OnRoutineApplied(villager.Core, villager.Interaction, resolved, endTime - now);
                 RecordMemory(villager, resolved);
