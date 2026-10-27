@@ -577,6 +577,9 @@ GameObject:
   - component: {fileID: 3662518075650597335}
   - component: {fileID: 154331009197329902}
   - component: {fileID: 3119850079899015170}
+  - component: {fileID: 3151669207077357859}
+  - component: {fileID: 1463238138606123897}
+  - component: {fileID: -4600253240461387966}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -767,6 +770,7 @@ MonoBehaviour:
   _heartbeatPitch: {x: 1, y: 1.6}
   _breathingPitch: {x: 1, y: 1.5}
   _volumeFadeSpeed: 6
+  _maxStressVolumeWeight: 0.7
 --- !u!114 &1632059923116249278
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1436,6 +1440,53 @@ MonoBehaviour:
   syncMode: 0
   syncInterval: 0
   _dataBase: {fileID: 11400000, guid: bd35ab6adfe38c54a811627ac6bc3d23, type: 2}
+--- !u!114 &3151669207077357859
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0d1a486164118b140bbc1edeb10fcd5d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerLanternPlacement
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &1463238138606123897
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8c84eca893b54a641bbd36b80f15470d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerYinIncense
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &-4600253240461387966
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e7089fa475408246911c24095df081f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerHouseBarrier
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _dataBase: {fileID: 11400000, guid: bd35ab6adfe38c54a811627ac6bc3d23, type: 2}
+  _maxAimOriginDistance: 3
 --- !u!1 &8459400485122398486
 GameObject:
   m_ObjectHideFlags: 0
