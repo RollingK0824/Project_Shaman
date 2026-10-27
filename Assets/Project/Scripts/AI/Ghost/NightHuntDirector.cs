@@ -296,7 +296,7 @@ namespace ProjectShaman.AI.Ghost
             }
 
             _nextSightingScanTime = Time.time + _behaviourConfig.ObservationInterval;
-            float radiusSqr = _behaviourConfig.ObservationRadius * _behaviourConfig.ObservationRadius;
+            float radiusSqr = _behaviourConfig.GhostSightingRadius * _behaviourConfig.GhostSightingRadius;
 
             foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
             {
