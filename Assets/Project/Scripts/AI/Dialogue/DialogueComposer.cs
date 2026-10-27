@@ -21,6 +21,7 @@ namespace ProjectShaman.AI.Dialogue
             string prefix = fact.Kind == MemoryKind.TraceWitness ? "trace"
                 : fact.Kind == MemoryKind.Absent ? "absent"
                 : fact.Kind == MemoryKind.Death ? "death"
+                : fact.Kind == MemoryKind.GhostSighting ? "ghost"
                 : "testimony";
             string mode = fact.Source == MemorySource.Direct ? "seen" : fact.Hops <= 1 ? "heard" : "rumor";
             string template = DialogueLibrary.Line($"{prefix}.{mode}", random);

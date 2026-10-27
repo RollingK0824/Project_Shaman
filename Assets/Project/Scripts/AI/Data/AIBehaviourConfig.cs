@@ -88,6 +88,8 @@ namespace ProjectShaman.AI.Data
         [Header("Night Action")]
         [SerializeField] private float _nightWitnessRadius = 15f;
         [SerializeField] private float _sleepParalysisHomeDistance = 4f;
+        [Tooltip("A villager still out at night who sees a ghost (C122). Seen once per ghost a night")]
+        [SerializeField, Min(0f)] private float _ghostSightingStress = 25f;
         [SerializeField] private float _ghostHideMinDistance = 8f;
         [SerializeField] private float _ghostHideMaxDistance = 20f;
         [SerializeField] private float _ghostActionCooldownMin = 15f;
@@ -281,6 +283,7 @@ namespace ProjectShaman.AI.Data
         public float ToolSearchFailedStress => _toolSearchFailedStress;
         public float NightWitnessRadius => _nightWitnessRadius;
         public float SleepParalysisHomeDistance => _sleepParalysisHomeDistance;
+        public float GhostSightingStress => _ghostSightingStress;
         public float GhostHideMinDistance => _ghostHideMinDistance;
         public float GhostHideMaxDistance => Mathf.Max(_ghostHideMinDistance, _ghostHideMaxDistance);
         public float GhostActionCooldownMin => Mathf.Max(0f, _ghostActionCooldownMin);
