@@ -145,6 +145,14 @@ public class RoomManager : NetworkRoomManager
     // 호스트의 OnClientChangeScene은 서버 로딩이 시작된 뒤에 오므로, 멈춤보다 늦지 않게 여기서 먼저 표시
     public override void OnServerChangeScene(string newSceneName)
     {
+        if (newSceneName == RoomScene)
+        {
+            foreach (var slot in roomSlots)
+            {
+                if (slot is RoomPlayer player) player.gameName = string.Empty;
+            }
+        }
+
         base.OnServerChangeScene(newSceneName);
         if (NetworkClient.active && newSceneName == GameplayScene) BeginGameLoading();
     }

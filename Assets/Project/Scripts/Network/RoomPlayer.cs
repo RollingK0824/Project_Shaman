@@ -47,9 +47,6 @@ public class RoomPlayer : NetworkRoomPlayer
                 : UserData.Nickname;
 
             CmdSetNickname(myName);
-
-            string savedName = PlayerPrefs.GetString(PlayerNameRule.PrefsKey, "");
-            if (PlayerNameRule.IsValid(savedName)) CmdSetGameName(savedName);
         }
 
     }

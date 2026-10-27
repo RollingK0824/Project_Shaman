@@ -44,7 +44,7 @@ public class LobbyUI : MonoBehaviour
         if (_nameRequiredWarning != null) _nameRequiredWarning.SetActive(false);
 
         _gameNameInput.characterLimit = PlayerNameRule.MaxLength;
-        _gameNameInput.text = PlayerPrefs.GetString(PlayerNameRule.PrefsKey, "");
+        _gameNameInput.text = string.Empty;
         _gameNameInput.onValueChanged.AddListener(_ => UpdateNameHint());
         _gameNameInput.onEndEdit.AddListener(SubmitGameName);
         UpdateNameHint();
@@ -248,7 +248,6 @@ public class LobbyUI : MonoBehaviour
         string name = text.Trim();
         if (_localRoomPlayer == null || !PlayerNameRule.IsValid(name)) return;
 
-        PlayerPrefs.SetString(PlayerNameRule.PrefsKey, name);
         if (_localRoomPlayer.gameName != name) _localRoomPlayer.CmdSetGameName(name);
     }
 

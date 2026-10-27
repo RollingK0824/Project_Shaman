@@ -150,6 +150,7 @@ public class NetGM : NetworkBehaviour
     {
         base.OnStartServer();
 
+        AIEvents.OnVillagerExorcised += HandleVillagerExorcised;
         PlayerRoster.Changed += HandleRosterChanged;
 
         _serverGameManager = GameManager.Instance;
@@ -187,6 +188,7 @@ public class NetGM : NetworkBehaviour
 
     public override void OnStopServer()
     {
+        AIEvents.OnVillagerExorcised -= HandleVillagerExorcised;
         PlayerRoster.Changed -= HandleRosterChanged;
 
         if (_serverGameManager != null)
@@ -201,6 +203,11 @@ public class NetGM : NetworkBehaviour
         }
 
         base.OnStopServer();
+    }
+
+    private void HandleVillagerExorcised(string villagerId)
+    {
+        ServerReportGhostExorcised();
     }
 
     public override void OnStartClient()
