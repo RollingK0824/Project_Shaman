@@ -1,5 +1,19 @@
 using UnityEngine;
 
+[System.Serializable]
+public class MoonPhase
+{
+    public string name = "Full Moon";
+    [Tooltip("이 달 위상의 밤 스카이박스 큐브맵 (_NightTex)")]
+    public Cubemap nightCubemap;
+    [Tooltip("달 밝기 (0 = 삭, 1 = 보름). 밤 조명·환경광·안개 밝기에 반영")]
+    [Range(0f, 1f)]
+    public float moonBrightness = 1f;
+    [Tooltip("이 위상의 밤 스카이박스 노출(_Exposure) 배율. 1 = 원본, 낮을수록 어둡다")]
+    [Range(0f, 2f)]
+    public float skyboxExposure = 1f;
+}
+
 [ExecuteAlways]
 public class DayNightCycleController : MonoBehaviour
 {
@@ -14,6 +28,7 @@ public class DayNightCycleController : MonoBehaviour
     private static readonly int NightPitchProp = Shader.PropertyToID("_NightPitch");
     private static readonly int BlendProp = Shader.PropertyToID("_Blend");
     private static readonly int ExposureProp = Shader.PropertyToID("_Exposure");
+    private static readonly int NightTexProp = Shader.PropertyToID("_NightTex");
 
     [Header("References")]
     [SerializeField] private Light directionalLight;
@@ -47,7 +62,27 @@ public class DayNightCycleController : MonoBehaviour
     [SerializeField] private Color dayFogColor = new Color(0.51f, 0.54f, 0.60f, 1f);
     [SerializeField] private Color nightFogColor = new Color(0.06f, 0.09f, 0.14f, 1f);
 
+    [Header("Moon Phases (하루마다 다음 위상으로 넘어감)")]
+    [SerializeField] private MoonPhase[] moonPhases;
+    [Tooltip("1일차의 달 위상 인덱스")]
+    [SerializeField] private int startMoonPhaseIndex;
+    [Tooltip("TimeManager가 없을 때(테스트 씬·에디터) 사용할 위상 인덱스. 미리보기 사이클이 한 바퀴 돌 때마다 증가")]
+    [SerializeField] private int previewMoonPhaseIndex;
+
+    [Header("Environment Reflections (Lighting > Environment > Intensity Multiplier)")]
+    [Tooltip("낮의 반사 강도. Gameplay 씬의 기존 값 0.244")]
+    [Range(0f, 1f)]
+    [SerializeField] private float dayReflectionIntensity = 0.244f;
+    [Tooltip("밤, 삭(달 밝기 0)일 때의 반사 강도")]
+    [Range(0f, 1f)]
+    [SerializeField] private float newMoonReflectionIntensity = 0.1f;
+    [Tooltip("밤, 보름(달 밝기 1)일 때의 반사 강도")]
+    [Range(0f, 1f)]
+    [SerializeField] private float fullMoonReflectionIntensity = 0.244f;
+
     private float _lastCycleProgress = -1f;
+    private Texture _originalNightTex;
+    private bool _nightTexOverridden;
     private Quaternion _lastLightRotation = Quaternion.identity;
     private double _lastEditorTime;
 
@@ -73,6 +108,13 @@ public class DayNightCycleController : MonoBehaviour
 
     private void OnDisable()
     {
+        // 머티리얼 에셋(.mat)에 위상 큐브맵이 저장되지 않도록 원래 밤 텍스처로 되돌린다.
+        if (_nightTexOverridden && skyboxMaterial != null)
+        {
+            skyboxMaterial.SetTexture(NightTexProp, _originalNightTex);
+            _nightTexOverridden = false;
+        }
+
 #if UNITY_EDITOR
         //UnityEditor.EditorApplication.update -= OnEditorUpdate;
 #endif
@@ -173,7 +215,12 @@ public class DayNightCycleController : MonoBehaviour
 
             if (autoSimulatePreview && previewCycleDuration > 0.1f)
             {
-                cycleProgress = Mathf.Repeat(cycleProgress + Time.deltaTime / previewCycleDuration, 1f);
+                float next = cycleProgress + Time.deltaTime / previewCycleDuration;
+                if (next >= 1f)
+                {
+                    previewMoonPhaseIndex++;
+                }
+                cycleProgress = Mathf.Repeat(next, 1f);
                 _lastCycleProgress = cycleProgress;
                 ApplyFromCycleProgress(cycleProgress);
                 return;
@@ -245,6 +292,9 @@ public class DayNightCycleController : MonoBehaviour
         float moonArc = Mathf.Sin(moonProgress * Mathf.PI);
         float moonPitch = Mathf.Lerp(-skyboxVerticalArcDegrees * 0.5f, skyboxVerticalArcDegrees, moonArc);
 
+        MoonPhase moonPhase = GetCurrentMoonPhase();
+        float moonBrightness = moonPhase != null ? moonPhase.moonBrightness : 1f;
+
         // 3. Apply rotations and blend to AllSkyFree Skybox Material
         Material mat = skyboxMaterial != null ? skyboxMaterial : RenderSettings.skybox;
         if (mat != null)
@@ -259,7 +309,20 @@ public class DayNightCycleController : MonoBehaviour
             if (mat.HasProperty(NightRotationProp)) mat.SetFloat(NightRotationProp, NormalizeAngle360(moonAzimuth));
             if (mat.HasProperty(NightPitchProp)) mat.SetFloat(NightPitchProp, moonPitch);
             if (mat.HasProperty(BlendProp)) mat.SetFloat(BlendProp, nightBlend);
-            if (mat.HasProperty(ExposureProp)) mat.SetFloat(ExposureProp, twilightDip);
+            float phaseExposure = moonPhase != null ? moonPhase.skyboxExposure : 1f;
+            if (mat.HasProperty(ExposureProp)) mat.SetFloat(ExposureProp, twilightDip * Mathf.Lerp(1f, phaseExposure, nightBlend));
+
+            // 위상은 하루(DayCount)가 바뀌는 t = 0에 바뀐다. 이때 nightBlend = 0이라 교체가 보이지 않는다.
+            if (moonPhase != null && moonPhase.nightCubemap != null && mat.HasProperty(NightTexProp)
+                && mat.GetTexture(NightTexProp) != moonPhase.nightCubemap)
+            {
+                if (!_nightTexOverridden)
+                {
+                    _originalNightTex = mat.GetTexture(NightTexProp);
+                    _nightTexOverridden = true;
+                }
+                mat.SetTexture(NightTexProp, moonPhase.nightCubemap);
+            }
         }
 
         // 4. Directional Light & Shadows:
@@ -301,6 +364,36 @@ public class DayNightCycleController : MonoBehaviour
         RenderSettings.ambientEquatorColor = Color.Lerp(dayAmbientColor, nightAmbientColor, nightBlend);
         RenderSettings.ambientGroundColor = Color.Lerp(dayAmbientColor * 0.8f, nightAmbientColor * 0.8f, nightBlend);
         RenderSettings.fogColor = Color.Lerp(dayFogColor, nightFogColor, nightBlend);
+
+        // 6. Environment Reflections: 밤에는 달이 밝을수록 반사 강도가 올라간다.
+        float nightReflection = Mathf.Lerp(newMoonReflectionIntensity, fullMoonReflectionIntensity, moonBrightness);
+        RenderSettings.reflectionIntensity = Mathf.Lerp(dayReflectionIntensity, nightReflection, nightBlend);
+    }
+
+    public int CurrentMoonPhaseIndex
+    {
+        get
+        {
+            if (moonPhases == null || moonPhases.Length == 0)
+            {
+                return -1;
+            }
+
+            int dayIndex = previewMoonPhaseIndex;
+            if (Application.isPlaying && TimeManager.Instance != null && TimeManager.Instance.IsRunning)
+            {
+                dayIndex = Mathf.Max(0, TimeManager.Instance.DayCount - 1);
+            }
+
+            int index = (startMoonPhaseIndex + dayIndex) % moonPhases.Length;
+            return index < 0 ? index + moonPhases.Length : index;
+        }
+    }
+
+    public MoonPhase GetCurrentMoonPhase()
+    {
+        int index = CurrentMoonPhaseIndex;
+        return index < 0 ? null : moonPhases[index];
     }
 
     public void SyncSkyboxToManualLightDirection()
