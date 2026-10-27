@@ -29,6 +29,8 @@ namespace ProjectShaman.AI.Core
         private static NavMeshPath _pathBuffer;
 
         private readonly List<VillagerRuntime> _villagers = new List<VillagerRuntime>();
+        // Dead, not yet known to the village: still given a day on the schedule tab (see PlanDay)
+        private readonly List<UnknownDeath> _unknownDeaths = new List<UnknownDeath>();
         private TimeManager _time;
         private RoutineResolver _resolver;
         private ConversationService _conversations;
@@ -100,6 +102,7 @@ namespace ProjectShaman.AI.Core
 
             AILog.Log(AILog.MANAGER, $"Stopped and cleared {_villagers.Count} villagers");
             _villagers.Clear();
+            _unknownDeaths.Clear();
             _resolver = null;
             _conversations?.Clear();
             _conversations = null;
@@ -217,6 +220,7 @@ namespace ProjectShaman.AI.Core
             }
 
             registry.MarkDeathKnown(victimId);
+            _unknownDeaths.RemoveAll(dead => dead.Profile.VillagerId == victimId);
 
             string neighborhood = NeighborhoodOf(victimId);
             List<VillagerRuntime> learners = new List<VillagerRuntime>();
@@ -399,14 +403,16 @@ namespace ProjectShaman.AI.Core
         {
             foreach (VillagerRuntime villager in _villagers)
             {
-                PickHomeHours(villager, dayCount, out int homeHour, out int bedHour);
+                PickHomeHours(villager.Profile, dayCount, out int homeHour, out int bedHour);
                 float homeArriveTime = DayClock.ToDayElapsed(homeHour);
                 float homeReturnTime = CalculateHomeReturnTime(villager, dayCount, homeArriveTime);
-                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager, dayCount), _behaviourConfig, homeReturnTime, out string blockNote);
+                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(villager.Profile, dayCount), _behaviourConfig, homeReturnTime, out string blockNote);
                 blocks.RemoveAll(block => block.EndTime <= fromTime);
                 villager.SetToday(blocks, homeReturnTime, homeArriveTime);
                 villager.Core.SetDailyStartOffset(blocks.Count > 0 ? blocks[0].StartTime : 0f);
-                villager.Core.SetTodayBlocks(dayCount, DailyBlock.ToHourPairs(blocks), homeHour, bedHour);
+                int[] blockHours = DailyBlock.ToHourPairs(blocks);
+                villager.Core.SetTodayBlocks(dayCount, blockHours, homeHour, bedHour);
+                PublishDayHours(villager.Id, dayCount, blockHours, homeHour, bedHour);
                 PlanCorruption(villager, dayCount);
 
                 if (villager.Memory != null)
@@ -420,6 +426,22 @@ namespace ProjectShaman.AI.Core
                 }
                 AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} blocks=[{string.Join(", ", blocks)}] {blockNote} homeReturn={DayClock.ToHour(villager.HomeReturnTime):F1}h ({villager.HomeReturnTime:F1}s) home by {homeHour}h, bed {bedHour}h");
             }
+
+            // A death the village does not know of yet keeps a day on the schedule tab, planned the same way with the
+            // walk home it last had. The death comes out through villagers ("not seen all day"), not through an empty day
+            foreach (UnknownDeath dead in _unknownDeaths)
+            {
+                PickHomeHours(dead.Profile, dayCount, out int homeHour, out int bedHour);
+                float homeReturnTime = DayClock.ToDayElapsed(homeHour) - dead.HomeWalkSeconds;
+                List<DailyBlock> blocks = DailyBlockPlanner.Build(GetBlockSeed(dead.Profile, dayCount), _behaviourConfig, homeReturnTime, out _);
+                PublishDayHours(dead.Profile.VillagerId, dayCount, DailyBlock.ToHourPairs(blocks), homeHour, bedHour);
+            }
+        }
+
+        private void PublishDayHours(string villagerId, int dayCount, int[] blockHours, int homeHour, int bedHour)
+        {
+            Registry?.SetDayHours(villagerId, dayCount, blockHours, homeHour, bedHour);
+            AIEvents.RaiseDayPlanned(villagerId, dayCount, blockHours, homeHour, bedHour);
         }
 
         private void HandleDayStart()
@@ -762,6 +784,7 @@ namespace ProjectShaman.AI.Core
             core.OnRoutineFailed -= villager.RoutineFailedHandler;
             UnsubscribeDeath(villager);
             _villagers.Remove(villager);
+            _unknownDeaths.Add(new UnknownDeath { Profile = villager.Profile, HomeWalkSeconds = villager.HomeArriveTime - villager.HomeReturnTime });
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
             _observation?.OnVillagerRemoved(villager.Id);
@@ -988,15 +1011,15 @@ namespace ProjectShaman.AI.Core
             }
         }
 
-        private int GetBlockSeed(VillagerRuntime villager, int dayCount)
+        private int GetBlockSeed(VillagerProfile profile, int dayCount)
         {
-            return unchecked(_factory.Seed * 486187739 + villager.Profile.Index * 16777619 + dayCount * 31);
+            return unchecked(_factory.Seed * 486187739 + profile.Index * 16777619 + dayCount * 31);
         }
 
         // Each villager's home-by and bed hours, fixed for the day and shown on the schedule tab (half-sijin rows)
-        private void PickHomeHours(VillagerRuntime villager, int dayCount, out int homeHour, out int bedHour)
+        private void PickHomeHours(VillagerProfile profile, int dayCount, out int homeHour, out int bedHour)
         {
-            System.Random random = new System.Random(unchecked(GetBlockSeed(villager, dayCount) * 7 + 1));
+            System.Random random = new System.Random(unchecked(GetBlockSeed(profile, dayCount) * 7 + 1));
             homeHour = Mathf.Clamp(PickHour(random, _behaviourConfig.HomeArriveHours, DayClock.DAY_END_HOUR - 1), DayClock.DAY_START_HOUR + 1, DayClock.DAY_END_HOUR);
             bedHour = Mathf.Max(DayClock.DAY_END_HOUR, PickHour(random, _behaviourConfig.BedHours, DayClock.DAY_END_HOUR));
         }
@@ -1084,6 +1107,13 @@ namespace ProjectShaman.AI.Core
             {
                 villager.Memory.RecordRoutine(resolved);
             }
+        }
+
+        private sealed class UnknownDeath
+        {
+            public VillagerProfile Profile;
+            // The walk home of its last day: its next days are planned with it, as if it still came home from work
+            public float HomeWalkSeconds;
         }
 
         public class VillagerRuntime
