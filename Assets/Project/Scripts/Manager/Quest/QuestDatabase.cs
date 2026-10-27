@@ -15,8 +15,8 @@ public struct QuestDefinition
     public int RequiredAmount;
     [Tooltip("받지 않은 채 밤이 되면 실패 (그날의 일: 도구 찾기 등). 끄면 다음 날 아침 다시 받을 수 있다")]
     public bool ExpiresAtNight;
-    [Tooltip("진행 중이어도 밤에 실패하지 않는다. 기한은 의뢰를 만든 쪽이 정해 ExpireOpenQuest로 끝낸다 (도구 찾기: 그 도구가 필요한 다음 일과 시작)")]
-    public bool OutlastsNight;
+    [Tooltip("밤에 실패하지 않음. 실패는 AI(의뢰인) 쪽이 TryFailQuest 로 정함 (도구 전달 의뢰)")]
+    public bool FailedByGiver;
     public QuestEffect Reward;
     public QuestEffect Penalty;
 }

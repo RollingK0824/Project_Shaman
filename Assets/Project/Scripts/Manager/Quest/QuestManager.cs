@@ -195,7 +195,8 @@ public class QuestManager : SceneSingleton<QuestManager>
     // Both are resolved here, at offer time, so "!" and dialogue can already describe the request.
     public bool TryOffer(string giverId, string questId, string targetId, string contextId)
     {
-        if (!IsServerSide || !IsDay() || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
+        // 진행 중 퀘스트가 가득 차면 받을 수 없는 의뢰(실패 패널티만 남음)가 생기지 않도록 거절
+        if (!IsServerSide || !IsDay() || ActiveCount >= _maxActive || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
         {
             return false;
         }
@@ -302,7 +303,6 @@ public class QuestManager : SceneSingleton<QuestManager>
 
     // 진행 중인 퀘스트는 실패 (패널티). 받지 않은 의뢰는 남겨 두었다가 다음 날 아침 다시 받을 수 있다
     // (ExpiresAtNight 의뢰는 그날로 실패, 의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다)
-    // OutlastsNight 퀘스트는 밤을 넘긴다: 기한은 ExpireOpenQuest가 정한다
     private void HandleNightStart()
     {
         if (!IsServerSide)
@@ -315,7 +315,8 @@ public class QuestManager : SceneSingleton<QuestManager>
         {
             QuestInstance quest = _quests[i];
 
-            if (quest.Definition.OutlastsNight)
+            // 실패 시점을 AI 쪽이 정하는 의뢰 (TryFailQuest)
+            if (quest.Definition.FailedByGiver)
             {
                 continue;
             }
@@ -507,6 +508,25 @@ public class QuestManager : SceneSingleton<QuestManager>
         };
     }
 
+    // AI 쪽 판정: 도구 전달 의뢰의 기한(같은 도구가 필요한 다음 일과)이 지나면 호출. 받았든 안 받았든 실패 (패널티)
+    public bool TryFailQuest(int instanceId)
+    {
+        if (!IsServerSide)
+        {
+            return false;
+        }
+
+        foreach (QuestInstance quest in _quests)
+        {
+            if (quest.InstanceId == instanceId && (quest.State == QuestState.Offered || quest.State == QuestState.Active))
+            {
+                End(quest, QuestState.Failed);
+                return true;
+            }
+        }
+        return false;
+    }
+
     // 퀘스트 대상 오브젝트가 퀘스트와 무관하게 사라짐(다른 방법으로 해결, 파괴 등) → 완료할 수 없으므로 삭제
     public void CancelByContext(string contextId)
     {
@@ -524,17 +544,6 @@ public class QuestManager : SceneSingleton<QuestManager>
                 End(quest, QuestState.Cancelled);
             }
         }
-    }
-
-    // 기한이 된 의뢰: 받은 퀘스트는 실패(패널티), 아무도 받지 않은 의뢰는 취소
-    public void ExpireOpenQuest(string giverId, string targetId)
-    {
-        if (!IsServerSide || !TryGetOpenQuest(giverId, out QuestInstance quest) || quest.TargetId != targetId)
-        {
-            return;
-        }
-
-        End(quest, quest.State == QuestState.Active ? QuestState.Failed : QuestState.Cancelled);
     }
 
     private string ResolveItemName(string id)

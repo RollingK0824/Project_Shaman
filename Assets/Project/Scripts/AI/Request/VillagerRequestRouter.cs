@@ -149,20 +149,31 @@ namespace ProjectShaman.AI.Request
         // Day the open FindTool request for this tool was made, 0 if none
         private int FindToolRequestDay(string villagerId, string toolTypeId)
         {
+            return TryFindToolRequest(villagerId, toolTypeId, out _, out int day) ? day : 0;
+        }
+
+        private bool TryFindToolRequest(string villagerId, string toolTypeId, out int instanceId, out int day)
+        {
+            instanceId = 0;
+            day = 0;
+
             if (string.IsNullOrEmpty(toolTypeId))
             {
-                return 0;
+                return false;
             }
 
-            foreach (RequestOrigin origin in _origins.Values)
+            foreach (KeyValuePair<int, RequestOrigin> pair in _origins)
             {
+                RequestOrigin origin = pair.Value;
                 if (origin.Kind == FIND_TOOL && origin.GiverId == villagerId && origin.TargetId == toolTypeId)
                 {
-                    return origin.Day;
+                    instanceId = pair.Key;
+                    day = origin.Day;
+                    return true;
                 }
             }
 
-            return 0;
+            return false;
         }
 
         // The deadline of a FindTool request (C120): the first routine on a later day that needs the tool searched again
@@ -170,14 +181,11 @@ namespace ProjectShaman.AI.Request
         // may run for days. The tool is still missing, so the villager asks again right after
         private void ExpireFindTool(string villagerId, string toolTypeId)
         {
-            int requestDay = FindToolRequestDay(villagerId, toolTypeId);
-            bool hasRequest = requestDay > 0 && TimeManager.Instance != null && TimeManager.Instance.DayCount > requestDay;
-
-            // Outside the loop: the quest ending removes its origin
-            if (hasRequest)
+            if (TryFindToolRequest(villagerId, toolTypeId, out int instanceId, out int requestDay)
+                && TimeManager.Instance != null && TimeManager.Instance.DayCount > requestDay)
             {
                 AILog.Log(AILog.REQUEST, villagerId, $"Needed the {toolTypeId} again and it was not brought back, request expired");
-                _quests.ExpireOpenQuest(villagerId, toolTypeId);
+                _quests.TryFailQuest(instanceId);
             }
         }
 
