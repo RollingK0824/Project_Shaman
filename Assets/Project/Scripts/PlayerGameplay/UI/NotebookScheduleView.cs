@@ -279,9 +279,11 @@ public sealed class NotebookScheduleView : MonoBehaviour
                 // A work given up today for a missing tool: the villager rests there instead (C120)
                 if (registry != null && registry.IsSlotRested(villager.VillagerId, today.day, slot, out string restPlaceId))
                 {
+                    // No rest place: the search took the whole block (or there was nowhere to rest), so it never rested
+                    bool rested = !string.IsNullOrEmpty(restPlaceId);
                     string restNote = $"{routine.DisplayName} 못 함 · 도구 없음";
-                    if (!string.IsNullOrEmpty(restPlaceId)) restNote += $" → {MapAreaRegistry.NameOf(restPlaceId)}";
-                    if (ShowBlock(shown, "휴식", restNote, REST_WASH, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                    if (rested) restNote += $" → {MapAreaRegistry.NameOf(restPlaceId)}";
+                    if (ShowBlock(shown, rested ? "휴식" : "도구 찾기", restNote, REST_WASH, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
                     continue;
                 }
                 Color wash = routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
