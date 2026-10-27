@@ -18,9 +18,11 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(0.05f, 0.5f)] private float _routineDayRatio = 0.2f;
         [Tooltip("Latest a villager gets up in the morning, so they do not all set off at once")]
         [SerializeField] private int _maxStartDelayHours = 2;
-        [Tooltip("Clock hour the whole village heads home at after its routines (free time until then); a villager whose work " +
-                 "runs past it goes straight home once done. At home it rests until nightfall, then sleeps (C131)")]
-        [SerializeField] private int _homeLeaveHour = 18;
+        [Tooltip("Each villager heads home at a random time from this clock hour to Home Leave Spread Hours later, so the " +
+                 "village does not all set off at once (free time until then). A villager whose work runs past it goes home " +
+                 "once done. At home it rests until it falls asleep at nightfall (C131)")]
+        [SerializeField] private int _homeLeaveEarliestHour = 17;
+        [SerializeField, Min(0f)] private float _homeLeaveSpreadHours = 2f;
         [Tooltip("A routine with less than this share of its length left before nightfall is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [Tooltip("Schedule tab estimates only: the tidy-up and getting ready before each routine, and the walking speed")]
@@ -247,7 +249,8 @@ namespace ProjectShaman.AI.Data
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
         public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
-        public int HomeLeaveHour => Mathf.Clamp(_homeLeaveHour, DayClock.DAY_START_HOUR, DayClock.DAY_END_HOUR);
+        public int HomeLeaveEarliestHour => Mathf.Clamp(_homeLeaveEarliestHour, DayClock.DAY_START_HOUR, DayClock.DAY_END_HOUR);
+        public float HomeLeaveSpreadSeconds => DayClock.HoursToSeconds(_homeLeaveSpreadHours);
         public float MinRemainingRatio => _minRemainingRatio;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
         public float WalkSpeedEstimate => _walkSpeedEstimate;
