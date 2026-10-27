@@ -497,14 +497,42 @@ namespace ProjectShaman.AI.Core
             _conversations?.EndAll("night");
             _absence?.OnNightStart(_villagers, _time.DayCount);
 
+            float now = GetDayElapsed();
             foreach (VillagerRuntime villager in _villagers)
             {
-                if (!villager.IsHomeOrdered)
+                if (villager.IsHomeOrdered)
                 {
-                    AILog.Warn(AILog.MANAGER, $"{villager.Id} not ordered home before night, forcing");
-                    OrderGoHome(villager);
+                    continue;
                 }
+
+                // Out for the evening (마실) until its own time to head home
+                if (IsOutLate(villager, now))
+                {
+                    AILog.Log(AILog.MANAGER, villager.Id, $"Out for the evening, heads home at {DayClock.ToHour(villager.HomeReturnTime):F1}h");
+                    continue;
+                }
+
+                AILog.Warn(AILog.MANAGER, $"{villager.Id} not ordered home before night, forcing");
+                OrderGoHome(villager);
             }
+        }
+
+        private static bool IsOutLate(VillagerRuntime villager, float now)
+        {
+            return !villager.IsHomeOrdered && villager.HomeReturnTime > now;
+        }
+
+        // At night only the villagers out for the evening still have a day: they stay where they are until it is time to
+        // walk home (or the walk from here would end after their home-by hour)
+        private void TickEvening(VillagerRuntime villager, float now)
+        {
+            if (now >= villager.HomeReturnTime || MustLeaveForHome(villager, now))
+            {
+                OrderGoHome(villager);
+                return;
+            }
+
+            TickFreeTime(villager, now);
         }
 
         private void Update()
@@ -516,14 +544,24 @@ namespace ProjectShaman.AI.Core
 
             float now = GetDayElapsed();
 
-            // Night: the villagers still on their way home hurry on until they are in
+            // Night: the villagers still on their way home hurry on until they are in; those out for the evening stay out
+            // until their time to head home
             if (!_isDayActive)
             {
                 foreach (VillagerRuntime villager in _villagers)
                 {
-                    if (villager.Core != null && villager.IsHomeOrdered)
+                    if (villager.Core == null)
+                    {
+                        continue;
+                    }
+
+                    if (villager.IsHomeOrdered)
                     {
                         TickHomeward(villager, now);
+                    }
+                    else
+                    {
+                        TickEvening(villager, now);
                     }
                 }
 
@@ -1345,9 +1383,11 @@ namespace ProjectShaman.AI.Core
             }
 
             float lead = _behaviourConfig.ToolTidySecondsEstimate + travelDistance / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate) + visitSeconds + _behaviourConfig.HomeReturnMarginSeconds;
-            // Nightfall sends everyone home, so even one due home late sets off before dusk (by the same margin)
-            float latest = DayClock.ToDayElapsed(DayClock.DAY_END_HOUR) - _behaviourConfig.HomeReturnMarginSeconds;
-            return Mathf.Clamp(homeArriveTime - lead, 0f, Mathf.Max(0f, latest));
+            // One out late (C130) spends the evening out and leaves for home at night; nightfall sends the others home,
+            // so they set off before dusk (by the same margin)
+            float leave = Mathf.Max(0f, homeArriveTime - lead);
+            float dusk = DayClock.ToDayElapsed(DayClock.DAY_END_HOUR);
+            return homeArriveTime > dusk ? Mathf.Max(leave, dusk) : Mathf.Min(leave, Mathf.Max(0f, dusk - _behaviourConfig.HomeReturnMarginSeconds));
         }
 
         // A walk that really reaches the point: a partial path only gets as far as a wall and the villager would stand there
