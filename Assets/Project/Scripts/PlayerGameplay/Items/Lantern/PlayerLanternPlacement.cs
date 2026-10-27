@@ -23,32 +23,60 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
     public bool TryGetWall(Ray aim, out RaycastHit hit)
     {
         hit = default;
-        return CanPlace && TryFindWall(aim, out hit);
+        return CanPlace && TryFindWall(aim, out hit, out _);
     }
 
-    private bool TryFindWall(Ray aim, out RaycastHit hit)
+    private bool TryFindWall(Ray aim, out RaycastHit hit, out MeshFilter[] visualSurface)
     {
         hit = default;
+        visualSurface = null;
         if (!CanAct || !Finite(aim.origin) || !Finite(aim.direction) ||
             aim.direction.sqrMagnitude < .99f || Vector3.Distance(aim.origin, transform.position + Vector3.up) > 4f) return false;
         float closest = float.PositiveInfinity;
         float distance = _reach + Vector3.Distance(aim.origin, transform.position + Vector3.up);
-        foreach (var candidate in Physics.RaycastAll(aim, distance, ~0, QueryTriggerInteraction.Ignore))
+        foreach (var candidate in RaycastBothSides(aim, distance))
         {
             if (candidate.collider.transform.IsChildOf(transform) || candidate.distance >= closest) continue;
             closest = candidate.distance; hit = candidate;
         }
-        if (hit.collider == null || Mathf.Abs(hit.normal.y) > .25f ||
+        // Some environment collision meshes have inward-facing triangles. Always use
+        // the nearest surface and orient its normal toward the viewing side.
+        if (Vector3.Dot(hit.normal, aim.direction) > 0f) hit.normal = -hit.normal;
+        if (hit.collider == null || Mathf.Abs(hit.normal.y) > .25f || Vector3.Dot(hit.normal, aim.direction) >= -.001f ||
             hit.collider.attachedRigidbody != null ||
             hit.collider.GetComponentInParent<IInteractable>() != null ||
             hit.collider.GetComponentInParent<PlayerHealth>() != null ||
             hit.collider.GetComponentInParent<AI_Core>() != null) return false;
+        bool refined = LanternMountSurface.TryRefine(hit.collider, aim, distance, out visualSurface, out var point, out var normal);
+        if (visualSurface != null)
+        {
+            if (!refined) return false; // The coarse hull was hit, but the visible object was missed.
+            hit.point = point; hit.normal = normal;
+            hit.distance = Vector3.Distance(aim.origin, point);
+            if (Mathf.Abs(normal.y) > .25f) return false;
+        }
         Vector3 origin = transform.position + Vector3.up;
         Vector3 delta = hit.point - origin;
         if (delta.magnitude > _reach) return false;
-        foreach (var obstruction in Physics.RaycastAll(origin, delta.normalized, Mathf.Max(0f, delta.magnitude - .02f), ~0, QueryTriggerInteraction.Ignore))
-            if (!obstruction.collider.transform.IsChildOf(transform)) return false;
+        foreach (var obstruction in RaycastBothSides(new Ray(origin, delta.normalized), Mathf.Max(0f, delta.magnitude - .02f)))
+            if (!obstruction.collider.transform.IsChildOf(transform) &&
+                !(visualSurface != null && obstruction.collider == hit.collider)) return false;
+        if (visualSurface != null && LanternMountSurface.Raycast(visualSurface, new Ray(origin, delta.normalized),
+                Mathf.Max(0f, delta.magnitude - .02f), out _, out _)) return false;
         return true;
+    }
+
+    private static RaycastHit[] RaycastBothSides(Ray ray, float distance)
+    {
+        // Scope this global Unity query option to the synchronous query only.
+        // AI, weapons and other callers retain their original setting.
+        bool previous = Physics.queriesHitBackfaces;
+        try
+        {
+            Physics.queriesHitBackfaces = true;
+            return Physics.RaycastAll(ray, distance, ~0, QueryTriggerInteraction.Ignore);
+        }
+        finally { Physics.queriesHitBackfaces = previous; }
     }
 
     private bool TryLocalRay(out Ray ray)
@@ -72,7 +100,8 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
             else GetComponent<PlayerItemFeedback>()?.Unavailable("초롱불 벽 부착의 네트워크 연결이 필요합니다");
             return;
         }
-        TryPlaceAuthoritative(id, aim, () => true, null, null, null, out _);
+        if (!TryPlaceAuthoritative(id, aim, () => true, null, null, null, out _))
+            GetComponent<PlayerItemFeedback>()?.Unavailable("이 위치에는 초롱불을 걸 수 없습니다. 위치를 조금 옮겨주세요");
     }
 
     // Server adapter validates sender, round and equipped state in authorize.
@@ -86,7 +115,7 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
         bool online = NetworkClient.active || NetworkServer.active;
         if (requestId <= _lastCommitted || authorize == null || !authorize() ||
             (online && (!NetworkServer.active || resolvePrefab == null || publish == null || rollback == null)) ||
-            !TryFindWall(aim, out var hit)) return false;
+            !TryFindWall(aim, out var hit, out var visualSurface)) return false;
         // A server's remote player does not own a local held visual. Its adapter
         // supplies NetPlayerEquipment.EquippedItem, never a client-selected asset.
         var item = online ? authoritativeEquippedItem : Equipped;
@@ -105,18 +134,24 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
             staging = new GameObject("LanternPlacementStaging"); staging.SetActive(false);
             created = Instantiate(prefab, staging.transform);
             world = created.GetComponent<WorldItem>();
-            created.transform.rotation = Quaternion.LookRotation(hit.normal, Vector3.up);
-            var renderers = created.GetComponentsInChildren<Renderer>(true);
-            if (renderers.Length == 0) return false;
-            Bounds bounds = renderers[0].bounds;
-            foreach (var r in renderers) if (r.enabled) bounds.Encapsulate(r.bounds);
-            float depth = Vector3.Dot(bounds.extents, new Vector3(Mathf.Abs(hit.normal.x), Mathf.Abs(hit.normal.y), Mathf.Abs(hit.normal.z)));
-            created.transform.position += hit.point - Vector3.up * bounds.extents.y + hit.normal * (depth + .025f) - bounds.center;
-            bounds.center = hit.point - Vector3.up * bounds.extents.y + hit.normal * (depth + .025f);
-            // Clearance around corners and adjacent props. The supporting wall is
-            // outside this conservative world-aligned box after the depth offset.
-            foreach (var obstacle in Physics.OverlapBox(bounds.center, bounds.extents * .98f, Quaternion.identity, ~0, QueryTriggerInteraction.Ignore))
-                if (!obstacle.transform.IsChildOf(transform) && !obstacle.transform.IsChildOf(created.transform)) return false;
+            // Keep the lantern upright; its back faces the surface, its front the player.
+            var rotation = Quaternion.LookRotation(Vector3.ProjectOnPlane(hit.normal, Vector3.up).normalized, Vector3.up);
+            created.transform.rotation = rotation;
+            if (!TryGetPlacementBounds(created.transform, out var bounds)) return false;
+            Vector3 localNormal = Quaternion.Inverse(rotation) * hit.normal;
+            float depth = Vector3.Dot(bounds.extents, new Vector3(Mathf.Abs(localNormal.x), Mathf.Abs(localNormal.y), Mathf.Abs(localNormal.z)));
+            // Offset horizontally so the handle stays at the aimed height even on slightly sloped walls.
+            float offset = (depth + .005f + hit.normal.y * bounds.extents.y) / localNormal.z;
+            Vector3 center = hit.point - Vector3.up * bounds.extents.y + rotation * Vector3.forward * offset;
+            created.transform.position = center - rotation * bounds.center;
+            // Use the same oriented box as the rendered model, including on oblique pillars.
+            // Local renderer geometry avoids dependence on inactive world bounds and inflated world AABBs.
+            // A coarse support hull can extend well beyond its visible wood. In that
+            // case validate the actual triangles instead of rejecting that hull overlap.
+            if (visualSurface != null && LanternMountSurface.Overlaps(visualSurface, center, bounds.extents, rotation)) return false;
+            foreach (var obstacle in Physics.OverlapBox(center, bounds.extents, rotation, ~0, QueryTriggerInteraction.Ignore))
+                if (!obstacle.transform.IsChildOf(transform) && !obstacle.transform.IsChildOf(created.transform) &&
+                    !(visualSurface != null && obstacle == hit.collider)) return false;
             var presentation = created.GetComponent<LanternWorldPresentation>();
             if (presentation == null) presentation = created.AddComponent<LanternWorldPresentation>();
             presentation.SetMounted(true);
@@ -139,6 +174,33 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
             if (!committed && created != null) { created.SetActive(false); Destroy(created); }
             if (staging != null) Destroy(staging);
         }
+    }
+
+    private static bool TryGetPlacementBounds(Transform root, out Bounds bounds)
+    {
+        bounds = default;
+        bool found = false;
+        // Rotation-only frame keeps prefab/child scale in world units without requiring activation.
+        Matrix4x4 toFrame = Matrix4x4.TRS(root.position, root.rotation, Vector3.one).inverse;
+        foreach (var renderer in root.GetComponentsInChildren<Renderer>(true))
+        {
+            if (!renderer.enabled || !(renderer is MeshRenderer || renderer is SkinnedMeshRenderer)) continue;
+            bool visible = true;
+            for (var parent = renderer.transform; parent != root; parent = parent.parent)
+                if (!parent.gameObject.activeSelf) { visible = false; break; }
+            if (!visible) continue;
+            var local = renderer.localBounds;
+            var matrix = toFrame * renderer.localToWorldMatrix;
+            for (int corner = 0; corner < 8; corner++)
+            {
+                Vector3 point = matrix.MultiplyPoint3x4(local.center + Vector3.Scale(local.extents,
+                    new Vector3((corner & 1) == 0 ? -1 : 1, (corner & 2) == 0 ? -1 : 1, (corner & 4) == 0 ? -1 : 1)));
+                if (!Finite(point)) return false;
+                if (!found) { bounds = new Bounds(point, Vector3.zero); found = true; }
+                else bounds.Encapsulate(point);
+            }
+        }
+        return found && bounds.size.x > .001f && bounds.size.y > .001f && bounds.size.z > .001f;
     }
 
     private static bool Finite(Vector3 v) => float.IsFinite(v.x) && float.IsFinite(v.y) && float.IsFinite(v.z);

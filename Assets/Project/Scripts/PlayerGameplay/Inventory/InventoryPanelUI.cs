@@ -21,6 +21,24 @@ public class InventoryPanelUI : MonoBehaviour
     private TMP_Text _footer;
     private bool _embedded, _notebookStyled;
     private System.Action<ItemData> _selectItem;
+    private ItemData _selectedItem;
+    private ItemData _blankTemplate;
+    public ItemData SelectedItem => _selectedItem;
+
+    private void SelectItem(ItemData item)
+    {
+        _selectedItem = item;
+        RefreshSelection();
+        _selectItem?.Invoke(item);
+    }
+
+    private void RefreshSelection()
+    {
+        foreach (var entry in _slots)
+            if (entry.Value != null) entry.Value.SetSelected(_selectedItem != null && entry.Key == _selectedItem);
+        foreach (var entry in _customSlots)
+            if (entry.Value != null) entry.Value.SetSelected(_selectedItem != null && entry.Key == "effect-blanks" && _selectedItem == _blankTemplate);
+    }
     private System.Action<TalismanItemData, string> _openDrawing;
     public void ConfigureNotebook(System.Action<TalismanItemData, string> openDrawing, System.Action<ItemData> selectItem)
     {
@@ -56,6 +74,7 @@ public class InventoryPanelUI : MonoBehaviour
         if (_effectViewPrefab == null && _inventory != null)
             _effectViewPrefab = _inventory.GetComponent<PlayerTalismanDrawingController>()?.EffectInventoryPrefab;
         if (_talismans == null || _talismans.DrawnEffectCount == 0 || _effectViewPrefab == null) return;
+        if (_embedded) SelectItem(null);
         if (_effectView == null) _effectView = Instantiate(_effectViewPrefab, _embedded ? transform.parent : transform);
         if (_embedded) { PlayerItemUIStyle.FitEmbeddedPanel((RectTransform)_effectView.transform); _effectView.transform.SetAsLastSibling(); }
         _effectView.Bind(_talismans, () => BackToMain()); _itemGrid.gameObject.SetActive(false); _effectView.gameObject.SetActive(true);
@@ -64,6 +83,7 @@ public class InventoryPanelUI : MonoBehaviour
 
     public void Bind(PlayerInventory inventory)
     {
+        if (_inventory != inventory && _selectedItem != null) SelectItem(null);
         if (_inventory != null) _inventory.InventoryChanged -= Refresh;
         if (_talismans != null) _talismans.SelectionChanged -= Refresh;
         _inventory = inventory;
@@ -174,6 +194,8 @@ public class InventoryPanelUI : MonoBehaviour
             return;
         }
 
+        if (_selectedItem != null && (_inventory == null || !_inventory.Contains(_selectedItem))) SelectItem(null);
+        _blankTemplate = null;
         _removed.Clear();
         foreach (var row in _customSlots.Values) if (row != null) { row.gameObject.SetActive(false); Destroy(row.gameObject); }
         _customSlots.Clear();
@@ -209,7 +231,9 @@ public class InventoryPanelUI : MonoBehaviour
             // Their blank quantities still occupy one visible group, while ownership keeps its original references.
             if (itemData is TalismanItemData blank && blank.IsEffectTalisman && _talismans != null)
             {
-                blankEffects += count; blankTemplate ??= blank; continue;
+                blankEffects += count; blankTemplate ??= blank;
+                if (_selectedItem == blank) blankTemplate = blank;
+                continue;
             }
 
             if (!_slots.TryGetValue(itemData, out var slot) || slot == null)
@@ -220,7 +244,7 @@ public class InventoryPanelUI : MonoBehaviour
 
             slot.Setup(itemData, count);
             slot.gameObject.SetActive(true);
-            if (_embedded && itemData.Category != ItemCategory.Material) slot.SetUse(() => _selectItem?.Invoke(itemData));
+            if (_embedded && itemData.Category != ItemCategory.Material) slot.SetUse(() => SelectItem(itemData));
             if (itemData is TalismanItemData talisman && _talismans != null)
             {
                 int plain = 0; string plainId = null;
@@ -234,14 +258,15 @@ public class InventoryPanelUI : MonoBehaviour
                     _customSlots[id] = row;
                 }
                 slot.Setup(itemData, plain); slot.gameObject.SetActive(plain > 0);
-                slot.SetUse(() => { if (_embedded) _selectItem?.Invoke(talisman); else UseTalisman(talisman, plainId); });
+                slot.SetUse(() => { if (_embedded) SelectItem(talisman); else UseTalisman(talisman, plainId); });
             }
         }
         if (blankTemplate != null && blankEffects > 0)
         {
+            _blankTemplate = blankTemplate;
             var row = Instantiate(_itemSlotPrefab, _itemGrid);
             row.Setup(blankTemplate, blankEffects); row.SetLabel("미사용 효과 부적");
-            row.SetUse(() => { if (_embedded) _selectItem?.Invoke(blankTemplate); else UseTalisman(blankTemplate, null); });
+            row.SetUse(() => { if (_embedded) SelectItem(blankTemplate); else UseTalisman(blankTemplate, null); });
             _customSlots["effect-blanks"] = row;
         }
         if (_talismans != null && _talismans.DrawnEffectCount > 0)
@@ -257,6 +282,7 @@ public class InventoryPanelUI : MonoBehaviour
             foreach (var slot in _slots.Values) if (slot != null) slot.ConfigureNotebook();
             foreach (var slot in _customSlots.Values) if (slot != null) slot.ConfigureNotebook();
         }
+        RefreshSelection();
         if (IsEffectViewOpen) _effectView.Refresh();
     }
     private void UseTalisman(TalismanItemData item, string id)
