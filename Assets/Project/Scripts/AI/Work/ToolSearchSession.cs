@@ -14,6 +14,8 @@ namespace ProjectShaman.AI.Work
     public class ToolSearchSession
     {
         private const float SPOT_MERGE_DISTANCE = 2.4f;
+        // Roads bend and the walk may be held up: a spot set out for is reached within this many times the straight walk
+        private const float SPOT_WALK_ALLOWANCE = 2f;
 
         private struct CheckedSpot
         {
@@ -35,6 +37,7 @@ namespace ProjectShaman.AI.Work
         private int _firstStressRoutineSerial = -1;
         private bool _isLookPendingAfterArrival;
         private Vector3 _currentSpot;
+        private float _spotArriveBy;
         private int _routineSerial = -1;
         private bool _hasCheckedStorage;
         private bool _isAskSkippedUntilNextSpot;
@@ -109,6 +112,16 @@ namespace ProjectShaman.AI.Work
             AILog.Log(AILog.TOOL, Id, $"Plan search '{RequiredToolType}' (candidates={_candidates.Count}, checked={_checkedSpots.Count}, {clock})");
         }
 
+        // Every frame (AI_ToolHandler): a spot that cannot be reached ends the search the usual way (request, stress,
+        // the routine fails into rest), whether or not the behaviour tree looks at CanContinue while walking
+        public void TickUnreachableSpot()
+        {
+            if (IsActive && _isLookPendingAfterArrival && !HasRequiredTool() && !CanContinue())
+            {
+                RaiseFailure();
+            }
+        }
+
         public bool CanContinue()
         {
             if (!IsActive || HasRequiredTool())
@@ -116,9 +129,20 @@ namespace ProjectShaman.AI.Work
                 return false;
             }
 
-            // A spot set out for is always looked over on arrival, even when the time ran out on the way
+            // A spot set out for is looked over on arrival, even when the time ran out on the way, as long as the walk
+            // there takes about what it should. One the villager cannot get to (a blocked way) does not hold the day up:
+            // a block starts only once the work is reached (C131), so nothing else would end this search
             if (_isLookPendingAfterArrival)
             {
+                // The clock starts at the first spot reached, so one that cannot be reached would never run it out
+                bool isOverTime = _deadline == float.MaxValue || Now > _deadline;
+                if (isOverTime && Now > _spotArriveBy)
+                {
+                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' could not reach spot {CandidateIndex + 1}/{_candidates.Count} {_currentSpot}, giving up");
+                    _isLookPendingAfterArrival = false;
+                    return false;
+                }
+
                 return true;
             }
 
@@ -175,6 +199,7 @@ namespace ProjectShaman.AI.Work
             target = _candidates[CandidateIndex];
             _currentSpot = target;
             _isLookPendingAfterArrival = true;
+            _spotArriveBy = Now + Vector3.Distance(Position, target) / Mathf.Max(0.1f, Config.WalkSpeedEstimate) * SPOT_WALK_ALLOWANCE;
             AILog.Log(AILog.TOOL, Id, $"Search target {CandidateIndex + 1}/{_candidates.Count} {target}");
             return true;
         }

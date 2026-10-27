@@ -478,7 +478,7 @@ namespace ProjectShaman.AI.Core
 
             Vector3 from = lastIndex >= 0 ? RoutinePosition(profile, dayCount, lastIndex, profile.HomePosition) : profile.HomePosition;
             float arrive = Mathf.Max(leaveTime, lastEnd) + PathLength(from, profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
-            return Mathf.Min(Mathf.CeilToInt(DayClock.ToHour(arrive)), DayClock.DAY_END_HOUR);
+            return Mathf.Min(Mathf.RoundToInt(DayClock.ToHour(arrive)), DayClock.DAY_END_HOUR);
         }
 
         private List<DailyBlock> NewBlocks()
@@ -775,9 +775,12 @@ namespace ProjectShaman.AI.Core
                 return false;
             }
 
-            Vector3 offset = villager.Core.transform.position - current.TargetPosition;
+            // At its spot, or anywhere inside the place: a rest is taken wherever in the place the villager stops
+            Vector3 position = villager.Core.transform.position;
+            Vector3 offset = position - current.TargetPosition;
             offset.y = 0f;
-            return offset.sqrMagnitude <= ROUTINE_ARRIVE_DISTANCE * ROUTINE_ARRIVE_DISTANCE;
+            return offset.sqrMagnitude <= ROUTINE_ARRIVE_DISTANCE * ROUTINE_ARRIVE_DISTANCE
+                || (current.CorruptionAxis != CorruptionAxis.Place && PlaceRegistry.TryGet(current.PlaceId, out PlaceArea place) && place.Contains(position));
         }
 
         // The block's length runs from here. The schedule tab is laid again from this start, held up by the ordinary
