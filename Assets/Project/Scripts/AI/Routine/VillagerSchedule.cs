@@ -32,6 +32,28 @@ namespace ProjectShaman.AI.Routine
             return _slots[(dayCount - 1) % CycleDays][slot];
         }
 
+        // The next slot after (dayCount, slot) whose routine uses this tool, at most one cycle ahead
+        public bool TryFindNextToolUse(int dayCount, int slot, string toolId, out int daysAhead, out RoutineEntry routine)
+        {
+            for (int step = 1; step <= CycleDays * SlotsPerDay; step++)
+            {
+                int index = slot + step;
+                int day = dayCount + index / SlotsPerDay;
+                RoutineEntry entry = Get(day, index % SlotsPerDay);
+
+                if (entry != null && entry.ToolId == toolId)
+                {
+                    daysAhead = day - dayCount;
+                    routine = entry;
+                    return true;
+                }
+            }
+
+            daysAhead = 0;
+            routine = null;
+            return false;
+        }
+
         public void Set(int cycleDay, int slot, RoutineEntry routine)
         {
             _slots[cycleDay][slot] = routine;
