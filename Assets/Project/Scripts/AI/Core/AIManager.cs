@@ -162,6 +162,10 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
             AILog.Log(AILog.PLACE, $"Place groups: {DescribeGroupsOrNone()}");
 
+            // Villagers sent home together ask for long paths at once; at the default budget they stand waiting for them
+            NavMesh.pathfindingIterationsPerFrame = _behaviourConfig.PathfindingIterationsPerFrame;
+            AILog.Log(AILog.MANAGER, $"NavMesh pathfinding iterations per frame: {NavMesh.pathfindingIterationsPerFrame}");
+
             UnsubscribeTime();
             _time.OnNewDay += HandleNewDay;
             _time.OnDayStart += HandleDayStart;
