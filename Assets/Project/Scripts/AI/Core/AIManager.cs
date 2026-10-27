@@ -429,6 +429,7 @@ namespace ProjectShaman.AI.Core
             foreach (VillagerRuntime villager in _villagers)
             {
                 ReleaseStation(villager);
+                StopRunning(villager, "day start");
                 villager.ResetForDayStart();
                 villager.Core.ClearRoutine(villager.NextSerial(), "day start");
                 villager.Core.SetMustGoHome(false);
@@ -459,12 +460,26 @@ namespace ProjectShaman.AI.Core
 
         private void Update()
         {
-            if (!_isRunning || !_isDayActive)
+            if (!_isRunning)
             {
                 return;
             }
 
             float now = GetDayElapsed();
+
+            // Night: the villagers still on their way home hurry on until they are in
+            if (!_isDayActive)
+            {
+                foreach (VillagerRuntime villager in _villagers)
+                {
+                    if (villager.Core != null && villager.IsHomeOrdered)
+                    {
+                        TickHomeward(villager, now);
+                    }
+                }
+
+                return;
+            }
 
             foreach (VillagerRuntime villager in _villagers)
             {
@@ -486,7 +501,7 @@ namespace ProjectShaman.AI.Core
         {
             if (villager.IsHomeOrdered)
             {
-                LogHomeArrival(villager, now);
+                TickHomeward(villager, now);
                 return;
             }
 
@@ -586,7 +601,48 @@ namespace ProjectShaman.AI.Core
             return true;
         }
 
-        // Validation only: "home" is the same radius sleep paralysis uses to count a villager as in the house
+        // On the way home: a villager who will not make the home-by hour at a walk (held up by a player, a late start)
+        // runs the rest of the way, also after night has fallen (C121)
+        private void TickHomeward(VillagerRuntime villager, float now)
+        {
+            LogHomeArrival(villager, now);
+
+            if (villager.HasArrivedHome)
+            {
+                StopRunning(villager, "home");
+                return;
+            }
+
+            if (villager.IsRunningLate || villager.Movement == null || now < villager.NextHomeCheckTime)
+            {
+                return;
+            }
+
+            villager.NextHomeCheckTime = now + HOME_CHECK_INTERVAL;
+            float walk = PathLength(villager.Core.transform.position, villager.Profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            if (now + walk <= villager.HomeArriveTime)
+            {
+                return;
+            }
+
+            villager.IsRunningLate = true;
+            villager.Movement.SetSpeed(villager.Movement.DefaultSpeed * _behaviourConfig.LateRunSpeedMultiplier);
+            AILog.Log(AILog.MANAGER, villager.Id, $"Running home: {walk:F0}s walk left, {villager.HomeArriveTime - now:F0}s before home-by {DayClock.ToHour(villager.HomeArriveTime):F0}h");
+        }
+
+        private static void StopRunning(VillagerRuntime villager, string reason)
+        {
+            if (!villager.IsRunningLate)
+            {
+                return;
+            }
+
+            villager.IsRunningLate = false;
+            villager.Movement?.ResetSpeed();
+            AILog.Log(AILog.MANAGER, villager.Id, $"Stopped running ({reason})");
+        }
+
+        // "Home" is the same radius sleep paralysis uses to count a villager as in the house
         private void LogHomeArrival(VillagerRuntime villager, float now)
         {
             if (villager.HasArrivedHome || !IsAtHome(villager))
@@ -1043,8 +1099,10 @@ namespace ProjectShaman.AI.Core
             public int LastBlockIndex { get; set; } = -1;
             // The tool a failed work of this block was missing; holding it again resumes the block
             public string WaitingToolType { get; set; }
+            public AI_Movement Movement { get; }
             public bool IsHomeOrdered { get; set; }
             public bool HasArrivedHome { get; set; }
+            public bool IsRunningLate { get; set; }
             public float NextHomeCheckTime { get; set; }
             public float HomeReturnTime { get; private set; }
             public float HomeArriveTime { get; private set; } = TimeManager.DAY_DURATION;
@@ -1061,6 +1119,7 @@ namespace ProjectShaman.AI.Core
                 Perception = core.GetComponent<AI_Perception>();
                 Interaction = core.GetComponent<AI_Interaction>();
                 Conversation = core.GetComponent<AI_Conversation>();
+                Movement = core.GetComponent<AI_Movement>();
             }
 
             public int NextSerial()
@@ -1082,6 +1141,8 @@ namespace ProjectShaman.AI.Core
                 WaitingToolType = null;
                 IsHomeOrdered = false;
                 HasArrivedHome = false;
+                // The clock starts over each day: a check time left from last evening (or night) would hold off the next ones
+                NextHomeCheckTime = 0f;
             }
 
             public bool TryGetBlockAt(float time, out DailyBlock block)

@@ -27,6 +27,8 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int[] _bedHours = { 20, 21 };
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
         [SerializeField] private float _walkSpeedEstimate = 3.5f;
+        [Tooltip("A villager who will not make the home-by hour at a walk runs at this many times the walk speed (C121)")]
+        [SerializeField, Min(1f)] private float _lateRunSpeedMultiplier = 1.8f;
 
         [Header("Villager Attributes")]
         [Tooltip("Relative weights a villager's gender, class and age are rolled with (Joseon village: a few more men, commoners the most, " +
@@ -247,6 +249,7 @@ namespace ProjectShaman.AI.Data
         public IReadOnlyList<int> BedHours => _bedHours;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
         public float WalkSpeedEstimate => _walkSpeedEstimate;
+        public float LateRunSpeedMultiplier => _lateRunSpeedMultiplier;
         public float ToolSightRadius => _toolSightRadius;
         public float ToolSightInterval => _toolSightInterval;
         public float ToolPickupDistance => _toolPickupDistance;
