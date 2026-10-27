@@ -74,7 +74,7 @@ namespace ProjectShaman.AI.Core
 
         // Today's block hours as the village sees them. Kept for a dead villager whose death is not yet known,
         // so the schedule tab does not give the death away before a body is found
-        internal void SetDayHours(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        internal void SetDayHours(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
         {
             if (!string.IsNullOrEmpty(villagerId) && _byId.TryGetValue(villagerId, out VillagerEntry entry))
             {
@@ -86,6 +86,7 @@ namespace ProjectShaman.AI.Core
 
                 entry.Day = day;
                 entry.BlockHours = blockHours;
+                entry.LeaveHour = leaveHour;
                 entry.HomeHour = homeHour;
                 entry.BedHour = bedHour;
             }
@@ -130,10 +131,11 @@ namespace ProjectShaman.AI.Core
             return true;
         }
 
-        public bool TryGetDayHours(string villagerId, out int day, out int[] blockHours, out int homeHour, out int bedHour)
+        public bool TryGetDayHours(string villagerId, out int day, out int[] blockHours, out int leaveHour, out int homeHour, out int bedHour)
         {
             day = 0;
             blockHours = null;
+            leaveHour = 0;
             homeHour = 0;
             bedHour = 0;
 
@@ -144,6 +146,7 @@ namespace ProjectShaman.AI.Core
 
             day = entry.Day;
             blockHours = entry.BlockHours;
+            leaveHour = entry.LeaveHour;
             homeHour = entry.HomeHour;
             bedHour = entry.BedHour;
             return true;
@@ -226,6 +229,7 @@ namespace ProjectShaman.AI.Core
             public VillagerScheduleView Schedule { get; }
             public int Day { get; set; }
             public int[] BlockHours { get; set; }
+            public int LeaveHour { get; set; }
             public int HomeHour { get; set; }
             public int BedHour { get; set; }
             public int RestedSlotMask { get; set; }

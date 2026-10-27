@@ -418,8 +418,9 @@ namespace ProjectShaman.AI.Core
                 float wakeTime = Mathf.Max(fromTime, DailyBlockPlanner.PickWakeTime(GetBlockSeed(villager.Profile, dayCount), _behaviourConfig));
                 List<DailyBlock> blocks = NewBlocks();
                 EstimateBlocks(villager.Profile, dayCount, blocks, 0, wakeTime);
-                villager.SetToday(blocks, wakeTime, HomeLeaveTime);
-                villager.HomeHour = EstimateHomeHour(blocks, villager.HomeLeaveTime);
+                villager.SetToday(blocks, wakeTime, PickHomeLeaveTime(villager.Profile, dayCount));
+                EstimateHomeTimeline(villager.Profile, dayCount, blocks, villager.HomeLeaveTime, out int leaveHour, out int homeHour);
+                villager.SetHomeTimeline(leaveHour, homeHour, Mathf.Max(DayClock.DAY_END_HOUR, homeHour));
                 villager.Core.SetDailyStartOffset(wakeTime);
                 PublishBlocks(villager, dayCount);
                 PlanCorruption(villager, dayCount);
@@ -434,7 +435,7 @@ namespace ProjectShaman.AI.Core
                     villager.Stress.ApplyMorningDecay();
                 }
                 AILog.Log(AILog.MANAGER, villager.Id, $"Day {dayCount} wake {DayClock.ToHour(wakeTime):F1}h ({wakeTime:F0}s), blocks (estimate)=[{string.Join(", ", blocks)}] " +
-                    $"{_behaviourConfig.RoutineSeconds:F0}s each, leaves for home {DayClock.ToHour(villager.HomeLeaveTime):F0}h, home ~{villager.HomeHour}h, bed at nightfall");
+                    $"{_behaviourConfig.RoutineSeconds:F0}s each, leaves for home {DayClock.ToHour(villager.HomeLeaveTime):F1}h (home ~{villager.HomeHour}h), bed {villager.BedHour}h");
             }
 
             // A death the village does not know of yet keeps a day on the schedule tab, laid the same way. The death
@@ -443,28 +444,49 @@ namespace ProjectShaman.AI.Core
             {
                 List<DailyBlock> blocks = NewBlocks();
                 EstimateBlocks(dead.Profile, dayCount, blocks, 0, DailyBlockPlanner.PickWakeTime(GetBlockSeed(dead.Profile, dayCount), _behaviourConfig));
-                int homeHour = EstimateHomeHour(blocks, HomeLeaveTime);
-                PublishDayHours(dead.Profile.VillagerId, dayCount, DailyBlock.ToHourPairs(blocks), homeHour, DayClock.DAY_END_HOUR);
+                EstimateHomeTimeline(dead.Profile, dayCount, blocks, PickHomeLeaveTime(dead.Profile, dayCount), out int leaveHour, out int homeHour);
+                PublishDayHours(dead.Profile.VillagerId, dayCount, DailyBlock.ToHourPairs(blocks), leaveHour, homeHour, Mathf.Max(DayClock.DAY_END_HOUR, homeHour));
             }
         }
 
-        // The whole village heads home at the same hour (HomeLeaveHour)
-        private float HomeLeaveTime => Mathf.Min(DayClock.ToDayElapsed(_behaviourConfig.HomeLeaveHour), TimeManager.DAY_DURATION);
-
-        // The schedule tab's home row: the village's home hour for everyone, later only for one whose last routine is
-        // expected to run past it (then from the hour it ends). The walk home is not drawn. Nightfall at the latest
-        private static int EstimateHomeHour(IReadOnlyList<DailyBlock> blocks, float leaveTime)
+        // Each villager sets off home at its own time from HomeLeaveEarliestHour over HomeLeaveSpread, so the village does
+        // not all move at once
+        private float PickHomeLeaveTime(VillagerProfile profile, int dayCount)
         {
-            int homeHour = Mathf.RoundToInt(DayClock.ToHour(leaveTime));
-            foreach (DailyBlock block in blocks)
+            System.Random random = new System.Random(unchecked(GetBlockSeed(profile, dayCount) * 7 + 1));
+            float leave = DayClock.ToDayElapsed(_behaviourConfig.HomeLeaveEarliestHour) + (float)random.NextDouble() * _behaviourConfig.HomeLeaveSpreadSeconds;
+            return Mathf.Min(leave, TimeManager.DAY_DURATION);
+        }
+
+        // Schedule tab: it sets off at its leave time, or once its last routine is expected to be done if that runs later,
+        // and gets in after the walk from that routine's place
+        private void EstimateHomeTimeline(VillagerProfile profile, int dayCount, IReadOnlyList<DailyBlock> blocks, float leaveTime, out int leaveHour, out int homeHour)
+        {
+            float lastEnd = 0f;
+            int lastIndex = -1;
+            for (int i = 0; i < blocks.Count; i++)
             {
-                if (block.EndTime > block.StartTime && block.EndTime > leaveTime)
+                if (blocks[i].EndTime > blocks[i].StartTime && blocks[i].EndTime >= lastEnd)
                 {
-                    homeHour = Mathf.Max(homeHour, block.EndHour);
+                    lastEnd = blocks[i].EndTime;
+                    lastIndex = i;
                 }
             }
 
-            return Mathf.Min(homeHour, DayClock.DAY_END_HOUR);
+            float leave = Mathf.Max(leaveTime, lastEnd);
+            Vector3 from = lastIndex >= 0 ? RoutinePosition(profile, dayCount, lastIndex, profile.HomePosition) : profile.HomePosition;
+            float arrive = leave + PathLength(from, profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            leaveHour = Mathf.RoundToInt(DayClock.ToHour(leave));
+            homeHour = Mathf.RoundToInt(DayClock.ToHour(arrive));
+        }
+
+        // The walk home really started: from now and from here, with the look-in on the way if there is one
+        private void UpdateHomeTimelineOnLeave(VillagerRuntime villager, float now, float lookInSeconds)
+        {
+            float arrive = now + lookInSeconds + PathLength(villager.Core.transform.position, villager.Profile.HomePosition) / Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            int homeHour = Mathf.RoundToInt(DayClock.ToHour(arrive));
+            villager.SetHomeTimeline(Mathf.RoundToInt(DayClock.ToHour(now)), homeHour, Mathf.Max(DayClock.DAY_END_HOUR, homeHour));
+            PublishBlocks(villager, _time.DayCount);
         }
 
         private List<DailyBlock> NewBlocks()
@@ -504,14 +526,14 @@ namespace ProjectShaman.AI.Core
         private void PublishBlocks(VillagerRuntime villager, int dayCount)
         {
             int[] blockHours = DailyBlock.ToHourPairs(villager.TodayBlocks);
-            villager.Core.SetTodayBlocks(dayCount, blockHours, villager.HomeHour, DayClock.DAY_END_HOUR);
-            PublishDayHours(villager.Id, dayCount, blockHours, villager.HomeHour, DayClock.DAY_END_HOUR);
+            villager.Core.SetTodayBlocks(dayCount, blockHours, villager.LeaveHour, villager.HomeHour, villager.BedHour);
+            PublishDayHours(villager.Id, dayCount, blockHours, villager.LeaveHour, villager.HomeHour, villager.BedHour);
         }
 
-        private void PublishDayHours(string villagerId, int dayCount, int[] blockHours, int homeHour, int bedHour)
+        private void PublishDayHours(string villagerId, int dayCount, int[] blockHours, int leaveHour, int homeHour, int bedHour)
         {
-            Registry?.SetDayHours(villagerId, dayCount, blockHours, homeHour, bedHour);
-            AIEvents.RaiseDayPlanned(villagerId, dayCount, blockHours, homeHour, bedHour);
+            Registry?.SetDayHours(villagerId, dayCount, blockHours, leaveHour, homeHour, bedHour);
+            AIEvents.RaiseDayPlanned(villagerId, dayCount, blockHours, leaveHour, homeHour, bedHour);
         }
 
         private void HandleDayStart()
@@ -542,9 +564,20 @@ namespace ProjectShaman.AI.Core
             _conversations?.EndAll("night");
             _absence?.OnNightStart(_villagers, _time.DayCount);
 
-            // Nightfall sends everyone still out home, whatever it was doing (C131)
+            // Nightfall sends everyone still out home, whatever it was doing, and a look-in on a neighbour is left for
+            // tomorrow: straight home (C131)
             foreach (VillagerRuntime villager in _villagers)
             {
+                // Only the look-in itself: whatever else it is busy with (a player talking) is left alone
+                if (villager.LookInHouseId != null && villager.Interaction != null && villager.Interaction.IsInteracting
+                    && villager.Interaction.Active.InteractableId == villager.LookInHouseId)
+                {
+                    villager.Interaction.Cancel(InteractionEndReason.MustGoHome);
+                    AILog.Log(AILog.MANAGER, villager.Id, "Night fell during a look-in, straight home");
+                }
+
+                villager.LookInHouseId = null;
+
                 if (!villager.IsHomeOrdered)
                 {
                     OrderGoHome(villager);
@@ -791,7 +824,8 @@ namespace ProjectShaman.AI.Core
             DailyBlock planned = villager.TodayBlocks[index];
             villager.SetBlock(index, DailyBlockPlanner.Make(index, shownStart, Mathf.Min(shownStart + length, TimeManager.DAY_DURATION)));
             EstimateBlocks(villager.Profile, _time.DayCount, villager.EditableBlocks, index + 1, villager.TodayBlocks[index].EndTime);
-            villager.HomeHour = EstimateHomeHour(villager.TodayBlocks, villager.HomeLeaveTime);
+            EstimateHomeTimeline(villager.Profile, _time.DayCount, villager.TodayBlocks, villager.HomeLeaveTime, out int leaveHour, out int homeHour);
+            villager.SetHomeTimeline(leaveHour, homeHour, Mathf.Max(DayClock.DAY_END_HOUR, homeHour));
             PublishBlocks(villager, _time.DayCount);
             AILog.Log(AILog.MANAGER, villager.Id, $"Block {index} started at {DayClock.ToHour(now):F1}h ({reason}), planned {DayClock.ToHour(planned.StartTime):F1}h, ends {DayClock.ToHour(villager.BlockEndTime):F1}h");
         }
@@ -833,9 +867,12 @@ namespace ProjectShaman.AI.Core
             if (villager.HasArrivedHome)
             {
                 StopRunning(villager, "home");
-                if (IsAsleepAtHome(villager))
+                if (!villager.Core.IsAsleep && IsAsleepAtHome(villager))
                 {
                     villager.Core.SetAsleep(true);
+                    // The bed row runs from when it really fell asleep (floored: never later than the moment)
+                    villager.SetHomeTimeline(villager.LeaveHour, villager.HomeHour, Mathf.FloorToInt(DayClock.ToHour(now)));
+                    PublishBlocks(villager, _time.DayCount);
                 }
 
                 return;
@@ -922,10 +959,10 @@ namespace ProjectShaman.AI.Core
         }
 
         // Asleep = in the house and past the bed hour. A ghost leaves its host only then (C121)
+        // In the house at night (the schedule tab's bed hour only shows it, C131)
         public bool IsAsleepAtHome(VillagerRuntime villager)
         {
-            return villager != null && villager.Core != null && villager.HasArrivedHome
-                && (villager.Core.TodayBedHour <= 0 || DayClock.IsPastBedHour(villager.Core.TodayBedHour));
+            return villager != null && villager.Core != null && villager.HasArrivedHome && !_isDayActive;
         }
 
         // "Home" is the same radius sleep paralysis uses to count a villager as in the house
@@ -938,6 +975,11 @@ namespace ProjectShaman.AI.Core
 
             villager.HasArrivedHome = true;
             villager.Core.SetHomeForNight(true);
+            villager.LookInHouseId = null;
+            // The home row from when it really got in; in after nightfall it sleeps as it gets in
+            int homeHour = Mathf.FloorToInt(DayClock.ToHour(now));
+            villager.SetHomeTimeline(villager.LeaveHour, homeHour, Mathf.Max(DayClock.DAY_END_HOUR, homeHour));
+            PublishBlocks(villager, _time.DayCount);
             float beforeNight = villager.HomeArriveTime - now;
             AILog.Log(AILog.MANAGER, villager.Id, $"Arrived home at {DayClock.ToHour(now):F1}h ({(beforeNight >= 0f ? $"{beforeNight:F0}s before" : $"{-beforeNight:F0}s after")} nightfall)");
         }
@@ -1278,19 +1320,20 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.MANAGER, villager.Id, $"Tidy zone {zone} (distance to home {distance:F1}m)");
             AILog.Log(AILog.MANAGER, villager.Id, $"GoHome ordered at {DayClock.ToHour(GetDayElapsed()):F1}h ({GetDayElapsed():F1}s)");
             villager.Core.SetMustGoHome(true);
-            TryLookInOnNeighbour(villager);
+            float lookInSeconds = TryLookInOnNeighbour(villager);
+            UpdateHomeTimelineOnLeave(villager, GetDayElapsed(), lookInSeconds);
         }
 
-        // On the way home: a neighbour (same home-point group) this villager has not seen all day
-        // gets a look-in. Inside the house the normal trace scan sees what is there (a body included).
-        private void TryLookInOnNeighbour(VillagerRuntime villager)
+        // On the way home: a neighbour (same home-point group) this villager has not seen all day gets a look-in, when
+        // there is time for it before nightfall. Inside the house the normal trace scan sees what is there (a body
+        // included). Setting off at night it goes straight home (C131). Returns the extra seconds the look-in adds
+        private float TryLookInOnNeighbour(VillagerRuntime villager)
         {
-            // Everyone heads home as night falls (C131), so the look-in is made at night too
-            if (_observation == null || villager.Memory == null || villager.Interaction == null
+            if (!_isDayActive || _observation == null || villager.Memory == null || villager.Interaction == null
                 || string.IsNullOrEmpty(villager.Profile.NeighborhoodId)
                 || (_visitedDay.TryGetValue(villager.Id, out int day) && day == _time.DayCount))
             {
-                return;
+                return 0f;
             }
 
             VillagerProfile target = null;
@@ -1313,26 +1356,41 @@ namespace ProjectShaman.AI.Core
 
             if (target == null)
             {
-                return;
+                return 0f;
             }
 
             if (!PlaceRegistry.TryGet(target.PublicInfo.HomePlaceId, out PlaceArea house))
             {
-                return;
+                return 0f;
             }
 
             Vector3 housePoint = house.GetHomePoint();
             if (!HasCompletePath(villager.Core.transform.position, housePoint))
             {
                 AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: no complete walkable path to the house");
-                return;
+                return 0f;
             }
 
-            if (villager.Interaction.TryBegin(house, InteractionResponse.Approach, _behaviourConfig.NeighbourVisitLingerSeconds))
+            // The detour and the rest of the walk home before nightfall
+            float speed = Mathf.Max(0.1f, _behaviourConfig.WalkSpeedEstimate);
+            Vector3 from = villager.Core.transform.position;
+            float needed = (PathLength(from, housePoint) + PathLength(housePoint, villager.Profile.HomePosition)) / speed + _behaviourConfig.NeighbourVisitLingerSeconds;
+            float left = TimeManager.DAY_DURATION - GetDayElapsed();
+            if (needed > left)
             {
-                _visitedDay[villager.Id] = _time.DayCount;
-                AILog.Log(AILog.MANAGER, villager.Id, $"Looking in on {target.VillagerId} on the way home (not seen today)");
+                AILog.Log(AILog.MANAGER, villager.Id, $"Skip look-in on {target.VillagerId}: needs {needed:F0}s, {left:F0}s left before nightfall");
+                return 0f;
             }
+
+            if (!villager.Interaction.TryBegin(house, InteractionResponse.Approach, _behaviourConfig.NeighbourVisitLingerSeconds))
+            {
+                return 0f;
+            }
+
+            villager.LookInHouseId = house.InteractableId;
+            _visitedDay[villager.Id] = _time.DayCount;
+            AILog.Log(AILog.MANAGER, villager.Id, $"Looking in on {target.VillagerId} on the way home (not seen today)");
+            return Mathf.Max(0f, needed - PathLength(from, villager.Profile.HomePosition) / speed);
         }
 
         private int GetBlockSeed(VillagerProfile profile, int dayCount)
@@ -1422,8 +1480,12 @@ namespace ProjectShaman.AI.Core
             public float HomeReturnTime => HomeLeaveTime;
             public float HomeArriveTime => TimeManager.DAY_DURATION;
             public float HomeLeaveTime { get; private set; } = TimeManager.DAY_DURATION;
-            // Schedule tab: the hour it is expected in (the leave time, or later after a late routine, plus the walk)
-            public int HomeHour { get; set; } = DayClock.DAY_END_HOUR;
+            // Schedule tab (C131): sets off home, gets in, falls asleep. Estimates, then what really happened
+            public int LeaveHour { get; private set; } = DayClock.DAY_END_HOUR;
+            public int HomeHour { get; private set; } = DayClock.DAY_END_HOUR;
+            public int BedHour { get; private set; } = DayClock.DAY_END_HOUR;
+            // The house it looks in on, on the way home (the look-in is given up at nightfall)
+            public string LookInHouseId { get; set; }
             public float WakeTime { get; private set; }
             // The current block (LastBlockIndex) has begun: the villager got there, or rests in its place
             public bool IsBlockStarted { get; set; }
@@ -1463,10 +1525,18 @@ namespace ProjectShaman.AI.Core
                 _todayBlocks[index] = block;
             }
 
+            public void SetHomeTimeline(int leaveHour, int homeHour, int bedHour)
+            {
+                LeaveHour = leaveHour;
+                HomeHour = homeHour;
+                BedHour = bedHour;
+            }
+
             public void ResetForDayStart()
             {
                 LastBlockIndex = -1;
                 IsBlockStarted = false;
+                LookInHouseId = null;
                 IsFree = false;
                 WaitingToolType = null;
                 IsHomeOrdered = false;

@@ -88,17 +88,17 @@ namespace ProjectShaman.Network.AI
         }
 
         // Every villager's day, the dead not yet known included: their own objects are gone, so the hours come through here
-        private void HandleDayPlanned(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        private void HandleDayPlanned(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
         {
-            RpcVillagerDayPlanned(villagerId, day, blockHours, homeHour, bedHour);
+            RpcVillagerDayPlanned(villagerId, day, blockHours, leaveHour, homeHour, bedHour);
         }
 
         [ClientRpc]
-        private void RpcVillagerDayPlanned(string villagerId, int day, int[] blockHours, int homeHour, int bedHour)
+        private void RpcVillagerDayPlanned(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
         {
             if (!isServer)
             {
-                _factory.Registry?.SetDayHours(villagerId, day, blockHours, homeHour, bedHour);
+                _factory.Registry?.SetDayHours(villagerId, day, blockHours, leaveHour, homeHour, bedHour);
             }
         }
 
