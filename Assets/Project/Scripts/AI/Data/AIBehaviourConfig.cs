@@ -18,6 +18,9 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(0.05f, 0.5f)] private float _routineDayRatio = 0.2f;
         [Tooltip("Latest a villager gets up in the morning, so they do not all set off at once")]
         [SerializeField] private int _maxStartDelayHours = 2;
+        [Tooltip("Clock hours one of which each villager heads home at after its routines (free time until then); a villager " +
+                 "whose routines run past it goes straight home. At home it rests until nightfall, then sleeps (C131)")]
+        [SerializeField] private int[] _homeLeaveHours = { 17, 18 };
         [Tooltip("A routine with less than this share of its length left before nightfall is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [Tooltip("Schedule tab estimates only: the tidy-up and getting ready before each routine, and the walking speed")]
@@ -244,6 +247,7 @@ namespace ProjectShaman.AI.Data
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
         public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
+        public IReadOnlyList<int> HomeLeaveHours => _homeLeaveHours;
         public float MinRemainingRatio => _minRemainingRatio;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
         public float WalkSpeedEstimate => _walkSpeedEstimate;
