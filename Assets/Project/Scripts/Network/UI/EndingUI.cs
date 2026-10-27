@@ -124,7 +124,7 @@ public class EndingUI : MonoBehaviour
         _resultApplied = true;
         _deadNpcText.text = result.villagersLost.ToString();
         _traceText.text = $"{result.tracesHandled} / {result.tracesTotal}";
-        _questText.text = $"{result.questsCompleted} / {result.questsAccepted}";
+        _questText.text = $"{result.questsCompleted} / {result.questsIssued}";
 
         GhostResult[] ghosts = result.ghosts ?? Array.Empty<GhostResult>();
         for (int i = 0; i < _ghostResultSlots.Length; i++)
