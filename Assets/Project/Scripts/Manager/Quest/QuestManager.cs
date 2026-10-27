@@ -195,7 +195,7 @@ public class QuestManager : SceneSingleton<QuestManager>
     // Both are resolved here, at offer time, so "!" and dialogue can already describe the request.
     public bool TryOffer(string giverId, string questId, string targetId, string contextId)
     {
-        // 수락 한도는 TryAcceptQuest에서만 본다. 받지 않은 의뢰는 기한이 와도 패널티 없이 취소된다 (TryCancelQuest)
+        // 수락 한도는 TryAcceptQuest에서만 본다. 받지 않은 의뢰도 기한이 오면 실패한다 (TryFailQuest)
         if (!IsServerSide || !IsDay() || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
         {
             return false;
@@ -527,7 +527,7 @@ public class QuestManager : SceneSingleton<QuestManager>
         return false;
     }
 
-    // AI 쪽 판정: 아무도 받지 않은 의뢰를 거둠 (기한이 온 의뢰, 더 급한 의뢰에 밀린 의뢰). 패널티 없음
+    // AI 쪽 판정: 아무도 받지 않은 의뢰를 거둠 (더 급한 의뢰에 밀린 의뢰). 패널티 없음
     public bool TryCancelQuest(int instanceId)
     {
         if (!IsServerSide)
