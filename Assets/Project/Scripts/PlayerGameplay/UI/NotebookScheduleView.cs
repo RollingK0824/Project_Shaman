@@ -277,9 +277,11 @@ public sealed class NotebookScheduleView : MonoBehaviour
                 RoutineSlotInfo routine = villager.Schedule.Get(today.day, slot);
                 if (routine.IsEmpty) continue;
                 // A work given up today for a missing tool: the villager rests there instead (C120)
-                if (registry != null && registry.IsSlotRested(villager.VillagerId, today.day, slot))
+                if (registry != null && registry.IsSlotRested(villager.VillagerId, today.day, slot, out string restPlaceId))
                 {
-                    if (ShowBlock(shown, "휴식", $"{routine.DisplayName} 못 함 · 도구 없음", REST_WASH, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                    string restNote = $"{routine.DisplayName} 못 함 · 도구 없음";
+                    if (!string.IsNullOrEmpty(restPlaceId)) restNote += $" → {MapAreaRegistry.NameOf(restPlaceId)}";
+                    if (ShowBlock(shown, "휴식", restNote, REST_WASH, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
                     continue;
                 }
                 Color wash = routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
