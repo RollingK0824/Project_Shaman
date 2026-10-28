@@ -21,7 +21,7 @@ namespace ProjectShaman.AI.Data
         [Tooltip("Each villager heads home at a random time from this clock hour to Home Leave Spread Hours later, so the " +
                  "village does not all set off at once (free time until then). A villager whose work runs past it goes home " +
                  "once done. At home it rests until it falls asleep at nightfall (C131)")]
-        [SerializeField] private int _homeLeaveEarliestHour = 17;
+        [SerializeField] private int _homeLeaveEarliestHour = 16;
         [SerializeField, Min(0f)] private float _homeLeaveSpreadHours = 2f;
         [Tooltip("A routine with less than this share of its length left before nightfall is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
