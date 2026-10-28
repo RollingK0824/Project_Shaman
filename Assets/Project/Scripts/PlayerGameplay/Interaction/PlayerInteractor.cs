@@ -11,7 +11,10 @@ public class PlayerInteractor : MonoBehaviour
     [SerializeField] private float _interactionDistance = 3f;
     [SerializeField] private LayerMask _interactionMask = ~0;
 
-    public IInteractable CurrentTarget { get; private set; }
+    private IInteractable _currentTarget;
+
+    public IInteractable CurrentTarget =>
+        _currentTarget is UnityEngine.Object obj && obj == null ? null : _currentTarget;
     public bool CanInteract { get; set; } = true;
 
     public event Action<IInteractable> TargetChanged;
@@ -70,13 +73,13 @@ public class PlayerInteractor : MonoBehaviour
         IInteractable newTarget)
     {
         if (ReferenceEquals(
-                CurrentTarget,
+                _currentTarget,
                 newTarget))
         {
             return;
         }
 
-        CurrentTarget = newTarget;
+        _currentTarget = newTarget;
 
         TargetChanged?.Invoke(
             CurrentTarget
