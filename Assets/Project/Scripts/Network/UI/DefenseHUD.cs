@@ -15,6 +15,10 @@ public class DefenseHUD : MonoBehaviour
     [SerializeField] private TMP_Text _timerText;
     [SerializeField] private Image _hpFill;
 
+    [Header("깃발 대기 타이머 (밤 시작 ~ 깃발 활성화 마감)")]
+    [SerializeField] private GameObject _flagWaitRoot;
+    [SerializeField] private TMP_Text _flagWaitTimerText;
+
     private NetDefenseState _state;
     private float _bannerHideTime;
 
@@ -25,6 +29,7 @@ public class DefenseHUD : MonoBehaviour
     {
         _bannerRoot.SetActive(false);
         _statusRoot.SetActive(false);
+        if (_flagWaitRoot != null) _flagWaitRoot.SetActive(false);
         TrySubscribe();
     }
 
@@ -67,9 +72,14 @@ public class DefenseHUD : MonoBehaviour
         {
             _timerText.text = FormatTime(_state.RemainingTime);
 
-            // 디펜스 전(깃발 대기, 준비 시간)에는 깃발 HP가 아직 초기화 전(지난밤 값)이라 가득 찬 것으로 표시
+            // 준비 시간에는 깃발 HP가 아직 초기화 전(지난밤 값)이라 가득 찬 것으로 표시
             bool full = _state.Phase != RitualPhase.Active || _state.FlagMaxHP <= 0f;
             _hpFill.fillAmount = full ? 1f : _state.FlagHP / _state.FlagMaxHP;
+        }
+
+        if (_flagWaitRoot != null && _flagWaitRoot.activeSelf && _flagWaitTimerText != null)
+        {
+            _flagWaitTimerText.text = FormatTime(_state.RemainingTime);
         }
     }
 
@@ -86,7 +96,12 @@ public class DefenseHUD : MonoBehaviour
 
     private void ShowStatus(RitualPhase phase)
     {
-        _wantStatus = phase == RitualPhase.WaitingFlag || phase == RitualPhase.Countdown || phase == RitualPhase.Active;
+        // 진행 패널(타이머 + HP)은 깃발을 켠 뒤에만
+        _wantStatus = phase == RitualPhase.Countdown || phase == RitualPhase.Active;
+
+        // 깃발 대기 타이머는 배너와 상관없이 바로 표시 (처음 몇 초가 가장 급함)
+        if (_flagWaitRoot != null) _flagWaitRoot.SetActive(phase == RitualPhase.WaitingFlag);
+
         RefreshStatusVisible();
     }
 
