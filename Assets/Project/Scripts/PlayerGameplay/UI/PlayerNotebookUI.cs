@@ -115,13 +115,10 @@ public class PlayerNotebookUI : MonoBehaviour
             _crafting.ConfigureNotebook();
             _crafting.gameObject.SetActive(true);
         }
-        if (scheduleRoot != null && owner.InventoryPanelPrefab != null)
+        if (scheduleRoot != null && owner.VillagerSchedulePrefab != null)
         {
-            var spread = new GameObject("VillagerScheduleSpread", typeof(RectTransform), typeof(NotebookScheduleView));
-            spread.transform.SetParent(scheduleRoot, false);
+            var spread = Instantiate(owner.VillagerSchedulePrefab, scheduleRoot);
             PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
-            // The notebook's own tab font (shared with the other UI), not the item panels' font
-            spread.GetComponent<NotebookScheduleView>().Bind(_panel.GetComponentInChildren<TMP_Text>(true)?.font);
         }
     }
 
@@ -192,6 +189,7 @@ public class PlayerNotebookUI : MonoBehaviour
         if (IsOpen && (_input == null || !_input.isActiveAndEnabled ||
             !PlayerActionGuard.CanAct(_owner.gameObject) || !PlayerLocalPresentation.IsLocal(_owner.gameObject))) Close();
         if (!IsOpen) ReleaseInput(); // Also handles UIManager's Escape/Close path.
+        UpdatePageSound();
         if (_inventory != null && _inventory.isActiveAndEnabled)
         {
             _inventory.ConfigureNotebook(OpenDrawing, SelectItem);
@@ -210,6 +208,22 @@ public class PlayerNotebookUI : MonoBehaviour
             _selectionText.rectTransform.sizeDelta = new Vector2(draw ? 280 : 440, 40);
             _selectionText.rectTransform.anchoredPosition = new Vector2(draw ? -80 : 0, 0);
         }
+    }
+
+    private bool _soundWasOpen;
+    private int _soundTab = -1;
+    private void UpdatePageSound()
+    {
+        int tab = -1;
+        if (IsOpen)
+            for (int i = 0; i < 16; i++)
+            {
+                var root = _panel.GetTabRoot(i);
+                if (root != null && root.gameObject.activeSelf) { tab = i; break; }
+            }
+        if (IsOpen && (!_soundWasOpen || tab != _soundTab))
+            _owner.GetComponent<PlayerAudioController>()?.PlayCue(PlayerSoundCue.Notebook);
+        _soundWasOpen = IsOpen; _soundTab = tab;
     }
 
     private void UpdateShortcut()

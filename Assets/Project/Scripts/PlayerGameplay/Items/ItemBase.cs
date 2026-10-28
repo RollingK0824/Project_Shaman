@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 
 public abstract class ItemBase : MonoBehaviour
 {
@@ -15,7 +15,7 @@ public abstract class ItemBase : MonoBehaviour
 
     // [로컬 클라] 사용 요청을 만든다. 실패하면 연출도 요청도 하지 않음
     // 여기서의 검사는 연출 남발을 막기 위한 용도. 최종 판정은 판정자(서버/오프라인)쪽에서 진행
-    protected bool TryBuildUseRequest(out ItemUseContext context)
+    protected bool TryBuildUseRequest(out ItemUseContext context, bool playPresentation = true)
     {
         context = default;
         if (Owner == null || Data == null) return false;
@@ -40,8 +40,19 @@ public abstract class ItemBase : MonoBehaviour
         // 조준값은 로컬 카메라 기준이고 서버는 값을 받아서 검증 후 사용
         Transform aim = camera.transform;
         context = new ItemUseContext(Owner, Data, aim.position, aim.forward);
-        controller?.PlayUsePresentation(Data);
+        if (playPresentation) controller?.PlayUsePresentation(Data);
         return true;
+    }
+
+    protected void BeginTimedUse(System.Action<ItemUseContext> release)
+    {
+        if (Owner == null) return;
+        var timed = Owner.GetComponent<PlayerTimedItemUse>();
+        var controller = Owner.GetComponent<PlayerItemController>();
+        if ((timed != null && timed.IsBusy) || controller == null || !controller.CanStartTimedUse) return;
+        if (!TryBuildUseRequest(out var context, false)) return;
+        if (timed == null) timed = Owner.AddComponent<PlayerTimedItemUse>();
+        timed.BeginLocal(context, release);
     }
 
     public abstract void OnUseStarted();

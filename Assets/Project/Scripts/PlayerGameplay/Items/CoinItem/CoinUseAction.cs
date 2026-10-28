@@ -4,6 +4,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "CoinUseAction", menuName = "Project Shaman/Item Use/Coin")]
 public sealed class CoinUseAction : ItemUseAction
 {
+    public override void PlayRemotePresentation(in ItemUseContext context)
+    {
+        if (context.Owner != null) context.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(context.Data);
+    }
     [SerializeField, Min(.1f)] private float _reach = 3f;
     [SerializeField] private LayerMask _targetMask = ~0;
 

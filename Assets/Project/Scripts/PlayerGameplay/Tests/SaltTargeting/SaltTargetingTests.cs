@@ -52,6 +52,7 @@ public class SaltTargetingTests
     {
         var ghost = Create("Manifested ghost", 1);
         ghost.SetActive(false);
+        if (isMinion) ghost.AddComponent<AI_FlyingMovement>(); // Current minion requires INetworkMovable even in contract tests.
         Behaviour identity = isMinion ? (Behaviour)ghost.AddComponent<AI_Minion>() : ghost.AddComponent<AI_GhostEntity>();
         // The test exercises identity and hit contracts, not AI simulation/NavMesh.
         foreach (var behaviour in ghost.GetComponents<Behaviour>())
@@ -78,6 +79,8 @@ public class SaltTargetingTests
     public void TearDown()
     {
         PlayerEvents.DamageRequested -= Damage;
+        foreach (var burst in Object.FindObjectsByType<SaltVfxBurst>(FindObjectsSortMode.None))
+            if (Vector3.Distance(burst.transform.position, _origin) < 10) Object.DestroyImmediate(burst.gameObject);
         foreach (var volume in Object.FindObjectsByType<DamageTrigger>(FindObjectsSortMode.None))
             if (Vector3.Distance(volume.transform.position, _origin) < 10)
                 Object.DestroyImmediate(volume.gameObject);
@@ -233,12 +236,22 @@ public class SaltTargetingTests
         parent.SetActive(true);
         var status = minion.GetComponent<AI_Status>();
         Assert.IsNotNull(minion.GetComponent<AI_DamageReceiver>());
+        var presentation = _owner.AddComponent<PlayerSaltHitPresentation>();
+        int confirmedHits = 0;
+        presentation.ConfirmedHit += (_, _, _, _) => confirmedHits++;
+        status.SetSimulationActive(false);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(0, confirmedHits, "Ignored AI damage must not produce hit powder");
+        foreach(var volume in Object.FindObjectsByType<DamageTrigger>(FindObjectsSortMode.None))
+            if (Vector3.Distance(volume.transform.position, _origin) < 10) Object.DestroyImmediate(volume.gameObject);
+        _requests = _consumed = 0;
         status.SetSimulationActive(true);
         float before = status.Health;
         Assert.Greater(before, 0f);
         Assert.IsTrue(Spray());
         Assert.AreEqual(1, _requests);
         Assert.AreEqual(Mathf.Max(0f, before - 10f), status.Health);
+        Assert.AreEqual(1, confirmedHits, "Real minion HP change produces exactly one hit powder event");
         Assert.AreEqual(1, _consumed);
     }
 #endif

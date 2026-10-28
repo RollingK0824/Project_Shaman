@@ -1,0 +1,41 @@
+NPC 남성 / 여성 모델 에셋 정리 (2026-10-28)
+
+폴더 구조
+- Male, Female 각각 Model / Materials / Textures / Prefabs로 분리.
+- Model의 FBX는 사용자가 제공한 npc_male.fbx / npc_female.fbx 원본과 동일한 파일.
+- Prefabs/NPC_Male_Visual.prefab, NPC_Female_Visual.prefab은 외형 전용 프리팹.
+  Animator와 Humanoid Avatar만 연결되어 있으며 AI, Network, Collider, AnimatorController는 포함하지 않음.
+  NPC 담당 시스템의 외형 하위 오브젝트로 연결하고 해당 시스템의 AnimatorController를 지정할 것.
+
+Rig
+- Animation Type: Humanoid / Avatar Definition: Create From This Model.
+- 기존 Human.rig 53개 본을 유지하고 Root를 제외한 52개 본(손가락 포함)을 매핑.
+- Unity의 기준 T-pose 보정 적용. Avatar 유효성 및 Humanoid 판정 통과.
+- Optimize Game Objects는 꺼 두어 손, 머리 등 기존 본을 참조할 수 있도록 유지.
+- 외형 프리팹의 Apply Root Motion은 꺼짐. 이동 방식은 NPC 담당 시스템에서 결정.
+
+머티리얼 / 텍스처
+- 모든 렌더러를 별도 URP/Lit 머티리얼로 명시적 remap.
+- FBX 내부 텍스처를 외부 Textures 폴더로 분리하여 연결.
+- 남성 FBX에서 빠진 상의/바지 Base Color 텍스처는 기존 의상 팩에서 보존.
+  상의 회베이지 / 바지 짙은 회갈색 설정 반영.
+- 눈썹은 Alpha Clip, 넓은 의상 및 안감은 양면 표시.
+- 원본에 누락된 얼굴/눈 등의 Normal Map은 임의 생성하지 않았으며 새 머티리얼에서도 참조하지 않음.
+- 여성의 안감, 속바지 및 기존 모델 메시를 유지.
+
+검증 및 범위
+- Unity에서 두 모델 Avatar valid / human 확인, 본 참조 누락 0개.
+- 기존 Mixamo walking / running 클립을 별도 Preview Scene에서 샘플링하고 전후면 렌더 확인.
+- 새 외형 프리팹의 Avatar와 머티리얼 참조 확인.
+- 실제 NPC AI, 멀티플레이, 빌드 실행 검증은 이 에셋 정리 작업에 포함하지 않음.
+- 움직일 때 의상 메시 자체의 겹침/관통이 일부 남아 있음:
+  남성 겨드랑이/소매, 여성 소매 및 달리기 시 뒤쪽 치마와 발의 교차.
+  Humanoid 연결은 정상이며, 이 부분은 원본 의상 웨이트/형상 보완 대상으로 남김.
+
+Joseon_Royal_Wear 정리
+- Assets/Joseon_Royal_Wear는 외부 참조 검사 후 프로젝트에서 제거.
+- 필요한 남성 상의/바지 텍스처는 NPC/Male/Textures에 별도로 보존.
+- 새 NPC의 의존성에 삭제한 폴더 참조가 없음.
+- 프로젝트 밖 복구용 백업: D:/Jun/NPCAssetImport_20261028/Joseon_Royal_Wear_Backup
+- 기존 Assets/ThirdParty/Joseon_Royal_Wear 및 다른 기존 에셋/스크립트/씬은 수정하지 않음.
+- 검사 로그와 렌더: D:/Jun/NPCAssetImport_20261028

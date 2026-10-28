@@ -9,6 +9,15 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
     [SerializeField, Min(.1f)] private float _reach = 3f;
     public event Action<long, Ray> PlacementRequested;
     private long _nextRequest, _lastCommitted;
+    private long _lastPresented;
+    // Network adapter may call this from its success RPC on each observer.
+    // Replays (including the host's local commit + RPC) are silent.
+    public void PresentPlacementConfirmed(long requestId, Vector3 position)
+    {
+        if (requestId <= _lastPresented || !Finite(position)) return;
+        _lastPresented = requestId;
+        PlayerSoundBank.PlayAt(PlayerSoundCue.LanternMount, position);
+    }
     private bool _busy;
     private float _nextAllowed;
     private PlacementTarget _target;
@@ -162,7 +171,11 @@ public sealed class PlayerLanternPlacement : MonoBehaviour
                 attemptedPublish = publish != null;
                 return (publish == null || publish(world)) && world != null && world.gameObject.activeInHierarchy;
             });
-            if (committed) { _lastCommitted = requestId; placed = world; }
+            if (committed)
+            {
+                _lastCommitted = requestId; placed = world;
+                PresentPlacementConfirmed(requestId, world.transform.position);
+            }
             return committed;
         }
         catch (Exception e) { Debug.LogException(e, this); return false; }
