@@ -14,17 +14,33 @@ public class MapTab : MonoBehaviour
     [SerializeField]
     private MapMarkerUI _markerPrefab;
 
+    // Full-stretch children of _mapRect, in this order so player markers draw above house pins
+    [SerializeField]
+    private RectTransform _housePinRoot;
+
+    [SerializeField]
+    private RectTransform _markerRoot;
+
+    [SerializeField]
+    private RectTransform _tooltip;     // last child of _mapRect, Raycast Target off
+
+    [SerializeField]
+    private TMP_Text _tooltipText;
+
+    [SerializeField]
+    private float _tooltipOffset = 12f;     // px above the pin
+
     [SerializeField]
     private TMP_Text _locationText;     // optional, "현재 위치: ..."
 
     // World X/Z rectangle, and where its corners sit on the picture (0..1, from bottom-left).
-    // Measured from TestScene_Gameplay's districts against Map.png on 2026-10-23
-    [SerializeField] private Vector2 _worldMin = new Vector2(-160f, -60f);
-    [SerializeField] private Vector2 _worldMax = new Vector2(180f, 200f);
-    [SerializeField] private Vector2 _uvMinXMinZ = new Vector2(0.037f, 0.059f);
-    [SerializeField] private Vector2 _uvMaxXMinZ = new Vector2(0.982f, 0.059f);
-    [SerializeField] private Vector2 _uvMinXMaxZ = new Vector2(0.037f, 0.966f);
-    [SerializeField] private Vector2 _uvMaxXMaxZ = new Vector2(0.982f, 0.966f);
+    // Measured from Gameplay.unity's houses against MapV2.png on 2026-10-28
+    [SerializeField] private Vector2 _worldMin = new Vector2(-180f, -60f);
+    [SerializeField] private Vector2 _worldMax = new Vector2(170f, 210f);
+    [SerializeField] private Vector2 _uvMinXMinZ = new Vector2(0.042f, 0.067f);
+    [SerializeField] private Vector2 _uvMaxXMinZ = new Vector2(0.962f, 0.067f);
+    [SerializeField] private Vector2 _uvMinXMaxZ = new Vector2(0.042f, 0.976f);
+    [SerializeField] private Vector2 _uvMaxXMaxZ = new Vector2(0.962f, 0.976f);
 
     [SerializeField]
     private Color _deadColor = Color.gray;
@@ -40,6 +56,22 @@ public class MapTab : MonoBehaviour
     private void OnDisable()
     {
         _requestId++;   // drop a network answer that arrives after closing
+        HideTooltip();
+    }
+
+    public void ShowTooltip(string text, RectTransform pin)
+    {
+        if (_tooltip == null || string.IsNullOrEmpty(text)) return;
+
+        _tooltipText.text = text;
+        _tooltip.position = pin.position;
+        _tooltip.anchoredPosition += Vector2.up * _tooltipOffset;
+        _tooltip.gameObject.SetActive(true);
+    }
+
+    public void HideTooltip()
+    {
+        if (_tooltip != null) _tooltip.gameObject.SetActive(false);
     }
 
     private void Refresh()
@@ -48,6 +80,13 @@ public class MapTab : MonoBehaviour
         _markers.Clear();
 
         if (_locationText != null) _locationText.text = "";
+
+        HideTooltip();
+        if (_housePinRoot != null)
+        {
+            // true: hidden pins come back when their house gets an owner
+            foreach (MapHousePinUI pin in _housePinRoot.GetComponentsInChildren<MapHousePinUI>(true)) pin.Refresh(this);
+        }
 
         NetworkIdentity local = NetworkClient.localPlayer;
         if (local != null)
@@ -93,7 +132,7 @@ public class MapTab : MonoBehaviour
 
         Color color = player.IsDead ? _deadColor : PlayerColors.Get(player.ColorId);
 
-        MapMarkerUI marker = Instantiate(_markerPrefab, _mapRect);
+        MapMarkerUI marker = Instantiate(_markerPrefab, _markerRoot != null ? _markerRoot : _mapRect);
         marker.Set(uv, angle, color, player.Name, isLocal);
         if (!isLocal) marker.transform.SetAsFirstSibling();   // the local marker stays on top
         _markers.Add(marker);
