@@ -43,7 +43,7 @@ AudioSource:
   m_GameObject: {fileID: 294152141655660733}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: 24300002, guid: 2ac82c5cdbacc9644ad9bb47dbdd89f7, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0
@@ -1172,6 +1172,7 @@ MonoBehaviour:
   _craftSuccess: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanSave: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanUse: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
+  _useRecordedSounds: 1
 --- !u!114 &4109673206515696025
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1951,6 +1952,9 @@ MonoBehaviour:
   _proximityRange: 25
   _proximityPlayback: {fileID: 1373631399743798397}
   _radioPlayback: {fileID: 6450042292009322231}
+  _radioStartClip: {fileID: 8300000, guid: dedb625ae40943feb33930ca2fa82c39, type: 3}
+  _radioEndClip: {fileID: 8300000, guid: fd169fafe55a43a7bf5c644095fcdbc7, type: 3}
+  _radioCueVolume: 0.4
   _debugLoopback: 0
 --- !u!1 &8459400485122398486
 GameObject:
@@ -2111,7 +2115,7 @@ AudioSource:
   m_GameObject: {fileID: 9005810808144654130}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: 0}
+  OutputAudioMixerGroup: {fileID: 24300002, guid: 2ac82c5cdbacc9644ad9bb47dbdd89f7, type: 2}
   m_audioClip: {fileID: 0}
   m_Resource: {fileID: 0}
   m_PlayOnAwake: 0

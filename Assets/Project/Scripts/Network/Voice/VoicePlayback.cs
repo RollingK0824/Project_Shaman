@@ -42,6 +42,12 @@ public class VoicePlayback : MonoBehaviour
     }
     private void ApplyVolume(float volume) => _source.volume = volume;
 
+    // 무전 신호음. 같은 AudioSource로 재생해서 필터와 음성 볼륨이 그대로 적용
+    public void PlayCue(AudioClip clip, float volumeScale)
+    {
+        if (_source != null && clip != null) _source.PlayOneShot(clip, volumeScale);
+    }
+
     // [메인 스레드] Steam DecompressVoice 결과 (16비트 모노 PCM, 리틀 엔디언)
     public void Push(byte[] pcm16, int byteCount)
     {
@@ -49,7 +55,7 @@ public class VoicePlayback : MonoBehaviour
 
         lock (_lock)
         {
-            for (int i = 0; i < byteCount; i += 2 )
+            for (int i = 0; i + 1 < byteCount; i += 2)
             {
                 // 가득 차면 가장 오래된 샘플을 버림 (지연이 계속 쌓이는 것 방지){
                 if (_count == _ring.Length)

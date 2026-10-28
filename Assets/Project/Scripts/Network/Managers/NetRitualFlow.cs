@@ -12,6 +12,10 @@ public class NetRitualFlow : NetworkBehaviour
     [SerializeField] private DefenseManager _defense;
     [SerializeField] private ExorcismFlagInteractable _flag;
 
+    [Header("의식 시간")]
+    [Tooltip("밤 시작 후 이 시간 안에 깃발을 켜야 함. 못 켜면 오늘 밤 퇴마 실패")]
+    [SerializeField, Min(1f)] private float _activateWindow = 30f;
+
     [Header("테스트")]
     [Tooltip("켜면 지목이 틀려도 의식 디펜스가 시작됨")]
     [SerializeField] private bool _debugForceRitual;
@@ -21,6 +25,8 @@ public class NetRitualFlow : NetworkBehaviour
 
     // [서버] 오늘 밤 의식이 열렸는지 (지목 정답일 때만 true) 판정 내용은 클라로 보내지 않음
     private bool _hasRitual;
+    // [서버] 깃발 활성화 마감 시각 (NetworkTime 기준)
+    private double _activateDeadline;
 
     private bool _serverSubscribed;
 
@@ -71,7 +77,9 @@ public class NetRitualFlow : NetworkBehaviour
         {
             _flag.SetRitualActive(true);
         }
-        _state.ServerSetPhase(_hasRitual ? RitualPhase.WaitingFlag : RitualPhase.NoRitual, NightEndTime());
+        _activateDeadline = NetworkTime.time + _activateWindow;
+        _state.ServerSetPhase(_hasRitual ? RitualPhase.WaitingFlag : RitualPhase.NoRitual,
+            _hasRitual ? _activateDeadline : NightEndTime());
 
         Debug.Log($"[NetRitualFlow] 지목 판정 -> 의식 {(_hasRitual ? "열림" : "없음")}", this);
     }
@@ -90,12 +98,12 @@ public class NetRitualFlow : NetworkBehaviour
 
     private void HandleCountdownStarted(float delay)
     {
-        _state.ServerSetPhase(RitualPhase.Countdown, NightEndTime());
+        _state.ServerSetPhase(RitualPhase.Countdown, NetworkTime.time + delay);
     }
 
     private void HandleDefenseStarted()
     {
-        _state.ServerSetPhase(RitualPhase.Active, NightEndTime());
+        _state.ServerSetPhase(RitualPhase.Active, NetworkTime.time + _defense.DefenseDuration);
     }
 
     private double NightEndTime()
@@ -103,8 +111,22 @@ public class NetRitualFlow : NetworkBehaviour
         return _timeM.CycleStartTime + _timeM.DayCount * TimeManager.CYCLE_DURATION;
     }
 
+    // [서버] 깃발 활성화 마감. 시간 안에 못 켜면 오늘 밤 의식은 닫히고 퇴마 실패
+    [ServerCallback]
+    private void Update()
+    {
+        if (!_serverSubscribed || !_hasRitual || _state.Phase != RitualPhase.WaitingFlag) return;
+        if (NetworkTime.time < _activateDeadline) return;
 
-    // [서버] 아침까지 버팀 = true, 깃발 HP 0 = false
+        _hasRitual = false;
+        _flag.SetRitualActive(false); 
+        _state.ServerSetPhase(RitualPhase.FlagMissed);
+
+        Debug.Log("[NetRitualFlow] 깃발 활성화 마감 -> 퇴마 실패", this);
+    }
+
+
+    // [서버] 디펜스 버팀 = true, 깃발 HP 0 = false
     private void HandleDefenseCompleted(bool won)
     {
         if (!_hasRitual)
