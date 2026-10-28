@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
@@ -13,17 +11,9 @@ namespace ProjectShaman.AI.Work
     {
         private const string WORK_ACTION_PARAM = "WorkAction";
 
-        [Serializable]
-        public class ActionAnimationBinding
-        {
-            public string ActionId;
-            public int AnimatorValue;
-        }
-
         [SerializeField] private bool _useAnimationEvent;
         [SerializeField] private float _hitIntervalSeconds = 2f;
         [SerializeField] private float _turnSpeedDegrees = 360f;
-        [SerializeField] private List<ActionAnimationBinding> _actionBindings = new List<ActionAnimationBinding>();
 
         [Header("Runtime")]
         [SerializeField] private bool _isWorking;
@@ -70,7 +60,7 @@ namespace ProjectShaman.AI.Work
             _nextHitTime = Time.time + _hitIntervalSeconds;
 
             _core.SetState(AIState.Working);
-            _visual.SetIntegerIfExists(WORK_ACTION_PARAM, GetAnimatorValue(_currentActionId));
+            _visual.SetIntegerIfExists(WORK_ACTION_PARAM, (int)WorkAnimationTable.Get(_currentActionId));
 
             AILog.Log(AILog.WORK, _core.LogId, $"BeginWork action='{_currentActionId}' station={(_station != null ? _station.StationId : "none")} mode={(_useAnimationEvent ? "AnimEvent" : "Timer")}");
             return true;
@@ -143,19 +133,6 @@ namespace ProjectShaman.AI.Work
 
             Quaternion target = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, target, _turnSpeedDegrees * deltaTime);
-        }
-
-        private int GetAnimatorValue(string actionId)
-        {
-            foreach (ActionAnimationBinding binding in _actionBindings)
-            {
-                if (binding.ActionId == actionId)
-                {
-                    return binding.AnimatorValue;
-                }
-            }
-
-            return 0;
         }
     }
 }

@@ -8,6 +8,7 @@ using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Mock;
 using ProjectShaman.AI.Routine;
+using ProjectShaman.AI.Work;
 using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Core
@@ -100,7 +101,8 @@ namespace ProjectShaman.AI.Core
             _random = new System.Random(Seed);
 
             AILog.Log(AILog.FACTORY, $"Spawn begin (count={_villagerCount}, seed={Seed}, handler={spawnHandler.HandlerName})");
-            AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count})");
+            AILog.Log(AILog.DATA_TO_AI, $"{_dataProvider.SourceName} loaded (names={_dataProvider.Names.Count}, jobs={_dataProvider.Jobs.Count}, routines={_dataProvider.Routines.Count}, actions={_dataProvider.Actions.Count})");
+            WorkAnimationTable.Load(_dataProvider.Actions);
 
             _scheduleBuilder = new ScheduleBuilder(ExcludeMissingTools(_dataProvider.Routines), _behaviourConfig.CycleDays, _behaviourConfig.RoutinesPerDay, _behaviourConfig.RestRatio, _random, GetPlaceCapacity);
 

@@ -6,6 +6,10 @@ namespace ProjectShaman.AI
     [RequireComponent(typeof(AI_Core), typeof(AI_Movement))]
     public class AI_VisualController : MonoBehaviour
     {
+        // Same name as the player's Animator, so villager controllers can reuse its locomotion setup
+        private const string MOVE_SPEED_PARAM = "Speed";
+        private const string STATE_PARAM = "State";
+
         private AI_Core core;
         private AI_Movement movement;
         private Animator animator;
@@ -25,7 +29,7 @@ namespace ProjectShaman.AI
         {
             if (UpdateAnimatorLocally && animator != null && movement != null)
             {
-                animator.SetFloat("MoveSpeed", movement.CurrentSpeed);
+                animator.SetFloat(MOVE_SPEED_PARAM, movement.CurrentSpeed);
             }
         }
 
@@ -33,7 +37,7 @@ namespace ProjectShaman.AI
         {
             if (animator != null)
             {
-                animator.SetInteger("State", (int)newState);
+                animator.SetInteger(STATE_PARAM, (int)newState);
             }
         }
 
