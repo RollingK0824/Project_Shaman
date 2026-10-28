@@ -115,13 +115,10 @@ public class PlayerNotebookUI : MonoBehaviour
             _crafting.ConfigureNotebook();
             _crafting.gameObject.SetActive(true);
         }
-        if (scheduleRoot != null && owner.InventoryPanelPrefab != null)
+        if (scheduleRoot != null && owner.VillagerSchedulePrefab != null)
         {
-            var spread = new GameObject("VillagerScheduleSpread", typeof(RectTransform), typeof(NotebookScheduleView));
-            spread.transform.SetParent(scheduleRoot, false);
+            var spread = Instantiate(owner.VillagerSchedulePrefab, scheduleRoot);
             PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
-            // The notebook's own tab font (shared with the other UI), not the item panels' font
-            spread.GetComponent<NotebookScheduleView>().Bind(_panel.GetComponentInChildren<TMP_Text>(true)?.font);
         }
     }
 
