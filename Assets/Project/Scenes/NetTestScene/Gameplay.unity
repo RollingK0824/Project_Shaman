@@ -7683,6 +7683,7 @@ MonoBehaviour:
   _toolInstanceId: Hoe_04
   _toolTypeId: Hoe
   _homeStoragePlaceId: Shed_02
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -11066,6 +11067,7 @@ MonoBehaviour:
   _toolInstanceId: Hoe_05
   _toolTypeId: Hoe
   _homeStoragePlaceId: Shed_01
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -15268,6 +15270,7 @@ MonoBehaviour:
   _toolInstanceId: Axe_02
   _toolTypeId: Axe
   _homeStoragePlaceId: Shed_01
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -26704,6 +26707,7 @@ MonoBehaviour:
   _toolInstanceId: Axe_04
   _toolTypeId: Axe
   _homeStoragePlaceId: Shed_01
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -52363,6 +52367,7 @@ MonoBehaviour:
   _toolInstanceId: Axe_05
   _toolTypeId: Axe
   _homeStoragePlaceId: Shed_01
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -57855,6 +57860,7 @@ MonoBehaviour:
   _toolInstanceId: Hoe_02
   _toolTypeId: Hoe
   _homeStoragePlaceId: Shed_02
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -61624,6 +61630,7 @@ MonoBehaviour:
   _toolInstanceId: Axe_03
   _toolTypeId: Axe
   _homeStoragePlaceId: Shed_01
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -62465,6 +62472,7 @@ MonoBehaviour:
   _toolInstanceId: Hoe_03
   _toolTypeId: Hoe
   _homeStoragePlaceId: Shed_02
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -63877,7 +63885,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &2003804589
 Transform:
   m_ObjectHideFlags: 0
@@ -66616,6 +66624,7 @@ MonoBehaviour:
   _toolInstanceId: Axe_01
   _toolTypeId: Axe
   _homeStoragePlaceId: Shed_01
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -67220,6 +67229,63 @@ MonoBehaviour:
   m_IgnoreFromBuild: 1
   m_ApplyToChildren: 1
   m_AffectedAgents: ffffffff
+--- !u!1001 &2105228964
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    serializedVersion: 3
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 1840075779854636, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_Name
+      value: well
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 115
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalRotation.x
+      value: -0.7071068
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: -90
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 4842928529610842, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+    m_RemovedGameObjects: []
+    m_AddedGameObjects: []
+    m_AddedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: d03ac8239a200d94f9c8e954396e63fa, type: 3}
 --- !u!1001 &2112939000
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -67379,6 +67445,7 @@ MonoBehaviour:
   _toolInstanceId: Hoe_01
   _toolTypeId: Hoe
   _homeStoragePlaceId: Shed_02
+  _itemData: {fileID: 0}
   _heldLocalOffset: {x: 0, y: 0, z: 0}
   _heldLocalEuler: {x: 0, y: 0, z: 0}
   _disableColliderWhenHeld: 1
@@ -69904,3 +69971,4 @@ SceneRoots:
   - {fileID: 1873306534}
   - {fileID: 460918448}
   - {fileID: 375703275}
+  - {fileID: 2105228964}
