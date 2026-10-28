@@ -34,7 +34,8 @@ namespace ProjectShaman.AI
         // Today's routine blocks as clock-hour pairs (DailyBlock.ToHourPairs), for the notebook schedule on every peer
         public IReadOnlyList<int> TodayBlockHours => _todayBlockHours;
         public int TodayBlocksDay { get; private set; }
-        // Clock hours: home by (after the last block's walk) and to bed (night side, 20 or later)
+        // Clock hours: sets off home, gets in, and to bed (nightfall, or when it really fell asleep) (C131)
+        public int TodayLeaveHour { get; private set; }
         public int TodayHomeHour { get; private set; }
         public int TodayBedHour { get; private set; }
         public bool IsInitialized => _profile != null;
@@ -87,10 +88,11 @@ namespace ProjectShaman.AI
         }
 
         // Server: set each morning by AIManager. Client: applied from the network copy
-        public void SetTodayBlocks(int dayCount, int[] blockHours, int homeHour, int bedHour)
+        public void SetTodayBlocks(int dayCount, int[] blockHours, int leaveHour, int homeHour, int bedHour)
         {
             TodayBlocksDay = dayCount;
             _todayBlockHours = blockHours ?? Array.Empty<int>();
+            TodayLeaveHour = leaveHour;
             TodayHomeHour = homeHour;
             TodayBedHour = bedHour;
             OnTodayBlocksChanged?.Invoke();
@@ -175,6 +177,9 @@ namespace ProjectShaman.AI
             OnRoutineCleared?.Invoke(reason);
         }
 
+        // The possession stand-still already spent on the current routine (0 if none, or not yet)
+        public float ConsumedStartDelaySeconds => HasRoutine && _startDelayConsumedSerial == CurrentRoutine.Serial ? CurrentRoutine.StartDelaySeconds : 0f;
+
         public bool TryConsumeStartDelay(out float delay)
         {
             delay = 0f;
@@ -210,6 +215,30 @@ namespace ProjectShaman.AI
         public void SetDailyStartOffset(float offsetSeconds)
         {
             _routineDebug.StartOffsetSeconds = offsetSeconds;
+        }
+
+        // Server: in the house past the bed hour, until the day starts (AIManager decides)
+        public bool IsAsleep { get; private set; }
+        public event Action<bool> OnAsleepChanged;
+
+        public void SetAsleep(bool asleep)
+        {
+            if (IsAsleep == asleep)
+            {
+                return;
+            }
+
+            IsAsleep = asleep;
+            AILog.Log(AILog.CORE, LogId, asleep ? "Fell asleep" : "Woke up");
+            OnAsleepChanged?.Invoke(asleep);
+        }
+
+        // In the house for the evening (until the next day start); awake until IsAsleep. A player may still drop in and talk
+        public bool IsHomeForNight { get; private set; }
+
+        public void SetHomeForNight(bool atHome)
+        {
+            IsHomeForNight = atHome;
         }
 
         public void SetMustGoHome(bool mustGoHome)

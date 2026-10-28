@@ -85,17 +85,11 @@ namespace ProjectShaman.AI
             AILog.Log(AILog.GHOST, context.GhostId, $"Sleep paralysis on {villagerId}");
         }
 
-        // Past the bed hour on the schedule tab: a villager still up at night cannot be pinned in its sleep
+        // Really asleep (AIManager puts a villager to sleep in its house at night): one still up cannot be pinned in its
+        // sleep. The schedule tab's bed hour only shows it (C131)
         private bool IsAsleep()
         {
-            TimeManager time = TimeManager.Existing;
-            if (time == null || _core.TodayBedHour <= 0)
-            {
-                return true;
-            }
-
-            float nightElapsed = (float)time.Elapsed - TimeManager.DAY_DURATION;
-            return nightElapsed < 0f || DayClock.NightToHour(nightElapsed) >= _core.TodayBedHour;
+            return _core.IsAsleep;
         }
 
         private bool IsAtHome(float distance)

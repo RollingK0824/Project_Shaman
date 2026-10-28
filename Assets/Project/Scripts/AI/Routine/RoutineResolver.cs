@@ -19,7 +19,8 @@ namespace ProjectShaman.AI.Routine
             _config = config;
         }
 
-        public bool TryResolve(VillagerProfile profile, int dayCount, int slot, int serial, float startTime, float endTime, WorkStation preferredStation, out ResolvedRoutine resolved)
+        // near: where the villager is now; a routine naming a place group goes to the member nearest it
+        public bool TryResolve(VillagerProfile profile, int dayCount, int slot, int serial, float startTime, float endTime, WorkStation preferredStation, Vector3 near, out ResolvedRoutine resolved)
         {
             resolved = default;
 
@@ -30,23 +31,24 @@ namespace ProjectShaman.AI.Routine
                 return false;
             }
 
-            return TryResolveEntry(profile, routine, dayCount, slot, serial, startTime, endTime, preferredStation, out resolved);
+            return TryResolveEntry(profile, routine, dayCount, slot, serial, startTime, endTime, preferredStation, near, out resolved);
         }
 
         // Any routine entry, not only the scheduled one (a rest in place of a work that could not go on)
-        public bool TryResolveEntry(VillagerProfile profile, RoutineEntry routine, int dayCount, int slot, int serial, float startTime, float endTime, WorkStation preferredStation, out ResolvedRoutine resolved)
+        public bool TryResolveEntry(VillagerProfile profile, RoutineEntry routine, int dayCount, int slot, int serial, float startTime, float endTime, WorkStation preferredStation, Vector3 near, out ResolvedRoutine resolved)
         {
             resolved = default;
 
-            if (!PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
+            if (!PlaceRegistry.TryPick(routine.PlaceId, near, out PlaceArea place))
             {
-                AILog.Warn(AILog.ROUTINE, $"{profile.VillagerId} place '{routine.PlaceId}' not found for {routine.RoutineId}");
+                AILog.Warn(AILog.ROUTINE, $"{profile.VillagerId} place '{routine.PlaceId}' not found for {routine.RoutineId} (no such place, and no place of that group in the scene)");
                 return false;
             }
 
             resolved = new ResolvedRoutine
             {
                 Source = routine,
+                PlaceId = place.PlaceId,
                 DayCount = dayCount,
                 Slot = slot,
                 Serial = serial,
@@ -165,7 +167,7 @@ namespace ProjectShaman.AI.Routine
                     }
 
                     resolved.TargetPosition = wrongPlace.GetRandomPoint(_random);
-                    resolved.CorruptionDetail = $"place {routine.PlaceId} → {wrongPlaceId}";
+                    resolved.CorruptionDetail = $"place {resolved.PlaceId} → {wrongPlaceId}";
                     return true;
                 case CorruptionAxis.Time:
                     float slotLength = Mathf.Max(1f, resolved.EndTime - resolved.StartTime);
@@ -180,7 +182,7 @@ namespace ProjectShaman.AI.Routine
 
         private bool TryApplyToolAxis(RoutineEntry routine, AI_Possession possession, System.Random random, ref ResolvedRoutine resolved)
         {
-            if (routine.WrongToolIds.Count == 0 || !PlaceRegistry.TryGet(routine.PlaceId, out PlaceArea place))
+            if (routine.WrongToolIds.Count == 0 || !PlaceRegistry.TryGet(resolved.PlaceId, out PlaceArea place))
             {
                 return false;
             }

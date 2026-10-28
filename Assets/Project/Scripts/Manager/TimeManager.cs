@@ -33,10 +33,41 @@ public class TimeManager : SceneSingleton<TimeManager>
     public event Action OnNightStart;
     public event Action<int> OnNewDay;
 
+    // 테스트 빨리 감기 (F1 패널): RebaseTime부터 Speed배로 흐르고 ElapsedAtRebase에서 이어서 센다
+    public float Speed { get; private set; } = 1f;
+    private double _rebaseTime;
+    private double _elapsedAtRebase;
+
     public void SetCycleStart(double startTime)
     {
         CycleStartTime = startTime;
+        _rebaseTime = startTime;
+        _elapsedAtRebase = 0;
         IsRunning = true;
+    }
+
+    public double ElapsedAt(double networkTime)
+    {
+        return _elapsedAtRebase + (networkTime - _rebaseTime) * Speed;
+    }
+
+    // 게임 시계와 Time.timeScale을 같이 바꿔 주민 이동·일과·애니메이션이 같은 비율로 빨라짐
+    public void SetSpeed(float speed, double rebaseTime, double elapsedAtRebase)
+    {
+        Speed = Mathf.Max(1f, speed);
+        _rebaseTime = rebaseTime;
+        _elapsedAtRebase = elapsedAtRebase;
+        Time.timeScale = Speed;
+        Debug.Log($"[TimeManager] 시간 배속 x{Speed:0.#}");
+        // Also in the AI session log: above x3 agents take steps past their arrival radius, so lateness and
+        // approach timeouts from then on are not real
+        string note = Speed > 3f ? " (above x3 movement and arrival timings are unreliable)" : string.Empty;
+        ProjectShaman.AI.Core.AILog.Log(ProjectShaman.AI.Core.AILog.TIME_TO_AI, $"Game speed x{Speed:0.#}{note}");
+    }
+
+    private void OnDestroy()
+    {
+        Time.timeScale = 1f;
     }
 
     public string GetTextTime() { return _textTime[_textTimeIndex < 0 ? _startTextTimeIndex : _textTimeIndex]; }
@@ -49,7 +80,7 @@ public class TimeManager : SceneSingleton<TimeManager>
         }
 
 
-        Elapsed = NetworkTime.time - CycleStartTime;
+        Elapsed = ElapsedAt(NetworkTime.time);
         if (Elapsed < 0)
         {
             return;

@@ -26,6 +26,19 @@ namespace ProjectShaman.AI.Core
             return DAY_END_HOUR + nightElapsedSeconds / (TimeManager.NIGHT_DURATION / NIGHT_HOURS);
         }
 
+        // At night, has the clock reached this bed hour. Elapsed counts from the first day, so it is taken within its cycle
+        public static bool IsPastBedHour(int bedHour)
+        {
+            TimeManager time = TimeManager.Existing;
+            if (time == null)
+            {
+                return false;
+            }
+
+            float nightElapsed = (float)(time.Elapsed % TimeManager.CYCLE_DURATION) - TimeManager.DAY_DURATION;
+            return nightElapsed >= 0f && NightToHour(nightElapsed) >= bedHour;
+        }
+
         public static float HoursToSeconds(float hours)
         {
             return hours * SecondsPerHour;

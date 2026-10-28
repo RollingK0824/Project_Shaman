@@ -16,13 +16,11 @@ public class NetRitualFlow : NetworkBehaviour
     [Tooltip("켜면 지목이 틀려도 의식 디펜스가 시작됨")]
     [SerializeField] private bool _debugForceRitual;
 
-    private NetGM _netGM;
     private TimeManager _timeM;
     private NetDefenseState _state;
 
     // [서버] 오늘 밤 의식이 열렸는지 (지목 정답일 때만 true) 판정 내용은 클라로 보내지 않음
     private bool _hasRitual;
-    private DefenseVerdict _ritualVerdict;
 
     private bool _serverSubscribed;
 
@@ -30,7 +28,6 @@ public class NetRitualFlow : NetworkBehaviour
     {
         base.OnStartServer();
 
-        _netGM = GetComponent<NetGM>();
         _state = GetComponent<NetDefenseState>();
         _timeM = TimeManager.Instance;
 
@@ -69,7 +66,6 @@ public class NetRitualFlow : NetworkBehaviour
     private void HandleResolved(DefenseVerdict verdict)
     {
         _hasRitual = verdict.IsCorrect || _debugForceRitual;
-        _ritualVerdict = verdict;
 
         if (_hasRitual)
         {
@@ -118,15 +114,9 @@ public class NetRitualFlow : NetworkBehaviour
 
         _hasRitual = false;
 
-        if (won && _ritualVerdict.IsCorrect)
-        {
-            // TODO(AI 부분) : 원귀 제거 API가 생기면 여기서 먼저 호출
-            _netGM.ServerReportGhostExorcised();
-        }
-
         _state.ServerSetPhase(won ? RitualPhase.Succeeded : RitualPhase.Failed);
 
-        Debug.Log($"[NetRitualFlow] 디펜스 종료 -> 퇴마 {(won ? "성공" : "실패")}", this);
+        Debug.Log($"[NetRitualFlow] 디펜스 종료 -> 디펜스 {(won ? "성공" : "실패")}", this);
     }
 
     // [서버] 아침이 되면 깃발 비활성화

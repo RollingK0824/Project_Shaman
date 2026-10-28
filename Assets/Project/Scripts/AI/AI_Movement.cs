@@ -67,6 +67,24 @@ namespace ProjectShaman.AI
             }
         }
 
+        // For a stall log: what the agent thinks it is doing
+        public string DescribeAgent()
+        {
+            if (agent == null)
+            {
+                return "no agent";
+            }
+
+            if (!agent.isActiveAndEnabled)
+            {
+                return "agent disabled";
+            }
+
+            return $"stopped={agent.isStopped}, hasPath={agent.hasPath}, pending={agent.pathPending}, status={agent.pathStatus}, " +
+                $"remaining={agent.remainingDistance:F1}m, velocity={agent.velocity.magnitude:F2}, speed={agent.speed:F1}, " +
+                $"toDestination={Vector3.Distance(transform.position, agent.destination):F1}m, onMesh={agent.isOnNavMesh}";
+        }
+
         public void SetAgentActive(bool active)
         {
             if (agent != null)

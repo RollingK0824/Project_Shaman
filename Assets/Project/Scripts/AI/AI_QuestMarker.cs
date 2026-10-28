@@ -9,8 +9,28 @@ namespace ProjectShaman.AI
         public const string OFFER = "!";
         public const string IN_PROGRESS = "?";
 
+        private static readonly System.Collections.Generic.List<AI_QuestMarker> _shown = new System.Collections.Generic.List<AI_QuestMarker>();
+
         private TextMeshPro _text;
         private Vector3 _localPosition;
+
+        // Markers on screen now (the HUD compass points at them)
+        public static System.Collections.Generic.IReadOnlyList<AI_QuestMarker> Shown => _shown;
+        public string Symbol => _text != null ? _text.text : null;
+        public Color Color => _text != null ? _text.color : Color.white;
+
+        private void OnEnable()
+        {
+            if (!_shown.Contains(this))
+            {
+                _shown.Add(this);
+            }
+        }
+
+        private void OnDisable()
+        {
+            _shown.Remove(this);
+        }
 
         public static AI_QuestMarker Create(Transform parent, Vector3 localPosition, float fontSize, Color color)
         {

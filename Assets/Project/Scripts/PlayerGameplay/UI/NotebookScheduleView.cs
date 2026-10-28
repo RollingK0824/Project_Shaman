@@ -51,7 +51,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private readonly List<Image> _rowMarks = new();
     private readonly List<(Image wash, TMP_Text label)> _blocks = new();
     // Last block hours seen per villager, kept when their object is gone so a hidden death changes nothing here
-    private readonly Dictionary<string, (int day, int[] hours, int home, int bed)> _hours = new();
+    private readonly Dictionary<string, (int day, int[] hours, int leave, int home, int bed)> _hours = new();
     private TMP_FontAsset _font;
     private NotebookScheduleArt _art;
     private Sprite _wash, _rule, _ruleThin, _select, _underline;
@@ -270,32 +270,47 @@ public sealed class NotebookScheduleView : MonoBehaviour
         else
         {
             _title.text = $"{villager.DisplayName}의 하루";
-            _note.text = "빈 칸은 오가는 때 · 귀가 시각까지 집에 닿음";
+            _note.text = "빈 칸은 자유 시간·오가는 때 · 일과는 도착하면 시작";
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
             for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
             {
                 RoutineSlotInfo routine = villager.Schedule.Get(today.day, slot);
                 if (routine.IsEmpty) continue;
+                // A work given up today for a missing tool: the villager rests there instead (C120)
+                if (registry != null && registry.IsSlotRested(villager.VillagerId, today.day, slot, out string restPlaceId))
+                {
+                    // No rest place: the search took the whole block (or there was nowhere to rest), so it never rested
+                    bool rested = !string.IsNullOrEmpty(restPlaceId);
+                    string restNote = $"{routine.DisplayName} 못 함 · 도구 없음";
+                    if (rested) restNote += $" → {MapAreaRegistry.NameOf(restPlaceId)}";
+                    if (ShowBlock(shown, rested ? "휴식" : "도구 찾기", restNote, REST_WASH, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                    continue;
+                }
                 Color wash = routine.Category == RoutineCategory.Rest ? REST_WASH : WORK_WASH;
-                if (ShowBlock(shown, routine.DisplayName, MapAreaRegistry.NameOf(routine.PlaceId), wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
+                // A routine naming a place group (tree shade) shows the group's name: which one it goes to is picked on the day
+                string placeName = MapAreaRegistry.NameOf(routine.PlaceId) ?? ProjectShaman.AI.World.PlaceRegistry.NameOf(routine.PlaceId);
+                if (ShowBlock(shown, routine.DisplayName, placeName, wash, today.hours[slot * 2], today.hours[slot * 2 + 1])) shown++;
             }
 
-            // The wash starts where the villager is already home, so it is the stay at home, not the walk (that is the gap
-            // above it): "집" with the hour it gets in by, then bed from its hour until 묘시 초
-            if (today.home > 0 && today.bed > today.home)
+            // Free time between the routines and the walk home is not shown: where it is spent changes as the day goes.
+            // Then three rows (C131), estimates until they happen: 귀가 from setting off (one row at least, a short walk
+            // would round away), 휴식 at home until bed, 취침 from when it falls asleep (nightfall, or as it gets in later).
+            // Setting off at or after its bed hour it goes to bed as it gets in: one row
+            int night = DayClock.DAY_START_HOUR + TABLE_ROWS;
+            if (today.leave > 0 && today.bed > today.leave)
             {
-                if (ShowBlock(shown, "집", $"{HalfSijinName(today.home)} 귀가", HOME_WASH, today.home, today.bed)) shown++;
-                if (ShowBlock(shown, "취침", $"{HalfSijinName(today.bed)}부터", SLEEP_WASH, today.bed, DayClock.DAY_START_HOUR + TABLE_ROWS)) shown++;
+                int home = Mathf.Min(Mathf.Max(today.home, today.leave + 1), today.bed);
+                if (ShowBlock(shown, "귀가", "집", HOME_WASH, today.leave, home)) shown++;
+                if (ShowBlock(shown, "휴식", "집", HOME_WASH, home, today.bed)) shown++;
+                if (ShowBlock(shown, "취침", "집", SLEEP_WASH, today.bed, night)) shown++;
+            }
+            else if (today.leave > 0)
+            {
+                if (ShowBlock(shown, "귀가 · 취침", "집", SLEEP_WASH, today.leave, night)) shown++;
             }
         }
 
         for (int i = shown; i < _blocks.Count; i++) _blocks[i].wash.gameObject.SetActive(false);
-    }
-
-    // "유시 정" for 18: the half-sijin row an hour starts (hours past midnight count on, 01 = 25)
-    private static string HalfSijinName(int hour)
-    {
-        int row = ((hour - DayClock.DAY_START_HOUR) % TABLE_ROWS + TABLE_ROWS) % TABLE_ROWS;
-        return $"{SIJIN[row / 2]} {(row % 2 == 0 ? "초" : "정")}";
     }
 
     // One entry as a brush wash over the hours it covers
@@ -332,7 +347,18 @@ public sealed class NotebookScheduleView : MonoBehaviour
         foreach (AI_Core core in FindObjectsByType<AI_Core>(FindObjectsSortMode.None))
         {
             if (core.PublicInfo == null || string.IsNullOrEmpty(core.PublicInfo.VillagerId)) continue;
-            if (core.TodayBlocksDay > 0) _hours[core.PublicInfo.VillagerId] = (core.TodayBlocksDay, new List<int>(core.TodayBlockHours).ToArray(), core.TodayHomeHour, core.TodayBedHour);
+            if (core.TodayBlocksDay > 0) _hours[core.PublicInfo.VillagerId] = (core.TodayBlocksDay, new List<int>(core.TodayBlockHours).ToArray(), core.TodayLeaveHour, core.TodayHomeHour, core.TodayBedHour);
+        }
+
+        // A villager killed in the night has no object left; until its death is known its day still shows as usual,
+        // so the tab never gives a death away (the hint is the villagers' "not seen all day")
+        VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+        if (registry == null) return;
+        foreach (IVillagerView villager in registry.Villagers)
+        {
+            if (!registry.TryGetDayHours(villager.VillagerId, out int day, out int[] hours, out int leave, out int home, out int bed) || hours == null) continue;
+            if (_hours.TryGetValue(villager.VillagerId, out var cached) && cached.day >= day) continue;
+            _hours[villager.VillagerId] = (day, hours, leave, home, bed);
         }
     }
 

@@ -18,11 +18,16 @@ namespace ProjectShaman.AI.World
         private const int RANDOM_POINT_ATTEMPTS = 12;
         private const float STATION_CLEARANCE = 1.5f;
         private const float LOOK_HEIGHT = 1.2f;
+        private const float NEAR_AREA_DISTANCE = 12f;
 
         private static InteractionProfile _visitProfile;
 
         [SerializeField] private string _placeId;
         [SerializeField] private string _displayName;
+        // Places of one kind spread over the scene (tree shade in a tree prefab): a routine naming the group goes to
+        // the nearest of them. A member may leave PlaceId empty, it gets one from its position (same on every PC),
+        // and its name is prefixed with the area it sits in ("밭 나무 그늘")
+        [SerializeField] private string _group;
         [SerializeField] private PlaceType _placeType = PlaceType.Work;
         [SerializeField] private PlaceShape _shape = PlaceShape.Sphere;
         [SerializeField] private float _radius = 2f;
@@ -39,11 +44,23 @@ namespace ProjectShaman.AI.World
         {
             get
             {
-                string baseName = string.IsNullOrEmpty(_displayName) ? _placeId : _displayName;
+                string baseName = string.IsNullOrEmpty(_displayName) ? (IsGroupMember ? _group : _placeId) : _displayName;
+                if (IsGroupMember)
+                {
+                    string areaName = SurroundingAreaName();
+                    return string.IsNullOrEmpty(areaName) ? baseName : $"{areaName} {baseName}";
+                }
+
                 string ownerName = OwnerName();
                 return string.IsNullOrEmpty(ownerName) ? baseName : $"{ownerName}네 {baseName}";
             }
         }
+
+        public bool IsGroupMember => !string.IsNullOrEmpty(_group);
+        // A place outside any group is a group of its own
+        public string Group => IsGroupMember ? _group : _placeId;
+        // The group's own name for a routine that names it ("나무 그늘"), without the area prefix
+        public string GroupDisplayName => string.IsNullOrEmpty(_displayName) ? Group : _displayName;
         public PlaceType Type => _placeType;
         public int MaxPeople => _maxPeople;
         public Vector3 Center => transform.position;
@@ -121,6 +138,12 @@ namespace ProjectShaman.AI.World
         private void OnEnable()
         {
             _depth = -1;
+            if (IsGroupMember && string.IsNullOrEmpty(_placeId))
+            {
+                Vector3 position = transform.position;
+                _placeId = $"{_group}_{Mathf.RoundToInt(position.x)}_{Mathf.RoundToInt(position.z)}";
+            }
+
             PlaceRegistry.Register(this);
             MapAreaRegistry.Register(this);
         }
@@ -181,6 +204,49 @@ namespace ProjectShaman.AI.World
         public Vector3 GetHomePoint()
         {
             return NavMesh.SamplePosition(Center, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) ? hit.position : Center;
+        }
+
+        // The area around a group member (not itself or another of its group): the one it is inside, or one within
+        // NEAR_AREA_DISTANCE as "○○ 근처"; null when it stands alone
+        private string SurroundingAreaName()
+        {
+            IMapArea inside = null;
+            IMapArea nearest = null;
+            float nearestSqr = NEAR_AREA_DISTANCE * NEAR_AREA_DISTANCE;
+
+            foreach (IMapArea area in MapAreaRegistry.All)
+            {
+                if (area == null || ReferenceEquals(area, this) || (area is UnityEngine.Object unityObject && unityObject == null)
+                    || (area is PlaceArea place && place.IsGroupMember && place._group == _group))
+                {
+                    continue;
+                }
+
+                if (area.Contains(Center))
+                {
+                    if (inside == null || area.Depth > inside.Depth || (area.Depth == inside.Depth && area.Footprint < inside.Footprint))
+                    {
+                        inside = area;
+                    }
+
+                    continue;
+                }
+
+                Vector3 offset = area.Center - Center;
+                offset.y = 0f;
+                if (offset.sqrMagnitude < nearestSqr)
+                {
+                    nearest = area;
+                    nearestSqr = offset.sqrMagnitude;
+                }
+            }
+
+            if (inside != null)
+            {
+                return inside.DisplayName;
+            }
+
+            return nearest != null ? $"{nearest.DisplayName} 근처" : null;
         }
 
         private string OwnerName()
@@ -313,7 +379,12 @@ namespace ProjectShaman.AI.World
         {
             if (string.IsNullOrWhiteSpace(_placeId))
             {
-                Debug.LogWarning($"[PlaceArea] '{name}' has no PlaceId", this);
+                // A group member gets its id from its position at runtime
+                if (!IsGroupMember)
+                {
+                    Debug.LogWarning($"[PlaceArea] '{name}' has no PlaceId", this);
+                }
+
                 return;
             }
 

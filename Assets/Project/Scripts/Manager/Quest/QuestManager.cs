@@ -15,7 +15,7 @@ public class QuestManager : SceneSingleton<QuestManager>
     private QuestItemCatalog _itemCatalog;
 
     [SerializeField]
-    private int _maxActive = 3;
+    private int _maxActive = 5;
 
     [SerializeField]
     private int _maxHistory = 3;
@@ -195,8 +195,8 @@ public class QuestManager : SceneSingleton<QuestManager>
     // Both are resolved here, at offer time, so "!" and dialogue can already describe the request.
     public bool TryOffer(string giverId, string questId, string targetId, string contextId)
     {
-        // 진행 중 퀘스트가 가득 차면 받을 수 없는 의뢰(실패 패널티만 남음)가 생기지 않도록 거절
-        if (!IsServerSide || !IsDay() || ActiveCount >= _maxActive || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
+        // 수락 한도는 TryAcceptQuest에서만 본다. 받지 않은 의뢰도 기한이 오면 실패한다 (TryFailQuest)
+        if (!IsServerSide || !IsDay() || TryGetOpenQuest(giverId, out _) || !IsGiverAlive(giverId))
         {
             return false;
         }
@@ -301,8 +301,8 @@ public class QuestManager : SceneSingleton<QuestManager>
         }
     }
 
-    // 진행 중인 퀘스트는 실패 (패널티). 받지 않은 의뢰는 남겨 두었다가 다음 날 아침 다시 받을 수 있다
-    // (ExpiresAtNight 의뢰는 그날로 실패, 의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다)
+    // 진행 중인 퀘스트도 받지 않은 의뢰도 실패 (패널티). 의뢰는 아침에 나오므로 하루가 온전히 주어진다 (C129)
+    // 의뢰인 사망·대상 소멸 등으로 사라질 일이면 그때 취소된다
     private void HandleNightStart()
     {
         if (!IsServerSide)
@@ -321,7 +321,7 @@ public class QuestManager : SceneSingleton<QuestManager>
                 continue;
             }
 
-            if (quest.State == QuestState.Active || (quest.State == QuestState.Offered && quest.Definition.ExpiresAtNight))
+            if (quest.State == QuestState.Active || quest.State == QuestState.Offered)
             {
                 End(quest, QuestState.Failed);
             }
@@ -521,6 +521,25 @@ public class QuestManager : SceneSingleton<QuestManager>
             if (quest.InstanceId == instanceId && (quest.State == QuestState.Offered || quest.State == QuestState.Active))
             {
                 End(quest, QuestState.Failed);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // AI 쪽 판정: 아무도 받지 않은 의뢰를 거둠 (더 급한 의뢰에 밀린 의뢰). 패널티 없음
+    public bool TryCancelQuest(int instanceId)
+    {
+        if (!IsServerSide)
+        {
+            return false;
+        }
+
+        foreach (QuestInstance quest in _quests)
+        {
+            if (quest.InstanceId == instanceId && quest.State == QuestState.Offered)
+            {
+                End(quest, QuestState.Cancelled);
                 return true;
             }
         }

@@ -9,24 +9,30 @@ namespace ProjectShaman.AI.Data
     public class AIBehaviourConfig : ScriptableObject
     {
         [SerializeField] private int _cycleDays = 3;
-        [SerializeField, Range(0f, 1f)] private float _restRatio = 0.3f;
+        [Tooltip("Chance a schedule slot is a rest routine. 0: slots are work, rest is the free time after the day's work; " +
+                 "a villager with no work it may do (a child, a yangban) still gets its rest routines (C131)")]
+        [SerializeField, Range(0f, 1f)] private float _restRatio = 0f;
         [SerializeField] private int _routinesPerDay = 2;
-        [Tooltip("Share of the day one routine block takes (2 blocks x 0.4 + 0.2 spare = day 4:4:2)")]
-        [SerializeField, Range(0.05f, 1f)] private float _routineDayRatio = 0.4f;
-        [Tooltip("Shortest a block may shrink to when the walk home does not fit the spare, as a share of the full block")]
-        [SerializeField, Range(0.05f, 1f)] private float _minRoutineRatio = 0.5f;
+        [Tooltip("Share of the day one routine takes once the villager is there (2 x 0.2 = day 2:2:6; the rest is getting there, " +
+                 "tidying up and free time until nightfall) (C131)")]
+        [SerializeField, Range(0.05f, 0.5f)] private float _routineDayRatio = 0.2f;
+        [Tooltip("Latest a villager gets up in the morning, so they do not all set off at once")]
         [SerializeField] private int _maxStartDelayHours = 2;
-        [Tooltip("Every block but the last is randomly up to this share shorter per villager, so villagers do not all switch routines at the same moment")]
-        [SerializeField, Range(0f, 0.5f)] private float _blockLengthVariance = 0.35f;
-        [Tooltip("A block with less than this share of its length left is skipped instead of started")]
+        [Tooltip("Each villager heads home at a random time from this clock hour to Home Leave Spread Hours later, so the " +
+                 "village does not all set off at once (free time until then). A villager whose work runs past it goes home " +
+                 "once done. At home it rests until it falls asleep at nightfall (C131)")]
+        [SerializeField] private int _homeLeaveEarliestHour = 17;
+        [SerializeField, Min(0f)] private float _homeLeaveSpreadHours = 2f;
+        [Tooltip("A routine with less than this share of its length left before nightfall is skipped instead of started")]
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
-        [SerializeField] private float _homeReturnMarginSeconds = 10f;
-        [Tooltip("Clock hours one of which each villager must be home by (half-sijin rows on the schedule tab). The walk home is planned back from it")]
-        [SerializeField] private int[] _homeArriveHours = { 18, 19 };
-        [Tooltip("Clock hours one of which each villager goes to bed (night starts at 20). Awake villagers cannot be sleep-paralysed")]
-        [SerializeField] private int[] _bedHours = { 20, 21 };
+        [Tooltip("Schedule tab estimates only: the tidy-up and getting ready before each routine, and the walking speed")]
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
         [SerializeField] private float _walkSpeedEstimate = 3.5f;
+        [Tooltip("Sent home at nightfall, a villager runs at this many times the walk speed (C121)")]
+        [SerializeField, Min(1f)] private float _lateRunSpeedMultiplier = 1.8f;
+        [Tooltip("NavMesh path search steps per frame for every agent together (Unity default 100). Too low and villagers sent home " +
+                 "at once stand for seconds waiting for their long paths (pathPending)")]
+        [SerializeField, Min(100)] private int _pathfindingIterationsPerFrame = 1000;
 
         [Header("Villager Attributes")]
         [Tooltip("Relative weights a villager's gender, class and age are rolled with (Joseon village: a few more men, commoners the most, " +
@@ -86,6 +92,10 @@ namespace ProjectShaman.AI.Data
         [Header("Night Action")]
         [SerializeField] private float _nightWitnessRadius = 15f;
         [SerializeField] private float _sleepParalysisHomeDistance = 4f;
+        [Tooltip("A villager still out at night who sees a ghost (C122). Seen once per ghost a night")]
+        [SerializeField, Min(0f)] private float _ghostSightingStress = 25f;
+        [Tooltip("How far a villager out at night can make out a ghost (in front, not behind a wall)")]
+        [SerializeField, Min(1f)] private float _ghostSightingRadius = 20f;
         [SerializeField] private float _ghostHideMinDistance = 8f;
         [SerializeField] private float _ghostHideMaxDistance = 20f;
         [SerializeField] private float _ghostActionCooldownMin = 15f;
@@ -238,15 +248,14 @@ namespace ProjectShaman.AI.Data
         public float RestRatio => _restRatio;
         public int RoutinesPerDay => Mathf.Max(1, _routinesPerDay);
         public float RoutineSeconds => TimeManager.DAY_DURATION * _routineDayRatio;
-        public float MinRoutineSeconds => RoutineSeconds * _minRoutineRatio;
         public float MaxStartDelaySeconds => DayClock.HoursToSeconds(Mathf.Max(0, _maxStartDelayHours));
-        public float BlockLengthVariance => _blockLengthVariance;
+        public int HomeLeaveEarliestHour => Mathf.Clamp(_homeLeaveEarliestHour, DayClock.DAY_START_HOUR, DayClock.DAY_END_HOUR);
+        public float HomeLeaveSpreadSeconds => DayClock.HoursToSeconds(_homeLeaveSpreadHours);
         public float MinRemainingRatio => _minRemainingRatio;
-        public float HomeReturnMarginSeconds => _homeReturnMarginSeconds;
-        public IReadOnlyList<int> HomeArriveHours => _homeArriveHours;
-        public IReadOnlyList<int> BedHours => _bedHours;
         public float ToolTidySecondsEstimate => _toolTidySecondsEstimate;
         public float WalkSpeedEstimate => _walkSpeedEstimate;
+        public float LateRunSpeedMultiplier => _lateRunSpeedMultiplier;
+        public int PathfindingIterationsPerFrame => _pathfindingIterationsPerFrame;
         public float ToolSightRadius => _toolSightRadius;
         public float ToolSightInterval => _toolSightInterval;
         public float ToolPickupDistance => _toolPickupDistance;
@@ -278,6 +287,8 @@ namespace ProjectShaman.AI.Data
         public float ToolSearchFailedStress => _toolSearchFailedStress;
         public float NightWitnessRadius => _nightWitnessRadius;
         public float SleepParalysisHomeDistance => _sleepParalysisHomeDistance;
+        public float GhostSightingStress => _ghostSightingStress;
+        public float GhostSightingRadius => _ghostSightingRadius;
         public float GhostHideMinDistance => _ghostHideMinDistance;
         public float GhostHideMaxDistance => Mathf.Max(_ghostHideMinDistance, _ghostHideMaxDistance);
         public float GhostActionCooldownMin => Mathf.Max(0f, _ghostActionCooldownMin);

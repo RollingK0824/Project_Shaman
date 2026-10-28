@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Mirror;
+using ProjectShaman.AI;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -27,6 +29,14 @@ public class CompassBar : MonoBehaviour
     [SerializeField]
     private string[] _labels = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
 
+    // Quest marks sit in a row just under the bar, outside the strip's mask (it would clip them)
+    [SerializeField]
+    private float _questIconOffsetY = -30f;
+
+    [SerializeField]
+    private float _questIconFontSize = 26f;
+
+    private readonly List<TMP_Text> _questIcons = new List<TMP_Text>();
     private NetworkIdentity _cachedPlayer;
     private PlayerSpectatorController _spectator;
     private Camera _playerCamera;
@@ -52,6 +62,51 @@ public class CompassBar : MonoBehaviour
 
         float heading = GetHeading(forward);
         _strip.anchoredPosition = new Vector2(-heading * _pixelsPerDegree, _strip.anchoredPosition.y);
+        PlaceQuestIcons(view.position, heading);
+    }
+
+    // Quest marks under the bar: "!" an offer can be taken there, "?" a quest can be reported there.
+    // One beyond the bar's width waits at that edge, so the player knows which way to turn
+    private void PlaceQuestIcons(Vector3 from, float heading)
+    {
+        if (_labelTemplate == null)
+        {
+            return;
+        }
+
+        IReadOnlyList<AI_QuestMarker> markers = AI_QuestMarker.Shown;
+        RectTransform bar = (RectTransform)transform;
+        float halfWidth = bar.rect.width * 0.5f;
+        int used = 0;
+
+        foreach (AI_QuestMarker marker in markers)
+        {
+            Vector3 offset = marker.transform.position - from;
+            if (offset.x * offset.x + offset.z * offset.z < 0.01f)
+            {
+                continue;
+            }
+
+            if (used == _questIcons.Count)
+            {
+                TMP_Text created = Instantiate(_labelTemplate, bar);
+                created.fontStyle = FontStyles.Bold;
+                created.fontSize = _questIconFontSize;
+                _questIcons.Add(created);
+            }
+
+            TMP_Text icon = _questIcons[used++];
+            icon.text = marker.Symbol;
+            icon.color = marker.Color;
+            float x = Mathf.Clamp(Mathf.DeltaAngle(heading, GetHeading(offset)) * _pixelsPerDegree, -halfWidth, halfWidth);
+            icon.gameObject.SetActive(true);
+            icon.rectTransform.anchoredPosition = new Vector2(x, _questIconOffsetY);
+        }
+
+        for (int i = used; i < _questIcons.Count; i++)
+        {
+            _questIcons[i].gameObject.SetActive(false);
+        }
     }
 
     public static float GetHeading(Vector3 forward)
