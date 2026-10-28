@@ -107,6 +107,7 @@ namespace ProjectShaman.AI.Work
             if (Context != null)
             {
                 _inquiry.Tick();
+                _search.TickUnreachableSpot();
                 TickPutAway();
             }
         }

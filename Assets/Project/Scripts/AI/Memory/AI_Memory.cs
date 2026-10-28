@@ -108,7 +108,7 @@ namespace ProjectShaman.AI.Memory
             }
 
             string detail = routine.IsCorrupted ? $"{routine.ActionId} corrupted={routine.CorruptionAxis}" : routine.ActionId;
-            Record(MemoryKind.Routine, routine.Source.RoutineId, routine.Source.PlaceId, routine.TargetPosition, detail);
+            Record(MemoryKind.Routine, routine.Source.RoutineId, routine.PlaceId, routine.TargetPosition, detail);
         }
 
         public void RecordToolLost(string toolTypeId)
@@ -171,6 +171,27 @@ namespace ProjectShaman.AI.Memory
             entry.PlaceId = entry.AreaId;
 
             return RecordFact(entry);
+        }
+
+        // Seen out at night (C122): only where, never whose ghost. Keyed by the host so one ghost counts once a night,
+        // and an exorcism lets it go with the host's other odd things
+        public bool RecordGhostSighting(string hostId, Vector3 position)
+        {
+            string areaId = MapAreaRegistry.ResolveId(position);
+            return RecordFact(new MemoryEntry
+            {
+                Kind = MemoryKind.GhostSighting,
+                Source = MemorySource.Direct,
+                SubjectId = hostId,
+                ActorId = hostId,
+                VerbId = "ghost",
+                Position = position,
+                AreaId = areaId,
+                PlaceId = areaId,
+                IsAnomalous = true,
+                DayCount = _currentDay,
+                RecordedTime = _context.GameNow
+            });
         }
 
         // Witness/heard facts share one dedupe rule: a fact we already know (from anyone) is not stored twice

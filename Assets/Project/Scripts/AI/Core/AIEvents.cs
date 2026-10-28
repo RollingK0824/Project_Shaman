@@ -9,6 +9,22 @@ namespace ProjectShaman.AI.Core
         public static event System.Action<string, string> OnVillagerDied;
         public static event System.Action<string> OnVillagerDeathKnown;
         public static event System.Action<string> OnVillagerExorcised;
+        // (villagerId, day, block hour pairs, leave hour, home hour, bed hour): the day's hours shown on the schedule tab
+        public static event System.Action<string, int, int[], int, int, int> OnVillagerDayPlanned;
+
+        // (villagerId, day, slot, rested, rest place id or null): a work block given up for a missing tool (shown as rest
+        // on the schedule tab, with where the villager went), or taken up again once the tool is back
+        public static event System.Action<string, int, int, bool, string> OnVillagerSlotRested;
+
+        public static void RaiseSlotRested(string villagerId, int day, int slot, bool rested, string restPlaceId)
+        {
+            OnVillagerSlotRested?.Invoke(villagerId, day, slot, rested, restPlaceId);
+        }
+
+        public static void RaiseDayPlanned(string villagerId, int day, int[] blockHours, int leaveHour, int homeHour, int bedHour)
+        {
+            OnVillagerDayPlanned?.Invoke(villagerId, day, blockHours, leaveHour, homeHour, bedHour);
+        }
 
         public static void RaiseExorcised(string villagerId)
         {
