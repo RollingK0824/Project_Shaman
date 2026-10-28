@@ -13,6 +13,7 @@ namespace ProjectShaman.AI.World
         [SerializeField] private string _toolInstanceId;
         [SerializeField] private string _toolTypeId;
         [SerializeField] private string _homeStoragePlaceId;
+        [SerializeField] private ItemData _itemData;
         [SerializeField] private Vector3 _heldLocalOffset = Vector3.zero;
         [SerializeField] private Vector3 _heldLocalEuler = Vector3.zero;
         [Tooltip("Turn the collider off while a player, villager or ghost holds the tool")]
@@ -25,10 +26,12 @@ namespace ProjectShaman.AI.World
 
         private Transform _holderSocket;
         private Collider _collider;
+        private Renderer[] _renderers;
 
         public string InstanceId => string.IsNullOrEmpty(_toolInstanceId) ? name : _toolInstanceId;
         public string TypeId => _toolTypeId;
         public string HomeStoragePlaceId => _homeStoragePlaceId;
+        public ItemData ItemData => _itemData;
         public string HolderId => _holderId;
         public string ReservedBy => _reservedBy;
         public bool IsHeld => !string.IsNullOrEmpty(_holderId);
@@ -41,6 +44,18 @@ namespace ProjectShaman.AI.World
         private void Awake()
         {
             _collider = GetComponent<Collider>();
+            _renderers = GetComponentsInChildren<Renderer>(true);
+        }
+
+        public void ApplyStowedState(bool isStowed)
+        {
+            foreach (Renderer visual in _renderers)
+            {
+                if (visual != null)
+                {
+                    visual.enabled = !isStowed;
+                }
+            }
         }
 
         // The server applies it on pick up and drop; clients get the held state from the network layer
