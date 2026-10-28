@@ -20,8 +20,11 @@ namespace ProjectShaman.Network.AI
         private ToolItem _tool;
         private GameObject _carrier;
         private string _carrierId;
+        private ItemData _stowedItem;
+        private PlayerInventory _carrierInventory;
 
         [SyncVar(hook = nameof(OnHeldChanged))] private bool _isHeld;
+        [SyncVar(hook = nameof(OnStowedChanged))] private bool _isStowed;
         [SyncVar] private bool _isUnclaimed;
 
         public ToolItem Tool => _tool;
@@ -43,6 +46,7 @@ namespace ProjectShaman.Network.AI
         public override void OnStartClient()
         {
             ApplyHeldOnClient();
+            ApplyStowedOnClient();
         }
 
         public override void OnStartServer()
@@ -114,9 +118,28 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
+            if (!_tool.IsUnclaimed)
+            {
+                AILog.Log(AILog.TOOL, player.name, $"{_tool.InstanceId} not available (held or reserved by {_tool.HolderId ?? _tool.ReservedBy})");
+                return;
+            }
+
+            ItemData item = _tool.ItemData;
+            PlayerInventory inventory = item != null ? player.GetComponent<PlayerInventory>() : null;
+            if (item != null && (inventory == null || !inventory.TryAddItem(item)))
+            {
+                AILog.Log(AILog.TOOL, player.name, $"{_tool.InstanceId} not picked up, inventory refused {item.DisplayName}");
+                return;
+            }
+
             string carrierId = $"Player_{sender.identity.netId}";
             if (!_tool.TryPickUp(carrierId, CarryAnchor(player)))
             {
+                if (inventory != null)
+                {
+                    RemoveFromInventory(player, inventory, item);
+                }
+
                 AILog.Log(AILog.TOOL, player.name, $"{_tool.InstanceId} not available (held or reserved by {_tool.HolderId ?? _tool.ReservedBy})");
                 return;
             }
@@ -124,7 +147,17 @@ namespace ProjectShaman.Network.AI
             _carrier = player;
             _carrierId = carrierId;
             _carried.Add(this);
-            AILog.Log(AILog.TOOL, carrierId, $"Picked up {_tool.InstanceId}({_tool.TypeId}) by player {player.name}");
+
+            if (inventory != null)
+            {
+                _stowedItem = item;
+                _carrierInventory = inventory;
+                _carrierInventory.ItemUnitsChanged += HandleCarrierItemUnitsChanged;
+                _isStowed = true;
+                _tool.ApplyStowedState(true);
+            }
+
+            AILog.Log(AILog.TOOL, carrierId, $"Picked up {_tool.InstanceId}({_tool.TypeId}) by player {player.name}{(inventory != null ? ", into inventory" : string.Empty)}");
         }
 
         // Server: the carrier lets go of the tool, on the ground at the position (or hands it on afterwards)
@@ -136,10 +169,60 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
+            Unstow();
             _tool.Drop(_carrierId, position, reason);
             _carried.Remove(this);
             _carrier = null;
             _carrierId = null;
+        }
+
+        [Server]
+        private void Unstow()
+        {
+            if (_stowedItem == null)
+            {
+                return;
+            }
+
+            ItemData item = _stowedItem;
+            PlayerInventory inventory = _carrierInventory;
+            _stowedItem = null;
+            _carrierInventory = null;
+            _isStowed = false;
+            _tool.ApplyStowedState(false);
+
+            if (inventory == null)
+            {
+                return;
+            }
+
+            inventory.ItemUnitsChanged -= HandleCarrierItemUnitsChanged;
+            if (inventory.Contains(item))
+            {
+                RemoveFromInventory(inventory.gameObject, inventory, item);
+            }
+        }
+
+        [Server]
+        private void RemoveFromInventory(GameObject player, PlayerInventory inventory, ItemData item)
+        {
+            bool removed = (player.TryGetComponent(out NetPlayerInventory netInventory) && netInventory.ServerConsume(item))
+                || inventory.RemoveItem(item);
+
+            if (!removed)
+            {
+                AILog.Warn(AILog.TOOL, $"{item.DisplayName} could not be removed from the inventory of {player.name}");
+            }
+        }
+
+        private void HandleCarrierItemUnitsChanged(ItemData item, int delta)
+        {
+            if (item != _stowedItem || delta >= 0 || _carrierInventory.Contains(item))
+            {
+                return;
+            }
+
+            DropFromCarrier(_carrier != null ? _carrier.transform.position : transform.position, "left the carrier's inventory");
         }
 
         [ServerCallback]
@@ -197,6 +280,19 @@ namespace ProjectShaman.Network.AI
             if (!isServer)
             {
                 _tool.ApplyHeldState(_isHeld);
+            }
+        }
+
+        private void OnStowedChanged(bool oldValue, bool newValue)
+        {
+            ApplyStowedOnClient();
+        }
+
+        private void ApplyStowedOnClient()
+        {
+            if (!isServer)
+            {
+                _tool.ApplyStowedState(_isStowed);
             }
         }
 
