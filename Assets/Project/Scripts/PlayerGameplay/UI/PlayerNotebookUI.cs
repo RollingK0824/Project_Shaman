@@ -18,6 +18,8 @@ public class PlayerNotebookUI : MonoBehaviour
     private PlayerHealth _health;
     private InventoryPanelUI _inventory;
     private CraftingPanelUI _crafting;
+    private NotebookScheduleView _schedule;
+    private Transform _scheduleHome;
     private SharedQuestRewardView _rewardView;
     private GameObject _rewardButton;
     private GameObject _slotToolbar;
@@ -115,10 +117,17 @@ public class PlayerNotebookUI : MonoBehaviour
             _crafting.ConfigureNotebook();
             _crafting.gameObject.SetActive(true);
         }
-        if (scheduleRoot != null && owner.VillagerSchedulePrefab != null)
+        // The villager schedule is placed in the scene's UI; the notebook only borrows it while bound
+        if (scheduleRoot != null)
         {
-            var spread = Instantiate(owner.VillagerSchedulePrefab, scheduleRoot);
-            PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
+            _schedule = FindAnyObjectByType<NotebookScheduleView>(FindObjectsInactive.Include);
+            if (_schedule != null)
+            {
+                _scheduleHome = _schedule.transform.parent;
+                _schedule.transform.SetParent(scheduleRoot, false);
+                PlayerItemUIStyle.FitNotebookSpread((RectTransform)_schedule.transform);
+                _schedule.gameObject.SetActive(true);
+            }
         }
     }
 
@@ -394,6 +403,13 @@ public class PlayerNotebookUI : MonoBehaviour
         if (_notebook != null) _notebook.NotebookOpenRequested -= Open;
         if (_health != null) _health.Died -= HandleDeath;
         _inventory?.Bind(null); _crafting?.Bind(null);
+        // Hand the scene's schedule back before its page root is destroyed
+        if (_schedule != null)
+        {
+            _schedule.gameObject.SetActive(false);
+            _schedule.transform.SetParent(_scheduleHome, false);
+        }
+        _schedule = null; _scheduleHome = null;
         foreach (var root in _pageRoots) if (root != null) { root.SetActive(false); Destroy(root); }
         foreach (var placeholder in _hiddenPlaceholders) if (placeholder != null) placeholder.SetActive(true);
         _pageRoots.Clear(); _hiddenPlaceholders.Clear();
