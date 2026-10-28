@@ -87,11 +87,10 @@ public static class NotebookSchedulePrefabSetup
                 return;
             }
 
-            int linked = LinkToBootstraps(prefab.GetComponent<NotebookScheduleView>());
             EditorGUIUtility.PingObject(prefab);
             string missing = (_font == null ? "\n· 노트 폰트를 찾지 못해 기본 폰트를 썼습니다." : "") +
                 (_art == null ? "\n· NotebookScheduleArt가 없어 스프라이트가 비었습니다." : "");
-            EditorUtility.DisplayDialog(TITLE, $"{PREFAB_PATH} 생성 완료\nPlayerLocalUIBootstrap {linked}곳에 연결했습니다.{missing}", "확인");
+            EditorUtility.DisplayDialog(TITLE, $"{PREFAB_PATH} 생성 완료\n씬의 UI 하위에 비활성으로 두면 노트가 일과표 탭으로 가져갑니다.{missing}", "확인");
         }
         finally
         {
@@ -110,28 +109,6 @@ public static class NotebookSchedulePrefabSetup
             if (text != null && text.font != null) return text.font;
         }
         return null;
-    }
-
-    private static int LinkToBootstraps(NotebookScheduleView prefab)
-    {
-        int linked = 0;
-        foreach (string guid in AssetDatabase.FindAssets("t:Prefab", new[] { "Assets/Project/Prefabs" }))
-        {
-            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(AssetDatabase.GUIDToAssetPath(guid));
-            if (asset == null) continue;
-            foreach (var bootstrap in asset.GetComponentsInChildren<PlayerLocalUIBootstrap>(true))
-            {
-                var fields = new SerializedObject(bootstrap);
-                var property = fields.FindProperty("_villagerSchedulePrefab");
-                if (property == null || property.objectReferenceValue == prefab) continue;
-                property.objectReferenceValue = prefab;
-                fields.ApplyModifiedPropertiesWithoutUndo();
-                EditorUtility.SetDirty(asset);
-                linked++;
-            }
-        }
-        AssetDatabase.SaveAssets();
-        return linked;
     }
 
     private static TMP_Text Heading(Transform parent, string name, string value, float x)
