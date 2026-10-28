@@ -43,8 +43,6 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     public InventoryPanelUI InventoryPanelPrefab => _inventoryPanelPrefab;
     [SerializeField] private QuestItemCatalog _questItemCatalog;
     public QuestItemCatalog QuestItemCatalog => _questItemCatalog;
-    [SerializeField] private NotebookScheduleView _villagerSchedulePrefab;
-    public NotebookScheduleView VillagerSchedulePrefab => _villagerSchedulePrefab;
     [SerializeField] private Sprite _notebookHUDIcon;
     public Sprite NotebookHUDIcon => _notebookHUDIcon;
     private PlayerNotebookUI _notebookUI;
