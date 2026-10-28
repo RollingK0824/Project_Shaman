@@ -18,5 +18,9 @@ namespace ProjectShaman.AI.Work
                 _performer.HandleImpactEvent();
             }
         }
+
+        public void OnFootstep(AnimationEvent animationEvent)
+        {
+        }
     }
 }
