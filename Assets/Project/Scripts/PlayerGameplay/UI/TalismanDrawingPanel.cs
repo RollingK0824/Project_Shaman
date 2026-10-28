@@ -146,6 +146,7 @@ public class TalismanDrawingPanel : MonoBehaviour
         _collection.SelectionChanged += ValidateInstance;
         Cursor.lockState = CursorLockMode.None; Cursor.visible = true;
         _drawingCanvas.Bind(_draft); _surface.SetPaper(item.PaperTexture); _surface.Bind(_draft);
+        _drawingCanvas.BindAudio(owner.GetComponent<PlayerAudioController>());
         _instanceLabel.text = string.IsNullOrEmpty(selected.CustomName) ? item.DisplayName : selected.CustomName;
         _discardDialog.SetActive(false); _saveDialog.SetActive(false); _drawingCanvas.enabled = true; SetPen();
         return true;

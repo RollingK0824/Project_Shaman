@@ -27,24 +27,50 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     // BellSwing tolerates a destroyed speaker and keeps its secondary motion running.
     public static void PrepareVisual(GameObject visual, ItemData item)
     {
-        if (visual == null || item == null || !(item.UseAction is BellUseAction || item.UseAction is GongUseAction)) return;
+        if (visual == null || item == null) return;
+        if (item.UseAction is SaltUseAction)
+            foreach (var ps in visual.GetComponentsInChildren<ParticleSystem>(true))
+            {
+                ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+                var main = ps.main; main.playOnAwake = false;
+                ps.GetComponent<ParticleSystemRenderer>().enabled = false;
+            }
+        if (!(item.UseAction is BellUseAction || item.UseAction is GongUseAction)) return;
         foreach (var source in visual.GetComponentsInChildren<AudioSource>(true))
         { source.Stop(); source.mute = true; Destroy(source); }
     }
     private static bool Supported(ItemData item) => item != null &&
         (item.UseAction is BellUseAction || item.UseAction is SaltUseAction ||
          item.UseAction is BeanMugwortUseAction || item.UseAction is GongUseAction || item.UseAction is BarrierTalismanUseAction);
+    private bool PlayRecorded(ItemData item, bool remote)
+    {
+        var audio = GetComponent<PlayerAudioController>();
+        if (audio == null || !audio.UsesRecordedSounds) return false;
+        // Barrier success is audible from its confirmed visual, never from this request.
+        if (item.UseAction is BarrierTalismanUseAction) return true;
+        var cue = item.UseAction is BellUseAction ? PlayerSoundCue.Bell :
+            item.UseAction is SaltUseAction ? PlayerSoundCue.Salt :
+            item.UseAction is BeanMugwortUseAction ? PlayerSoundCue.Throw :
+            item.UseAction is CoinUseAction ? PlayerSoundCue.Coin : PlayerSoundCue.Gong;
+        audio.PlayCue(cue, remote);
+        return true;
+    }
     public void PlayRemoteAudio(ItemData item)
     {
-        if (!Supported(item) || !PlayerActionGuard.CanAct(gameObject)) return;
+        if (item == null || (!Supported(item) && !(item.UseAction is CoinUseAction)) || !PlayerActionGuard.CanAct(gameObject)) return;
+        if (PlayRecorded(item, true)) return;
         var clip=item.UseAction is BellUseAction ? _bell : item.UseAction is SaltUseAction ? _salt :
             item.UseAction is BeanMugwortUseAction ? _throw : item.UseAction is GongUseAction ? _gong : null;
         GetComponent<PlayerAudioController>()?.PlayRemoteItem(clip, _volume);
     }
     public void Play(ItemData item)
     {
-        if (!PlayerLocalPresentation.IsLocal(gameObject) || !Supported(item)) return;
+        if (!PlayerLocalPresentation.IsLocal(gameObject) || item == null) return;
+        // CoinItem already owns its hand motion; add only its sound here.
+        if (item.UseAction is CoinUseAction) { PlayRecorded(item, false); return; }
+        if (!Supported(item)) return;
         _started=Time.time; _message="사용 중"; _messageUntil=Time.time+.45f;
+        if (PlayRecorded(item, false)) return;
         var clip=item.UseAction is BellUseAction ? _bell : item.UseAction is SaltUseAction ? _salt :
             item.UseAction is BeanMugwortUseAction ? _throw : item.UseAction is GongUseAction ? _gong : null;
         if (clip == null) return;

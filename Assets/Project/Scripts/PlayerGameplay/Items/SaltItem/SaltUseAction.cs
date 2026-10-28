@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections.Generic;
 using ProjectShaman.AI;
 using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Minion;
@@ -28,6 +29,9 @@ public class SaltUseAction : ItemUseAction
 
     private static readonly RaycastHit[] _rayHits = new RaycastHit[16];
 
+    public float VisualReach => _reach;
+    public float VisualHalfWidth => _contactHalfWidth;
+
     public override bool Execute(in ItemUseContext context)
     {
         if (!ItemAttackAuthority.CanResolve(context.Owner) || context.Data == null) return false;
@@ -36,7 +40,35 @@ public class SaltUseAction : ItemUseAction
         float reach = GetReach(ray, context.Owner.transform);
         if (reach <= 0f) return false;
 
-        var attack = new ItemAttackSession(context.Owner, _damageAmount, default, ItemReactionFallback.Salt, _targetMask, _contactDuration, CanHitGhost);
+        // Cache contact before damage: lethal hits may disable/destroy the target immediately.
+        var contacts = new Dictionary<GameObject, (Vector3 point, Vector3 normal, AI_Status status, float health)>();
+        bool CaptureContact(Collider other)
+        {
+            if (!CanHitGhost(other)) return false;
+            var receiver = other.GetComponentInParent<IDamageable>() as Component ??
+                other.GetComponentInParent<IItemControlReceiver>() as Component ??
+                other.GetComponentInParent<ISaltReactable>() as Component;
+            if (receiver != null && !contacts.ContainsKey(receiver.gameObject))
+            {
+                var point = other.ClosestPoint(ray.origin);
+                var normal = ray.origin - point;
+                if (normal.sqrMagnitude < .0001f) normal = -ray.direction;
+                var status = receiver is AI_DamageReceiver ? receiver.GetComponent<AI_Status>() : null;
+                contacts.Add(receiver.gameObject, (point, normal.normalized, status, status != null ? status.Health : 0f));
+            }
+            return true;
+        }
+        var attack = new ItemAttackSession(context.Owner, _damageAmount, default, ItemReactionFallback.Salt, _targetMask, _contactDuration, CaptureContact);
+        var presentation = context.Owner.GetComponent<PlayerSaltHitPresentation>() ?? context.Owner.AddComponent<PlayerSaltHitPresentation>();
+        long attackId = presentation.BeginAttack();
+        int targetIndex = 0;
+        attack.HitApplied += target =>
+        {
+            if (!contacts.TryGetValue(target, out var contact)) return;
+            // AI damage requests can be ignored while inactive. Do not show a false hit.
+            if (!ReferenceEquals(contact.status, null) && contact.status.Health >= contact.health) return;
+            if (presentation != null) presentation.PublishConfirmedHit(attackId, targetIndex++, contact.point, contact.normal);
+        };
 
         // 맞는 시점은 Execute보다 늦을 수 있음(Trigger 접촉 0.15초) → 콜백으로 소모
         // in 파라미터는 람다에서 쓸 수 없으므로 지역 변수로 복사
@@ -101,9 +133,13 @@ public class SaltUseAction : ItemUseAction
     // [다른 클라] 소금 분사 VFX만. 3인칭용 프리팹이 아직 없으면 비워 둬도 됨
     public override void PlayRemotePresentation(in ItemUseContext context)
     {
-        context.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(context.Data);
-        Debug.Log($"[Salt] 원격 연출: {context.Owner.name}", context.Owner);
-        if (context.Owner.GetComponent<PlayerItemController>()?.PlayThirdPersonSaltSpray(context.AimDirection) != true)
-            SpawnEffect(_remoteSprayPrefab, context.AimOrigin + context.AimDirection * .5f, Quaternion.LookRotation(context.AimDirection), _remoteSprayLifetime);
+        var timed = context.Owner.GetComponent<PlayerTimedItemUse>() ?? context.Owner.AddComponent<PlayerTimedItemUse>();
+        timed.BeginRemote(context, released =>
+        {
+            released.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(released.Data);
+            if (released.Owner.GetComponent<PlayerItemController>()?.PlayThirdPersonSaltSpray(released.AimDirection, released.AimOrigin, _reach, _contactHalfWidth) != true)
+                SaltVfxBurst.Spray(released.Owner, released.AimOrigin + released.AimDirection * .25f,
+                    new Ray(released.AimOrigin, released.AimDirection), _reach, _contactHalfWidth);
+        });
     }
 }
