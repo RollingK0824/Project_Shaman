@@ -436,16 +436,21 @@ namespace ProjectShaman.Network.AI
         // An active FindTool request of this villager whose tool kind the player is carrying
         private static IQuestView FindToolDelivery(QuestManager quests, string giverId, GameObject player, out Net_ToolItem carried)
         {
-            carried = player != null ? Net_ToolItem.FindCarriedBy(player) : null;
-            if (quests == null || carried == null)
+            carried = null;
+            if (quests == null || player == null)
             {
                 return null;
             }
 
             foreach (IQuestView quest in quests.Quests)
             {
-                if (quest.GiverId == giverId && quest.State == QuestState.Active &&
-                    quest.Definition.ObjectiveType == QuestActions.DELIVER && quest.TargetId == carried.Tool.TypeId)
+                if (quest.GiverId != giverId || quest.State != QuestState.Active || quest.Definition.ObjectiveType != QuestActions.DELIVER)
+                {
+                    continue;
+                }
+
+                carried = Net_ToolItem.FindCarriedBy(player, quest.TargetId);
+                if (carried != null)
                 {
                     return quest;
                 }
