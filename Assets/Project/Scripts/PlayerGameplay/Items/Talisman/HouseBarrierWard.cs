@@ -55,10 +55,12 @@ public sealed class HouseBarrierWard : MonoBehaviour, IGhostBarrier
 
     internal void Arm(float duration)
     {
+        bool firstActivation = !_armed;
         _expiresAt = Time.time + duration;
         _armed = true;
         Active[_home] = this;
         GhostBarrierRegistry.Register(this);
+        if (firstActivation) PlayerSoundBank.PlayAt(PlayerSoundCue.Paper, transform.position);
     }
 
     public bool Blocks(Vector3 position, GhostActionVerb verb) => IsActive && _home.Contains(position);

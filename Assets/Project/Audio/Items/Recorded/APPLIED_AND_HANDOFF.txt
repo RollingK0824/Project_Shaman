@@ -1,0 +1,55 @@
+Project Shaman Player / Item recorded sound application — 2026-10-27
+
+설정: Assets/Project/Audio/Items/Resources/PlayerItemSounds.asset
+28개 cue에 36개 원본 WAV를 연결. 원본은 편집하지 않고 복사했으며, 출처/해시는 SOURCES.json 참조.
+3D 음원은 Unity importer에서 mono로 변환. UI 알림은 stereo 유지.
+PlayerAudioController가 공통 Resources 설정을 읽으므로 기존 Player/NetPlayer 프리팹을 수정하지 않음.
+Player 4 / NetPlayer4는 PL_4_LocomotionAvatar 참조로 여성 음성 선택. 다른 모델은 남성 음성.
+
+연결 내용
+- DirtStep 4개: 걷기/달리기/웅크리기. 기존 속도별 간격/상대 볼륨 유지.
+- WoodStep 2개: PlayerFootstepSurface.Wood=true인 바닥의 collider 또는 부모에서만 재생.
+  맵/팀원 prefab은 변경하지 않았으므로 기존 미지정 바닥은 흙 발소리를 사용.
+- 착지, 달리기 후/고스트레스 숨소리, 심박, 피격, 사망 음원 교체.
+  기존 스트레스 HighThreshold 조건 유지. 사망 후 숨소리/심박 중단, 사망음은 끝까지 재생.
+- 방울/소금/징: 후보 각 2개 중 하나씩 선택, 직전 변주와 중복 방지.
+- 팥쑥: 던지기 + 기존 visual projectile 충돌 hook. 판정용 projectile은 무음.
+- 엽전: 로컬 사용 요청 연출 + 기존 원격 UseAction presentation 연결.
+- 초혼경: 관찰/고정/해제 기존 이벤트.
+- 부적: 장착 종이 소리, 보호막 확인된 visual 활성화, 집 부착 Arm 성공 소리,
+  효과부적 UseCommitted 효과음, DrawingSaved 저장 알림.
+- 초롱불: 성공한 부착 후 금속 소리, 획득/회수 feed에 작은 접촉음.
+- 음기향/초롱불: 장착 때 짧은 불붙이기 소리. 지속 불꽃 loop와 숙주 탐지 알람 없음.
+- 수첩: 열기/탭 변경의 종이 넘기기. 드로잉: 펜 움직임 때 짧은 필기음;
+  드래그 매 프레임 중첩 방지, 종이 이탈/펜 떼기/종료 시 중단. 지우개 무음.
+- 일반 장착: 옷감 후보 2개 변주. 획득/제작 알림은 같은 프레임에 한 번으로 통합.
+
+온라인 범위 / Network 담당 전달
+Network 및 AI/Core/맵/프리팹 파일은 수정하지 않음.
+방울/소금/팥쑥/징/엽전은 기존 NetPlayerItemUse -> UseAction.PlayRemotePresentation ->
+PlayerItemFeedback.PlayRemoteAudio 경로를 그대로 사용. 소유자는 로컬에서만, 원격은 3D로 재생.
+자기 보호막은 기존 BarrierWardVisual.ApplyReplicatedState의 첫 visible 활성화에서 3D 재생.
+
+초롱불 부착 성공음 원격 전달 필요:
+NetPlayerLanternPlacement에서 성공한 requestId와 최종 placed.transform.position을 observer RPC로 전달한 뒤
+해당 플레이어의 PlayerLanternPlacement.PresentPlacementConfirmed(requestId, worldPosition) 호출.
+실패/요청 단계에는 호출하지 말 것. 같은 requestId는 무시하므로 호스트 중복 재생 방지.
+현재 오프라인/호스트 성공 경로는 연결됨. dedicated server는 음원을 재생하지 않음.
+
+집 결계 부착 성공음 원격 전달 필요:
+NetHouseBarriers/NetPlayerHouseBarrier에서 새 설치 확정이 클라이언트에 도착했을 때
+PlayerSoundBank.PlayAt(PlayerSoundCue.Paper, confirmedPosition) 1회 호출.
+초기 상태 전체 동기화/늦은 참가/기존 결계 복원에는 호출하지 말 것.
+현재 HouseBarrierWard.Arm에서 호스트 소리가 나므로 host는 remote 호출에서 제외해야 함.
+
+나무 바닥 선택: 맵 담당자가 나무 바닥 collider 또는 그 부모에 PlayerFootstepSurface 추가.
+나무 벽/기둥에 붙이는 용도가 아니며, 지정 전까지 기본 흙 소리로 안전하게 동작.
+
+검증
+36 WAV Unity import 및 실제 PCM 비무음 확인.
+Player 1~4 / NetPlayer 1~4의 Avatar 기반 음성 선택 확인 (8개 프리팹 읽기 전용).
+실제 PlayerPrototype 1 씬의 Player (5) 컴포넌트에서 프로그램 호출을 통한 SFX 재생 검증.
+아이템 5종/알림 통합/드로잉 시작·제한·중단/부착 요청 중복방지/실제 피격·사망 이벤트 검사.
+추가 검사: 수첩 UI mixer 라우팅, 스트레스 69에서 심박 중단 / 85에서 숨소리·심박 재생 / 0에서 중단, 제자리 착지 상태 검사 통과.
+씬 저장 없이 Play 종료. 사람이 귀로 들은 분위기·상대음량 검수 및 2인 네트워크 실플레이는 미검증.
+기존 Player (5)의 NetworkIdentity 누락 로그는 별도 기존 문제이며 이번 작업에서 변경하지 않음.

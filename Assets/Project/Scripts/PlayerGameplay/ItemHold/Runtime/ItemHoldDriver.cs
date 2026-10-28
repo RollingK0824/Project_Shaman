@@ -59,10 +59,20 @@ namespace ProjectShaman.ItemHold
    Initialize();wantsEquip=false;if(Phase==HoldPhase.Empty||Phase==HoldPhase.Unequip)return;
    Phase=HoldPhase.Unequip;elapsed=0;weightAtStart=animator.GetLayerWeight(layer);animator.CrossFadeInFixedTime(LayerName+".Unequip",.18f,layer,0);
   }
+  public static float TimedReleaseDelay(int id)=>id==6?.10f:.18f;
+  public static float TimedUseDuration(int id)=>id==6?.42f:.65f;
   public void Use(){Use(CurrentHoldType==HoldType.OneHandVertical?1:CurrentHoldType==HoldType.OneHandFront?2:0);}
   public void Use(int useId)
   {
    Initialize();if(Phase!=HoldPhase.Hold)return;UseRequested?.Invoke(useId);
+   // Timings are shared with PlayerTimedItemUse. Skip the source clip's idle lead-in.
+   if(useId==5||useId==6)
+   {
+    string state=useId==6?"UseSaltFbx":"UseThrowFbx";
+    if(!animator.HasState(layer,Animator.StringToHash(LayerName+"."+state)))return;
+    Phase=HoldPhase.Use;elapsed=0;useDuration=TimedUseDuration(useId);
+    animator.CrossFadeInFixedTime(LayerName+"."+state,.04f,layer,useId==6?.70f:.55f);return;
+   }
    foreach(var motion in useMotions)if(motion.id==useId&&useId!=0)
    {
     if(!animator.HasState(layer,Animator.StringToHash(LayerName+"."+motion.state)))return;

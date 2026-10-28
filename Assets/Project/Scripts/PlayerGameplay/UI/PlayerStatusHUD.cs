@@ -139,6 +139,11 @@ public sealed class PlayerStatusHUD : MonoBehaviour
     private void AddFeed(ItemData item, int amount)
     {
         if (!CanShow || _feedRoot == null) return;
+        var audio = _owner.GetComponent<PlayerAudioController>();
+        // The feed observes committed personal deltas and shared-count increases.
+        // Crafted and pickup notifications coalesce at the player audio source.
+        if (item.ItemId == "item_lantern") audio?.PlayCue(PlayerSoundCue.LanternRetrieve);
+        else audio?.QueueAcquisitionSound();
         float now = Time.unscaledTime;
         var entry = _entries.Find(e => e.Item == item && now - e.Updated <= _mergeWindow);
         if (entry == null)

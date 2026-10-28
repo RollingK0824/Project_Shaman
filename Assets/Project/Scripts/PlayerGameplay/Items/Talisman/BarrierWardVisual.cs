@@ -36,7 +36,11 @@ public sealed class BarrierWardVisual : MonoBehaviour
         if (_fading) return;
         if (!active) { if (_shown) Dissolve(); return; }
         if (!float.IsFinite(radius) || radius <= 0f || _shell == null) return;
-        if (!_shown) _flashAt = Time.unscaledTime;
+        if (!_shown)
+        {
+            _flashAt = Time.unscaledTime;
+            PlayerSoundBank.PlayAt(PlayerSoundCue.Barrier, transform.position);
+        }
         _shell.transform.localScale = Vector3.one * (radius * 2f);
         _shown = true;
         SetVisible(true);

@@ -24,7 +24,7 @@ public sealed class PlayerAudioController : MonoBehaviour
     [SerializeField, Min(.1f)] private float _remoteSprintSpeed = 5f;
     [Tooltip("Ignore teleports and large corrections, in metres per frame.")]
     [SerializeField, Min(.1f)] private float _teleportDistance = 2f;
-    [Header("Local breathing (synthetic placeholder; replace with recording)")]
+    [Header("Local breathing")]
     [SerializeField] private AudioClip _breathingClip;
     [SerializeField, Min(.1f)] private float _minimumSprintDuration = 3f;
     [SerializeField, Min(.1f)] private float _recoveryDuration = 4f;
@@ -48,6 +48,15 @@ public sealed class PlayerAudioController : MonoBehaviour
     [SerializeField] private AudioClip _projectileImpact;
     [SerializeField] private AudioClip _mirrorLive, _mirrorFreeze, _mirrorRelease;
     [SerializeField] private AudioClip _craftSuccess, _talismanSave, _talismanUse;
+    [Tooltip("Shared recorded sounds. Disable only to use this prefab's legacy clip fields.")]
+    [SerializeField] private bool _useRecordedSounds = true;
+    private PlayerSoundBank _sounds;
+    public bool UsesRecordedSounds => _sounds != null;
+    private readonly System.Collections.Generic.Dictionary<PlayerSoundCue, int> _lastSounds = new();
+    private AudioSource _drawingSource;
+    private float _noticeAt = -10f, _drawingAt = -10f;
+    private bool _noticePending;
+    private AudioClip[] _woodFootsteps;
 
     private AudioSource _stepSource, _bodySource, _uiSource, _itemSource, _impactSource;
     private CharacterController _controller;
@@ -82,6 +91,7 @@ public sealed class PlayerAudioController : MonoBehaviour
         _spectator = GetComponent<PlayerSpectatorController>();
         _characterVisual = transform.Find("CharacterVisual");
         if (_animator == null) _animator = transform.Find("CharacterVisual")?.GetComponentInChildren<Animator>(true);
+        ApplyRecordedSounds();
         if (_animator != null && _animator.runtimeAnimatorController != null)
             foreach (var p in _animator.parameters)
             {
@@ -100,6 +110,62 @@ public sealed class PlayerAudioController : MonoBehaviour
         if (_heartbeatSource == null) _heartbeatSource = CreateSource("Local Heartbeat", false);
         ConfigureBodySource(_breathingSource, _breathingClip, true);
         ConfigureBodySource(_heartbeatSource, _heartbeatClip, false);
+    }
+
+    private void ApplyRecordedSounds()
+    {
+        _sounds = _useRecordedSounds ? PlayerSoundBank.Default : null;
+        if (_sounds == null) return;
+        bool female = _sounds.IsFemale(_animator);
+        _sfxGroup = _sounds.SfxGroup; _uiGroup = _sounds.UiGroup;
+        _footsteps = _sounds.Clips(PlayerSoundCue.DirtStep);
+        _woodFootsteps = _sounds.Clips(PlayerSoundCue.WoodStep);
+        _landing = _sounds.First(PlayerSoundCue.Landing);
+        _breathingClip = _sounds.First(female ? PlayerSoundCue.FemaleBreath : PlayerSoundCue.MaleBreath);
+        _breathingVolume = _sounds.Volume(female ? PlayerSoundCue.FemaleBreath : PlayerSoundCue.MaleBreath);
+        _heartbeatClip = _sounds.First(PlayerSoundCue.Heartbeat);
+        _heartbeatVolume = new Vector2(_sounds.Volume(PlayerSoundCue.Heartbeat) * .4f, _sounds.Volume(PlayerSoundCue.Heartbeat));
+        _hurt = _sounds.First(female ? PlayerSoundCue.FemaleHurt : PlayerSoundCue.MaleHurt);
+        _death = _sounds.First(female ? PlayerSoundCue.FemaleDeath : PlayerSoundCue.MaleDeath);
+        _projectileImpact = _sounds.First(PlayerSoundCue.Impact);
+        _mirrorLive = _sounds.First(PlayerSoundCue.MirrorLive);
+        _mirrorFreeze = _mirrorRelease = _sounds.First(PlayerSoundCue.MirrorToggle);
+        _craftSuccess = _talismanSave = _sounds.First(PlayerSoundCue.Notice);
+        _talismanUse = _sounds.First(PlayerSoundCue.Talisman);
+    }
+
+    public void PlayCue(PlayerSoundCue cue, bool remote = false)
+    {
+        if (_sounds == null || !isActiveAndEnabled || (NetworkServer.active && !NetworkClient.active)) return;
+        if (!_lastSounds.TryGetValue(cue, out int previous)) previous = -1;
+        var clip = _sounds.Pick(cue, ref previous);
+        _lastSounds[cue] = previous;
+        if (remote) PlayRemoteItem(clip, _sounds.Volume(cue));
+        else if (cue == PlayerSoundCue.Notebook || cue == PlayerSoundCue.Notice || cue == PlayerSoundCue.Talisman ||
+                 cue == PlayerSoundCue.MirrorLive || cue == PlayerSoundCue.MirrorToggle)
+        {
+            if (clip != null && PlayerLocalPresentation.IsLocal(gameObject)) _uiSource.PlayOneShot(clip, _sounds.Volume(cue));
+        }
+        else PlayLocalItem(clip, _sounds.Volume(cue));
+    }
+
+    // Inventory changes and Crafted can fire in the same transaction/frame.
+    // Coalesce them into one local notification, after the transaction finishes.
+    public void QueueAcquisitionSound() => _noticePending = true;
+    public void PlayDrawing()
+    {
+        if (_sounds == null || !isActiveAndEnabled || !PlayerLocalPresentation.IsLocal(gameObject) ||
+            !PlayerActionGuard.CanAct(gameObject) || Time.unscaledTime < _drawingAt) return;
+        var clip = _sounds.First(PlayerSoundCue.Drawing);
+        if (clip == null) return;
+        if (_drawingSource == null) _drawingSource = CreateSource("Local Drawing", false);
+        _drawingSource.clip = clip; _drawingSource.volume = _sounds.Volume(PlayerSoundCue.Drawing);
+        _drawingSource.Play(); _drawingAt = Time.unscaledTime + clip.length;
+    }
+    public void StopDrawing()
+    {
+        if (_drawingSource != null) _drawingSource.Stop();
+        _drawingAt = -10f;
     }
 
     private void ConfigureBodySource(AudioSource source, AudioClip clip, bool loop)
@@ -144,6 +210,12 @@ public sealed class PlayerAudioController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (_noticePending)
+        {
+            _noticePending = false;
+            if (Time.unscaledTime - _noticeAt >= .15f && PlayerActionGuard.CanAct(gameObject))
+            { if (_sounds != null) PlayCue(PlayerSoundCue.Notice); else PlayUI(_craftSuccess); _noticeAt = Time.unscaledTime; }
+        }
         float dt = Time.deltaTime;
         Vector3 delta = transform.position - _previousPosition;
         _previousPosition = transform.position;
@@ -172,11 +244,11 @@ public sealed class PlayerAudioController : MonoBehaviour
         // Displacement also guards against a stale CharacterController.velocity when Move was skipped.
         bool moved = new Vector2(delta.x, delta.z).magnitude / dt >= _minimumMoveSpeed;
         UpdateLocalBody(dt, local, canMove && !teleport && grounded && moved && speed >= _minimumMoveSpeed && sprinting);
-        if (!canMove || teleport || !moved)
+        if (!canMove || teleport)
         {
             _sampled = false; _stepTimer = 0f; _airTime = 0f; _stepSource.Stop(); return;
         }
-        SampleMotion(dt, grounded, jump, speed, crouching, sprinting);
+        SampleMotion(dt, grounded, jump, moved ? speed : 0f, crouching, sprinting);
     }
 
     private void SampleMotion(float dt, bool grounded, bool jump, float speed, bool crouching, bool sprinting)
@@ -185,7 +257,7 @@ public sealed class PlayerAudioController : MonoBehaviour
         if (jump && !_wasJumping) PlayBody(_jump, .45f);
         if (!grounded) _airTime += dt;
         bool landed = grounded && !_wasGrounded && _airTime >= _minimumAirTime && Time.time - _lastLanding >= _landingCooldown;
-        if (landed) { PlayBody(_landing, .55f); _lastLanding = Time.time; _stepTimer = 0f; }
+        if (landed) { PlayBody(_landing, _sounds != null ? _sounds.Volume(PlayerSoundCue.Landing) : .55f); _lastLanding = Time.time; _stepTimer = 0f; }
         if (grounded) _airTime = 0f;
         _wasGrounded = grounded; _wasJumping = jump;
         if (!grounded || speed < _minimumMoveSpeed) { _stepTimer = 0f; _stepSource.Stop(); return; }
@@ -193,16 +265,28 @@ public sealed class PlayerAudioController : MonoBehaviour
         _stepTimer += dt;
         if (_stepTimer < Mathf.Max(.05f, interval)) return;
         _stepTimer = 0f; // Never catch up multiple sounds after a hitch.
-        if (_footsteps == null || _footsteps.Length == 0) return;
-        int index = Random.Range(0, _footsteps.Length);
-        if (_footsteps.Length > 1 && index == _previousStep) index = (index + 1) % _footsteps.Length;
+        var steps = GroundClips();
+        if (steps == null || steps.Length == 0) return;
+        int index = Random.Range(0, steps.Length);
+        if (steps.Length > 1 && index == _previousStep) index = (index + 1) % steps.Length;
         _previousStep = index;
-        if (_footsteps[index] == null) return;
-        _stepSource.clip = _footsteps[index];
+        if (steps[index] == null) return;
+        _stepSource.clip = steps[index];
         _stepSource.pitch = Random.Range(Mathf.Clamp(_stepPitch.x, .8f, 1.2f), Mathf.Clamp(_stepPitch.y, .8f, 1.2f));
         float volume = crouching ? _crouchVolume : sprinting ? _sprintVolume : _walkVolume;
+        if (_sounds != null) volume *= _sounds.Volume(ReferenceEquals(steps, _woodFootsteps) ? PlayerSoundCue.WoodStep : PlayerSoundCue.DirtStep) / .4f;
         _stepSource.volume = Mathf.Clamp01(volume * Random.Range(1f - _stepVolumeVariation, 1f + _stepVolumeVariation));
-        _stepSource.PlayOneShot(_footsteps[index]);
+        _stepSource.PlayOneShot(steps[index]);
+    }
+
+    private AudioClip[] GroundClips()
+    {
+        // An explicit Player-owned surface marker avoids guessing wood from object names.
+        Vector3 feet = _controller != null ? _controller.bounds.center - Vector3.up * _controller.bounds.extents.y : transform.position;
+        if (_woodFootsteps != null && Physics.Raycast(feet + Vector3.up * .15f, Vector3.down, out var hit, .4f, ~0, QueryTriggerInteraction.Ignore) &&
+            !hit.collider.transform.IsChildOf(transform) && hit.collider.GetComponentInParent<PlayerFootstepSurface>() is { Wood: true })
+            return _woodFootsteps;
+        return _footsteps;
     }
 
     private void UpdateLocalBody(float dt, bool local, bool running)
@@ -260,8 +344,11 @@ public sealed class PlayerAudioController : MonoBehaviour
     private void StopPlayerSounds()
     {
         StopLocalBody();
+        StopDrawing();
+        _noticePending = false;
         if (_stepSource != null) _stepSource.Stop();
-        if (_bodySource != null) _bodySource.Stop();
+        // Death voice finishes after entering spectator; loops and footsteps stop immediately.
+        if (_bodySource != null && !_deathPlayed) _bodySource.Stop();
         if (_uiSource != null) _uiSource.Stop();
         if (_itemSource != null) _itemSource.Stop();
         if (_impactSource != null) _impactSource.Stop();
@@ -296,15 +383,19 @@ public sealed class PlayerAudioController : MonoBehaviour
         if (_projectileImpact == null || !isActiveAndEnabled) return;
         if (_impactSource == null) _impactSource = CreateSource("Projectile impact", true);
         _impactSource.transform.position = position;
-        _impactSource.PlayOneShot(_projectileImpact, .5f);
+        _impactSource.PlayOneShot(_projectileImpact, _sounds != null ? _sounds.Volume(PlayerSoundCue.Impact) : .5f);
     }
-    public void PlayMirrorLive() => PlayUI(_mirrorLive);
-    public void PlayMirrorFreeze() => PlayUI(_mirrorFreeze);
-    public void PlayMirrorRelease() => PlayUI(_mirrorRelease);
-    private void OnCrafted(CraftingRecipeData recipe) => PlayUI(_craftSuccess);
-    private void OnSaved(TalismanItemData item, TalismanDrawingData drawing) => PlayUI(_talismanSave);
-    private void OnTalismanUsed(string instanceId) => PlayUI(_talismanUse);
-    private void OnDamaged(float amount, GameObject source) { if (amount > 0f && _health.CurrentHealth > 0f) PlayBody(_hurt, .6f); }
+    public void PlayMirrorLive() { if (_sounds != null) PlayCue(PlayerSoundCue.MirrorLive); else PlayUI(_mirrorLive); }
+    public void PlayMirrorFreeze() { if (_sounds != null) PlayCue(PlayerSoundCue.MirrorToggle); else PlayUI(_mirrorFreeze); }
+    public void PlayMirrorRelease() { if (_sounds != null) PlayCue(PlayerSoundCue.MirrorToggle); else PlayUI(_mirrorRelease); }
+    private void OnCrafted(CraftingRecipeData recipe) => QueueAcquisitionSound();
+    private void OnSaved(TalismanItemData item, TalismanDrawingData drawing) => QueueAcquisitionSound();
+    private void OnTalismanUsed(string instanceId) { if (_sounds != null) PlayCue(PlayerSoundCue.Talisman); else PlayUI(_talismanUse); }
+    private void OnDamaged(float amount, GameObject source)
+    {
+        if (amount > 0f && _health.CurrentHealth > 0f)
+            PlayBody(_hurt, _sounds != null ? _sounds.Volume(_sounds.IsFemale(_animator) ? PlayerSoundCue.FemaleHurt : PlayerSoundCue.MaleHurt) : .6f);
+    }
     private void OnDied(GameObject source)
     {
         StopLocalBody();
@@ -312,7 +403,7 @@ public sealed class PlayerAudioController : MonoBehaviour
         if (_itemSource != null) _itemSource.Stop();
         if (_deathPlayed) return;
         _deathPlayed = true;
-        PlayBody(_death, .65f);
+        PlayBody(_death, _sounds != null ? _sounds.Volume(_sounds.IsFemale(_animator) ? PlayerSoundCue.FemaleDeath : PlayerSoundCue.MaleDeath) : .65f);
     }
     private void OnDisable()
     {
