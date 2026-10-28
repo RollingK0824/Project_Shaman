@@ -44,8 +44,10 @@ GameObject:
   - component: {fileID: 8614818325130662807}
   - component: {fileID: 1515507840888844167}
   - component: {fileID: 3534377093322336638}
+  - component: {fileID: 3850290717573702402}
+  - component: {fileID: 485035173745705155}
   m_Layer: 0
-  m_Name: 'ExorcismFlag_01 '
+  m_Name: ExorcismFlag_01
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -61,7 +63,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 1, z: 0, w: 0}
   m_LocalPosition: {x: -5, y: 8, z: 150}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.5, y: 1.5, z: 1.5}
   m_ConstrainProportionsScale: 1
   m_Children:
   - {fileID: 624946719634543807}
@@ -119,6 +121,39 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ExorcismFlagInteractable
   _interactionPrompt: "\uC758\uC2DD \uAE43\uBC1C \uD65C\uC131\uD654"
   _ritualActive: 0
+--- !u!114 &3850290717573702402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8208944383982650716}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 967909702
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &485035173745705155
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8208944383982650716}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d09d6ee75219ae64cb7f4e273d383944, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetExorcismFlag
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _maxActivateDistance: 4.5
 --- !u!1001 &5668402974350404440
 PrefabInstance:
   m_ObjectHideFlags: 0
