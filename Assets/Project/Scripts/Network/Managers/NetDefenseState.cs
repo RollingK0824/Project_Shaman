@@ -9,8 +9,9 @@ public enum RitualPhase : byte
     WaitingFlag,    // 밤: 의식 가능, 깃발 활성화 대기
     Countdown,      // 깃발 활성화, 잡귀가 오기 전 준비 시간
     Active,         // 디펜스 중
-    Succeeded,      // 디펜스 성공(아침까지 버팀)
-    Failed          // 깃발 파괴, 또는 깃발을 켜지 않고 아침
+    Succeeded,      // 디펜스 성공 (정해진 시간을 버팀)
+    Failed,          // 깃발 파괴, 또는 마감 안에 깃발을 켜지 못함
+    FlagMissed      // 마감 안에 깃발을 켜지 못함 → 오늘 밤 굿 없음
 }
 
 // [서버 ->모든 클라] 디펜스 진행 상태. UI는 이 컴포넌트만 본다.

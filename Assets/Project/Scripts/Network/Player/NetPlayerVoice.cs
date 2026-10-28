@@ -24,6 +24,11 @@ public class NetPlayerVoice : NetworkBehaviour
     [SerializeField] private VoicePlayback _proximityPlayback;
     [SerializeField] private VoicePlayback _radioPlayback;
 
+    [Header("Radio Cue")]
+    [SerializeField] private AudioClip _radioStartClip;
+    [SerializeField] private AudioClip _radioEndClip;
+    [SerializeField, Range(0f, 1f)] private float _radioCueVolume = .6f;
+
     [Header("Debug")]
     [Tooltip("로컬 클라에서 내 목소리를 바로 들어 보는 테스트용")]
     [SerializeField] private bool _debugLoopback;
@@ -43,6 +48,12 @@ public class NetPlayerVoice : NetworkBehaviour
 
     private bool _serverBellInQuickSlot;
     private bool _lastSentBellInQuickSlot;
+
+    // [로컬 클라] 직전 무전 상태. 바뀌는 순간에만 신호음 요청
+    private bool _wasTalkingOnRadio;
+
+    // [서버] 시작 신호를 보낸 무전이 진행중인지 (끝 신호를 짝 맞춰 보내기 위함)
+    private bool _serverRadioActive;
 
     // [모든 클라] 게임 씬의 플레이어 음성 목록. 플레이어별 음소거 UI용 (PlayerRoster는 서버에만 있음)
     private static readonly List<NetPlayerVoice> _all = new List<NetPlayerVoice>();
@@ -75,11 +86,14 @@ public class NetPlayerVoice : NetworkBehaviour
         ListChanged = null;
     }
 
-    // [로컬 클라] HUD에서 "무전 총" 표시할 때 사용
+    // [로컬 클라] HUD에서 "무전 중" 표시할 때 사용
     public bool IsTalkingOnRadio { get; private set; }
 
     private bool IsDead => _status != null && _status.IsDead;
     private bool IsHoldingBell => _bellData != null && _equipment.EquippedItem == _bellData;
+
+    // [서버] 듣는 쪽 무전 수신 조건: 생존 + 방울 퀵슬롯 등록 + 실제 보유
+    private bool ServerCanHearRadio => !IsDead && _serverBellInQuickSlot && _bellData != null && _inventory.Contains(_bellData);
 
     private void Awake()
     {
@@ -150,6 +164,14 @@ public class NetPlayerVoice : NetworkBehaviour
 
         IsTalkingOnRadio = !VoiceSettings.MicMuted && !IsDead && IsHoldingBell && _radioAction.IsPressed();
 
+        if (IsTalkingOnRadio != _wasTalkingOnRadio)
+        {
+            _wasTalkingOnRadio = IsTalkingOnRadio;
+            CmdSetRadioActive(IsTalkingOnRadio);
+            // 로컬도 들어서 무전이 켜지고 꺼진 걸 알 수 있게
+            _radioPlayback.PlayCue(IsTalkingOnRadio ? _radioStartClip : _radioEndClip, _radioCueVolume);
+        }
+
         if (SteamUser.GetAvailableVoice(out uint available) != EVoiceResult.k_EVoiceResultOK || available == 0) return;
         if (SteamUser.GetVoice(true, _recordBuffer, (uint)_recordBuffer.Length, out uint written) != EVoiceResult.k_EVoiceResultOK || written == 0) return;
 
@@ -195,6 +217,32 @@ public class NetPlayerVoice : NetworkBehaviour
     [Command]
     private void CmdSetBellInQuickSlot(bool registered) => _serverBellInQuickSlot = registered;
 
+    // [서버] 무전 시작/끝. 시작은 살아 있고 방울을 들고 있을 때만 인정
+    [Command]
+    private void CmdSetRadioActive(bool active)
+    {
+        if (active && (IsDead || !IsHoldingBell)) return;
+        if (active == _serverRadioActive) return;
+
+        _serverRadioActive = active;
+
+        foreach (NetworkConnectionToClient conn in NetworkServer.connections.Values)
+        {
+            if (conn == connectionToClient || conn.identity == null) continue;
+            if (!conn.identity.TryGetComponent(out NetPlayerVoice listener)) continue;
+
+            if (listener.ServerCanHearRadio) TargetPlayRadioCue(conn, active);
+        }
+    }
+
+    // [받는 클라] 말한 플레이어 쪽 VoiceRadio에서 재생
+    [TargetRpc]
+    private void TargetPlayRadioCue(NetworkConnectionToClient target, bool start)
+    {
+        if (IsMutedLocally) return;
+        _radioPlayback.PlayCue(start ? _radioStartClip : _radioEndClip, _radioCueVolume);
+    }
+
     // [서버] 듣는 사람마다 채널을 골라 전달. 클라가 보낸 무전 여부는 서버가 다시 확인
     [Command(channel = Channels.Unreliable)]
     private void CmdSendVoice(byte[] data, bool wantsRadio)
@@ -232,7 +280,7 @@ public class NetPlayerVoice : NetworkBehaviour
         if (IsDead) return true;
 
         // 방울 무전은 방울을 가진 생존자에게
-        if (radio && _serverBellInQuickSlot && _bellData != null && _inventory.Contains(_bellData))
+        if (radio && ServerCanHearRadio)
         {
             channel = VoiceChannel.Radio;
             return true;
@@ -242,7 +290,7 @@ public class NetPlayerVoice : NetworkBehaviour
         return sqrDistance <= _proximityRange * _proximityRange;
 
     }
-
+ 
     // [받는 클라] 말한 플레이어 오브젝트에서 재생됨
     [TargetRpc(channel = Channels.Unreliable)]
     private void TargetReceiveVoice(NetworkConnectionToClient target, byte[] data, VoiceChannel channel)

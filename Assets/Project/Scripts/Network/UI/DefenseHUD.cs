@@ -67,8 +67,8 @@ public class DefenseHUD : MonoBehaviour
         {
             _timerText.text = FormatTime(_state.RemainingTime);
 
-            // 준비 시간에는 깃발 HP가 아직 초기화 전(지난밤 값)이라 가득 찬 것으로 표시
-            bool full = _state.Phase == RitualPhase.Countdown || _state.FlagMaxHP <= 0f;
+            // 디펜스 전(깃발 대기, 준비 시간)에는 깃발 HP가 아직 초기화 전(지난밤 값)이라 가득 찬 것으로 표시
+            bool full = _state.Phase != RitualPhase.Active || _state.FlagMaxHP <= 0f;
             _hpFill.fillAmount = full ? 1f : _state.FlagHP / _state.FlagMaxHP;
         }
     }
@@ -86,7 +86,7 @@ public class DefenseHUD : MonoBehaviour
 
     private void ShowStatus(RitualPhase phase)
     {
-        _wantStatus = phase == RitualPhase.Countdown || phase == RitualPhase.Active;
+        _wantStatus = phase == RitualPhase.WaitingFlag || phase == RitualPhase.Countdown || phase == RitualPhase.Active;
         RefreshStatusVisible();
     }
 
@@ -102,6 +102,7 @@ public class DefenseHUD : MonoBehaviour
         RitualPhase.Countdown => "굿이 시작되었습니다. 잡귀가 몰려옵니다.",
         RitualPhase.Succeeded => "퇴마 성공!",
         RitualPhase.Failed => "퇴마 실패...",
+        RitualPhase.FlagMissed => "깃발을 세우지 못해 굿을 올리지 못했습니다.",
         _ => null
     };
 
