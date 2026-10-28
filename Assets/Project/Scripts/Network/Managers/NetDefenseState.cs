@@ -10,7 +10,7 @@ public enum RitualPhase : byte
     Countdown,      // 깃발 활성화, 잡귀가 오기 전 준비 시간
     Active,         // 디펜스 중
     Succeeded,      // 디펜스 성공 (정해진 시간을 버팀)
-    Failed,          // 깃발 파괴, 또는 마감 안에 깃발을 켜지 못함
+    Failed,         // 깃발 파괴, 또는 카운트다운 중 아침
     FlagMissed      // 마감 안에 깃발을 켜지 못함 → 오늘 밤 굿 없음
 }
 

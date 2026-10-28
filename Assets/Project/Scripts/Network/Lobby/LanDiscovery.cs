@@ -59,7 +59,8 @@ public class LanDiscovery : NetworkDiscoveryBase<ServerRequest, LanRoomResponse>
     protected override LanRoomResponse ProcessRequest(ServerRequest request, IPEndPoint endpoint)
     {
         var manager = RoomManager.singleton as RoomManager;
-        string owner = string.IsNullOrWhiteSpace(UserData.Nickname) ? "Host" : UserData.Nickname;
+        // LAN은 같은 공간에서 테스트하니 PC 이름으로 어느 방인지 구분
+        string owner = SystemInfo.deviceName;
 
         return new LanRoomResponse
         {
