@@ -10,8 +10,7 @@ public class BeanMugwortUseAction : ItemUseAction
     [SerializeField] private float _spawnDownOffset = .15f;
 
     [Header("Effect")]
-    [SerializeField, Range(.1f, 1f)] private float _slowMultiplier = .6f;
-    [SerializeField] private float _slowDuration = 3f;
+    [SerializeField, Min(0f)] private float _damageAmount = 10f;
 
     [Header("Consumption")]
     [SerializeField] private bool _consumeOnThrow = true;
@@ -30,9 +29,9 @@ public class BeanMugwortUseAction : ItemUseAction
 
         GetSpawnPose(context, out var position, out var rotation);
         var projectile = Instantiate(_projectilePrefab, position, rotation);
-        projectile.Initialize(context.Owner, context.AimDirection, _throwForce, _slowMultiplier, _slowDuration);
+        projectile.Initialize(context.Owner, context.AimDirection, _throwForce, _damageAmount);
 
-        Debug.Log($"[BeanMugwort] 투척 판정 / Slow={_slowMultiplier}, Duration={_slowDuration}", context.Owner);
+        Debug.Log($"[BeanMugwort] 투척 판정 / Damage={_damageAmount}", context.Owner);
 
         if (_consumeOnThrow) context.Consume?.Invoke(1);
         // Only the resolving projectile counts. Visual projectiles and later contacts do not report.

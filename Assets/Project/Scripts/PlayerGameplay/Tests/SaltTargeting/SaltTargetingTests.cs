@@ -11,6 +11,7 @@ using UnityEngine.TestTools;
 public class SaltTargetingTests
 {
     private readonly List<GameObject> _objects = new();
+    private readonly List<LocalGameplayJudge> _pausedJudges = new();
     private readonly Vector3 _origin = new(1000, 1000, 1000);
     private GameObject _owner;
     private SaltUseAction _action;
@@ -22,6 +23,10 @@ public class SaltTargetingTests
     {
         _requests = 0;
         _consumed = 0;
+        // This fixture resolves its own DamageRequested events. Isolate scene judges
+        // so running in a populated prototype scene cannot apply the same request twice.
+        foreach (var judge in Object.FindObjectsByType<LocalGameplayJudge>(FindObjectsSortMode.None))
+            if (judge.isActiveAndEnabled) { judge.enabled = false; _pausedJudges.Add(judge); }
         _owner = Create("Salt user", 0);
         _action = ScriptableObject.CreateInstance<SaltUseAction>();
         _data = ScriptableObject.CreateInstance<ItemData>();
@@ -79,6 +84,8 @@ public class SaltTargetingTests
     public void TearDown()
     {
         PlayerEvents.DamageRequested -= Damage;
+        foreach (var projectile in Object.FindObjectsByType<BeanMugwortProjectile>(FindObjectsSortMode.None))
+            if (Vector3.Distance(projectile.transform.position, _origin) < 10) Object.DestroyImmediate(projectile.gameObject);
         foreach (var burst in Object.FindObjectsByType<SaltVfxBurst>(FindObjectsSortMode.None))
             if (Vector3.Distance(burst.transform.position, _origin) < 10) Object.DestroyImmediate(burst.gameObject);
         foreach (var volume in Object.FindObjectsByType<DamageTrigger>(FindObjectsSortMode.None))
@@ -89,6 +96,8 @@ public class SaltTargetingTests
         _objects.Clear();
         Object.DestroyImmediate(_action);
         Object.DestroyImmediate(_data);
+        foreach (var judge in _pausedJudges) if (judge != null) judge.enabled = true;
+        _pausedJudges.Clear();
     }
 
     [Test]
@@ -117,26 +126,28 @@ public class SaltTargetingTests
     }
 
     [TestCase(false)]
-    [TestCase(true)]
-    public void GhostReceivesDamageOnceAcrossChildColliders(bool isMinion)
+    public void GhostReceivesSlowOnceAcrossChildColliders(bool isMinion)
     {
         var ghost = Ghost(isMinion);
         var receiver = ghost.AddComponent<SaltTestReceiver>();
         var first = Hitbox(ghost); var second = Hitbox(ghost);
         Assert.IsTrue(Spray());
-        Assert.AreEqual(1, _requests, "Initial overlap must resolve the ghost hit");
+        Assert.AreEqual(1, receiver.Controls, "Initial overlap must resolve the ghost slow");
         var volume = Object.FindFirstObjectByType<DamageTrigger>();
         volume.SendMessage("OnTriggerEnter", first);
         volume.SendMessage("OnTriggerExit", first);
         volume.SendMessage("OnTriggerEnter", second);
-        Assert.AreEqual(1, _requests);
-        Assert.AreEqual(10f, receiver.Damage);
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0f, receiver.Damage);
+        Assert.AreEqual(1, receiver.Controls);
+        Assert.AreEqual(ItemControlKind.Slow, receiver.LastControl.Kind);
+        Assert.AreEqual(.6f, receiver.LastControl.SpeedMultiplier);
+        Assert.AreEqual(3f, receiver.LastControl.Duration);
         Assert.AreEqual(0, receiver.Reactions, "Common and legacy must not both apply");
         Assert.AreEqual(1, _consumed);
     }
 
     [TestCase(false)]
-    [TestCase(true)]
     public void LegacyGhostReactionIsStillSupported(bool isMinion)
     {
         var ghost = Ghost(isMinion);
@@ -193,10 +204,6 @@ public class SaltTargetingTests
     public IEnumerator LateTriggerContactsAlsoRejectPlayersAndAcceptGhostsOnce()
         => LateTriggerContacts(false);
 
-    [UnityTest]
-    public IEnumerator LateTriggerContactsAlsoRejectPlayersAndAcceptMinionsOnce()
-        => LateTriggerContacts(true);
-
     private IEnumerator LateTriggerContacts(bool isMinion)
     {
         Set("_contactDuration", 2f);
@@ -214,14 +221,94 @@ public class SaltTargetingTests
         ghost.transform.position = _origin + Vector3.forward * 2;
         Physics.SyncTransforms();
         yield return new WaitForFixedUpdate(); yield return new WaitForFixedUpdate();
-        Assert.AreEqual(1, _requests);
-        Assert.AreEqual(10f, receiver.Damage);
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0f, receiver.Damage);
+        Assert.AreEqual(1, receiver.Controls);
         Assert.AreEqual(1, _consumed);
     }
 
 #if UNITY_EDITOR
+    private BeanMugwortProjectile ThrowBean()
+    {
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        Assert.IsNotNull(data);
+        Assert.IsTrue(data.UseAction.Execute(new ItemUseContext(_owner, data, _origin, Vector3.forward,
+            amount => _consumed += amount)));
+        foreach (var projectile in Object.FindObjectsByType<BeanMugwortProjectile>(FindObjectsSortMode.None))
+            if (Vector3.Distance(projectile.transform.position, _origin) < 10) return projectile;
+        Assert.Fail("Production use action must spawn its projectile");
+        return null;
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BeanProjectileDamagesGhostOnceWithoutSlow(bool isMinion)
+    {
+        var ghost = Ghost(isMinion);
+        var receiver = ghost.AddComponent<SaltTestReceiver>();
+        var first = Hitbox(ghost); var second = Hitbox(ghost);
+        var projectile = ThrowBean();
+        projectile.SendMessage("OnTriggerEnter", first);
+        projectile.SendMessage("OnTriggerEnter", second);
+        Assert.AreEqual(1, _requests);
+        Assert.AreEqual(10f, receiver.Damage);
+        Assert.AreEqual(0, receiver.Controls);
+        Assert.AreEqual(0, receiver.Reactions);
+        Assert.AreEqual(1, _consumed);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void BeanProjectileNeverDamagesPlayerOrOrdinaryNpc(bool player)
+    {
+        var target = Create("Non-ghost target", 1);
+        if (player) target.AddComponent<PlayerHealth>();
+        var receiver = target.AddComponent<SaltTestReceiver>();
+        var collider = Hitbox(target);
+        ThrowBean().SendMessage("OnTriggerEnter", collider);
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0, receiver.Damage);
+        Assert.AreEqual(0, receiver.Controls);
+        Assert.AreEqual(0, receiver.Reactions);
+    }
+
     [Test]
-    public void ActualMinionPrefabReceivesDamageThroughExistingReceiver()
+    public void BeanProjectilePreservesLegacyRepelForGhostWithoutHp()
+    {
+        var ghost = Ghost();
+        var receiver = ghost.AddComponent<BeanTestRepelReceiver>();
+        ThrowBean().SendMessage("OnTriggerEnter", Hitbox(ghost));
+        Assert.AreEqual(1, receiver.Reactions);
+        Assert.AreEqual(0, _requests);
+    }
+
+    [Test]
+    public void VisualBeanProjectileCannotApplyDamageOrSlow()
+    {
+        var ghost = Ghost();
+        var receiver = ghost.AddComponent<SaltTestReceiver>();
+        var projectile = ThrowBean();
+        projectile.InitializeVisual(_owner, Vector3.forward, 0);
+        projectile.SendMessage("OnTriggerEnter", Hitbox(ghost));
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0, receiver.Damage);
+        Assert.AreEqual(0, receiver.Controls);
+    }
+
+    [Test]
+    public void DeniedAuthorityCannotUseSaltOrBean()
+    {
+        _owner.AddComponent<ItemAttackAuthority>().SetAuthorityCheck(() => false);
+        Assert.IsFalse(Spray());
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        Assert.IsFalse(data.UseAction.Execute(new ItemUseContext(_owner, data, _origin, Vector3.forward,
+            amount => _consumed += amount)));
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(0, _consumed);
+    }
+
+    [Test]
+    public void ActualMinionPrefabCurrentlyRejectsSlowWithoutDamageOrHitVfx()
     {
         var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/AI/Temp_Minion.prefab");
         Assert.IsNotNull(prefab);
@@ -249,25 +336,42 @@ public class SaltTargetingTests
         float before = status.Health;
         Assert.Greater(before, 0f);
         Assert.IsTrue(Spray());
+        Assert.AreEqual(0, _requests);
+        Assert.AreEqual(before, status.Health);
+        Assert.AreEqual(0, confirmedHits, "Rejected slow must not produce a confirmed hit");
+        Assert.AreEqual(0, _consumed);
+
+        // Same real receiver now takes the former salt damage from the bean projectile.
+        ThrowBean().SendMessage("OnTriggerEnter", minion.GetComponentInChildren<Collider>());
         Assert.AreEqual(1, _requests);
         Assert.AreEqual(Mathf.Max(0f, before - 10f), status.Health);
-        Assert.AreEqual(1, confirmedHits, "Real minion HP change produces exactly one hit powder event");
-        Assert.AreEqual(1, _consumed);
+        Assert.AreEqual(0, confirmedHits, "Bean hits do not publish salt powder");
     }
 #endif
 }
 
-public class SaltTestReceiver : MonoBehaviour, IDamageable, ISaltReactable
+public class SaltTestReceiver : MonoBehaviour, IDamageable, ISaltReactable, IItemControlReceiver
 {
     public bool Dead;
     public bool IsDead => Dead;
     public float Damage;
     public int Reactions;
+    public int Controls;
+    public ItemControlEffect LastControl;
+    public bool TryApplyItemControl(ItemControlEffect effect, GameObject source)
+    { Controls++; LastControl = effect; return true; }
     public void ReceiveDamage(float amount, GameObject source = null) => Damage += amount;
     public bool ReactToSalt(GameObject user) { Reactions++; return true; }
 }
 
-public class SaltTestLegacyReceiver : MonoBehaviour, ISaltReactable
+public class SaltTestLegacyReceiver : MonoBehaviour, IBeanMugwortReactable
+{
+    public int Reactions;
+    public bool ReactToBeanMugwort(GameObject user, float slowMultiplier, float slowDuration)
+    { Reactions++; return true; }
+}
+
+public class BeanTestRepelReceiver : MonoBehaviour, ISaltReactable
 {
     public int Reactions;
     public bool ReactToSalt(GameObject user) { Reactions++; return true; }

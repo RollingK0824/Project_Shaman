@@ -1,0 +1,37 @@
+소금 / 팥쑥 게임 효과 교환 (2026-10-29)
+
+Player 변경
+- 소금 SaltUseAction: 피해 0, Slow 3초 / SpeedMultiplier 0.6 (이동속도 40% 감소).
+- 팥쑥 BeanMugwortUseAction -> BeanMugwortProjectile: 피해 요청 10, Slow 없음.
+- 분사/투척 방식, 애니메이션, VFX, 기존 소모 규칙과 ReportUse 경로는 유지.
+- 두 공격 모두 활성 AI_GhostEntity / AI_Minion만 허용. PlayerHealth가 있으면 제외.
+- 소금의 주민 접촉 반응은 기존처럼 피해/둔화 없는 별도 반응만 유지.
+- 서버/로컬 판정은 기존 UseAction.Execute, 원격 연출은 PlayRemotePresentation 유지.
+  새 RPC/동기화 필드는 없으며 서버와 클라이언트 모두 변경된 코드/UseAction 데이터 적용 필요.
+
+AI 연결 상태
+1. Scripts/AI/Ghost/AI_GhostItemReceiver.cs
+   - 현재 본체 귀신은 HP가 없음. 팥쑥 명중은 기존 ISaltReactable.ReactToSalt를 통해
+     RepelBySalt 퇴치/이탈 반응을 재사용. HP 10 감소가 되는 구조는 아님.
+   - 소금 Slow는 TryApplyItemControl -> AI_GhostEntity.SlowDown으로 연결.
+   - Slow의 쿨다운 키/로그는 아직 PlayerItemKind.BeanMugwort / bean-mugwort,
+     ReactToSalt의 키/로그는 PlayerItemKind.Salt / salt임.
+     게임 효과는 교환되지만 아이템별 쿨다운 설정과 진단 이름도 교환하려면 AI 담당 정리 필요.
+2. Scripts/AI/Minion/AI_Minion.cs — AI 담당 구현 요청
+   - 현재 TryApplyItemControl에서 Slow를 지원하지 않아 미니언은 소금 둔화를 받지 않음.
+   - Player 쪽은 Slow / Duration=3 / SpeedMultiplier=0.6을 전달하는 상태.
+   - AI 담당에게 이동·추격·돌진·도주 속도 적용 및 종료 후 복원 구현 요청.
+   - 반복 명중 감속 누적 방지, 경직 중 만료, 사망·비활성화·재초기화 시 정리 필요.
+   - 아이템별 반응 쿨다운은 소금 기준으로 연결 여부 확인 필요.
+   - 팥쑥 피해 10은 기존 AI_DamageReceiver / DamageRequested 경로 사용.
+   - Network 코드 변경 없음. 기존 Net_Minion 제어 이벤트 및 서버 이동 동기화 검증 필요.
+
+현재 작업 범위 및 검증
+- AI_Minion.cs / MinionData.cs에 추가했던 둔화 구현은 담당 영역 제한에 따라 전부 원복함.
+- 현재 커밋 대상에는 Player 쪽 효과 교환, 테스트, 이 전달 문서만 포함.
+- 효과 교환 단계의 Unity Play 계약 검사 21개 통과 기록:
+  D:/Jun/ItemEffectSwapQA_20261029/results.txt
+- 미니언 둔화 구현 상태에서의 후속 7개 검사 기록은 원복한 구현의 결과이며,
+  현재 버전에서 미니언 둔화를 지원한다는 근거로 사용하면 안 됨.
+- 정상 스폰 테스트는 현재 AI의 Slow 거절을 기대하도록 정리.
+- 멀티플레이 실전 검증은 미실시.

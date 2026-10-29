@@ -14,9 +14,10 @@ using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Minion;
 using ProjectShaman.AI.Mock;
+using ProjectShaman.AI.Interfaces;
 using Object = UnityEngine.Object;
 
-// Real prefab, real MinionSpawner.BeginDefense/Update, real NavMesh and item UseActions.
+// Real prefab, real MinionSpawner.BeginDefense/Update, production movement and item UseActions.
 // Only the factory's unrelated villager setup and wave timing are supplied by this fixture.
 // No AI control/timer fields are forced, and no fake damage/control receivers are used.
 public class SpawnedMinionItemTests
@@ -26,7 +27,8 @@ public class SpawnedMinionItemTests
     private NavMeshDataInstance _nav;
     private MinionSpawner _spawner;
     private AI_Minion _minion;
-    private NavMeshAgent _agent;
+    private INetworkMovable _agent;
+    private readonly List<LocalGameplayJudge> _pausedJudges = new();
     private GameObject _owner;
     private int _controls, _damageEvents, _consumed;
     private ItemControlEffect _lastControl;
@@ -49,6 +51,8 @@ public class SpawnedMinionItemTests
     public IEnumerator SetUp()
     {
         _controls = _damageEvents = _consumed = 0;
+        foreach (var judge in Object.FindObjectsByType<LocalGameplayJudge>(FindObjectsSortMode.None))
+            if (judge.isActiveAndEnabled) { judge.enabled = false; _pausedJudges.Add(judge); }
         // A separate runtime NavMesh keeps the user's scene and baked NavMesh untouched.
         var sources = new List<NavMeshBuildSource> { new NavMeshBuildSource {
             shape = NavMeshBuildSourceShape.Box, size = new Vector3(90, .2f, 90),
@@ -85,15 +89,15 @@ public class SpawnedMinionItemTests
         Assert.AreEqual(1, _spawner.AliveCount, "Actual wave must spawn one minion");
         foreach (var candidate in Object.FindObjectsByType<AI_Minion>(FindObjectsSortMode.None))
             if (Vector3.Distance(candidate.transform.position, _origin) < 10) _minion = candidate;
-        Assert.IsNotNull(_minion); _agent = _minion.GetComponent<NavMeshAgent>();
-        Assert.IsTrue(_agent.enabled && _agent.isOnNavMesh);
+        Assert.IsNotNull(_minion); _agent = _minion.GetComponent<INetworkMovable>();
+        Assert.IsNotNull(_agent);
         Assert.IsTrue(_minion.GetComponent<AI_Status>().IsActive);
         Assert.AreEqual(MinionState.MoveToObjective, _minion.State);
         _minion.OnControlApplied += (_, effect) => { _controls++; _lastControl = effect; };
         _minion.GetComponent<AI_Status>().OnDamaged += (_, amount, source) => _damageEvents++;
         yield return new WaitForSeconds(.15f);
-        Assert.Greater(_agent.velocity.magnitude, .05f, "Spawned minion must actually move");
-        Note("SPAWN: MinionSpawner -> Initialize -> LocalSpawnHandler; active NavMesh movement, HP=" + _minion.GetComponent<AI_Status>().Health);
+        Assert.Greater(_agent.CurrentSpeed, .05f, "Spawned minion must actually move");
+        Note("SPAWN: MinionSpawner -> Initialize -> LocalSpawnHandler; active production movement, HP=" + _minion.GetComponent<AI_Status>().Health);
     }
 
     private bool Use(string item)
@@ -106,7 +110,7 @@ public class SpawnedMinionItemTests
     }
 
     [UnityTest]
-    public IEnumerator Salt_RealSpawn_DamageOnce_AndNoPlayerDamage()
+    public IEnumerator Salt_RealSpawn_UnsupportedSlowDoesNotDamageMinionOrPlayer()
     {
         _owner.transform.position = _minion.transform.position - Vector3.forward * 1.5f;
         var extra = Make("Second minion hitbox", _minion.transform.position);
@@ -118,11 +122,11 @@ public class SpawnedMinionItemTests
         playerCollider.center = Vector3.up; playerCollider.radius = .12f; playerCollider.height = 2; playerCollider.isTrigger = true;
         var hp = _minion.GetComponent<AI_Status>(); float before = hp.Health;
         Assert.IsTrue(Use("Salt")); yield return new WaitForSeconds(.2f);
-        Assert.AreEqual(Mathf.Max(0, before - 10), hp.Health);
-        Assert.AreEqual(1, _damageEvents, "Overlap and multiple trigger contacts must not duplicate damage");
+        Assert.AreEqual(before, hp.Health);
+        Assert.AreEqual(0, _damageEvents, "Salt now requests slow, never damage");
         Assert.AreEqual(playerHP.MaxHealth, playerHP.CurrentHealth);
         Assert.AreEqual(0, _controls);
-        Note("SALT PASS: HP " + before + " -> " + hp.Health + "; damage events=1; other player HP unchanged");
+        Note("SALT PASS: minion rejects slow; damage events=0; other player HP unchanged");
     }
 
     [UnityTest]
@@ -135,32 +139,36 @@ public class SpawnedMinionItemTests
         float hp = _owner.GetComponent<PlayerHealth>().CurrentHealth;
         Assert.IsTrue(Use("Bell"));
         Assert.AreEqual(1, _controls); Assert.AreEqual(ItemControlKind.Stagger, _lastControl.Kind);
-        Assert.AreEqual(MinionState.ChasePlayer, _minion.State); Assert.IsTrue(_agent.isStopped);
+        Assert.AreEqual(MinionState.ChasePlayer, _minion.State); Assert.IsTrue(_agent.IsStopped);
         yield return new WaitForSeconds(.25f);
         Assert.AreEqual(hp, _owner.GetComponent<PlayerHealth>().CurrentHealth, "Interrupted attack must not hit");
-        Assert.IsTrue(_agent.isStopped);
+        Assert.IsTrue(_agent.IsStopped);
         Object.Destroy(_owner.GetComponent<PlayerGhostTarget>());
         _owner.transform.position += Vector3.back * 20;
         yield return new WaitForSeconds(.55f);
-        Assert.IsFalse(_agent.isStopped); Assert.Greater(_agent.velocity.magnitude, .05f);
+        Assert.IsFalse(_agent.IsStopped); Assert.Greater(_agent.CurrentSpeed, .05f);
         Assert.AreEqual(1, _controls); Assert.AreEqual(0, _damageEvents);
         Note("BELL PASS: attack cancelled; 0.5s stagger; movement resumes; HP unchanged; control events=1");
     }
 
     [UnityTest]
-    // Minions ignore bean-mugwort (10/25): hitting a small flyer is too hard for a slow to be worth it
-    public IEnumerator BeanMugwort_RealProjectile_NoReactionOnMinion()
+    // Explicit contact injection tests the payload on a spawned minion, not aiming/flight accuracy.
+    public IEnumerator BeanMugwort_RealProjectile_InjectedContactDamagesMinionOnce()
     {
         _owner.transform.position = _minion.transform.position - Vector3.forward * 2;
-        float normal = _minion.Data.MoveSpeed;
+        float before = _minion.GetComponent<AI_Status>().Health;
         Assert.IsTrue(Use("BeanMugwort"));
-        for (int i = 0; i < 150; i++) yield return new WaitForFixedUpdate();
-        yield return new WaitForSeconds(.35f);
+        BeanMugwortProjectile projectile = null;
+        foreach (var candidate in Object.FindObjectsByType<BeanMugwortProjectile>(FindObjectsSortMode.None))
+            if (Vector3.Distance(candidate.transform.position, _owner.transform.position) < 5) projectile = candidate;
+        Assert.IsNotNull(projectile);
+        foreach (var collider in _minion.GetComponentsInChildren<Collider>()) projectile.SendMessage("OnTriggerEnter", collider);
         Assert.IsNotNull(_minion);
-        Assert.AreEqual(0, _controls, "A minion must not react to bean-mugwort");
-        Assert.AreEqual(normal, _agent.speed, .01f);
-        Assert.AreEqual(0, _damageEvents);
-        Note("BEAN PASS: no control on the minion; speed stays " + _agent.speed + "; damage=0");
+        Assert.AreEqual(0, _controls, "Bean no longer requests slow");
+        Assert.AreEqual(Mathf.Max(0, before - 10), _minion.GetComponent<AI_Status>().Health);
+        Assert.AreEqual(1, _damageEvents);
+        Note("BEAN PASS: injected real projectile contact; one damage event; damage=10; no slow");
+        yield return null;
     }
 
     [UnityTest]
@@ -219,6 +227,9 @@ public class SpawnedMinionItemTests
         _nav.Remove();
         foreach (var obj in _created) if (obj is NavMeshData) Object.Destroy(obj);
         _created.Clear(); _minion = null; _spawner = null;
+        foreach (var judge in _pausedJudges) if (judge != null) judge.enabled = true;
+        _pausedJudges.Clear();
     }
+
 }
 #endif

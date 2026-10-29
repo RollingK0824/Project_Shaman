@@ -10,7 +10,8 @@ using ProjectShaman.AI.Minion;
 public class SaltUseAction : ItemUseAction
 {
     [Header("Contact Attack - Prototype Values")]
-    [SerializeField, Min(0f)] private float _damageAmount = 10f;
+    [SerializeField, Range(.1f, 1f)] private float _slowMultiplier = .6f;
+    [SerializeField, Min(.01f)] private float _slowDuration = 3f;
     [SerializeField, Min(.01f)] private float _contactHalfWidth = .2f;
     [SerializeField, Min(.04f)] private float _contactDuration = .15f;
     [SerializeField] private LayerMask _targetMask = ~0;
@@ -40,33 +41,33 @@ public class SaltUseAction : ItemUseAction
         float reach = GetReach(ray, context.Owner.transform);
         if (reach <= 0f) return false;
 
-        // Cache contact before damage: lethal hits may disable/destroy the target immediately.
-        var contacts = new Dictionary<GameObject, (Vector3 point, Vector3 normal, AI_Status status, float health)>();
+        // Cache the contact before the receiver applies the slow.
+        var contacts = new Dictionary<GameObject, (Vector3 point, Vector3 normal)>();
         bool CaptureContact(Collider other)
         {
             if (!CanHitGhost(other)) return false;
             var receiver = other.GetComponentInParent<IDamageable>() as Component ??
                 other.GetComponentInParent<IItemControlReceiver>() as Component ??
-                other.GetComponentInParent<ISaltReactable>() as Component;
+                other.GetComponentInParent<IBeanMugwortReactable>() as Component;
             if (receiver != null && !contacts.ContainsKey(receiver.gameObject))
             {
                 var point = other.ClosestPoint(ray.origin);
                 var normal = ray.origin - point;
                 if (normal.sqrMagnitude < .0001f) normal = -ray.direction;
-                var status = receiver is AI_DamageReceiver ? receiver.GetComponent<AI_Status>() : null;
-                contacts.Add(receiver.gameObject, (point, normal.normalized, status, status != null ? status.Health : 0f));
+                contacts.Add(receiver.gameObject, (point, normal.normalized));
             }
             return true;
         }
-        var attack = new ItemAttackSession(context.Owner, _damageAmount, default, ItemReactionFallback.Salt, _targetMask, _contactDuration, CaptureContact);
+        var attack = new ItemAttackSession(context.Owner, 0f,
+            new ItemControlEffect { Kind = ItemControlKind.Slow, Duration = _slowDuration, SpeedMultiplier = _slowMultiplier },
+            ItemReactionFallback.BeanMugwort, _targetMask, _contactDuration, CaptureContact);
         var presentation = context.Owner.GetComponent<PlayerSaltHitPresentation>() ?? context.Owner.AddComponent<PlayerSaltHitPresentation>();
         long attackId = presentation.BeginAttack();
         int targetIndex = 0;
         attack.HitApplied += target =>
         {
             if (!contacts.TryGetValue(target, out var contact)) return;
-            // AI damage requests can be ignored while inactive. Do not show a false hit.
-            if (!ReferenceEquals(contact.status, null) && contact.status.Health >= contact.health) return;
+            // HitApplied now confirms an accepted slow; HP must remain unchanged.
             if (presentation != null) presentation.PublishConfirmedHit(attackId, targetIndex++, contact.point, contact.normal);
         };
 
@@ -98,7 +99,7 @@ public class SaltUseAction : ItemUseAction
         return true;
     }
 
-    private static bool CanHitGhost(Collider other)
+    internal static bool CanHitGhost(Collider other)
     {
         // IDamageable is also implemented by players and ordinary NPCs. IGhostTarget
         // identifies a ghost's prey, not a ghost. Allow manifested ghosts and minions.

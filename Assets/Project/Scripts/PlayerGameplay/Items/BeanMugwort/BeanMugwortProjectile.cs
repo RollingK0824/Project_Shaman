@@ -35,16 +35,15 @@ public class BeanMugwortProjectile : MonoBehaviour
         GameObject owner,
         Vector3 direction,
         float throwForce,
-        float slowMultiplier,
-        float slowDuration)
+        float damageAmount)
     {
         _visualOnly = false;
         _owner = owner;
         _hasHit = false;
         _attack?.End();
-        _attack = new ItemAttackSession(owner, 0f,
-            new ItemControlEffect { Kind = ItemControlKind.Slow, Duration = slowDuration, SpeedMultiplier = slowMultiplier },
-            ItemReactionFallback.BeanMugwort, _targetMask, _lifeTime);
+        // Preserve the former salt reaction for HP-less ghosts; never hurt players or villagers.
+        _attack = new ItemAttackSession(owner, damageAmount, default,
+            ItemReactionFallback.Salt, _targetMask, _lifeTime, SaltUseAction.CanHitGhost);
 
         SetVisible(false);
         Launch(direction, throwForce);
@@ -142,7 +141,7 @@ public class BeanMugwortProjectile : MonoBehaviour
 
         if (!_visualOnly)
         {
-            Debug.Log(reacted ? "[BeanMugwort] 대상 적중 → 둔화 반응 요청" : $"[BeanMugwort] 투척물 충돌: {other.name}");
+            Debug.Log(reacted ? "[BeanMugwort] 대상 적중 → 피해/퇴치 반응 요청" : $"[BeanMugwort] 투척물 충돌: {other.name}");
         }
        
         Destroy(gameObject, _destroyDelayAfterHit);
