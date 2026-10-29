@@ -245,7 +245,8 @@ public sealed class NotebookScheduleView : MonoBehaviour
         if (hidden <= 0f) return;
 
         float hourHeight = contentHeight / TABLE_ROWS;
-        float elapsed = (float)time.Elapsed;
+        // Elapsed counts from the start of the game; the table only needs the time into the current day and night
+        float elapsed = (float)(time.Elapsed % TimeManager.CYCLE_DURATION);
         float hour = elapsed < TimeManager.DAY_DURATION ? DayClock.ToHour(elapsed) : DayClock.NightToHour(elapsed - TimeManager.DAY_DURATION);
         float row = Mathf.Clamp(hour - DayClock.DAY_START_HOUR, 0f, TABLE_ROWS);
         float top = Mathf.Clamp((row - DayHours * .5f) * hourHeight, 0f, hidden);
