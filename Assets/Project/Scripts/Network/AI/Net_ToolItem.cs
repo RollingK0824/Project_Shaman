@@ -67,18 +67,32 @@ namespace ProjectShaman.Network.AI
             DropFromCarrier(transform.position, "tool despawned");
         }
 
-        // Server: the tool this player is carrying, if any
-        public static Net_ToolItem FindCarriedBy(GameObject player)
+        // Server: a tool this player is carrying (of the kind, when given), if any
+        public static Net_ToolItem FindCarriedBy(GameObject player, string typeId = null)
         {
             foreach (Net_ToolItem item in _carried)
             {
-                if (item != null && item._carrier == player)
+                if (item != null && item._carrier == player && (typeId == null || item._tool.TypeId == typeId))
                 {
                     return item;
                 }
             }
 
             return null;
+        }
+
+        private static int CountStowed(GameObject player, ItemData itemData)
+        {
+            int count = 0;
+            foreach (Net_ToolItem item in _carried)
+            {
+                if (item != null && item._carrier == player && item._stowedItem == itemData)
+                {
+                    count++;
+                }
+            }
+
+            return count;
         }
 
         public bool CanInteract(GameObject interactor)
@@ -112,9 +126,9 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
-            if (FindCarriedBy(player) != null)
+            if (_tool.ItemData == null && FindCarriedBy(player) != null)
             {
-                AILog.Log(AILog.TOOL, player.name, $"Already carrying a tool, {_tool.InstanceId} not picked up");
+                AILog.Log(AILog.TOOL, player.name, $"Already carrying a tool, {_tool.InstanceId} has no item data and is not picked up");
                 return;
             }
 
@@ -197,7 +211,7 @@ namespace ProjectShaman.Network.AI
             }
 
             inventory.ItemUnitsChanged -= HandleCarrierItemUnitsChanged;
-            if (inventory.Contains(item))
+            if (inventory.GetItemCount(item) > CountStowed(inventory.gameObject, item))
             {
                 RemoveFromInventory(inventory.gameObject, inventory, item);
             }
@@ -217,7 +231,7 @@ namespace ProjectShaman.Network.AI
 
         private void HandleCarrierItemUnitsChanged(ItemData item, int delta)
         {
-            if (item != _stowedItem || delta >= 0 || _carrierInventory.Contains(item))
+            if (item != _stowedItem || delta >= 0 || _carrierInventory.GetItemCount(item) >= CountStowed(_carrier, item))
             {
                 return;
             }

@@ -270,6 +270,7 @@ namespace ProjectShaman.Network.AI
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
             // Called on at home in the evening: a late-caller greeting instead of the daytime one
             string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random) : VillagerDialogueService.Greeting());
+            TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, opening, ids, labels);
             return true;
         }
@@ -293,6 +294,7 @@ namespace ProjectShaman.Network.AI
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
 
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer shown to {player.name}: #{offer.InstanceId} {offer.TitleText} (held={_holdsVillager})");
+            TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
         }
 
@@ -357,6 +359,7 @@ namespace ProjectShaman.Network.AI
                 AILog.Log(AILog.INTERACTION, villagerId, "Quest declined");
             }
 
+            TalkGesture();
             TargetFinal(sender, line);
             EndDialogue(topicId == TOPIC_QUEST_ACCEPT ? "quest answered" : "quest declined");
         }
@@ -379,6 +382,7 @@ namespace ProjectShaman.Network.AI
 
             string toolName = AIDisplayNames.Tool(carried.Tool.TypeId);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Tool delivery shown to {player.name}: #{quest.InstanceId} {carried.Tool.InstanceId} (held={_holdsVillager})");
+            TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, $"<b>{quest.TitleText}</b>\n그 {toolName}, 내 것 같구려. 돌려주시겠소?",
                 new[] { TOPIC_TOOL_GIVE, TOPIC_TOOL_LATER }, new[] { $"{toolName}{AIDisplayNames.Josa(toolName, "을", "를")} 건넨다", "나중에 주겠소" });
         }
@@ -404,6 +408,7 @@ namespace ProjectShaman.Network.AI
                 line = "찾아 주셨구려, 정말 고맙소!";
             }
 
+            TalkGesture();
             TargetFinal(sender, line);
             EndDialogue(topicId == TOPIC_TOOL_GIVE ? "tool delivered" : "tool delivery put off");
         }
@@ -436,16 +441,21 @@ namespace ProjectShaman.Network.AI
         // An active FindTool request of this villager whose tool kind the player is carrying
         private static IQuestView FindToolDelivery(QuestManager quests, string giverId, GameObject player, out Net_ToolItem carried)
         {
-            carried = player != null ? Net_ToolItem.FindCarriedBy(player) : null;
-            if (quests == null || carried == null)
+            carried = null;
+            if (quests == null || player == null)
             {
                 return null;
             }
 
             foreach (IQuestView quest in quests.Quests)
             {
-                if (quest.GiverId == giverId && quest.State == QuestState.Active &&
-                    quest.Definition.ObjectiveType == QuestActions.DELIVER && quest.TargetId == carried.Tool.TypeId)
+                if (quest.GiverId != giverId || quest.State != QuestState.Active || quest.Definition.ObjectiveType != QuestActions.DELIVER)
+                {
+                    continue;
+                }
+
+                carried = Net_ToolItem.FindCarriedBy(player, quest.TargetId);
+                if (carried != null)
                 {
                     return quest;
                 }
@@ -480,6 +490,7 @@ namespace ProjectShaman.Network.AI
 
             if (ends)
             {
+                TalkGesture();
                 TargetFinal(sender, answer);
                 EndDialogue("finished");
                 return;
@@ -487,6 +498,7 @@ namespace ProjectShaman.Network.AI
 
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
+            TalkGesture();
             TargetAnswer(sender, answer, ids, labels);
         }
 
@@ -514,6 +526,7 @@ namespace ProjectShaman.Network.AI
             {
                 if (_dialogueConnection.identity != null)
                 {
+                    TalkGesture();
                     TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : VillagerDialogueService.Farewell(_conversation));
                 }
 
@@ -555,6 +568,15 @@ namespace ProjectShaman.Network.AI
             {
                 ids[i] = topics[i].Id;
                 labels[i] = topics[i].Label;
+            }
+        }
+
+        // The answer text goes only to the talking player; the occasional gesture is seen by everyone nearby
+        private void TalkGesture()
+        {
+            if (TryGetComponent(out Net_AIConversation conversation))
+            {
+                conversation.TalkGesture();
             }
         }
 

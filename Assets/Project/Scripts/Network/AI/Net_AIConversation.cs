@@ -11,11 +11,13 @@ namespace ProjectShaman.Network.AI
     {
         private AI_Conversation _conversation;
         private AI_SpeechBubble _bubble;
+        private AI_VisualController _visual;
 
         private void Awake()
         {
             _conversation = GetComponent<AI_Conversation>();
             _bubble = GetComponent<AI_SpeechBubble>();
+            _visual = GetComponent<AI_VisualController>();
         }
 
         public override void OnStartServer()
@@ -32,6 +34,8 @@ namespace ProjectShaman.Network.AI
 
         private void HandleLineSpoken(ConversationSession session, ConversationLine line)
         {
+            TalkGesture();
+
             float hearingDistance = _conversation.HearingDistance;
             if (hearingDistance <= 0f)
             {
@@ -65,6 +69,25 @@ namespace ProjectShaman.Network.AI
         private void TargetSay(NetworkConnectionToClient target, string text)
         {
             ShowLine(text);
+        }
+
+        // Some of the villager's lines come with a talk gesture, seen by everyone around (bubbles, player dialogue)
+        [Server]
+        public void TalkGesture()
+        {
+            if (_visual != null && _visual.RollTalkGesture())
+            {
+                RpcTalkGesture();
+            }
+        }
+
+        [ClientRpc]
+        private void RpcTalkGesture()
+        {
+            if (_visual != null)
+            {
+                _visual.PlayGesture(AI_VisualController.TALK_GESTURE);
+            }
         }
 
         private void ShowLine(string text)
