@@ -49,6 +49,19 @@ namespace ProjectShaman.Network.AI
             aiCore = GetComponent<AI_Core>();
             aiMovement = GetComponent<AI_Movement>();
             visualController = GetComponent<AI_VisualController>();
+            if (TryGetComponent(out AI_VillagerModel model))
+            {
+                model.OnModelChanged += HandleModelChanged;
+            }
+        }
+
+        // Parameters (Speed) are replicated from and onto the current body's Animator
+        private void HandleModelChanged(Animator animator)
+        {
+            if (TryGetComponent(out NetworkAnimator networkAnimator))
+            {
+                networkAnimator.animator = animator;
+            }
         }
 
         public override void OnStartServer()
