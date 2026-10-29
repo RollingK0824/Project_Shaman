@@ -65,6 +65,20 @@ namespace ProjectShaman.AI
             _lastPosition = transform.position;
 
             core.OnStateChanged += HandleStateChanged;
+            if (TryGetComponent(out AI_VillagerModel model))
+            {
+                model.OnModelChanged += BindAnimator;
+            }
+        }
+
+        // The body was swapped for the villager's gender before anything played on it
+        private void BindAnimator(Animator newAnimator)
+        {
+            animator = newAnimator;
+            _actionLayer = -1;
+            _stoppingLayer = -1;
+            _turnDirection = 0;
+            CurrentAction = string.Empty;
         }
 
         void Update()
@@ -341,6 +355,11 @@ namespace ProjectShaman.AI
             if (core != null)
             {
                 core.OnStateChanged -= HandleStateChanged;
+            }
+
+            if (TryGetComponent(out AI_VillagerModel model))
+            {
+                model.OnModelChanged -= BindAnimator;
             }
         }
     }
