@@ -12,31 +12,31 @@ public sealed class PlayerTimedItemUse : MonoBehaviour
     bool _released;
     int _generation;
     public bool HideHeldItem(ItemData data) => IsBusy && _released && data == _item && _item != null && _item.UseAction is BeanMugwortUseAction;
-    public void BeginLocal(ItemUseContext context, Action<ItemUseContext> release)
+    public void BeginLocal(ItemUseContext context, Action<ItemUseContext> release, bool releaseImmediately = false, bool preserveAim = false)
     {
         if (IsBusy || !isActiveAndEnabled) return;
         var controller = GetComponent<PlayerItemController>();
         if (controller == null || !controller.CanStartTimedUse || controller.EquippedItemData != context.Data) return;
-        StartUse(context, release, false);
+        StartUse(context, release, false, releaseImmediately, preserveAim);
         controller.PlayUseMotion(context.Data);
     }
-    public void BeginRemote(ItemUseContext context, Action<ItemUseContext> release)
+    public void BeginRemote(ItemUseContext context, Action<ItemUseContext> release, bool releaseImmediately = false)
     {
         if (IsBusy || !isActiveAndEnabled || !PlayerActionGuard.CanAct(gameObject)) return;
-        StartUse(context, release, true);
+        StartUse(context, release, true, releaseImmediately, true);
     }
-    void StartUse(ItemUseContext context, Action<ItemUseContext> release, bool remote)
+    void StartUse(ItemUseContext context, Action<ItemUseContext> release, bool remote, bool immediate, bool preserveAim)
     {
         _item = context.Data; _released = false; IsBusy = true;
-        StartCoroutine(Run(++_generation, context, release, remote));
+        StartCoroutine(Run(++_generation, context, release, remote, immediate, preserveAim));
     }
-    IEnumerator Run(int generation, ItemUseContext context, Action<ItemUseContext> release, bool remote)
+    IEnumerator Run(int generation, ItemUseContext context, Action<ItemUseContext> release, bool remote, bool immediate, bool preserveAim)
     {
         var controller = GetComponent<PlayerItemController>();
         int slot = controller != null ? controller.SelectedSlotIndex : -1;
         var held = controller != null ? controller.EquippedBehaviour : null;
         float started = Time.time;
-        float releaseAt = started + ItemHoldDriver.TimedReleaseDelay(context.Data.ThirdPersonUseMotionId);
+        float releaseAt = started + (immediate ? 0f : ItemHoldDriver.TimedReleaseDelay(context.Data.ThirdPersonUseMotionId));
         float finishAt = started + ItemHoldDriver.TimedUseDuration(context.Data.ThirdPersonUseMotionId);
         try
         {
@@ -51,7 +51,7 @@ public sealed class PlayerTimedItemUse : MonoBehaviour
             {
                 var camera = GetComponentInChildren<Camera>();
                 if (camera == null) yield break;
-                resolved = new ItemUseContext(gameObject, context.Data, camera.transform.position, camera.transform.forward);
+                if (!preserveAim) resolved = new ItemUseContext(gameObject, context.Data, camera.transform.position, camera.transform.forward);
                 GetComponent<PlayerItemFeedback>()?.Play(context.Data);
             }
             _released = true;

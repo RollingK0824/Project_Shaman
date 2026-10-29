@@ -228,6 +228,148 @@ public class SaltTargetingTests
     }
 
 #if UNITY_EDITOR
+    [Test]
+    public void BeanHoldDoesNotUse_CancelDoesNotThrow_ReleaseUsesOnce()
+    {
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var cameraObject = Create("Aim camera", 0);
+        cameraObject.transform.SetParent(_owner.transform, false);
+        cameraObject.AddComponent<Camera>();
+        var items = _owner.AddComponent<PlayerItemController>();
+        var hold = Create("Item hold point", 0);
+        hold.transform.SetParent(cameraObject.transform, false);
+        typeof(PlayerItemController).GetField("_itemHoldPoint", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(items, hold.transform);
+        var inventory = _owner.GetComponent<PlayerInventory>();
+        Assert.IsTrue(inventory.TryAddItem(data, 3));
+        Assert.IsTrue(inventory.AssignQuickSlot(0, data));
+        typeof(PlayerItemController).GetMethod("SelectSlot", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(items, new object[] { 0 });
+        var bean = items.EquippedBehaviour as BeanMugwortItem;
+        Assert.IsNotNull(bean);
+        Assert.IsTrue(items.TryGetFirstPersonReleasePoint(out var heldPosition));
+        var throwAction = (BeanMugwortUseAction)data.UseAction;
+        var heldContext = throwAction.WithLocalReleaseOrigin(new ItemUseContext(_owner, data,
+            cameraObject.transform.position, cameraObject.transform.forward));
+        throwAction.GetSpawnPose(heldContext, out var launchPosition, out _);
+        Assert.Less(Vector3.Distance(heldPosition, launchPosition), .001f,
+            "First-person trajectory and projectile must start at the equipped mesh");
+        Assert.IsTrue(_owner.GetComponent<PlayerInputReader>().CanReadItemInput);
+        int uses = 0;
+        void Request(ItemUseContext context) { if (context.Owner == _owner) uses++; }
+        PlayerEvents.ItemUseRequested += Request;
+        try
+        {
+            bean.OnUseStarted(); Assert.IsTrue(bean.IsAiming);
+            Assert.AreEqual(0, uses); Assert.AreEqual(0, items.RemainingUseCooldown(data));
+            _owner.GetComponent<PlayerInputReader>().SetGameplayInputBlocked(true);
+            bean.OnUseReleased(); Assert.IsFalse(bean.IsAiming); Assert.AreEqual(0, uses);
+            _owner.GetComponent<PlayerInputReader>().SetGameplayInputBlocked(false);
+            bean.OnUseStarted(); Assert.IsTrue(bean.IsAiming);
+            bean.OnUseCanceled(); bean.OnUseReleased(); Assert.AreEqual(0, uses);
+            bean.OnUseStarted(); Assert.IsTrue(bean.IsAiming);
+            bean.OnUseReleased(); Assert.AreEqual(1, uses, "Launch on release, no animation delay");
+            bean.OnUseReleased(); Assert.AreEqual(1, uses);
+            Assert.IsTrue(_owner.GetComponent<PlayerTimedItemUse>().IsBusy);
+        }
+        finally { PlayerEvents.ItemUseRequested -= Request; }
+    }
+
+    [Test]
+    public void BeanPiercesMultipleGhostsOnceEachAndStopsAtWall()
+    {
+        var firstGhost = Ghost();
+        var a = firstGhost.AddComponent<SaltTestReceiver>();
+        var a1 = Hitbox(firstGhost); var a2 = Hitbox(firstGhost);
+        var secondGhost = Ghost(true);
+        var b = secondGhost.AddComponent<SaltTestReceiver>();
+        var b1 = Hitbox(secondGhost);
+        var projectile = ThrowBean();
+        projectile.SendMessage("OnTriggerEnter", a1);
+        projectile.SendMessage("OnTriggerEnter", a2);
+        projectile.SendMessage("OnTriggerEnter", b1);
+        Assert.AreEqual(10, a.Damage); Assert.AreEqual(10, b.Damage);
+        Assert.AreEqual(2, _requests); Assert.AreEqual(1, _consumed);
+        Assert.IsTrue(projectile.GetComponent<Collider>().enabled);
+        var wall = Create("Wall", 3).AddComponent<BoxCollider>();
+        projectile.SendMessage("OnTriggerEnter", wall);
+        Assert.IsFalse(projectile.GetComponent<Collider>().enabled);
+        var behind = Ghost(); var c = behind.AddComponent<SaltTestReceiver>();
+        projectile.SendMessage("OnTriggerEnter", Hitbox(behind));
+        Assert.AreEqual(0, c.Damage);
+    }
+
+    [UnityTest]
+    public IEnumerator BeanPhysicalFlightPiercesTargetsAndStopsAtThinWall()
+    {
+        var a = Ghost(); a.transform.position = _origin + new Vector3(0, -.4f, 2.2f);
+        var first = a.AddComponent<SaltTestReceiver>(); Hitbox(a); Hitbox(a);
+        var b = Ghost(true); b.transform.position = _origin + new Vector3(0, -1f, 3.8f);
+        var second = b.AddComponent<SaltTestReceiver>(); Hitbox(b);
+        var c = Ghost(); c.transform.position = _origin + new Vector3(0, -3f, 6.6f);
+        var behind = c.AddComponent<SaltTestReceiver>(); Hitbox(c);
+        var wall = Create("Thin wall", 4.8f).AddComponent<BoxCollider>(); wall.size = new Vector3(20, 20, .01f);
+        Physics.SyncTransforms();
+        ThrowBean();
+        yield return new WaitForSeconds(1f);
+        Assert.AreEqual(10, first.Damage); Assert.AreEqual(10, second.Damage);
+        Assert.AreEqual(0, behind.Damage); Assert.AreEqual(2, _requests); Assert.AreEqual(1, _consumed);
+    }
+
+    [Test]
+    public void BeanVisualPiercesGhostButCannotDealDamage()
+    {
+        var ghost = Ghost(); var receiver = ghost.AddComponent<SaltTestReceiver>();
+        var projectile = ThrowBean();
+        projectile.InitializeVisual(_owner, Vector3.forward, 8);
+        projectile.SendMessage("OnTriggerEnter", Hitbox(ghost));
+        Assert.IsTrue(projectile.GetComponent<Collider>().enabled);
+        Assert.AreEqual(0, receiver.Damage);
+        var wall = Create("Wall", 3).AddComponent<BoxCollider>();
+        projectile.SendMessage("OnTriggerEnter", wall);
+        Assert.IsFalse(projectile.GetComponent<Collider>().enabled);
+    }
+
+    [Test]
+    public void BeanFirstPersonAimStartsToRightAndRisesBeforeFalling()
+    {
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var action = (BeanMugwortUseAction)data.UseAction;
+        var context = action.WithLocalReleaseOrigin(new ItemUseContext(_owner, data, _origin, Vector3.forward));
+        action.GetSpawnPose(context, out var start, out _);
+        Assert.Greater(start.x, _origin.x + .2f);
+        Assert.Greater(context.AimDirection.y, .2f);
+        var preview = Create("First person arc", 0).AddComponent<BeanMugwortTrajectory>();
+        preview.Show(action, context);
+        var line = preview.GetComponent<LineRenderer>();
+        float highest = start.y;
+        for (int i = 0; i < line.positionCount; i++) highest = Mathf.Max(highest, line.GetPosition(i).y);
+        Assert.Greater(highest, start.y + .25f);
+        Assert.Less(line.GetPosition(line.positionCount - 1).y, start.y);
+    }
+
+    [Test]
+    public void BeanTrajectoryUsesGravityStopsAtWallAndHasBuildMaterial()
+    {
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var action = (BeanMugwortUseAction)data.UseAction;
+        Assert.IsNotNull(action.TrajectoryMaterial);
+        Assert.IsTrue(action.TrajectoryMaterial.shader.isSupported);
+        var wall = Create("Trajectory wall", 3).AddComponent<BoxCollider>();
+        wall.size = new Vector3(20, 20, .1f);
+        var preview = Create("Preview", 0).AddComponent<BeanMugwortTrajectory>();
+        Physics.SyncTransforms();
+        var context = new ItemUseContext(_owner, data, _origin, Vector3.forward);
+        action.GetSpawnPose(context, out var start, out _);
+        preview.Show(action, context);
+        var line = preview.GetComponent<LineRenderer>();
+        Assert.Greater(line.positionCount, 2);
+        Assert.AreEqual(start, line.GetPosition(0));
+        var end = line.GetPosition(line.positionCount - 1);
+        Assert.Less(end.y, start.y);
+        Assert.Less(end.z, wall.bounds.min.z);
+        Assert.Greater(end.z, _origin.z + 2.5f);
+        preview.Hide(); Assert.IsFalse(line.enabled);
+    }
+
     private BeanMugwortProjectile ThrowBean()
     {
         var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");

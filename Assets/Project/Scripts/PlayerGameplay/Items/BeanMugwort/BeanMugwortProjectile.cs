@@ -22,6 +22,25 @@ public class BeanMugwortProjectile : MonoBehaviour
     private bool _hasHit;
     private bool _visualOnly;
     private ItemAttackSession _attack;
+    private readonly RaycastHit[] _sweepHits = new RaycastHit[64];
+    public float FlightLifetime => _lifeTime;
+    public float CollisionRadius
+    {
+        get
+        {
+            var capsule = GetComponent<CapsuleCollider>();
+            var scale = transform.lossyScale;
+            float maxScale = Mathf.Max(Mathf.Abs(scale.x), Mathf.Abs(scale.y), Mathf.Abs(scale.z));
+            return capsule != null ? Mathf.Max(capsule.radius, capsule.height * .5f) * maxScale : .2f;
+        }
+    }
+
+    public static bool BlocksFlight(Collider other, GameObject owner)
+    {
+        return other != null && !other.isTrigger &&
+            (owner == null || !other.transform.IsChildOf(owner.transform)) &&
+            other.GetComponentInParent<BeanMugwortProjectile>() == null && !SaltUseAction.CanHitGhost(other);
+    }
 
 
     private void Awake()
@@ -88,7 +107,7 @@ public class BeanMugwortProjectile : MonoBehaviour
 
         IgnoreOwnerCollision();
 
-        _rigidbody.AddForce(direction.normalized * throwForce, ForceMode.VelocityChange);
+        _rigidbody.linearVelocity = direction.normalized * throwForce;
 
         _rigidbody.AddTorque(Random.insideUnitSphere * _randomTorque, ForceMode.VelocityChange);
 
@@ -108,6 +127,30 @@ public class BeanMugwortProjectile : MonoBehaviour
 
     private void OnTriggerEnter(Collider other) => Hit(other);
 
+    private void FixedUpdate()
+    {
+        if (_hasHit || _owner == null || _rigidbody.isKinematic) return;
+        var velocity = _rigidbody.linearVelocity + (_rigidbody.useGravity ? Physics.gravity * Time.fixedDeltaTime : Vector3.zero);
+        Vector3 delta = velocity * Time.fixedDeltaTime;
+        if (delta.sqrMagnitude < .000001f) return;
+        int count = Physics.SphereCastNonAlloc(_rigidbody.position, CollisionRadius, delta.normalized,
+            _sweepHits, delta.magnitude, ~0, QueryTriggerInteraction.Collide);
+        // Resolve in travel order: a wall stops this step before targets beyond it.
+        System.Array.Sort(_sweepHits, 0, count, FlightHitComparer.Instance);
+        for (int i = 0; i < count && !_hasHit; i++)
+        {
+            if (BlocksFlight(_sweepHits[i].collider, _owner))
+                _rigidbody.position += delta.normalized * _sweepHits[i].distance;
+            Hit(_sweepHits[i].collider);
+        }
+    }
+
+    private sealed class FlightHitComparer : System.Collections.Generic.IComparer<RaycastHit>
+    {
+        public static readonly FlightHitComparer Instance = new FlightHitComparer();
+        public int Compare(RaycastHit a, RaycastHit b) => a.distance.CompareTo(b.distance);
+    }
+
     // Compatibility for existing solid-collider variants: both paths use the same attack ledger.
     private void OnCollisionEnter(Collision collision) => Hit(collision.collider);
 
@@ -115,6 +158,15 @@ public class BeanMugwortProjectile : MonoBehaviour
     {
         if (!isActiveAndEnabled || _hasHit || other == null ||
             (_owner != null && other.transform.IsChildOf(_owner.transform))) return;
+
+        if (other.GetComponentInParent<BeanMugwortProjectile>() != null) return;
+        if (SaltUseAction.CanHitGhost(other))
+        {
+            // The same attack ledger survives every ghost: once per target, including child hitboxes.
+            if (!_visualOnly && _attack != null && _attack.TryHit(other))
+                Debug.Log("[BeanMugwort] 관통 적중 → 피해/퇴치 반응 요청", this);
+            return;
+        }
 
         bool reacted = false;
         if (_visualOnly)
