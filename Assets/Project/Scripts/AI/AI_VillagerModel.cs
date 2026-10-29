@@ -24,6 +24,9 @@ namespace ProjectShaman.AI
         // The new model's Animator, for components that hold one (visual controller, NetworkAnimator)
         public event Action<Animator> OnModelChanged;
 
+        // The body now in use (tilted by AI_Bump)
+        public Transform CurrentModel => _currentModel;
+
         private void Awake()
         {
             _core = GetComponent<AI_Core>();

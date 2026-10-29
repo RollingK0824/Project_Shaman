@@ -22,12 +22,15 @@ namespace ProjectShaman.Network.AI
         private static readonly Vector3 MARKER_LOCAL_POSITION = new Vector3(0f, 2f, 0f);
         private const string TOPIC_QUEST_ACCEPT = "quest.accept";
         private const string TOPIC_QUEST_DECLINE = "quest.decline";
+        private const string TOPIC_QUEST_TALK = "quest.talk";
         private const string TOPIC_TOOL_GIVE = "tool.give";
         private const string TOPIC_TOOL_LATER = "tool.later";
 
         [Header("Quest marker")]
         [SerializeField] private float _markerFontSize = 6f;
         [SerializeField] private Color _markerColor = new Color(1f, 0.85f, 0.2f);
+        [Tooltip("While the villager works: the request is there, but wait until it rests")]
+        [SerializeField] private Color _markerBusyColor = new Color(0.6f, 0.6f, 0.6f, 0.55f);
 
         [Header("Dialogue")]
         [SerializeField] private float _dialogueHoldSeconds = 60f;
@@ -42,7 +45,10 @@ namespace ProjectShaman.Network.AI
         private int _holdSerial;
         private bool _holdsVillager;
         private bool _questOffer;
+        private bool _offerCanTalk;
         private bool _toolDelivery;
+        // The "today" routine the next question asks about (one at a time, from the first)
+        private int _todayNext;
         private float _dialogueDeadline;
         private AI_QuestMarker _marker;
         private QuestManager _subscribedQuests;
@@ -51,6 +57,8 @@ namespace ProjectShaman.Network.AI
         [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasQuestOffer;
         // An accepted quest is finished by coming back to this villager (delivery to the giver ...)
         [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _hasActiveQuest;
+        // Working, a request waits for the rest: the marker greys out and a talk gets a "later" line (no window, no hold)
+        [SyncVar(hook = nameof(OnQuestMarkerChanged))] private bool _isWorking;
 
         public string InteractionPrompt => _interactionPrompt;
 
@@ -127,6 +135,8 @@ namespace ProjectShaman.Network.AI
         }
 
         private bool IsAsleep => _core != null && _core.IsAsleep;
+        // On a work routine (resting in place of one, free time and the way home are not work)
+        private bool IsWorking => _core != null && _core.HasRoutine && _core.CurrentRoutine.Category == RoutineCategory.Work && !_core.MustGoHome && !_core.IsHomeForNight;
 
         private void RefreshQuestMarker()
         {
@@ -153,6 +163,7 @@ namespace ProjectShaman.Network.AI
 
             if (_marker != null)
             {
+                _marker.SetColor(_isWorking ? _markerBusyColor : _markerColor);
                 _marker.Show(symbol);
             }
         }
@@ -198,17 +209,23 @@ namespace ProjectShaman.Network.AI
                 return;
             }
 
-            // A pending offer opens the quest window (accept / decline) instead of the usual greeting, going home included:
-            // the villager stops for it like for a tool brought back
+            // A pending offer opens the quest window (accept / decline) instead of the usual greeting, going home included
+            // (not while working: see below)
             QuestManager quests = QuestManager.Existing;
             IQuestView offer = quests != null && quests.HasOffer(villagerId) ? FindOffer(quests, villagerId) : null;
-            // Bringing back the tool this villager asked for comes before anything else, going home included:
+            // Bringing back the tool this villager asked for comes before anything else but work, going home included:
             // the villager stops for it even if that makes them late (C120)
             IQuestView delivery = FindToolDelivery(quests, villagerId, player, out Net_ToolItem carried);
 
             if (_dialogueConnection != null && _dialogueConnection != sender)
             {
                 _conversation.Say("다른 분이랑 얘기 중이오", "dialogue busy");
+            }
+            else if ((delivery != null || offer != null) && IsWorking)
+            {
+                // Working: the request waits for the rest, as the usual dialogue does (the grey marker says so). The tool too:
+                // a villager without it rests in place of the work that needs it, so this work does not, and its deadline is a later day (C120)
+                _conversation.Say(delivery != null ? "일 끝나고 받으리다. 조금만 기다려 주시오." : "일 끝나고 오시오. 부탁할 게 있소.", "busy working, request later");
             }
             else if (delivery != null)
             {
@@ -263,10 +280,11 @@ namespace ProjectShaman.Network.AI
             _holdSerial = _interaction.Serial;
             _holdsVillager = true;
             _questOffer = false;
+            _todayNext = 0;
             _toolDelivery = false;
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
 
-            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
             // Called on at home in the evening: a late-caller greeting instead of the daytime one
             string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random) : VillagerDialogueService.Greeting());
@@ -276,9 +294,12 @@ namespace ProjectShaman.Network.AI
         }
 
         // The quest window: what is asked and the reward, answered with accept or decline.
-        // The villager is held still while it is open when it can be (a working villager keeps working).
+        // The villager is held still while it is open when it can be (never opened while it works, CmdRequestTalk).
         private void StartQuestOffer(NetworkConnectionToClient sender, GameObject player, IQuestView offer)
         {
+            // Judged as the usual dialogue judges it, before the villager is held (held, it counts as busy)
+            bool couldTalk = _conversation.Config != null && _conversation.CanTalkWithPlayer();
+
             if (_conversation.IsInSession)
             {
                 _conversation.Leave("player came about a request");
@@ -290,12 +311,43 @@ namespace ProjectShaman.Network.AI
             _dialogueConnection = sender;
             _dialoguePlayer = player;
             _questOffer = true;
+            _offerCanTalk = couldTalk && _holdsVillager;
             _toolDelivery = false;
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
 
-            AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer shown to {player.name}: #{offer.InstanceId} {offer.TitleText} (held={_holdsVillager})");
+            AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer shown to {player.name}: #{offer.InstanceId} {offer.TitleText} (held={_holdsVillager}, talk={_offerCanTalk})");
             TalkGesture();
-            TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
+            // The usual topics stay one click away: with the quest log full the offer can only be declined, and rumours still matter
+            if (_offerCanTalk)
+            {
+                TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE, TOPIC_QUEST_TALK },
+                    new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)", "다른 얘기를 하고 싶소" });
+            }
+            else
+            {
+                TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
+            }
+        }
+
+        // From the quest window to the usual topics in the same window, the villager still held. Talking again later
+        // brings the offer back while it is open
+        private void SwitchOfferToTalk(NetworkConnectionToClient sender)
+        {
+            if (!_offerCanTalk || !_holdsVillager)
+            {
+                TalkGesture();
+                TargetFinal(sender, "지금은 얘기할 틈이 없소.");
+                EndDialogue("talk after offer refused");
+                return;
+            }
+
+            _questOffer = false;
+            _todayNext = 0;
+            _dialogueDeadline = Time.time + _dialogueIdleTimeout;
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, _conversation.Config, _todayNext), out string[] ids, out string[] labels);
+            AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer left for the usual dialogue ({ids.Length} topics)");
+            TalkGesture();
+            TargetAnswer(sender, "그러시오, 무슨 얘기요?", ids, labels);
         }
 
         private string DescribeOffer(IQuestView offer)
@@ -342,6 +394,12 @@ namespace ProjectShaman.Network.AI
 
         private void AnswerQuestOffer(NetworkConnectionToClient sender, string topicId)
         {
+            if (topicId == TOPIC_QUEST_TALK)
+            {
+                SwitchOfferToTalk(sender);
+                return;
+            }
+
             QuestManager quests = QuestManager.Existing;
             string villagerId = _conversation.VillagerId;
             string line;
@@ -486,6 +544,12 @@ namespace ProjectShaman.Network.AI
 
             AIBehaviourConfig config = _conversation.Config;
             string answer = VillagerDialogueService.Answer(_conversation, topicId, config, out bool ends);
+            int todayIndex = VillagerDialogueService.TodayIndex(topicId);
+            if (todayIndex >= 0)
+            {
+                _todayNext = todayIndex + 1;
+            }
+
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Asked {topicId}: {answer}");
 
             if (ends)
@@ -497,7 +561,7 @@ namespace ProjectShaman.Network.AI
             }
 
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
-            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext), out string[] ids, out string[] labels);
             TalkGesture();
             TargetAnswer(sender, answer, ids, labels);
         }
@@ -514,6 +578,9 @@ namespace ProjectShaman.Network.AI
         [ServerCallback]
         private void Update()
         {
+            // Only sent when it flips (routine change), so a check per frame costs nothing on the wire
+            _isWorking = IsWorking;
+
             if (_dialogueConnection == null)
             {
                 return;

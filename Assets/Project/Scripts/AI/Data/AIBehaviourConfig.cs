@@ -200,7 +200,8 @@ namespace ProjectShaman.AI.Data
         [Header("Dialogue")]
         [SerializeField, Range(0f, 1f)] private float _rumorChance = 0.5f;
         [SerializeField, Range(1, 4)] private int _rumorMaxHops = 2;
-        [SerializeField, Min(1)] private int _playerQuestionsPerDay = 2;
+        [Tooltip("Villagers remembered per routine as 'there with me' (the alibi). Also caps the extra line-of-sight tests: a full routine stops looking")]
+        [SerializeField, Range(1, 5)] private int _alibiCompanionsPerRoutine = 3;
 
         [Header("Villager Request")]
         [SerializeField] private List<RequestQuestEntry> _requestQuests = new List<RequestQuestEntry>
@@ -350,7 +351,7 @@ namespace ProjectShaman.AI.Data
         public float NeighbourVisitLingerSeconds => _neighbourVisitLingerSeconds;
         public float RumorChance => _rumorChance;
         public int RumorMaxHops => _rumorMaxHops;
-        public int PlayerQuestionsPerDay => _playerQuestionsPerDay;
+        public int AlibiCompanionsPerRoutine => Mathf.Max(1, _alibiCompanionsPerRoutine);
         public float RequestCompletedStressRelief => _requestCompletedStressRelief;
         public float RequestFailedStress => _requestFailedStress;
         public bool ShowPossessedMaterial => _showPossessedMaterial && _possessedDebugMaterial != null;

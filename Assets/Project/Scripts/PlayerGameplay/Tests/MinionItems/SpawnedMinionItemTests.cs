@@ -83,7 +83,7 @@ public class SpawnedMinionItemTests
         _spawner = spawnerObject.AddComponent<MinionSpawner>();
         Set(_spawner, "_factory", factory); Set(_spawner, "_config", config);
         Set(_spawner, "_objective", objective.transform); Set(_spawner, "_spawnPoints", new[] { anchor.transform });
-        Set(_spawner, "_minionPrefab", AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/AI/Temp_Minion.prefab"));
+        Set(_spawner, "_minionPrefab", AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/AI/Ghost/Temp_Minion.prefab"));
         spawnerObject.SetActive(true); _spawner.BeginDefense(0f);
         for (int i = 0; i < 100 && _spawner.AliveCount == 0; i++) yield return null;
         Assert.AreEqual(1, _spawner.AliveCount, "Actual wave must spawn one minion");

@@ -390,6 +390,8 @@ namespace ProjectShaman.AI.Ghost
 
             int seed = unchecked(pending.Possession.Seed * 397 + _time.DayCount);
             entity.Initialize(pending.Possession, _ledger, _nightActions, pending.Host.LogId, center, pending.Radius, pending.HuntKills, pending.HuntIgnoresRadius, pending.ChasePlayer, _behaviourConfig, seed);
+            // Model list order = GhostType order
+            instance.GetComponent<AI_ModelVisual>()?.Apply((int)pending.Possession.GhostType);
             _factory.SpawnHandler.Spawn(instance);
             _entities.Add(entity);
             _activeEntityCount = _entities.Count;
