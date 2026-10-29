@@ -23,7 +23,7 @@ namespace ProjectShaman.ItemHold
   public event Action Equipped, Unequipped, UseCompleted;
   public event Action<int> UseRequested;
   public event Action<int> HoldTypeChanged;
-  int layer=-1;float elapsed,weightAtStart,useDuration;bool initialized,holdEntered,wantsEquip;
+  int layer=-1;float elapsed,weightAtStart,useDuration,useReturnBlend;bool initialized,holdEntered,wantsEquip;
   const float EquipDuration=.55f,UnequipDuration=.55f;
   public void Configure(Animator target,Transform socket){animator=target;itemSocket=socket;initialized=false;}
   void Awake(){Initialize();}
@@ -59,28 +59,29 @@ namespace ProjectShaman.ItemHold
    Initialize();wantsEquip=false;if(Phase==HoldPhase.Empty||Phase==HoldPhase.Unequip)return;
    Phase=HoldPhase.Unequip;elapsed=0;weightAtStart=animator.GetLayerWeight(layer);animator.CrossFadeInFixedTime(LayerName+".Unequip",.18f,layer,0);
   }
-  public static float TimedReleaseDelay(int id)=>id==6?.10f:.18f;
-  public static float TimedUseDuration(int id)=>id==6?.42f:.65f;
+  public static float TimedReleaseDelay(int id)=>id==6?.14f:.22f;
+  public static float TimedUseDuration(int id)=>id==6?.48f:.72f;
   public void Use(){Use(CurrentHoldType==HoldType.OneHandVertical?1:CurrentHoldType==HoldType.OneHandFront?2:0);}
   public void Use(int useId)
   {
    Initialize();if(Phase!=HoldPhase.Hold)return;UseRequested?.Invoke(useId);
-   // Timings are shared with PlayerTimedItemUse. Skip the source clip's idle lead-in.
+   // Dedicated forward-spray and shoulder-throw clips start at their authored hold pose.
+   // Release times are shared with PlayerTimedItemUse and remote presentation.
    if(useId==5||useId==6)
    {
     string state=useId==6?"UseSaltFbx":"UseThrowFbx";
     if(!animator.HasState(layer,Animator.StringToHash(LayerName+"."+state)))return;
-    Phase=HoldPhase.Use;elapsed=0;useDuration=TimedUseDuration(useId);
-    animator.CrossFadeInFixedTime(LayerName+"."+state,.04f,layer,useId==6?.70f:.55f);return;
+    Phase=HoldPhase.Use;elapsed=0;useDuration=TimedUseDuration(useId);useReturnBlend=.18f;
+    animator.CrossFadeInFixedTime(LayerName+"."+state,.04f,layer,0);return;
    }
    foreach(var motion in useMotions)if(motion.id==useId&&useId!=0)
    {
     if(!animator.HasState(layer,Animator.StringToHash(LayerName+"."+motion.state)))return;
-    Phase=HoldPhase.Use;elapsed=0;useDuration=Mathf.Max(.15f,motion.duration);animator.CrossFadeInFixedTime(LayerName+"."+motion.state,.14f,layer,0);return;
+    Phase=HoldPhase.Use;elapsed=0;useDuration=Mathf.Max(.15f,motion.duration);useReturnBlend=poseBlendSeconds;animator.CrossFadeInFixedTime(LayerName+"."+motion.state,.14f,layer,0);return;
    }
    UseCompleted?.Invoke();
   }
-  void BlendToHold(){animator.CrossFadeInFixedTime(LayerName+".Hold_"+CurrentHoldType,poseBlendSeconds,layer,0);}
+  void BlendToHold(float blendSeconds=-1f){animator.CrossFadeInFixedTime(LayerName+".Hold_"+CurrentHoldType,blendSeconds<0?poseBlendSeconds:blendSeconds,layer,0);}
   void Update()
   {
    Initialize();int requested=animator.GetInteger(TypeParameter);if(requested!=(int)CurrentHoldType)SetHoldType(requested);
@@ -96,7 +97,7 @@ namespace ProjectShaman.ItemHold
     animator.SetLayerWeight(layer,weightAtStart*(1-Mathf.SmoothStep(0,1,Mathf.Clamp01((elapsed-.10f)/.45f))));
     if(elapsed>=UnequipDuration){Phase=HoldPhase.Empty;animator.SetLayerWeight(layer,0);Unequipped?.Invoke();if(Phase==HoldPhase.Empty&&wantsEquip&&CurrentHoldType!=HoldType.Empty)BeginEquip();}
    }
-   else if(Phase==HoldPhase.Use&&elapsed>=useDuration){Phase=HoldPhase.Hold;BlendToHold();UseCompleted?.Invoke();}
+   else if(Phase==HoldPhase.Use&&elapsed>=useDuration){Phase=HoldPhase.Hold;BlendToHold(useReturnBlend);UseCompleted?.Invoke();}
   }
   void OnDisable(){if(initialized&&animator){animator.SetLayerWeight(layer,0);Phase=HoldPhase.Empty;wantsEquip=false;}}
  }

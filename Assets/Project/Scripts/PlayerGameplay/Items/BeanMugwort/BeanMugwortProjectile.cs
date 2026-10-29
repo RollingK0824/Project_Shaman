@@ -79,6 +79,7 @@ public class BeanMugwortProjectile : MonoBehaviour
         _attack?.End();
         _attack = null;
 
+        ItemVfxPresentation.Trail(transform);
         Launch(direction, throwForce);
     }
 
@@ -132,6 +133,7 @@ public class BeanMugwortProjectile : MonoBehaviour
 
 
         _hasHit = true;
+        if (_visualOnly) ItemVfxPresentation.Impact(transform.position);
         if (_visualOnly && _owner != null)
             _owner.GetComponent<PlayerAudioController>()?.PlayProjectileImpact(transform.position);
         GetComponent<Collider>().enabled = false;

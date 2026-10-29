@@ -17,7 +17,7 @@ public class EffectTalismanInventoryView : MonoBehaviour
     private readonly List<EffectTalismanInventoryRow> _visibleRows = new();
     private string _selectedId;
     private Action _back;
-    private Button _unassignButton, _dropButton;
+    private Button _unassignButton;
     public const string DropUnavailableReason = "문양 부적은 버릴 수 없습니다.";
     private void Awake()
     {
@@ -25,8 +25,6 @@ public class EffectTalismanInventoryView : MonoBehaviour
         _useButton.onClick.AddListener(UseSelected);
         _unassignButton = CreateAction("Unassign", "등록 해제", new Vector2(-210, -390));
         _unassignButton.onClick.AddListener(UnassignSelected);
-        _dropButton = CreateAction("Drop", "버리기", new Vector2(-18, -390));
-        _dropButton.interactable = false;
         for (int i = 0; i < _slotButtons.Length; i++)
         {
             int slot = i;

@@ -39,6 +39,7 @@ public sealed class BarrierWardVisual : MonoBehaviour
         if (!_shown)
         {
             _flashAt = Time.unscaledTime;
+            ItemVfxPresentation.Barrier(transform.position);
             PlayerSoundBank.PlayAt(PlayerSoundCue.Barrier, transform.position);
         }
         _shell.transform.localScale = Vector3.one * (radius * 2f);

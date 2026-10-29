@@ -183,7 +183,8 @@ public class InventoryReworkTests
         inventory.AssignTalismanQuickSlot(1, first.Id); inventory.AssignTalismanQuickSlot(2, second.Id);
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/UI/Inventory/EffectTalismanInventory.prefab");
         var view = Keep(Object.Instantiate(prefab)).GetComponent<EffectTalismanInventoryView>(); view.Bind(collection, null); view.Select(first.Id); Call(view, "LateUpdate");
-        Assert.IsTrue(Get<Button>(view, "_unassignButton").interactable); Assert.IsFalse(Get<Button>(view, "_dropButton").interactable);
+        Assert.IsTrue(Get<Button>(view, "_unassignButton").interactable);
+        Assert.IsNull(Get<Button>(view, "_useButton").transform.parent.Find("Drop"));
         Assert.AreEqual("문양 부적은 버릴 수 없습니다.", Get<TMP_Text>(view, "_status").text); view.UnassignSelected();
         Assert.IsTrue(string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(1))); Assert.AreEqual(second.Id, inventory.GetQuickSlotInstanceId(2)); Assert.AreEqual(2, collection.DrawnEffectCount);
         Call(view, "LateUpdate"); Assert.IsFalse(Get<Button>(view, "_unassignButton").interactable);

@@ -7,7 +7,7 @@ public class GongItem : ItemBase
     public override void OnUseStarted()
     {
         if (!TryBuildUseRequest(out var context)) return;
-        if (_pulse != null) _pulse.Play();
+        if (!ItemVfxPresentation.Pulse(Owner, true) && _pulse != null) _pulse.Play();
         // Audio is owned by PlayerItemFeedback; this legacy source stays serialized for compatibility.
         PlayerEvents.RaiseItemUseRequested(context);
     }
