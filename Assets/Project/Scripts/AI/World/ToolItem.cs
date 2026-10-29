@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using UnityEngine.AI;
 using ProjectShaman.AI.Core;
@@ -9,6 +10,8 @@ namespace ProjectShaman.AI.World
     public class ToolItem : MonoBehaviour, IGhostCarriable
     {
         private const float GROUND_SAMPLE_DISTANCE = 2f;
+        private const float GROUND_CLEARANCE = 0.01f;
+        private const float SETTLE_MIN_SECONDS = 0.2f;
 
         [SerializeField] private string _toolInstanceId;
         [SerializeField] private string _toolTypeId;
@@ -19,14 +22,27 @@ namespace ProjectShaman.AI.World
         [Tooltip("Turn the collider off while a player, villager or ghost holds the tool")]
         [SerializeField] private bool _disableColliderWhenHeld = true;
 
+        [Header("Holder")]
+        [SerializeField] private Vector3 _holderLocalOffset = Vector3.zero;
+        [SerializeField] private Vector3 _holderLocalEuler = Vector3.zero;
+
+        [Header("Physics")]
+        [Tooltip("A dropped or leaned tool falls on the server for at most this long, then stays put")]
+        [SerializeField, Min(0f)] private float _settleMaxSeconds = 1.5f;
+        [SerializeField, Min(0.01f)] private float _mass = 1.5f;
+
         [Header("Runtime")]
         [SerializeField] private string _holderId;
         [SerializeField] private string _reservedBy;
         [SerializeField] private int _ghostHiddenNight = -1;
+        [SerializeField] private ToolHolder _holder;
+        [SerializeField] private int _holderSlot = -1;
 
         private Transform _holderSocket;
         private Collider _collider;
+        private Rigidbody _rigidbody;
         private Renderer[] _renderers;
+        private float _settleStart = -1f;
 
         public string InstanceId => string.IsNullOrEmpty(_toolInstanceId) ? name : _toolInstanceId;
         public string TypeId => _toolTypeId;
@@ -40,11 +56,27 @@ namespace ProjectShaman.AI.World
         public bool IsUnclaimed => IsOnGround && string.IsNullOrEmpty(_reservedBy);
         public Vector3 Position => transform.position;
         public GhostTargetKind Kind => GhostTargetKind.Tool;
+        public ToolHolder Holder => _holder;
+        public bool IsSettling => _settleStart >= 0f;
+        public bool SimulatesPhysics { get; set; } = true;
+
+        public event Action<ToolItem> OnSettled;
 
         private void Awake()
         {
             _collider = GetComponent<Collider>();
             _renderers = GetComponentsInChildren<Renderer>(true);
+
+            _rigidbody = GetComponent<Rigidbody>();
+            if (_rigidbody == null)
+            {
+                _rigidbody = gameObject.AddComponent<Rigidbody>();
+                _rigidbody.mass = _mass;
+            }
+
+            _rigidbody.isKinematic = true;
+            _rigidbody.interpolation = RigidbodyInterpolation.None;
+            _rigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
         }
 
         public void ApplyStowedState(bool isStowed)
@@ -138,6 +170,8 @@ namespace ProjectShaman.AI.World
                 return false;
             }
 
+            StopSettle();
+            LeaveHolder();
             _holderId = villagerId;
             _reservedBy = null;
             _holderSocket = socket;
@@ -164,7 +198,114 @@ namespace ProjectShaman.AI.World
             }
 
             transform.SetPositionAndRotation(position, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+            LiftAboveGround(position.y);
             AILog.Log(AILog.TOOL, villagerId, $"Dropped {InstanceId}({TypeId}) at {position} ({reason})");
+            StartSettle();
+        }
+
+        public bool PlaceInHolder(string villagerId, ToolHolder holder, int slot, string reason)
+        {
+            Transform slotTransform = holder != null ? holder.GetSlot(slot) : null;
+            if (_holderId != villagerId || slotTransform == null)
+            {
+                return false;
+            }
+
+            _holderId = null;
+            _holderSocket = null;
+            ApplyHeldState(false);
+            _holder = holder;
+            _holderSlot = slot;
+
+            transform.SetPositionAndRotation(
+                slotTransform.TransformPoint(_holderLocalOffset),
+                slotTransform.rotation * Quaternion.Euler(_holderLocalEuler));
+            AILog.Log(AILog.TOOL, villagerId, $"Placed {InstanceId}({TypeId}) in {holder.HolderId} slot {slot} ({holder.Mode}, {reason})");
+
+            if (holder.Mode == ToolHolderMode.Lean)
+            {
+                StartSettle();
+            }
+            else
+            {
+                OnSettled?.Invoke(this);
+            }
+
+            return true;
+        }
+
+        private void LeaveHolder()
+        {
+            if (_holder != null)
+            {
+                _holder.Release(this);
+            }
+
+            _holder = null;
+            _holderSlot = -1;
+        }
+
+        private void LiftAboveGround(float groundY)
+        {
+            if (_collider == null || !_collider.enabled)
+            {
+                return;
+            }
+
+            Physics.SyncTransforms();
+            float sink = groundY - _collider.bounds.min.y;
+            if (sink > 0f)
+            {
+                transform.position += Vector3.up * (sink + GROUND_CLEARANCE);
+            }
+        }
+
+        private void StartSettle()
+        {
+            if (!SimulatesPhysics || _settleMaxSeconds <= 0f || _collider == null || !_collider.enabled)
+            {
+                OnSettled?.Invoke(this);
+                return;
+            }
+
+            _settleStart = Time.time;
+            _rigidbody.isKinematic = false;
+            _rigidbody.WakeUp();
+        }
+
+        private void StopSettle()
+        {
+            if (_settleStart < 0f)
+            {
+                return;
+            }
+
+            _settleStart = -1f;
+            _rigidbody.linearVelocity = Vector3.zero;
+            _rigidbody.angularVelocity = Vector3.zero;
+            _rigidbody.isKinematic = true;
+        }
+
+        private void FixedUpdate()
+        {
+            if (_settleStart < 0f)
+            {
+                return;
+            }
+
+            float elapsed = Time.time - _settleStart;
+            if (elapsed < _settleMaxSeconds && (elapsed < SETTLE_MIN_SECONDS || !_rigidbody.IsSleeping()))
+            {
+                return;
+            }
+
+            StopSettle();
+            if (!NavMesh.SamplePosition(transform.position, out _, GROUND_SAMPLE_DISTANCE, NavMesh.AllAreas))
+            {
+                AILog.Warn(AILog.TOOL, $"{InstanceId}({TypeId}) settled off the NavMesh at {transform.position}, villagers may not reach it");
+            }
+
+            OnSettled?.Invoke(this);
         }
 
         private void LateUpdate()

@@ -86,6 +86,40 @@ namespace ProjectShaman.AI.World
             }
         }
 
+        private ToolHolder[] _toolHolders;
+
+        public IReadOnlyList<ToolHolder> ToolHolders
+        {
+            get
+            {
+                if (_toolHolders == null)
+                {
+                    _toolHolders = GetComponentsInChildren<ToolHolder>();
+                }
+
+                return _toolHolders;
+            }
+        }
+
+        public bool TryReserveToolSlot(ToolItem tool, out ToolHolder holder, out int slot)
+        {
+            foreach (ToolHolderMode mode in new[] { ToolHolderMode.Hang, ToolHolderMode.Lean })
+            {
+                foreach (ToolHolder candidate in ToolHolders)
+                {
+                    if (candidate != null && candidate.Mode == mode && candidate.TryReserve(tool, out slot))
+                    {
+                        holder = candidate;
+                        return true;
+                    }
+                }
+            }
+
+            holder = null;
+            slot = -1;
+            return false;
+        }
+
         public int Capacity => Stations.Count > 0 ? Stations.Count : Mathf.Max(1, _maxPeople);
 
         public bool OwnsStation(WorkStation station)
