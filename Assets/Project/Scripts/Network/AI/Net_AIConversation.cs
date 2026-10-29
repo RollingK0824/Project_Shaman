@@ -34,6 +34,8 @@ namespace ProjectShaman.Network.AI
 
         private void HandleLineSpoken(ConversationSession session, ConversationLine line)
         {
+            TalkGesture();
+
             float hearingDistance = _conversation.HearingDistance;
             if (hearingDistance <= 0f)
             {
@@ -69,13 +71,27 @@ namespace ProjectShaman.Network.AI
             ShowLine(text);
         }
 
-        private void ShowLine(string text)
+        // Some of the villager's lines come with a talk gesture, seen by everyone around (bubbles, player dialogue)
+        [Server]
+        public void TalkGesture()
+        {
+            if (_visual != null && _visual.RollTalkGesture())
+            {
+                RpcTalkGesture();
+            }
+        }
+
+        [ClientRpc]
+        private void RpcTalkGesture()
         {
             if (_visual != null)
             {
                 _visual.PlayGesture(AI_VisualController.TALK_GESTURE);
             }
+        }
 
+        private void ShowLine(string text)
+        {
             if (_bubble == null)
             {
                 AILog.Warn(AILog.NET, $"[{name}] Speech bubble missing, line dropped: {text}");
