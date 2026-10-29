@@ -36,6 +36,6 @@ public class BellUseAction : ItemUseAction
     {
         context.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(context.Data);
         Debug.Log($"[Bell] 원격 연출: {context.Owner.name}", context.Owner);
-        SpawnEffect(_remotePulsePrefab, context.Owner.transform.position, Quaternion.identity, _remotePulseLifetime);
+        ItemVfxPresentation.Chime(context.Owner);
     }
 }
