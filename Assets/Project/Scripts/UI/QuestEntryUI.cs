@@ -2,11 +2,28 @@ using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Interfaces;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class QuestEntryUI : MonoBehaviour
 {
     [SerializeField]
     private TMP_Text _giver, _title, _objective, _progress, _reward, _penalty, _state;
+
+    [SerializeField]
+    private Button _pinButton;
+
+    [SerializeField]
+    private Image _pinIcon;
+
+    [SerializeField]
+    private Color _pinnedColor = Color.white, _unpinnedColor = new Color(1f, 1f, 1f, 0.35f);
+
+    private int _questId;
+
+    private void Awake()
+    {
+        _pinButton.onClick.AddListener(() => PinManager.Instance.ToggleQuest(_questId));
+    }
 
     public void Set(IQuestView q)
     {
@@ -27,5 +44,10 @@ public class QuestEntryUI : MonoBehaviour
              : q.State == QuestState.Completed ? "완료"
              : q.State == QuestState.Failed ? "실패" : "";
         _state.SetText(state);
+
+        // Only active quests can be pinned; QuestsTab rebuilds on PinsChanged, so the icon stays current
+        _questId = q.InstanceId;
+        _pinButton.gameObject.SetActive(q.State == QuestState.Active);
+        _pinIcon.color = PinManager.Instance.IsQuestPinned(q.InstanceId) ? _pinnedColor : _unpinnedColor;
     }
 }
