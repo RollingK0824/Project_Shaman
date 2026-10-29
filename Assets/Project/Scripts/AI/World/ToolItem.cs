@@ -16,7 +16,7 @@ namespace ProjectShaman.AI.World
         [SerializeField] private ItemData _itemData;
         [SerializeField] private Vector3 _heldLocalOffset = Vector3.zero;
         [SerializeField] private Vector3 _heldLocalEuler = Vector3.zero;
-        [Tooltip("Turn the collider off while a player, villager or ghost holds the tool")]
+        [Tooltip("Turn the colliders (children included) off while a player, villager or ghost holds the tool")]
         [SerializeField] private bool _disableColliderWhenHeld = true;
 
         [Header("Runtime")]
@@ -25,7 +25,7 @@ namespace ProjectShaman.AI.World
         [SerializeField] private int _ghostHiddenNight = -1;
 
         private Transform _holderSocket;
-        private Collider _collider;
+        private Collider[] _colliders;
         private Renderer[] _renderers;
 
         public string InstanceId => string.IsNullOrEmpty(_toolInstanceId) ? name : _toolInstanceId;
@@ -43,7 +43,8 @@ namespace ProjectShaman.AI.World
 
         private void Awake()
         {
-            _collider = GetComponent<Collider>();
+            // The collider may sit on the model child of a prefab variant
+            _colliders = GetComponentsInChildren<Collider>(true);
             _renderers = GetComponentsInChildren<Renderer>(true);
         }
 
@@ -61,9 +62,12 @@ namespace ProjectShaman.AI.World
         // The server applies it on pick up and drop; clients get the held state from the network layer
         public void ApplyHeldState(bool isHeld)
         {
-            if (_collider != null)
+            foreach (Collider part in _colliders)
             {
-                _collider.enabled = !(_disableColliderWhenHeld && isHeld);
+                if (part != null)
+                {
+                    part.enabled = !(_disableColliderWhenHeld && isHeld);
+                }
             }
         }
 
