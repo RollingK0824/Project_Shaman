@@ -161,7 +161,7 @@ public class NetPlayerVoice : NetworkBehaviour
     {
         if (!_recording) return;
 
-        IsTalkingOnRadio = !VoiceSettings.MicMuted && !IsDead && IsHoldingBell && _radioAction.IsPressed() && !InputManager.Instance.IsRebinding;
+        IsTalkingOnRadio = !VoiceSettings.MicMuted && !IsDead && IsHoldingBell && _radioAction != null &&_radioAction.IsPressed() && !InputManager.Instance.IsRebinding;
 
         if (IsTalkingOnRadio != _wasTalkingOnRadio)
         {

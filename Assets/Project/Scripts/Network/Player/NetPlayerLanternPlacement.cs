@@ -69,7 +69,11 @@ public class NetPlayerLanternPlacement : NetworkBehaviour
             ServerResolvePrefab, ServerPublish, ServerRollback,
             out WorldItem placed, authoritativeEquippedItem: _equipment.EquippedItem);
 
-        if (!success) TargetPlaceFailed("여기에는 초롱불을 걸 수 없습니다.");
+        if (!success)
+        {
+            TargetPlaceFailed("여기에는 초롱불을 걸 수 없습니다.");
+            return;
+        }
 
         RpcPresentPlaced(requestId, placed.transform.position);
     }
