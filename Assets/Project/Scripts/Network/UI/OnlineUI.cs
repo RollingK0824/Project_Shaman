@@ -9,9 +9,7 @@ using TMPro;
 
 public class OnlineUI : MonoBehaviour
 {
-    [SerializeField]
-    private TMP_InputField _nicknameInputField;
-
+    // LAN 닉네임 입력은 없앰. 인게임 이름은 로비(LobbyUI)에서 입력하는 gameName만 사용
     [SerializeField]
     private GameObject _createRoomUI;
 
@@ -73,18 +71,8 @@ public class OnlineUI : MonoBehaviour
 
     public void OnClickCreateRoomButton()
     {
-        if (_nicknameInputField.text != "")
-        {
-            //PlayerPrefs.SetString("nickname", _nicknameInputField.text);
-            UserData.Nickname = _nicknameInputField.text;
-            _createRoomUI.SetActive(true);
-            gameObject.SetActive(false);
-            
-        }
-        else
-        {
-            //_nicknameInputField.GetComponent<Animator>().SetTrigger("On");
-        }
+        _createRoomUI.SetActive(true);
+        gameObject.SetActive(false);
     }
 
     public void OnClickEnterGameRoomButton()
@@ -95,13 +83,6 @@ public class OnlineUI : MonoBehaviour
         if (manager == null)
         {
             ShowJoinMessage("Room manager is not ready.");
-            return;
-        }
-
-        string nickname = _nicknameInputField.text.Trim();
-        if (string.IsNullOrWhiteSpace(nickname))
-        {
-            ShowJoinMessage("Enter your nickname.");
             return;
         }
 
@@ -121,7 +102,6 @@ public class OnlineUI : MonoBehaviour
 
         if (_joinFailedCoroutine != null) StopCoroutine(_joinFailedCoroutine);
         _joinFailedPanel.SetActive(false);
-        UserData.Nickname = nickname;
         manager.networkAddress = address;
         manager.BeginJoinAttempt();
         manager.StartClient();

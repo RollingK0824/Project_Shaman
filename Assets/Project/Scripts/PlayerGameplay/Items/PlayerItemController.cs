@@ -51,7 +51,14 @@ public class PlayerItemController : MonoBehaviour
         if (data == null || data != EquippedItemData || !CanUseItems ||
             !PlayerActionGuard.CanAct(gameObject)) return;
         GetComponent<PlayerItemFeedback>()?.Play(data);
-        if (_itemHoldDriver != null && _itemHoldDriver.IsEquipped)
+        PlayUseMotion(data);
+    }
+    public ItemBase EquippedBehaviour => _equippedItem;
+    public bool CanStartTimedUse => CanUseItems && PlayerActionGuard.CanAct(gameObject) &&
+        (_itemHoldDriver == null || _itemHoldDriver.Phase == HoldPhase.Hold);
+    public void PlayUseMotion(ItemData data)
+    {
+        if (data != null && _itemHoldDriver != null && _itemHoldDriver.IsEquipped)
             _itemHoldDriver.Use(data.ThirdPersonUseMotionId);
     }
 
@@ -66,6 +73,8 @@ public class PlayerItemController : MonoBehaviour
 
     private void Awake()
     {
+        if (GetComponent<PlayerSaltHitPresentation>() == null)
+            gameObject.AddComponent<PlayerSaltHitPresentation>();
         if (GetComponent<PlayerYinIncenseSense>() == null)
             gameObject.AddComponent<PlayerYinIncenseSense>();
         if (GetComponent<PlayerHouseBarrierPlacement>() == null)
@@ -138,8 +147,10 @@ public class PlayerItemController : MonoBehaviour
         bool firstPerson = _viewModeController == null ||
             _viewModeController.CurrentViewMode == PlayerViewModeController.ViewMode.FirstPerson;
         bool local = !_remotePresentation && PlayerLocalPresentation.IsLocal(gameObject);
-        SetVisualVisibility(_firstPersonRenderers, firstPerson && local && !_firstPersonPresentationSuppressed);
-        SetVisualVisibility(_thirdPersonRenderers, PlayerActionGuard.CanAct(gameObject) && (!local || !firstPerson));
+        var timed = GetComponent<PlayerTimedItemUse>();
+        bool released = timed != null && timed.HideHeldItem(_remotePresentation ? _remoteHeldItem : EquippedItemData);
+        SetVisualVisibility(_firstPersonRenderers, !released && firstPerson && local && !_firstPersonPresentationSuppressed);
+        SetVisualVisibility(_thirdPersonRenderers, !released && PlayerActionGuard.CanAct(gameObject) && (!local || !firstPerson));
     }
 
     private static void SetVisualVisibility(Renderer[] renderers, bool visible)
@@ -233,6 +244,10 @@ public class PlayerItemController : MonoBehaviour
 
         // 1인칭 장착
         EquipFirstPerson(itemData);
+        var audio = GetComponent<PlayerAudioController>();
+        // Equip-only foley is local; FP/TP visual copies must not each emit it.
+        audio?.PlayCue(itemData is TalismanItemData ? PlayerSoundCue.Paper :
+            itemData.ItemId == "item_lantern" || itemData.ItemId == "item_incense" ? PlayerSoundCue.Ignite : PlayerSoundCue.Equip);
 
         Debug.Log(
             $"[Item] 장착: {itemData.DisplayName}",
@@ -537,30 +552,27 @@ public class PlayerItemController : MonoBehaviour
 
     // One world-space spray for either the local third-person view or the existing remote RPC.
     // Damage, consumption and success events remain owned by SaltUseAction.Execute.
-    public bool PlayThirdPersonSaltSpray(Vector3 direction)
+    public bool TryGetThirdPersonReleasePoint(out Vector3 point)
+    {
+        point = transform.position;
+        if (_thirdPersonVisual == null || _thirdPersonRenderers == null) return false;
+        bool found = false; Bounds bounds = default;
+        foreach (var renderer in _thirdPersonRenderers)
+        {
+            if (renderer == null || renderer is ParticleSystemRenderer) continue;
+            if (!found) { bounds = renderer.bounds; found = true; } else bounds.Encapsulate(renderer.bounds);
+        }
+        if (found) point = bounds.center;
+        return found;
+    }
+
+    public bool PlayThirdPersonSaltSpray(Vector3 direction, Vector3? aimOrigin = null, float reach = 3f, float halfWidth = .2f)
     {
         if (_thirdPersonVisual == null || !PlayerActionGuard.CanAct(gameObject)) return false;
         var template = _thirdPersonVisual.GetComponentInChildren<ParticleSystem>(true);
         if (template == null) return false;
-        var spray = Instantiate(template, template.transform.position, Quaternion.LookRotation(direction.sqrMagnitude > .001f ? direction : transform.forward));
-        spray.name = "ThirdPersonSaltSpray";
-        spray.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
-        spray.transform.localScale = Vector3.one;
-        var main = spray.main;
-        main.loop = false; main.playOnAwake = false; main.duration = .15f;
-        main.simulationSpace = ParticleSystemSimulationSpace.World;
-        main.scalingMode = ParticleSystemScalingMode.Shape;
-        main.startLifetime = new ParticleSystem.MinMaxCurve(.45f, .85f);
-        main.startSpeed = new ParticleSystem.MinMaxCurve(1.4f, 3.2f);
-        main.startSize = new ParticleSystem.MinMaxCurve(.006f, .013f);
-        main.startColor = new Color(.95f,.93f,.85f,1f); main.gravityModifier = .7f;
-        var emission = spray.emission; emission.enabled = true; emission.rateOverTime = 0;
-        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, 65) });
-        var shape = spray.shape; shape.enabled = true; shape.shapeType = ParticleSystemShapeType.Cone; shape.angle = 16f; shape.radius = .018f;
-        spray.GetComponent<ParticleSystemRenderer>().enabled = true;
-        spray.Play(true);
-        Destroy(spray.gameObject, 1.6f);
-        return true;
+        return SaltVfxBurst.Spray(gameObject, template.transform.position,
+            new Ray(aimOrigin ?? template.transform.position, direction), reach, halfWidth);
     }
 
     // [원격 사본 전용] 네트워크가 확정한 장착 아이템의 3인칭 모델만 교체

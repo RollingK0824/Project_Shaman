@@ -1033,6 +1033,11 @@ MonoBehaviour:
   - {fileID: 5002788940653077628}
   - {fileID: 3868413999425909541}
   _hideBodyInFirstPerson: 1
+  _firstPersonNearClip: 0.05
+  _cameraWallPadding: 0.015
+  _cameraObstructionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   _inspectRotationSensitivity: 0.2
   _focusFov: 35
   _focusRotationSpeed: 12
@@ -1201,6 +1206,7 @@ MonoBehaviour:
   _midThreshold: 35
   _highThreshold: 70
   _logStressEvents: 0
+  _nightStressPerSecond: 0.25
 --- !u!114 &168354662983446276
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1278,6 +1284,7 @@ MonoBehaviour:
   _heartbeatPitch: {x: 1, y: 1.6}
   _breathingPitch: {x: 1, y: 1.5}
   _volumeFadeSpeed: 6
+  _maxStressVolumeWeight: 0.7
 --- !u!114 &4731476255442590517
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1412,6 +1419,7 @@ MonoBehaviour:
   _animator: {fileID: 3115732516773978692}
   _blendTime: 0.12
   _turnDeadZone: 15
+  _stressWalkBlendTime: 0.3
 --- !u!114 &8623757397837100277
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1471,9 +1479,20 @@ MonoBehaviour:
   _sprintVolume: 0.55
   _crouchVolume: 0.18
   _stepPitch: {x: 0.95, y: 1.05}
+  _stepVolumeVariation: 0.05
   _minimumMoveSpeed: 0.15
   _remoteSprintSpeed: 5
   _teleportDistance: 2
+  _breathingClip: {fileID: 8300000, guid: 8ee1b64cd5344131bfa3ebf0a28946d5, type: 3}
+  _minimumSprintDuration: 3
+  _recoveryDuration: 4
+  _breathingFadeSeconds: 0.6
+  _breathingVolume: 0.22
+  _breathingPitch: {x: 1, y: 1.22}
+  _heartbeatClip: {fileID: 8300000, guid: cb970da7ad604b9eaefa76a4ff24b558, type: 3}
+  _heartbeatStartThreshold: -1
+  _heartbeatBpm: {x: 65, y: 115}
+  _heartbeatVolume: {x: 0.12, y: 0.3}
   _landing: {fileID: 8300000, guid: ff697d3070687ce4583faa0561a145a2, type: 3}
   _jump: {fileID: 0}
   _hurt: {fileID: 8300000, guid: 36629308f3cc74e70a814281fc9410b4, type: 3}
@@ -1489,17 +1508,6 @@ MonoBehaviour:
   _craftSuccess: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanSave: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanUse: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
-  _stepVolumeVariation: 0.05
-  _breathingClip: {fileID: 8300000, guid: 8ee1b64cd5344131bfa3ebf0a28946d5, type: 3}
-  _minimumSprintDuration: 3
-  _recoveryDuration: 4
-  _breathingFadeSeconds: 0.6
-  _breathingVolume: 0.22
-  _breathingPitch: {x: 1, y: 1.22}
-  _heartbeatClip: {fileID: 8300000, guid: cb970da7ad604b9eaefa76a4ff24b558, type: 3}
-  _heartbeatStartThreshold: -1
-  _heartbeatBpm: {x: 65, y: 115}
-  _heartbeatVolume: {x: 0.12, y: 0.3}
 --- !u!114 &3102027790956114060
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1717,6 +1725,10 @@ PrefabInstance:
       propertyPath: m_LocalRotation.z
       value: -0.09393309
       objectReference: {fileID: 0}
+    - target: {fileID: 5507822796601697115, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: 7044f8805a4a4bd4dbb94f8ec554eef8, type: 2}
     - target: {fileID: 5866666021909216657, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
       propertyPath: m_Avatar
       value: 
@@ -1725,26 +1737,22 @@ PrefabInstance:
       propertyPath: m_Controller
       value: 
       objectReference: {fileID: 9100000, guid: 8b5706643c3d17242970b67537929a9c, type: 2}
-    - target: {fileID: 5507822796601697115, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
-      propertyPath: m_Mesh
-      value: 
-      objectReference: {fileID: 4300000, guid: 7044f8805a4a4bd4dbb94f8ec554eef8, type: 2}
     - target: {fileID: 8060787082339184816, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
       propertyPath: m_Mesh
       value: 
       objectReference: {fileID: 4300000, guid: e33231161399a954a8820bf576589575, type: 2}
-    - target: {fileID: 9028020627783914592, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
-      propertyPath: m_Mesh
-      value:
-      objectReference: {fileID: 4300000, guid: 36cd77e7bbb21c643a54e1ea9941037f, type: 2}
     - target: {fileID: 8060787082339184816, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
       propertyPath: m_Materials.Array.size
       value: 2
       objectReference: {fileID: 0}
     - target: {fileID: 8060787082339184816, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
-      propertyPath: m_Materials.Array.data[1]
-      value:
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
       objectReference: {fileID: 2100000, guid: ea6d2b8017bdbb6459067fad6b457780, type: 2}
+    - target: {fileID: 9028020627783914592, guid: dc74178f53271424586ce7f02c955c4e, type: 3}
+      propertyPath: m_Mesh
+      value: 
+      objectReference: {fileID: 4300000, guid: 36cd77e7bbb21c643a54e1ea9941037f, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects:

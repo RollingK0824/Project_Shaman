@@ -483,114 +483,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b23e8e8d67bf0904db185ca505a6da57, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::PlayerInputReader
-  _crouch:
-    m_Name: Crouch
-    m_Type: 1
-    m_ExpectedControlType: 
-    m_Id: a5e93d2a-fb37-4460-ba9f-bf3225700de6
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 6a41d289-a30f-4cf0-93a5-413f24634695
-      m_Path: <Keyboard>/leftCtrl
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: Crouch
-      m_Flags: 0
-    m_Flags: 0
-    m_Priority: 0
-  _spectateUp:
-    m_Name: SpectateUp
-    m_Type: 1
-    m_ExpectedControlType: 
-    m_Id: 6f299936-f41d-429e-b240-402ad01bb1b7
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 541a3199-dc65-4ac1-a4af-027786e50a0c
-      m_Path: <Keyboard>/space
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: SpectateUp
-      m_Flags: 0
-    m_Flags: 0
-    m_Priority: 0
-  _spectateDown:
-    m_Name: SpectateDown
-    m_Type: 1
-    m_ExpectedControlType: 
-    m_Id: 8ec18c7b-ec92-4847-8705-b4420939c498
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: 6de84cbb-d8c6-4d26-b94f-66882985b401
-      m_Path: <Keyboard>/leftCtrl
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: SpectateDown
-      m_Flags: 0
-    m_Flags: 0
-    m_Priority: 0
-  _spectatePrevious:
-    m_Name: SpectatePrevious
-    m_Type: 1
-    m_ExpectedControlType: 
-    m_Id: 4d318bd5-ea6f-4bf7-afe5-f6384e835cdd
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: e3315a63-c31b-4b26-9472-8e3103ec2680
-      m_Path: <Keyboard>/leftBracket
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: SpectatePrevious
-      m_Flags: 0
-    m_Flags: 0
-    m_Priority: 0
-  _spectateNext:
-    m_Name: SpectateNext
-    m_Type: 1
-    m_ExpectedControlType: 
-    m_Id: 26d14516-328a-4b64-9308-29ae1d702a93
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: d132a382-9bed-48b9-b5fe-e3124206cd94
-      m_Path: <Keyboard>/rightBracket
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: SpectateNext
-      m_Flags: 0
-    m_Flags: 0
-    m_Priority: 0
-  _spectateToggle:
-    m_Name: SpectateToggle
-    m_Type: 1
-    m_ExpectedControlType: 
-    m_Id: 724504f1-af83-4b82-8cf9-1833a7e8cb82
-    m_Processors: 
-    m_Interactions: 
-    m_SingletonActionBindings:
-    - m_Name: 
-      m_Id: f3a8a0a1-9b50-4aa2-b139-6c1781cddcfa
-      m_Path: <Keyboard>/backquote
-      m_Interactions: 
-      m_Processors: 
-      m_Groups: 
-      m_Action: SpectateToggle
-      m_Flags: 0
-    m_Flags: 0
-    m_Priority: 0
 --- !u!114 &325145241631253161
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -681,6 +573,11 @@ MonoBehaviour:
   - {fileID: 6229404440353024745}
   - {fileID: 5732026937131357840}
   _hideBodyInFirstPerson: 1
+  _firstPersonNearClip: 0.05
+  _cameraWallPadding: 0.015
+  _cameraObstructionMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
   _inspectRotationSensitivity: 0.2
   _focusFov: 35
   _focusRotationSpeed: 12
@@ -849,6 +746,7 @@ MonoBehaviour:
   _midThreshold: 35
   _highThreshold: 70
   _logStressEvents: 0
+  _nightStressPerSecond: 0.25
 --- !u!114 &507815264184580568
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -926,6 +824,7 @@ MonoBehaviour:
   _heartbeatPitch: {x: 1, y: 1.6}
   _breathingPitch: {x: 1, y: 1.5}
   _volumeFadeSpeed: 6
+  _maxStressVolumeWeight: 0.7
 --- !u!114 &5836412505865645558
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1060,6 +959,7 @@ MonoBehaviour:
   _animator: {fileID: 6448421085540909247}
   _blendTime: 0.12
   _turnDeadZone: 15
+  _stressWalkBlendTime: 0.3
 --- !u!114 &7492095500009178099
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1119,9 +1019,20 @@ MonoBehaviour:
   _sprintVolume: 0.55
   _crouchVolume: 0.18
   _stepPitch: {x: 0.95, y: 1.05}
+  _stepVolumeVariation: 0.05
   _minimumMoveSpeed: 0.15
   _remoteSprintSpeed: 5
   _teleportDistance: 2
+  _breathingClip: {fileID: 8300000, guid: 8ee1b64cd5344131bfa3ebf0a28946d5, type: 3}
+  _minimumSprintDuration: 3
+  _recoveryDuration: 4
+  _breathingFadeSeconds: 0.6
+  _breathingVolume: 0.22
+  _breathingPitch: {x: 1, y: 1.22}
+  _heartbeatClip: {fileID: 8300000, guid: cb970da7ad604b9eaefa76a4ff24b558, type: 3}
+  _heartbeatStartThreshold: -1
+  _heartbeatBpm: {x: 65, y: 115}
+  _heartbeatVolume: {x: 0.12, y: 0.3}
   _landing: {fileID: 8300000, guid: ff697d3070687ce4583faa0561a145a2, type: 3}
   _jump: {fileID: 0}
   _hurt: {fileID: 8300000, guid: 36629308f3cc74e70a814281fc9410b4, type: 3}
@@ -1137,17 +1048,6 @@ MonoBehaviour:
   _craftSuccess: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanSave: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
   _talismanUse: {fileID: 8300000, guid: b5a4cce92180fe6408a24703380d9817, type: 3}
-  _stepVolumeVariation: 0.05
-  _breathingClip: {fileID: 8300000, guid: 8ee1b64cd5344131bfa3ebf0a28946d5, type: 3}
-  _minimumSprintDuration: 3
-  _recoveryDuration: 4
-  _breathingFadeSeconds: 0.6
-  _breathingVolume: 0.22
-  _breathingPitch: {x: 1, y: 1.22}
-  _heartbeatClip: {fileID: 8300000, guid: cb970da7ad604b9eaefa76a4ff24b558, type: 3}
-  _heartbeatStartThreshold: -1
-  _heartbeatBpm: {x: 65, y: 115}
-  _heartbeatVolume: {x: 0.12, y: 0.3}
 --- !u!114 &4298888290656286386
 MonoBehaviour:
   m_ObjectHideFlags: 0

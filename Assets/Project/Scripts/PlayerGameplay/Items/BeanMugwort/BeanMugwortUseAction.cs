@@ -43,12 +43,27 @@ public class BeanMugwortUseAction : ItemUseAction
     // [다른 클라] 연출용 투척물
     public override void PlayRemotePresentation(in ItemUseContext context)
     {
-        context.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(context.Data);
-        Debug.Log($"[BeanMugwort] 원격 연출: {context.Owner.name}", context.Owner);
-        SpawnVisualProjectile(context);
+        var timed = context.Owner.GetComponent<PlayerTimedItemUse>() ?? context.Owner.AddComponent<PlayerTimedItemUse>();
+        timed.BeginRemote(context, released =>
+        {
+            released.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(released.Data);
+            SpawnVisualProjectile(released);
+        });
     }
 
-    // [사용한 클라] BeanMugwortItem.OnUseStarted에서 즉시 호출 / [다른 클라] 위 Rpc에서 호출
+    // Encode the TP hand origin into the existing request, so authority and visual use the same pose.
+    public ItemUseContext WithLocalReleaseOrigin(in ItemUseContext context)
+    {
+        var view = context.Owner.GetComponent<PlayerViewModeController>();
+        var controller = context.Owner.GetComponent<PlayerItemController>();
+        if (view == null || view.CurrentViewMode != PlayerViewModeController.ViewMode.ThirdPerson ||
+            controller == null || !controller.TryGetThirdPersonReleasePoint(out var hand)) return context;
+        var up = Quaternion.LookRotation(context.AimDirection, Vector3.up) * Vector3.up;
+        var origin = hand - context.AimDirection * _spawnForwardOffset + up * _spawnDownOffset;
+        return new ItemUseContext(context.Owner, context.Data, origin, context.AimDirection, context.Consume);
+    }
+
+    // Local and remote presentation both invoke this once at their release frame.
     public void SpawnVisualProjectile(in ItemUseContext context)
     {
         if (_projectilePrefab == null) return;

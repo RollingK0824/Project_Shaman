@@ -1,0 +1,40 @@
+팥쑥 / 소금 사용 타이밍 — 2026-10-27
+
+현재 동작
+- 클릭 때 모션 시작. 팥쑥 약 0.18초, 소금 약 0.10초 뒤 연출과 사용 요청을 각각 한 번 실행.
+- 팥쑥 전체 동작 약 0.65초, 소금 약 0.42초 + Hold 블렌드.
+- 원본 Throw FBX의 준비 구간을 건너뜀. UseThrowFbx: 2.4배 / 시작 0.55초, UseSaltFbx: 3배 / 시작 0.70초.
+- ItemHoldDriver의 TimedReleaseDelay/TimedUseDuration와 Animator 상태 속도를 함께 관리할 것.
+- 팥쑥 UseMotionId=5, 소금=6. 결계부적의 기존 ID=3은 유지.
+
+요청과 판정
+ItemBase.BeginTimedUse -> PlayerTimedItemUse.BeginLocal
+-> 즉시 PlayUseMotion -> 짧은 대기 -> 아이템 Release
+-> 로컬 연출 + PlayerEvents.ItemUseRequested 한 번
+-> 기존 LocalGameplayJudge / NetPlayerItemUse에서 판정, 소모, ReportUse 한 번.
+
+PlayerTimedItemUse는 실행 중 추가 클릭을 막고, 발사 전 사망/장착 변경/같은 아이템 재장착/입력 차단 시 취소.
+발사 후 팥쑥의 손에 든 모델은 잠시 숨김. 판정용 투사체는 기존처럼 비표시, 연출용만 표시.
+3인칭 팥쑥은 손에서 시작하도록 기존 ItemUseContext의 origin에 발사점을 반영.
+WithLocalReleaseOrigin -> GetSpawnPose를 통해 연출과 서버 판정이 같은 발사 좌표를 사용.
+1인칭은 기존 카메라 기준 발사 위치 유지.
+
+네트워크 담당 참고
+- Network 파일/프리팹 수정 없음.
+- 기존 NetPlayerEquipment.PlayRemoteUseMotion이 ID 5/6을 그대로 전달하면 됨.
+- 기존 UseAction.PlayRemotePresentation은 원격 모션의 발사 시점까지 연출만 대기.
+- 원격 경로에서 Execute / ItemUseRequested / Consume / ReportUse를 추가 호출하지 말 것.
+- 시작 시각을 서버 tick으로 동기화하는 기능은 추가하지 않음. 기존 확정 RPC 도착을 기준으로 원격 연출 재생.
+- 실제 두 클라이언트 플레이 검증은 별도 필요. 빌드에는 변경된 공통 Controller, ItemData, Player 코드가 함께 포함되어야 함.
+
+검증 기록 및 재현용 Editor 도구: D:/Jun/ItemUseTimingQA_20261027/
+
+Play 검증 완료:
+- 실제 Player의 UseItemStarted 경로로 1인칭/3인칭 검사.
+- 클릭 시 모션 진입, 발사 전 투사체/분사 없음, 연속 4회 입력에도 사용 요청 1회.
+- 팥쑥 연출용 1개 / 비표시 판정용 1개 / 소모 1개 / 손 위치 발사 / 손의 중복 모델 숨김.
+- 소금 분사 1회, 1초 이내 장착 자세 복귀.
+- 장착 해제/동일 아이템 재장착/사망 취소, 마지막 팥쑥 소모 후 슬롯 비움.
+- 원격 연출 메서드의 로컬 호출은 사용 요청/소모 없이 연출만 수행.
+- results.txt의 FINISHED까지 통과. 새 컴파일 예외 및 GPU 종료 오류 관찰 없음.
+- 씬 저장 없음. 실제 네트워크 접속 환경은 미검증.

@@ -18,6 +18,8 @@ public class PlayerNotebookUI : MonoBehaviour
     private PlayerHealth _health;
     private InventoryPanelUI _inventory;
     private CraftingPanelUI _crafting;
+    private NotebookScheduleView _schedule;
+    private Transform _scheduleHome;
     private SharedQuestRewardView _rewardView;
     private GameObject _rewardButton;
     private GameObject _slotToolbar;
@@ -115,13 +117,17 @@ public class PlayerNotebookUI : MonoBehaviour
             _crafting.ConfigureNotebook();
             _crafting.gameObject.SetActive(true);
         }
-        if (scheduleRoot != null && owner.InventoryPanelPrefab != null)
+        // The villager schedule is placed in the scene's UI; the notebook only borrows it while bound
+        if (scheduleRoot != null)
         {
-            var spread = new GameObject("VillagerScheduleSpread", typeof(RectTransform), typeof(NotebookScheduleView));
-            spread.transform.SetParent(scheduleRoot, false);
-            PlayerItemUIStyle.FitNotebookSpread((RectTransform)spread.transform);
-            // The notebook's own tab font (shared with the other UI), not the item panels' font
-            spread.GetComponent<NotebookScheduleView>().Bind(_panel.GetComponentInChildren<TMP_Text>(true)?.font);
+            _schedule = FindAnyObjectByType<NotebookScheduleView>(FindObjectsInactive.Include);
+            if (_schedule != null)
+            {
+                _scheduleHome = _schedule.transform.parent;
+                _schedule.transform.SetParent(scheduleRoot, false);
+                PlayerItemUIStyle.FitNotebookSpread((RectTransform)_schedule.transform);
+                _schedule.gameObject.SetActive(true);
+            }
         }
     }
 
@@ -192,6 +198,7 @@ public class PlayerNotebookUI : MonoBehaviour
         if (IsOpen && (_input == null || !_input.isActiveAndEnabled ||
             !PlayerActionGuard.CanAct(_owner.gameObject) || !PlayerLocalPresentation.IsLocal(_owner.gameObject))) Close();
         if (!IsOpen) ReleaseInput(); // Also handles UIManager's Escape/Close path.
+        UpdatePageSound();
         if (_inventory != null && _inventory.isActiveAndEnabled)
         {
             _inventory.ConfigureNotebook(OpenDrawing, SelectItem);
@@ -210,6 +217,22 @@ public class PlayerNotebookUI : MonoBehaviour
             _selectionText.rectTransform.sizeDelta = new Vector2(draw ? 280 : 440, 40);
             _selectionText.rectTransform.anchoredPosition = new Vector2(draw ? -80 : 0, 0);
         }
+    }
+
+    private bool _soundWasOpen;
+    private int _soundTab = -1;
+    private void UpdatePageSound()
+    {
+        int tab = -1;
+        if (IsOpen)
+            for (int i = 0; i < 16; i++)
+            {
+                var root = _panel.GetTabRoot(i);
+                if (root != null && root.gameObject.activeSelf) { tab = i; break; }
+            }
+        if (IsOpen && (!_soundWasOpen || tab != _soundTab))
+            _owner.GetComponent<PlayerAudioController>()?.PlayCue(PlayerSoundCue.Notebook);
+        _soundWasOpen = IsOpen; _soundTab = tab;
     }
 
     private void UpdateShortcut()
@@ -380,6 +403,13 @@ public class PlayerNotebookUI : MonoBehaviour
         if (_notebook != null) _notebook.NotebookOpenRequested -= Open;
         if (_health != null) _health.Died -= HandleDeath;
         _inventory?.Bind(null); _crafting?.Bind(null);
+        // Hand the scene's schedule back before its page root is destroyed
+        if (_schedule != null)
+        {
+            _schedule.gameObject.SetActive(false);
+            _schedule.transform.SetParent(_scheduleHome, false);
+        }
+        _schedule = null; _scheduleHome = null;
         foreach (var root in _pageRoots) if (root != null) { root.SetActive(false); Destroy(root); }
         foreach (var placeholder in _hiddenPlaceholders) if (placeholder != null) placeholder.SetActive(true);
         _pageRoots.Clear(); _hiddenPlaceholders.Clear();

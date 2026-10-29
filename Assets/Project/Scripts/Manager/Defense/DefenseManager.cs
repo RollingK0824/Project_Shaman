@@ -10,6 +10,11 @@ public class DefenseManager : SceneSingleton<DefenseManager>
     private float _startDelay = 20f;
 
     [SerializeField]
+    private float _defenseDuration = 60f;
+
+    public float DefenseDuration => _defenseDuration;
+
+    [SerializeField]
     private MonoBehaviour _targetObject;
 
     private IDefenseTarget _target;
@@ -40,6 +45,9 @@ public class DefenseManager : SceneSingleton<DefenseManager>
         State = DefenseState.Active;
         _target?.ResetHP();
         DefenseStarted?.Invoke();
+
+        yield return new WaitForSeconds(_defenseDuration);
+        if (State == DefenseState.Active) End(true);
     }
 
     private void HandleTargetDestroyed()
