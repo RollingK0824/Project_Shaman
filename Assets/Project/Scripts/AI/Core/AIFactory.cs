@@ -16,6 +16,9 @@ namespace ProjectShaman.AI.Core
     public class AIFactory : MonoBehaviour
     {
         private const int MAX_ROLL_ATTEMPTS = 20;
+        // Around the NavMeshAgent default 50; ghosts and minions keep 50
+        private const int AVOIDANCE_PRIORITY_MIN = 30;
+        private const int AVOIDANCE_PRIORITY_MAX = 69;
 
         [SerializeField] private GameObject _villagerPrefab;
         [SerializeField] private bool _useJsonData = true;
@@ -30,6 +33,7 @@ namespace ProjectShaman.AI.Core
 
         private readonly List<AI_Core> _spawnedVillagers = new List<AI_Core>();
         private readonly HashSet<string> _usedNames = new HashSet<string>();
+        private readonly List<int> _avoidancePriorities = new List<int>();
         private IAIDataProvider _dataProvider;
         private ScheduleBuilder _scheduleBuilder;
         private System.Random _random;
@@ -409,16 +413,16 @@ namespace ProjectShaman.AI.Core
             List<VillagerProfile> pool = new List<VillagerProfile>(profiles);
             int count = Mathf.Min(ResolveGhostCount(), pool.Count);
 
-            for (int i = 0; i < count; i++)
-            {
-                int index = _random.Next(pool.Count);
-                VillagerProfile host = pool[index];
             List<GhostType> kinds = ShuffledGhostTypes();
             if (count > kinds.Count)
             {
                 AILog.Warn(AILog.FACTORY, $"{count} ghosts but only {kinds.Count} ghost types: some share a type");
             }
 
+            for (int i = 0; i < count; i++)
+            {
+                int index = _random.Next(pool.Count);
+                VillagerProfile host = pool[index];
                 pool.RemoveAt(index);
 
                 host.IsPossessed = true;
@@ -430,10 +434,6 @@ namespace ProjectShaman.AI.Core
             AILog.Log(AILog.FACTORY, $"AssignGhosts {count}/{profiles.Count}");
         }
 
-        private void AttachPossession(AI_Core core, VillagerProfile profile)
-        {
-            if (!profile.IsPossessed)
-            {
         // Every ghost type once, in a seeded order. Own stream, so the other seeded rolls stay as they were
         private List<GhostType> ShuffledGhostTypes()
         {
@@ -449,6 +449,10 @@ namespace ProjectShaman.AI.Core
             return kinds;
         }
 
+        private void AttachPossession(AI_Core core, VillagerProfile profile)
+        {
+            if (!profile.IsPossessed)
+            {
                 return;
             }
 
@@ -515,8 +519,31 @@ namespace ProjectShaman.AI.Core
                 return null;
             }
 
+            AssignAvoidancePriority(instance, profile);
             AILog.Log(AILog.FACTORY, profile.VillagerId, $"Instantiated at {profile.HomePosition}");
             return core;
+        }
+
+        // Two villagers of equal priority meeting head-on each wait for the other and lock up on a narrow path:
+        // each gets its own priority so one always gives way. Spread from the shared seed, so every run of a seed agrees
+        private void AssignAvoidancePriority(GameObject instance, VillagerProfile profile)
+        {
+            if (!instance.TryGetComponent(out UnityEngine.AI.NavMeshAgent agent))
+            {
+                return;
+            }
+
+            if (_avoidancePriorities.Count == 0)
+            {
+                System.Random random = new System.Random(unchecked(Seed * 31 + 29));
+                for (int value = AVOIDANCE_PRIORITY_MIN; value <= AVOIDANCE_PRIORITY_MAX; value++)
+                {
+                    _avoidancePriorities.Insert(random.Next(_avoidancePriorities.Count + 1), value);
+                }
+            }
+
+            agent.avoidancePriority = _avoidancePriorities[_spawnedVillagers.Count % _avoidancePriorities.Count];
+            AILog.Log(AILog.FACTORY, profile.VillagerId, $"Avoidance priority {agent.avoidancePriority}");
         }
 
         [ContextMenu("Create Villagers Offline")]

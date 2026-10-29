@@ -35,6 +35,8 @@ GameObject:
   - component: {fileID: 8403957162839405721}
   - component: {fileID: 9104857263910485726}
   - component: {fileID: 3810572946618203457}
+  - component: {fileID: 7480215936602146401}
+  - component: {fileID: 7480215936602146402}
   m_Layer: 0
   m_Name: Temp_Villager
   m_TagString: Untagged
@@ -618,3 +620,27 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 1357922434715849259, guid: 5ad35fbc2f5241743b98c9c94856b530, type: 3}
   m_PrefabInstance: {fileID: 7374822497957794101}
   m_PrefabAsset: {fileID: 0}
+--- !u!114 &7480215936602146401
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d9a9d56265fb81b071e2c80fbe3e0328, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Bump
+--- !u!114 &7480215936602146402
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 03f183ff45c83268f72ff664e7175743, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_VillagerBump
