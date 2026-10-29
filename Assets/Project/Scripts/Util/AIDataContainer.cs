@@ -9,4 +9,5 @@ public class AIDataContainer
     public List<NameEntry> names = new List<NameEntry>();
     public List<JobEntry> jobs = new List<JobEntry>();
     public List<RoutineEntry> routines = new List<RoutineEntry>();
+    public List<ActionEntry> actions = new List<ActionEntry>();
 }

@@ -22,11 +22,14 @@ public class QuestsTab : MonoBehaviour
         quests.QuestUpdated += HandleQuestChanged;
         quests.QuestEnded += HandleQuestChanged;
         quests.QuestListChanged += Rebuild;
+        PinManager.Instance.PinsChanged += Rebuild;
         Rebuild();
     }
 
     private void OnDisable()
     {
+        PinManager pins = PinManager.Existing;
+        if (pins != null) pins.PinsChanged -= Rebuild;
         QuestManager quests = QuestManager.Existing;
         if (quests == null) return;
         quests.QuestStarted -= HandleQuestChanged;

@@ -26,6 +26,8 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
         [SyncVar] private string _syncHomePlaceId;
         [SyncVar(hook = nameof(OnPossessionMarkChanged))] private bool _syncPossessionMarked;
+        // Action animation by Animator state name: clients cross-fade it themselves, which NetworkAnimator does not replicate
+        [SyncVar(hook = nameof(OnActionAnimationChanged))] private string _syncActionAnimation = string.Empty;
 
         [SyncVar] private int _syncCycleDays;
         [SyncVar] private int _syncSlotsPerDay;
@@ -47,6 +49,19 @@ namespace ProjectShaman.Network.AI
             aiCore = GetComponent<AI_Core>();
             aiMovement = GetComponent<AI_Movement>();
             visualController = GetComponent<AI_VisualController>();
+            if (TryGetComponent(out AI_VillagerModel model))
+            {
+                model.OnModelChanged += HandleModelChanged;
+            }
+        }
+
+        // Parameters (Speed) are replicated from and onto the current body's Animator
+        private void HandleModelChanged(Animator animator)
+        {
+            if (TryGetComponent(out NetworkAnimator networkAnimator))
+            {
+                networkAnimator.animator = animator;
+            }
         }
 
         public override void OnStartServer()
@@ -89,6 +104,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.ApplyNetworkPublicInfo(ReadPublicInfoFromSyncVars());
                     aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours, _syncLeaveHour, _syncHomeHour, _syncBedHour);
                     ApplyPossessionMark(_syncPossessionMarked);
+                    ApplyActionAnimation(_syncActionAnimation);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
                 }
@@ -222,6 +238,11 @@ namespace ProjectShaman.Network.AI
                 _networkState = aiCore.CurrentState;
             }
 
+            if (visualController != null && _syncActionAnimation != visualController.CurrentAction)
+            {
+                _syncActionAnimation = visualController.CurrentAction;
+            }
+
             AIBehaviourConfig config = AIManager.Instance != null ? AIManager.Instance.Config : null;
             bool marked = config != null && config.ShowPossessedMaterial && TryGetComponent(out AI_Possession _);
             if (marked != _syncPossessionMarked)
@@ -234,6 +255,32 @@ namespace ProjectShaman.Network.AI
         private void OnPossessionMarkChanged(bool oldValue, bool newValue)
         {
             ApplyPossessionMark(newValue);
+        }
+
+        private void OnActionAnimationChanged(string oldValue, string newValue)
+        {
+            // The server already played it when the work began
+            if (!isServer)
+            {
+                ApplyActionAnimation(newValue);
+            }
+        }
+
+        private void ApplyActionAnimation(string state)
+        {
+            if (visualController == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrEmpty(state))
+            {
+                visualController.StopAction();
+            }
+            else
+            {
+                visualController.PlayAction(state);
+            }
         }
 
         private void ApplyPossessionMark(bool marked)

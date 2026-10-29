@@ -34,6 +34,7 @@ GameObject:
   - component: {fileID: 7302948516720394851}
   - component: {fileID: 8403957162839405721}
   - component: {fileID: 9104857263910485726}
+  - component: {fileID: 3810572946618203457}
   m_Layer: 0
   m_Name: Temp_Villager
   m_TagString: Untagged
@@ -329,8 +330,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Work.AI_WorkPerformer
   _useAnimationEvent: 0
   _hitIntervalSeconds: 2
-  _turnSpeedDegrees: 360
-  _actionBindings: []
+  _turnSpeedDegrees: 120
   _isWorking: 0
   _currentActionId: 
   _currentStationId: 
@@ -531,6 +531,22 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e92196b8b1ebcca4bb2e6a4c6c5df4e9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_ItemReactionReceiver
+--- !u!114 &3810572946618203457
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e9734a536dd746a9bf4d5d087c13d631, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_VillagerModel
+  _maleModel: {fileID: 1917956565172271263, guid: 5ad35fbc2f5241743b98c9c94856b530, type: 3}
+  _femaleModel: {fileID: 5689006092174252741, guid: 68b2d422c48e36446ba0098edd315e50, type: 3}
+  _currentModel: {fileID: 8394972211832734494}
+  _placedGender: 0
 --- !u!1001 &7374822497957794101
 PrefabInstance:
   m_ObjectHideFlags: 0
