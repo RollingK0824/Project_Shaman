@@ -24,6 +24,11 @@ namespace ProjectShaman.AI
         private const string TURN_LEFT_STATE = "Turn Left";
         private const string TURN_RIGHT_STATE = "Turn Right";
         private const float MOVING_SPEED = 0.1f;
+        // Ground speed above this with the Animator not showing locomotion is reported once (walking in an idle pose)
+        private const float MISMATCH_SPEED = 0.5f;
+        private const float MISMATCH_SECONDS = 1f;
+
+        public const string TALK_GESTURE = "Talk";
 
         [SerializeField] private float _crossFadeSeconds = 0.2f;
         [Tooltip("Turning in place faster than this plays the turn step")]
@@ -40,6 +45,9 @@ namespace ProjectShaman.AI
         private float _lastYaw;
         private float _yawRate;
         private int _turnDirection;
+        private Vector3 _lastPosition;
+        private float _mismatchSeconds;
+        private bool _mismatchReported;
         private readonly HashSet<string> _reportedMissing = new HashSet<string>();
 
         public bool UpdateAnimatorLocally { get; set; } = true;
@@ -52,13 +60,14 @@ namespace ProjectShaman.AI
             movement = GetComponent<AI_Movement>();
             animator = GetComponentInChildren<Animator>();
             _lastYaw = transform.eulerAngles.y;
+            _lastPosition = transform.position;
 
             core.OnStateChanged += HandleStateChanged;
         }
 
         void Update()
         {
-            if (animator == null)
+            if (animator == null || !animator.isActiveAndEnabled)
             {
                 return;
             }
@@ -71,6 +80,7 @@ namespace ProjectShaman.AI
             bool moving = animator.GetFloat(MOVE_SPEED_PARAM) > MOVING_SPEED;
             UpdateStop(moving);
             UpdateTurn(moving);
+            CheckWalkingPose();
         }
 
         public void PlayAction(string state)
@@ -101,6 +111,7 @@ namespace ProjectShaman.AI
             _actionLayer = layer;
             _stoppingLayer = -1;
             CrossFade(layer, state);
+            AILog.Log(AILog.WORK, name, $"Animation {state} ({animator.GetLayerName(layer)})");
         }
 
         // Plays the action's "<state> Stop" when the Animator has one (it returns to Empty by itself), otherwise fades out
@@ -120,6 +131,7 @@ namespace ProjectShaman.AI
 
             bool hasStop = HasState(_actionLayer, stop);
             CrossFade(_actionLayer, hasStop ? stop : EMPTY_STATE);
+            AILog.Log(AILog.WORK, name, $"Animation end → {(hasStop ? stop : EMPTY_STATE)}");
             _stoppingLayer = hasStop ? _actionLayer : -1;
             _actionLayer = -1;
         }
@@ -191,6 +203,55 @@ namespace ProjectShaman.AI
             }
         }
 
+        // Measured from the transform, so it also catches a client whose synced Speed lags or a move that bypasses the agent
+        private void CheckWalkingPose()
+        {
+            float deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
+            Vector3 step = transform.position - _lastPosition;
+            _lastPosition = transform.position;
+            step.y = 0f;
+            float groundSpeed = step.magnitude / deltaTime;
+
+            string pose = groundSpeed > MISMATCH_SPEED ? DescribeWrongPose() : null;
+            if (pose == null)
+            {
+                _mismatchSeconds = 0f;
+                _mismatchReported = false;
+                return;
+            }
+
+            _mismatchSeconds += deltaTime;
+            if (!_mismatchReported && _mismatchSeconds >= MISMATCH_SECONDS)
+            {
+                _mismatchReported = true;
+                AILog.Warn(AILog.WORK, $"{name} moving {groundSpeed:F1}m/s without walk animation: {pose}");
+            }
+        }
+
+        private string DescribeWrongPose()
+        {
+            float speed = animator.GetFloat(MOVE_SPEED_PARAM);
+            int baseLayer = animator.GetLayerIndex(BASE_LAYER);
+            bool baseWalking = baseLayer < 0 || animator.GetCurrentAnimatorStateInfo(baseLayer).fullPathHash == PathHash(baseLayer, LOCOMOTION_STATE);
+            string covering = null;
+            foreach (string layerName in ACTION_LAYERS)
+            {
+                int layer = animator.GetLayerIndex(layerName);
+                if (layer >= 0 && animator.GetCurrentAnimatorStateInfo(layer).fullPathHash != PathHash(layer, EMPTY_STATE))
+                {
+                    covering = layerName;
+                }
+            }
+
+            if (speed > MOVING_SPEED && baseWalking && covering == null)
+            {
+                return null;
+            }
+
+            return $"Speed={speed:F2}, base={(baseWalking ? LOCOMOTION_STATE : "not locomotion")}, covered by={covering ?? "none"}, action='{CurrentAction}', " +
+                $"local={UpdateAnimatorLocally}, agent={(movement != null ? movement.CurrentSpeed : 0f):F2}";
+        }
+
         private int FindActionLayer(string state)
         {
             foreach (string layerName in ACTION_LAYERS)
@@ -207,7 +268,11 @@ namespace ProjectShaman.AI
 
         private void CrossFade(int layer, string state)
         {
-            animator.CrossFadeInFixedTime(PathHash(layer, state), _crossFadeSeconds, layer);
+            // Work can end while the villager is being destroyed with its Animator already off
+            if (animator.isActiveAndEnabled)
+            {
+                animator.CrossFadeInFixedTime(PathHash(layer, state), _crossFadeSeconds, layer);
+            }
         }
 
         private bool HasState(int layer, string state)

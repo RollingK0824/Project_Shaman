@@ -9,9 +9,6 @@ namespace ProjectShaman.Network.AI
     [RequireComponent(typeof(NetworkIdentity), typeof(AI_Conversation))]
     public class Net_AIConversation : NetworkBehaviour
     {
-        // Gesture layer state played on each client that hears the line
-        private const string TALK_GESTURE = "Talk";
-
         private AI_Conversation _conversation;
         private AI_SpeechBubble _bubble;
         private AI_VisualController _visual;
@@ -76,7 +73,7 @@ namespace ProjectShaman.Network.AI
         {
             if (_visual != null)
             {
-                _visual.PlayGesture(TALK_GESTURE);
+                _visual.PlayGesture(AI_VisualController.TALK_GESTURE);
             }
 
             if (_bubble == null)
