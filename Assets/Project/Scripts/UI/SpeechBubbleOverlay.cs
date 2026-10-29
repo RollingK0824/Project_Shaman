@@ -15,6 +15,8 @@ public class SpeechBubbleOverlay : MonoBehaviour
     [SerializeField] private RectTransform _template;
     [SerializeField, Tooltip("Pixels between the head and the bubble's bottom edge (reference 1920x1080)")]
     private float _headOffset = 24f;
+    [SerializeField, Tooltip("Meters from the head bone to the top of the head, so the bubble follows a crouch or a sit")]
+    private float _headBoneTop = 0.25f;
     [SerializeField] private float _maxWidth = 520f;
     [SerializeField, Tooltip("Speakers farther than this (m) from the camera show no bubble; 0 = no limit")]
     private float _maxDistance = 25f;
@@ -35,6 +37,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
         public TMP_Text Text;
         public LayoutElement TextLayout;
         public Transform Speaker;
+        public Transform Head;
         public float HideTime;
         public float Distance;
         public float NextVisibilityCheck;
@@ -128,6 +131,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
         {
             bubble = Rent();
             bubble.Speaker = speaker;
+            bubble.Head = null;
             _active.Add(bubble);
         }
 
@@ -249,14 +253,14 @@ public class SpeechBubbleOverlay : MonoBehaviour
             }
 
             bool shown = _showNames && viewer != null && tag.Speaker.gameObject.activeInHierarchy
-                && IsOnScreen(tag.Speaker, viewer) && IsInSight(tag, viewer) && Place(tag, viewer, _nameMaxDistance, 0f);
+                && IsOnScreen(tag, viewer) && IsInSight(tag, viewer) && Place(tag, viewer, _nameMaxDistance, 0f);
             tag.Rect.gameObject.SetActive(shown);
         }
     }
 
-    private static bool IsOnScreen(Transform target, Camera viewer)
+    private bool IsOnScreen(Bubble tag, Camera viewer)
     {
-        Vector3 viewport = viewer.WorldToViewportPoint(target.position + Vector3.up * HEAD_HEIGHT);
+        Vector3 viewport = viewer.WorldToViewportPoint(HeadTop(tag));
         return viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
     }
 
@@ -268,14 +272,16 @@ public class SpeechBubbleOverlay : MonoBehaviour
         }
 
         tag.NextVisibilityCheck = Time.time + _nameVisibilityInterval;
-        tag.IsInSight = HasLineOfSight(tag.Speaker, viewer);
+        tag.IsInSight = HasLineOfSight(tag, viewer);
         return tag.IsInSight;
     }
 
-    private bool HasLineOfSight(Transform target, Camera viewer)
+    private bool HasLineOfSight(Bubble tag, Camera viewer)
     {
+        Transform target = tag.Speaker;
         Vector3 eye = viewer.transform.position;
-        Vector3 head = target.position + Vector3.up * HEAD_HEIGHT * 0.85f;
+        Transform headBone = FindHead(tag);
+        Vector3 head = headBone != null ? headBone.position : target.position + Vector3.up * HEAD_HEIGHT * 0.85f;
         Vector3 toHead = head - eye;
         float distance = toHead.magnitude;
         if (distance < 0.01f)
@@ -306,10 +312,27 @@ public class SpeechBubbleOverlay : MonoBehaviour
         return tag != null && tag.Rect.gameObject.activeSelf ? tag.Rect.rect.height + SCREEN_MARGIN * 0.5f : 0f;
     }
 
+    private Vector3 HeadTop(Bubble bubble)
+    {
+        Transform head = FindHead(bubble);
+        return head != null ? head.position + Vector3.up * _headBoneTop : bubble.Speaker.position + Vector3.up * HEAD_HEIGHT;
+    }
+
+    private static Transform FindHead(Bubble bubble)
+    {
+        if (bubble.Head != null && bubble.Head.gameObject.activeInHierarchy)
+        {
+            return bubble.Head;
+        }
+
+        Animator animator = bubble.Speaker.GetComponentInChildren<Animator>();
+        bubble.Head = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+        return bubble.Head;
+    }
+
     private bool Place(Bubble bubble, Camera viewer, float maxDistance, float extraOffset)
     {
-        Vector3 head = bubble.Speaker.position + Vector3.up * HEAD_HEIGHT;
-        Vector3 screen = viewer.WorldToScreenPoint(head);
+        Vector3 screen = viewer.WorldToScreenPoint(HeadTop(bubble));
         bubble.Distance = screen.z;
 
         if (screen.z <= 0f || (maxDistance > 0f && screen.z > maxDistance))
