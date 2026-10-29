@@ -35,7 +35,7 @@ public class NetPlayerVoice : NetworkBehaviour
 
 
     // [로컬 클라] 방울 무전 키. 플레이어 입력 에셋 (ShamanInput)과 별도로 관리
-    private readonly InputAction _radioAction = new InputAction("VoiceRadio", InputActionType.Button, "<Keyboard>/b");
+    private InputAction _radioAction;
 
     private NetPlayerStatus _status;
     private NetPlayerEquipment _equipment;
@@ -135,7 +135,7 @@ public class NetPlayerVoice : NetworkBehaviour
             return;
         }
 
-        _radioAction.Enable();
+        //_radioAction = InputManager.Instance.Actions.Player.VoiceRadio;
         SteamUser.StartVoiceRecording();
         _recording = true;
         _inventory.QuickSlotChanged += HandleQuickSlotChanged;
@@ -150,19 +150,18 @@ public class NetPlayerVoice : NetworkBehaviour
             _recording = false;
         }
 
-        _radioAction.Disable();
+        _radioAction = null;
         _inventory.QuickSlotChanged -= HandleQuickSlotChanged;
         base.OnStopLocalPlayer();
     }
 
-    private void OnDestroy() => _radioAction.Dispose();
 
     // [로컬 클라] 녹음된만큼 꺼내서 서버로
     private void Update()
     {
         if (!_recording) return;
 
-        IsTalkingOnRadio = !VoiceSettings.MicMuted && !IsDead && IsHoldingBell && _radioAction.IsPressed();
+        IsTalkingOnRadio = !VoiceSettings.MicMuted && !IsDead && IsHoldingBell && _radioAction.IsPressed() && !InputManager.Instance.IsRebinding;
 
         if (IsTalkingOnRadio != _wasTalkingOnRadio)
         {
