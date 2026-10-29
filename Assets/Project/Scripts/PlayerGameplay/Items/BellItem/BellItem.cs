@@ -59,7 +59,7 @@ public class BellItem : ItemBase
 
         if (!TryBuildUseRequest(out var context)) return;
 
-        PlayBellPulse();
+        ItemVfxPresentation.Chime(Owner, transform);
         Debug.Log($"[Bell] 사용: {Data.DisplayName}", gameObject);
         PlayerEvents.RaiseItemUseRequested(context);
     }
