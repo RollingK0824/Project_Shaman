@@ -16,6 +16,13 @@ public class NetRitualFlow : NetworkBehaviour
     [Tooltip("밤 시작 후 이 시간 안에 깃발을 켜야 함. 못 켜면 오늘 밤 퇴마 실패")]
     [SerializeField, Min(1f)] private float _activateWindow = 30f;
 
+    [Header("봉인 항아리 (디펜스 성공)")]
+    [Tooltip("NetworkIdentity가 있고 RoomManager spawnPrefabs에 등록된 항아리")]
+    [SerializeField] private GameObject _sealingJarPrefab;
+    [SerializeField] private NetSealCinematic _sealCinematic;
+    [Tooltip("성공 순간 깃발에서 이 거리 안의 살아 있는 플레이어만 연출을 봄")]
+    [SerializeField, Min(1f)] private float _cinematicRadius = 15f;
+
     [Header("테스트")]
     [Tooltip("켜면 지목이 틀려도 의식 디펜스가 시작됨")]
     [SerializeField] private bool _debugForceRitual;
@@ -25,6 +32,10 @@ public class NetRitualFlow : NetworkBehaviour
 
     // [서버] 오늘 밤 의식이 열렸는지 (지목 정답일 때만 true) 판정 내용은 클라로 보내지 않음
     private bool _hasRitual;
+    // [서버] 지목이 실제로 정답인지 (_debugForceRitual로 연 의식이면 false -> 항아리 생성 x)
+    private bool _verdictCorrect;
+    // [서버] 지금까지 만든 봉인 항아리 수 (= 다음 항아리 자리)
+    private int _jarCount;
     // [서버] 깃발 활성화 마감 시각 (NetworkTime 기준)
     private double _activateDeadline;
 
@@ -71,6 +82,7 @@ public class NetRitualFlow : NetworkBehaviour
     // [서버] 밤 시작 때 지목 판정.. 정답일 때만 깃발 의식 활성화
     private void HandleResolved(DefenseVerdict verdict)
     {
+        _verdictCorrect = verdict.IsCorrect;
         _hasRitual = verdict.IsCorrect || _debugForceRitual;
 
         if (_hasRitual)
@@ -136,9 +148,63 @@ public class NetRitualFlow : NetworkBehaviour
 
         _hasRitual = false;
 
-        _state.ServerSetPhase(won ? RitualPhase.Succeeded : RitualPhase.Failed);
+        if (!won)
+        {
+            _state.ServerSetPhase(RitualPhase.Failed);
+            Debug.Log("[NetRitualFlow] 디펜스 종료 -> 디펜스 실패", this);
+            return;
+        }
 
-        Debug.Log($"[NetRitualFlow] 디펜스 종료 -> 디펜스 {(won ? "성공" : "실패")}", this);
+        // 성공 단계 종료 시각 = 연출 끝. 마지막 퇴마면 EndingUI가 이 시각까지 기다림
+        double cinematicEnd = NetworkTime.time + (_sealCinematic != null ? _sealCinematic.Duration : 0f);
+        _state.ServerSetPhase(RitualPhase.Succeeded, cinematicEnd);
+
+        int jarIndex = _verdictCorrect ? ServerSpawnJar() : _jarCount;
+        ServerPlaySealCinematic(jarIndex);
+
+        Debug.Log($"[NetRitualFlow] 디펜스 종료 -> 디펜스 성공 (항아리 {(_verdictCorrect ? jarIndex.ToString() : "없음, 테스트 의식")})", this);
+    }
+
+    // [서버] 깃발 뒤 항아리 자리에 봉인 항아리 생성. 네트워크 오브젝트라 늦게 접속한 클라도 보임
+    [Server]
+    private int ServerSpawnJar()
+    {
+        int index = _jarCount;
+        Transform point = _sealCinematic != null ? _sealCinematic.GetJarPoint(index) : null;
+        if (_sealingJarPrefab == null || point == null)
+        {
+            Debug.LogWarning("[NetRitualFlow] 봉인 항아리 프리팹 또는 항아리 자리가 없습니다.", this);
+            return index;
+        }
+
+        _jarCount++;
+        GameObject jar = Instantiate(_sealingJarPrefab, point.position, point.rotation);
+        NetworkServer.Spawn(jar);
+        return index;
+    }
+
+    // [서버] 성공 순간 깃발 근처의 살아 있는 플레이어 = 디펜스 참여자 -> 그 클라에서만 연출
+    [Server]
+    private void ServerPlaySealCinematic(int jarIndex)
+    {
+        if (_sealCinematic == null) return;
+
+        Vector3 center = _flag.transform.position;
+        float radiusSqr = _cinematicRadius * _cinematicRadius;
+
+        foreach (NetPlayerStatus player in PlayerRoster.Players)
+        {
+            if (player == null || player.IsDead || player.connectionToClient == null) continue;
+            if ((player.transform.position - center).sqrMagnitude > radiusSqr) continue;
+
+            TargetPlaySealCinematic(player.connectionToClient, jarIndex);
+        }
+    }
+
+    [TargetRpc]
+    private void TargetPlaySealCinematic(NetworkConnectionToClient target, int jarIndex)
+    {
+        if (_sealCinematic != null) _sealCinematic.Play(jarIndex);
     }
 
     // [서버] 아침이 되면 깃발 비활성화

@@ -24,6 +24,7 @@ public class DefenseHUD : MonoBehaviour
 
     // 단계상 진행 패널을 보여야 하는데, 신제 표시는 배너가 없을 때만
     private bool _wantStatus;
+    private bool _wantFlagWait;
 
     private void OnEnable()
     {
@@ -99,8 +100,7 @@ public class DefenseHUD : MonoBehaviour
         // 진행 패널(타이머 + HP)은 깃발을 켠 뒤에만
         _wantStatus = phase == RitualPhase.Countdown || phase == RitualPhase.Active;
 
-        // 깃발 대기 타이머는 배너와 상관없이 바로 표시 (처음 몇 초가 가장 급함)
-        if (_flagWaitRoot != null) _flagWaitRoot.SetActive(phase == RitualPhase.WaitingFlag);
+        _wantFlagWait = phase == RitualPhase.WaitingFlag;
 
         RefreshStatusVisible();
     }
@@ -108,6 +108,8 @@ public class DefenseHUD : MonoBehaviour
     private void RefreshStatusVisible()
     {
         _statusRoot.SetActive(_wantStatus && !_bannerRoot.activeSelf);
+
+        if (_flagWaitRoot != null) _flagWaitRoot.SetActive(_wantFlagWait && !_bannerRoot.activeSelf);
     }
 
     private static string GetBannerMessage(RitualPhase phase) => phase switch
