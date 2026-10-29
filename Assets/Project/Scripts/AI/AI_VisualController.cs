@@ -212,17 +212,34 @@ namespace ProjectShaman.AI
                 direction = _yawRate > 0f ? 1 : -1;
             }
 
+            int layer = animator.GetLayerIndex(BASE_LAYER);
             if (direction == _turnDirection)
             {
+                if (direction == 0)
+                {
+                    RecoverLocomotion(layer);
+                }
                 return;
             }
 
             _turnDirection = direction;
-            int layer = animator.GetLayerIndex(BASE_LAYER);
             string state = direction > 0 ? TURN_RIGHT_STATE : direction < 0 ? TURN_LEFT_STATE : LOCOMOTION_STATE;
             if (layer >= 0 && HasState(layer, state))
             {
                 CrossFade(layer, state);
+            }
+        }
+
+        private void RecoverLocomotion(int layer)
+        {
+            if (layer < 0 || animator.IsInTransition(layer) || !HasState(layer, LOCOMOTION_STATE))
+            {
+                return;
+            }
+
+            if (animator.GetCurrentAnimatorStateInfo(layer).fullPathHash != PathHash(layer, LOCOMOTION_STATE))
+            {
+                CrossFade(layer, LOCOMOTION_STATE);
             }
         }
 
