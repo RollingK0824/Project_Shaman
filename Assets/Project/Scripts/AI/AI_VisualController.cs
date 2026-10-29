@@ -35,6 +35,8 @@ namespace ProjectShaman.AI
         [SerializeField] private float _turnStartDegreesPerSecond = 30f;
         [Tooltip("Turning slower than this returns to locomotion")]
         [SerializeField] private float _turnStopDegreesPerSecond = 10f;
+        [Tooltip("Share of spoken lines that come with the talk gesture, so it does not repeat on every line")]
+        [SerializeField, Range(0f, 1f)] private float _talkGestureChance = 0.35f;
 
         private AI_Core core;
         private AI_Movement movement;
@@ -136,10 +138,17 @@ namespace ProjectShaman.AI
             _actionLayer = -1;
         }
 
-        // Upper-body gesture over whatever the legs do; skipped while an action owns the arms
+        // Rolled once on the server per line, so every client shows the same lines with a gesture
+        public bool RollTalkGesture()
+        {
+            return Random.value < _talkGestureChance;
+        }
+
+        // Upper-body gesture while standing; skipped while walking up to someone or while an action owns the arms
         public void PlayGesture(string state)
         {
-            if (animator == null || CurrentAction.Length > 0)
+            if (animator == null || !animator.isActiveAndEnabled || CurrentAction.Length > 0 ||
+                animator.GetFloat(MOVE_SPEED_PARAM) > MOVING_SPEED)
             {
                 return;
             }

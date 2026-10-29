@@ -270,7 +270,7 @@ namespace ProjectShaman.Network.AI
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
             // Called on at home in the evening: a late-caller greeting instead of the daytime one
             string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random) : VillagerDialogueService.Greeting());
-            RpcTalkGesture();
+            TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, opening, ids, labels);
             return true;
         }
@@ -294,7 +294,7 @@ namespace ProjectShaman.Network.AI
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
 
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer shown to {player.name}: #{offer.InstanceId} {offer.TitleText} (held={_holdsVillager})");
-            RpcTalkGesture();
+            TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, DescribeOffer(offer), new[] { TOPIC_QUEST_ACCEPT, TOPIC_QUEST_DECLINE }, new[] { "맡겠소 (수락)", "다음에 하겠소 (거절)" });
         }
 
@@ -359,7 +359,7 @@ namespace ProjectShaman.Network.AI
                 AILog.Log(AILog.INTERACTION, villagerId, "Quest declined");
             }
 
-            RpcTalkGesture();
+            TalkGesture();
             TargetFinal(sender, line);
             EndDialogue(topicId == TOPIC_QUEST_ACCEPT ? "quest answered" : "quest declined");
         }
@@ -382,7 +382,7 @@ namespace ProjectShaman.Network.AI
 
             string toolName = AIDisplayNames.Tool(carried.Tool.TypeId);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Tool delivery shown to {player.name}: #{quest.InstanceId} {carried.Tool.InstanceId} (held={_holdsVillager})");
-            RpcTalkGesture();
+            TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, $"<b>{quest.TitleText}</b>\n그 {toolName}, 내 것 같구려. 돌려주시겠소?",
                 new[] { TOPIC_TOOL_GIVE, TOPIC_TOOL_LATER }, new[] { $"{toolName}{AIDisplayNames.Josa(toolName, "을", "를")} 건넨다", "나중에 주겠소" });
         }
@@ -408,7 +408,7 @@ namespace ProjectShaman.Network.AI
                 line = "찾아 주셨구려, 정말 고맙소!";
             }
 
-            RpcTalkGesture();
+            TalkGesture();
             TargetFinal(sender, line);
             EndDialogue(topicId == TOPIC_TOOL_GIVE ? "tool delivered" : "tool delivery put off");
         }
@@ -490,7 +490,7 @@ namespace ProjectShaman.Network.AI
 
             if (ends)
             {
-                RpcTalkGesture();
+                TalkGesture();
                 TargetFinal(sender, answer);
                 EndDialogue("finished");
                 return;
@@ -498,7 +498,7 @@ namespace ProjectShaman.Network.AI
 
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config), out string[] ids, out string[] labels);
-            RpcTalkGesture();
+            TalkGesture();
             TargetAnswer(sender, answer, ids, labels);
         }
 
@@ -526,7 +526,7 @@ namespace ProjectShaman.Network.AI
             {
                 if (_dialogueConnection.identity != null)
                 {
-                    RpcTalkGesture();
+                    TalkGesture();
                     TargetFinal(_dialogueConnection, lost ? "아이고, 이만 가 봐야겠소" : VillagerDialogueService.Farewell(_conversation));
                 }
 
@@ -571,13 +571,12 @@ namespace ProjectShaman.Network.AI
             }
         }
 
-        // Everyone nearby sees the villager gesture while it answers; the text itself goes only to the talking player
-        [ClientRpc]
-        private void RpcTalkGesture()
+        // The answer text goes only to the talking player; the occasional gesture is seen by everyone nearby
+        private void TalkGesture()
         {
-            if (TryGetComponent(out AI_VisualController visual))
+            if (TryGetComponent(out Net_AIConversation conversation))
             {
-                visual.PlayGesture(AI_VisualController.TALK_GESTURE);
+                conversation.TalkGesture();
             }
         }
 
