@@ -51,6 +51,8 @@ GameObject:
   - component: {fileID: 7073921401587017176}
   - component: {fileID: 2070534927183921552}
   - component: {fileID: 8301073052698845230}
+  - component: {fileID: 7480215936602144201}
+  - component: {fileID: 7480215936602144202}
   m_Layer: 0
   m_Name: Temp_Minion
   m_TagString: Untagged
@@ -286,6 +288,39 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0e18e86e213edeb44a88f9f910d29c85, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_Minion
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &7480215936602144201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ee92af14761f884c8eea45ae75e4153, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_ModelVisual
+  _visualRoot: {fileID: 3012205497796513400}
+  _modelPrefabs:
+  - {fileID: 3281112308234323704, guid: 502a7246bcc5494488dd41f757ea30d2, type: 3}
+  - {fileID: 6047742007795317715, guid: 4af90b5415e6c8546b84f60c6e36081a, type: 3}
+  - {fileID: 7331120808683262883, guid: d3c66b89cd5e41c43a4c2f02426e1a51, type: 3}
+  _modelIndex: -1
+--- !u!114 &7480215936602144202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecf742c3a03aa4f44ac313a30edc5286, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_ModelVisual
   syncDirection: 0
   syncMode: 0
   syncInterval: 0

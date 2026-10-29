@@ -22,6 +22,8 @@ GameObject:
   - component: {fileID: 2598994407249965612}
   - component: {fileID: 5934861891639141751}
   - component: {fileID: 7316824096512830645}
+  - component: {fileID: 7480215936602144101}
+  - component: {fileID: 7480215936602144102}
   m_Layer: 0
   m_Name: Temp_GhostEntity
   m_TagString: Untagged
@@ -324,6 +326,40 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4b4936ade08247d3a737071c471ad2c2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Ghost.AI_GhostItemReceiver
+--- !u!114 &7480215936602144101
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ee92af14761f884c8eea45ae75e4153, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_ModelVisual
+  _visualRoot: {fileID: 6967685878968515192}
+  _modelPrefabs:
+  - {fileID: 4557267052246476001, guid: 48ca3e6adf7cded408f352b47f9990c0, type: 3}
+  - {fileID: 4737092283225808739, guid: 83d58e163ffb4fb4b916a8f9f005ef45, type: 3}
+  - {fileID: 1533975151326419142, guid: 5cb87c3cf9febae449918c33a02f23f8, type: 3}
+  - {fileID: 5081120421402079638, guid: c713e20f26f36ee4489bc3621901ed4f, type: 3}
+  _modelIndex: -1
+--- !u!114 &7480215936602144102
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4322653122997329672}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecf742c3a03aa4f44ac313a30edc5286, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_ModelVisual
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
 --- !u!1 &5381516708656190738
 GameObject:
   m_ObjectHideFlags: 0

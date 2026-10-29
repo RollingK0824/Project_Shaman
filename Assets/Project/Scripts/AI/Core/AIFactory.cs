@@ -413,11 +413,18 @@ namespace ProjectShaman.AI.Core
             {
                 int index = _random.Next(pool.Count);
                 VillagerProfile host = pool[index];
+            List<GhostType> kinds = ShuffledGhostTypes();
+            if (count > kinds.Count)
+            {
+                AILog.Warn(AILog.FACTORY, $"{count} ghosts but only {kinds.Count} ghost types: some share a type");
+            }
+
                 pool.RemoveAt(index);
 
                 host.IsPossessed = true;
                 host.GhostId = $"GHOST_{i:00}";
-                AILog.Log(AILog.GHOST, host.VillagerId, $"Assigned as host of {host.GhostId}");
+                host.GhostType = kinds[i % kinds.Count];
+                AILog.Log(AILog.GHOST, host.VillagerId, $"Assigned as host of {host.GhostId} ({host.GhostType})");
             }
 
             AILog.Log(AILog.FACTORY, $"AssignGhosts {count}/{profiles.Count}");
@@ -427,11 +434,26 @@ namespace ProjectShaman.AI.Core
         {
             if (!profile.IsPossessed)
             {
+        // Every ghost type once, in a seeded order. Own stream, so the other seeded rolls stay as they were
+        private List<GhostType> ShuffledGhostTypes()
+        {
+            List<GhostType> kinds = new List<GhostType>((GhostType[])Enum.GetValues(typeof(GhostType)));
+            System.Random random = new System.Random(unchecked(Seed * 31 + 17));
+
+            for (int i = kinds.Count - 1; i > 0; i--)
+            {
+                int j = random.Next(i + 1);
+                (kinds[i], kinds[j]) = (kinds[j], kinds[i]);
+            }
+
+            return kinds;
+        }
+
                 return;
             }
 
             AI_Possession possession = core.gameObject.AddComponent<AI_Possession>();
-            possession.Initialize(profile.GhostId, _random.Next(), Mathf.Min(_behaviourConfig.InitialYin, _behaviourConfig.MaxYin));
+            possession.Initialize(profile.GhostId, _random.Next(), profile.GhostType, Mathf.Min(_behaviourConfig.InitialYin, _behaviourConfig.MaxYin));
             profile.Possession = possession;
         }
 
