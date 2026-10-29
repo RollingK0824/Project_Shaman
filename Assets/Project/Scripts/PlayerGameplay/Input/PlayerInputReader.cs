@@ -19,6 +19,10 @@ public class PlayerInputReader : MonoBehaviour
 
     public event Action UseItemStarted;
     public event Action UseItemCanceled;
+    // Physical release only; action-map shutdown/UI cancellation must never throw a held item.
+    public event Action UseItemReleased;
+    public bool CanReadItemInput => isActiveAndEnabled && _input != null && _input.Player.enabled &&
+        !WorldInputBlocked && !IsCancelReservedForUI && !InputManager.Instance.IsRebinding;
 
     public event Action<int> SlotSelected;
 
@@ -320,6 +324,9 @@ public class PlayerInputReader : MonoBehaviour
     private void OnUseItemCanceled(
         InputAction.CallbackContext context)
     {
+        if (Application.isFocused && context.action.enabled && CanReadItemInput &&
+            context.control is UnityEngine.InputSystem.Controls.ButtonControl button && !button.isPressed)
+            UseItemReleased?.Invoke();
         if (WorldInputBlocked)
         {
             return;
