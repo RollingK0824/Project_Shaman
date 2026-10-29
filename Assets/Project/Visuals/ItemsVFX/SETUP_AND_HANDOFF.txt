@@ -1,0 +1,68 @@
+Project Shaman / Item VFX / 2026-10-29
+
+적용
+- BellPulse: Magic effects pack의 입자 재질 기반. 방울 주변의 작고 은은한 잔입자.
+  기존 에셋 참조 유지를 위해 이름만 BellPulse이며, 충격파/화면 굴절은 제거함.
+- GongPulse: Distortion Shockwaves VFX / Particle Shockwave 3 기반. 넓은 굴절.
+- BarrierActivate: Magic effects pack / Smoke hemisphere loop 기반 회색 발동 연무.
+  기존 회색 결계와 지속 시간은 유지. 자기 결계 및 집 결계 최초 활성화 시 재생.
+- TalismanActivate: 같은 팩 / Buff 기반 옅은 금빛 발동 효과.
+- BeanTrail / BeanImpact: 같은 팩 / Sparks white 및 Smoke puff 기반 궤적과 접촉 가루.
+  연무에는 같은 팩의 Smoke26 질감을 사용해 만화풍 외곽선을 줄임.
+
+설정 위치
+- 이 폴더의 프리팹 및 Materials: 크기, 색, 방출량 조정.
+- Resources/ItemVfxLibrary.asset: 런타임 참조. 빌드에서도 포함됨.
+- 코드: Assets/Project/Scripts/PlayerGameplay/Items/ItemVfx*.cs
+- 다운로드 원본은 SourcePacks/MagicEffectsFree 및 SourcePacks/DistortionShockwaves에 정리.
+  사용 중인 원본 의존 파일과 GUID는 유지.
+  미사용 원본 효과/데모 174개는 D:/Jun/LocalChangesCleanup_20261029/Assets 아래에
+  .meta와 함께 백업해 프로젝트에서 제외함. 추가 효과 제작 시 필요한 원본을 복원할 수 있음.
+- 원본 팩 텍스처와 Mirza 충격파 셰이더를 참조하므로 해당 의존 에셋 및 .meta도
+  함께 버전 관리해야 함. SourcePacks를 삭제하면 효과가 깨질 수 있음.
+
+재생 / 판정 경계
+- BellItem/GongItem.OnUseStarted: 요청 가능한 사용의 로컬 연출.
+- BellUseAction/GongUseAction.PlayRemotePresentation: 원격 연출.
+- BeanMugwortProjectile.InitializeVisual: 표시용 투사체만 궤적 생성.
+- BeanMugwortProjectile.Hit: 표시용 투사체의 첫 물리 접촉에만 가루 생성.
+  접촉 가루는 귀신 Slow 성공 표시가 아님. 판정용 투사체에는 VFX를 붙이지 않음.
+- BarrierWardVisual.ApplyReplicatedState: 처음 활성화됐을 때 1회.
+- HouseBarrierWard.Arm: 첫 활성화 때 1회.
+- PlayerItemFeedback -> PlayerTalismanCollection.UseCommitted: 효과부적 적용 성공 후 1회.
+- VFX에서는 피해/CC/소모/ReportUse를 실행하지 않음.
+- 일시 효과 자동 제거, 동시에 최대 32개. 투사체 궤적은 투사체와 함께 제거됨.
+- 징 충격파 동안 활성 Base Game 카메라에 색상/깊이 텍스처를 임시 요청하고 원래 값으로 복원.
+  방울은 이 카메라 설정을 사용하지 않음.
+  프로젝트 URP 설정이나 카메라 프리팹을 저장하지 않음.
+
+네트워크 담당 전달
+1. 기존 NetPlayerItemUse.RpcPlayUsePresentation(includeOwner=false)가 호출하는
+   UseAction.PlayRemotePresentation에 방울/징/팥쑥 효과가 연결됨.
+   소유 클라이언트는 로컬에서 이미 재생하므로 중복 RPC 재생 금지.
+2. NetPlayerBarrier의 기존 BarrierWardVisual.ApplyReplicatedState 경로는
+   활성 전환 때 새 결계 발동 효과도 재생함. 실제 여러 PC에서의 동시 표시는 추가 확인 필요.
+3. 효과부적은 NetPlayerTalisman.CmdUse의 TryUse 성공 시점에 서버 성공 알림을
+   해당 플레이어의 관찰자에게 보내는 연결이 필요함.
+   수신 측은 ItemVfxPresentation.Talisman(playerGameObject)를 사용 1회당 한 번 호출.
+   호스트에서 기존 UseCommitted로 이미 재생된 인스턴스는 RPC에서 중복 재생하지 말 것.
+   거절된 요청, 초기 상태 복제, 단순 버프 만료/스냅샷 갱신에서 재생하면 안 됨.
+   현 TargetEffects는 상태 동기화이므로 사용 성공 이벤트로 간주하면 안 됨.
+4. Network/Ghost/Core 및 팀원 씬은 이번 작업에서 수정하지 않음.
+
+검증
+- Unity 6000.3.23f1, URP. 실제 PlayerPrototype 1의 로컬 Player에서 Play 검증.
+- 방울/징 실제 장착 사용: 요청 1회, VFX 1회, 종료 시 제거. 징은 카메라 설정 복구.
+- 방울 잔입자 변경 후 1P/3P 실제 사용 재검증: 1회 재생/제거, 굴절 설정 미사용,
+  3P 장착 방울 중심 위치 확인. bell-results.txt 및 BellChime.png 참고.
+- 원격 연출 메서드 단독 호출: 요청/소모 없이 VFX만 1회. 실제 멀티 세션 검증은 아님.
+- 팥쑥 실제 사용: 표시 투사체만 궤적. 동일 충돌 콜백 두 번 주입해 가루 1회 확인.
+  귀신과의 실제 전투/물리 충돌 검증을 대신하지 않음.
+- 결계 실제 사용 및 반복 활성 상태 적용: 발동 1회, 기존 보호 기능 유지.
+- 효과부적 Play 인벤토리에 드로잉 저장 후 실제 TryUse: 성공 1회, 실패 시 추가 연출 없음.
+- 별도 Game 카메라/줄무늬 배경으로 실제 굴절과 색/질감 캡처 확인.
+- 중첩 카메라 요청과 일시 VFX 정리 확인. 씬은 저장하지 않음.
+- QA 코드/이미지/결과는 D:/Jun/ItemPackVfxQA_20261029 보관.
+- 기존 씬의 Player (5)에는 PlayerController NetworkIdentity 누락 경고가 있음.
+  이번 VFX와 별개이며 팀원 소유 연결 상태를 수정하지 않음.
+- 빌드 실행 및 두 클라이언트 멀티플레이 최종 확인은 미실시.
