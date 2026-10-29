@@ -76,9 +76,10 @@ public class NetPlayerItemDrop : NetworkBehaviour
         if (gm == null || gm.CurrentGameState != GameState.Ongoing) return "지금은 버릴 수 없습니다.";
 
         if (item == null) return "알 수 없는 아이템입니다.";
-        if (item is TalismanItemData talisman && talisman.IsEffectTalisman) return "문양 부적은 버릴 수 없습니다.";
 
         // 보유 수량, 공용 재료, 수첩, 기본 지급, 월드 프리팹 유무
+        // 효과 부적은 그리면 인벤토리에서 빈 부적 1장이 빠지고 별도 목록으로 옮겨지므로,
+        // 여기서 버려지는 효과 부적은 항상 빈 부적. 그린 부적은 버리기 경로로 들어오지 않음
         return _drops.CanDrop(item, out string reason) ? null : reason;
     }
 
@@ -87,6 +88,9 @@ public class NetPlayerItemDrop : NetworkBehaviour
     private bool ServerPublish(WorldItem world)
     {
         if (world == null || !world.TryGetComponent(out NetworkIdentity identity)) return false;
+
+        // 버린 아이템만 물리로 떨어뜨림 (Spawn 전에 들어 올려야 클라도 같은 위치에서 시작)
+        if (world.TryGetComponent(out NetWorldItemPhysics physics)) physics.ServerBeginDrop();
 
         NetworkServer.Spawn(world.gameObject);
         return identity.netId != 0;

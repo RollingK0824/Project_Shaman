@@ -63,7 +63,21 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 5921346846820139711, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
       insertIndex: -1
       addedObject: {fileID: 4984508554947601382}
+    - targetCorrespondingSourceObject: {fileID: 5921346846820139711, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: -8583969924543101978}
+    - targetCorrespondingSourceObject: {fileID: 5921346846820139711, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9098781881205760565}
+    - targetCorrespondingSourceObject: {fileID: 5921346846820139711, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 7217301195931363649}
   m_SourcePrefab: {fileID: 100100000, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
+--- !u!4 &7993248930623921018 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 5708335457729542752, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
+  m_PrefabInstance: {fileID: 2438045365545492762}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &8356838960457606053 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 5921346846820139711, guid: 5229e7ca396af674dba82727fa4b19f8, type: 3}
@@ -86,3 +100,83 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
+--- !u!54 &-8583969924543101978
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8356838960457606053}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 1
+  m_Constraints: 112
+  m_CollisionDetection: 2
+--- !u!114 &9098781881205760565
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8356838960457606053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0144e90041c56849a76dbdb9b4e7363, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetWorldItemPhysics
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _dropHeight: 0.6
+  _maxFallTime: 4
+  _maxFallDistance: 20
+  _restSpeed: 0.05
+--- !u!114 &7217301195931363649
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8356838960457606053}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b20dc110904e47f8a154cdcf6433eae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror.Components::Mirror.NetworkRigidbodyUnreliable
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  target: {fileID: 7993248930623921018}
+  syncPosition: 1
+  syncRotation: 0
+  syncScale: 0
+  onlySyncOnChange: 1
+  compressRotation: 1
+  interpolatePosition: 1
+  interpolateRotation: 1
+  interpolateScale: 1
+  coordinateSpace: 0
+  timelineOffset: 1
+  showGizmos: 0
+  showOverlay: 0
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  bufferResetMultiplier: 3
+  useFixedUpdate: 0
+  positionSensitivity: 0.01
+  rotationSensitivity: 0.01
+  scaleSensitivity: 0.01
