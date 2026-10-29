@@ -9,5 +9,6 @@ namespace ProjectShaman.AI.Interfaces
         IReadOnlyList<NameEntry> Names { get; }
         IReadOnlyList<JobEntry> Jobs { get; }
         IReadOnlyList<RoutineEntry> Routines { get; }
+        IReadOnlyList<ActionEntry> Actions { get; }
     }
 }

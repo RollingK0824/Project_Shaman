@@ -1,5 +1,3 @@
-using System;
-using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
@@ -11,19 +9,9 @@ namespace ProjectShaman.AI.Work
     [RequireComponent(typeof(AI_Core), typeof(AI_VisualController))]
     public class AI_WorkPerformer : MonoBehaviour
     {
-        private const string WORK_ACTION_PARAM = "WorkAction";
-
-        [Serializable]
-        public class ActionAnimationBinding
-        {
-            public string ActionId;
-            public int AnimatorValue;
-        }
-
         [SerializeField] private bool _useAnimationEvent;
         [SerializeField] private float _hitIntervalSeconds = 2f;
-        [SerializeField] private float _turnSpeedDegrees = 360f;
-        [SerializeField] private List<ActionAnimationBinding> _actionBindings = new List<ActionAnimationBinding>();
+        [SerializeField] private float _turnSpeedDegrees = 120f;
 
         [Header("Runtime")]
         [SerializeField] private bool _isWorking;
@@ -70,7 +58,7 @@ namespace ProjectShaman.AI.Work
             _nextHitTime = Time.time + _hitIntervalSeconds;
 
             _core.SetState(AIState.Working);
-            _visual.SetIntegerIfExists(WORK_ACTION_PARAM, GetAnimatorValue(_currentActionId));
+            _visual.PlayAction(WorkAnimationTable.Get(_currentActionId));
 
             AILog.Log(AILog.WORK, _core.LogId, $"BeginWork action='{_currentActionId}' station={(_station != null ? _station.StationId : "none")} mode={(_useAnimationEvent ? "AnimEvent" : "Timer")}");
             return true;
@@ -100,7 +88,7 @@ namespace ProjectShaman.AI.Work
             }
 
             _isWorking = false;
-            _visual.SetIntegerIfExists(WORK_ACTION_PARAM, 0);
+            _visual.StopAction();
             AILog.Log(AILog.WORK, _core.LogId, $"EndWork action='{_currentActionId}' hits={_hitCount}");
             _station = null;
         }
@@ -143,19 +131,6 @@ namespace ProjectShaman.AI.Work
 
             Quaternion target = Quaternion.LookRotation(direction);
             transform.rotation = Quaternion.RotateTowards(transform.rotation, target, _turnSpeedDegrees * deltaTime);
-        }
-
-        private int GetAnimatorValue(string actionId)
-        {
-            foreach (ActionAnimationBinding binding in _actionBindings)
-            {
-                if (binding.ActionId == actionId)
-                {
-                    return binding.AnimatorValue;
-                }
-            }
-
-            return 0;
         }
     }
 }
