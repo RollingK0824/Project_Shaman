@@ -33,6 +33,7 @@ public class GongUseAction : ItemUseAction
     public override void PlayRemotePresentation(in ItemUseContext context)
     {
         context.Owner.GetComponent<PlayerItemFeedback>()?.PlayRemoteAudio(context.Data);
-        SpawnEffect(_remotePulsePrefab, context.Owner.transform.position, Quaternion.identity, _remotePulseLifetime);
+        if (!ItemVfxPresentation.Pulse(context.Owner, true))
+            SpawnEffect(_remotePulsePrefab, context.Owner.transform.position, Quaternion.identity, _remotePulseLifetime);
     }
 }

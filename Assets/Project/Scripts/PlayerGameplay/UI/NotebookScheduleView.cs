@@ -34,6 +34,8 @@ public sealed class NotebookScheduleView : MonoBehaviour
     [SerializeField] private Color _restWash = new(.32f, .50f, .28f, .36f);
     [SerializeField] private Color _homeWash = new(.24f, .21f, .19f, .30f);
     [SerializeField] private Color _sleepWash = new(.14f, .12f, .11f, .40f);
+    // Pin icon on a row: ink when pinned to the HUD, faded when not
+    [SerializeField] private Color _pinOffColor = new(.20f, .14f, .10f, .25f);
 
     private readonly List<NotebookScheduleRow> _rows = new();
     private readonly List<(Image wash, TMP_Text label)> _blocks = new();
@@ -83,6 +85,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
             cells[3].text = villager.Gender == VillagerGender.Female ? "여" : "남";
             cells[4].text = AgeGroupName(villager.AgeGroup);
             foreach (TMP_Text cell in cells) cell.color = villager.IsDeathKnown ? PlayerItemUIStyle.NotebookMuted : INK;
+            if (row.PinIcon != null) row.PinIcon.color = PinManager.Instance.IsVillagerPinned(villager.VillagerId) ? INK : _pinOffColor;
         }
         for (int i = count; i < _rows.Count; i++) _rows[i].gameObject.SetActive(false);
 
@@ -209,6 +212,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
         row.name = "Villager" + index;
         if (row.Divider != null) row.Divider.SetActive(index > 0);
         row.Button.onClick.AddListener(() => Select(index));
+        if (row.PinButton != null) row.PinButton.onClick.AddListener(() => TogglePin(index));
         _rows.Add(row);
     }
 
@@ -233,6 +237,15 @@ public sealed class NotebookScheduleView : MonoBehaviour
         _selectedId = registry.Villagers[index].VillagerId;
         Refresh();
         ScrollToNow();
+    }
+
+    // Pins the villager to the HUD schedule (SchedulePinsHUD), or unpins it
+    private void TogglePin(int index)
+    {
+        VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+        if (registry == null || index >= registry.Villagers.Count) return;
+        PinManager.Instance.ToggleVillager(registry.Villagers[index].VillagerId);
+        Refresh();
     }
 
     // Brings the rows around the current hour into view (at night the table would otherwise open on the day)

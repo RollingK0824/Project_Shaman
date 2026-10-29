@@ -17,6 +17,13 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     private string _message;
     public bool IsPlaying => _motion != null && Time.time >= _started && Time.time - _started < .6f;
     private void Awake() { _items=GetComponent<PlayerItemController>(); _input=GetComponent<PlayerInputReader>(); }
+    private PlayerTalismanCollection _talismans;
+    private void OnEnable()
+    {
+        _talismans=GetComponent<PlayerTalismanCollection>();
+        if(_talismans!=null)_talismans.UseCommitted+=OnTalismanCommitted;
+    }
+    private void OnTalismanCommitted(string instanceId)=>ItemVfxPresentation.Talisman(gameObject);
     public void Bind(Transform motion, ItemData item)
     {
         _motion=motion; _data=item; _started=-10f; _messageUntil=0f;
@@ -102,6 +109,7 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     }
     private void OnDisable()
     {
+        if(_talismans!=null)_talismans.UseCommitted-=OnTalismanCommitted;
         if (_motion != null) { _motion.localPosition=Vector3.zero; _motion.localRotation=Quaternion.identity; }
         if (_statusRoot != null) _statusRoot.SetActive(false);
         else if (_status != null) _status.gameObject.SetActive(false);
