@@ -25,12 +25,4 @@ namespace ProjectShaman.AI.Defines
         Sphere,
         Box
     }
-
-    // Values are the Animator's WorkAction integer: keep them fixed when adding more
-    public enum WorkAnimation
-    {
-        None = 0,
-        Farming = 1,
-        Gathering = 2
-    }
 }

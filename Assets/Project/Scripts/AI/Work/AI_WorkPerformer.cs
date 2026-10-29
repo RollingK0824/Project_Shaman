@@ -9,11 +9,9 @@ namespace ProjectShaman.AI.Work
     [RequireComponent(typeof(AI_Core), typeof(AI_VisualController))]
     public class AI_WorkPerformer : MonoBehaviour
     {
-        private const string WORK_ACTION_PARAM = "WorkAction";
-
         [SerializeField] private bool _useAnimationEvent;
         [SerializeField] private float _hitIntervalSeconds = 2f;
-        [SerializeField] private float _turnSpeedDegrees = 360f;
+        [SerializeField] private float _turnSpeedDegrees = 120f;
 
         [Header("Runtime")]
         [SerializeField] private bool _isWorking;
@@ -60,7 +58,7 @@ namespace ProjectShaman.AI.Work
             _nextHitTime = Time.time + _hitIntervalSeconds;
 
             _core.SetState(AIState.Working);
-            _visual.SetIntegerIfExists(WORK_ACTION_PARAM, (int)WorkAnimationTable.Get(_currentActionId));
+            _visual.PlayAction(WorkAnimationTable.Get(_currentActionId));
 
             AILog.Log(AILog.WORK, _core.LogId, $"BeginWork action='{_currentActionId}' station={(_station != null ? _station.StationId : "none")} mode={(_useAnimationEvent ? "AnimEvent" : "Timer")}");
             return true;
@@ -90,7 +88,7 @@ namespace ProjectShaman.AI.Work
             }
 
             _isWorking = false;
-            _visual.SetIntegerIfExists(WORK_ACTION_PARAM, 0);
+            _visual.StopAction();
             AILog.Log(AILog.WORK, _core.LogId, $"EndWork action='{_currentActionId}' hits={_hitCount}");
             _station = null;
         }

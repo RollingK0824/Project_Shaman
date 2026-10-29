@@ -1,8 +1,12 @@
+using System.Collections.Generic;
 using UnityEngine;
+using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
 
 namespace ProjectShaman.AI
 {
+    // Locomotion is driven by Speed; actions, gestures and turning in place are played by state name on their own layers,
+    // so the Animator needs no transitions back to locomotion. Each client plays the same calls locally (see Net_AICore)
     [RequireComponent(typeof(AI_Core), typeof(AI_Movement))]
     public class AI_VisualController : MonoBehaviour
     {
@@ -10,35 +14,216 @@ namespace ProjectShaman.AI
         private const string MOVE_SPEED_PARAM = "Speed";
         private const string STATE_PARAM = "State";
 
+        private const string BASE_LAYER = "Base Layer";
+        private const string GESTURE_LAYER = "Gesture";
+        // Full-body actions first, then the upper-body ones that keep the legs standing (hammering)
+        private static readonly string[] ACTION_LAYERS = { "Action", "UpperAction" };
+        private const string EMPTY_STATE = "Empty";
+        private const string STOP_SUFFIX = " Stop";
+        private const string LOCOMOTION_STATE = "Locomotion";
+        private const string TURN_LEFT_STATE = "Turn Left";
+        private const string TURN_RIGHT_STATE = "Turn Right";
+        private const float MOVING_SPEED = 0.1f;
+
+        [SerializeField] private float _crossFadeSeconds = 0.2f;
+        [Tooltip("Turning in place faster than this plays the turn step")]
+        [SerializeField] private float _turnStartDegreesPerSecond = 30f;
+        [Tooltip("Turning slower than this returns to locomotion")]
+        [SerializeField] private float _turnStopDegreesPerSecond = 10f;
+
         private AI_Core core;
         private AI_Movement movement;
         private Animator animator;
 
+        private int _actionLayer = -1;
+        private int _stoppingLayer = -1;
+        private float _lastYaw;
+        private float _yawRate;
+        private int _turnDirection;
+        private readonly HashSet<string> _reportedMissing = new HashSet<string>();
+
         public bool UpdateAnimatorLocally { get; set; } = true;
+        // Animator state of the running action, empty when none; the server's value is copied to clients
+        public string CurrentAction { get; private set; } = string.Empty;
 
         void Awake()
         {
             core = GetComponent<AI_Core>();
             movement = GetComponent<AI_Movement>();
             animator = GetComponentInChildren<Animator>();
+            _lastYaw = transform.eulerAngles.y;
 
             core.OnStateChanged += HandleStateChanged;
         }
 
         void Update()
         {
-            if (UpdateAnimatorLocally && animator != null && movement != null)
+            if (animator == null)
+            {
+                return;
+            }
+
+            if (UpdateAnimatorLocally && movement != null)
             {
                 animator.SetFloat(MOVE_SPEED_PARAM, movement.CurrentSpeed);
             }
+
+            bool moving = animator.GetFloat(MOVE_SPEED_PARAM) > MOVING_SPEED;
+            UpdateStop(moving);
+            UpdateTurn(moving);
+        }
+
+        public void PlayAction(string state)
+        {
+            state ??= string.Empty;
+            if (state == CurrentAction)
+            {
+                return;
+            }
+
+            StopAction();
+            if (state.Length == 0 || animator == null)
+            {
+                return;
+            }
+
+            int layer = FindActionLayer(state);
+            if (layer < 0)
+            {
+                if (_reportedMissing.Add(state))
+                {
+                    AILog.Warn(AILog.WORK, $"{name}: no Animator state '{state}' in the action layers");
+                }
+                return;
+            }
+
+            CurrentAction = state;
+            _actionLayer = layer;
+            _stoppingLayer = -1;
+            CrossFade(layer, state);
+        }
+
+        // Plays the action's "<state> Stop" when the Animator has one (it returns to Empty by itself), otherwise fades out
+        public void StopAction()
+        {
+            if (CurrentAction.Length == 0)
+            {
+                return;
+            }
+
+            string stop = CurrentAction + STOP_SUFFIX;
+            CurrentAction = string.Empty;
+            if (animator == null || _actionLayer < 0)
+            {
+                return;
+            }
+
+            bool hasStop = HasState(_actionLayer, stop);
+            CrossFade(_actionLayer, hasStop ? stop : EMPTY_STATE);
+            _stoppingLayer = hasStop ? _actionLayer : -1;
+            _actionLayer = -1;
+        }
+
+        // Upper-body gesture over whatever the legs do; skipped while an action owns the arms
+        public void PlayGesture(string state)
+        {
+            if (animator == null || CurrentAction.Length > 0)
+            {
+                return;
+            }
+
+            int layer = animator.GetLayerIndex(GESTURE_LAYER);
+            if (layer >= 0 && HasState(layer, state))
+            {
+                CrossFade(layer, state);
+            }
+        }
+
+        // A stop step is cut short once the villager walks off, so the feet do not slide
+        private void UpdateStop(bool moving)
+        {
+            if (_stoppingLayer < 0)
+            {
+                return;
+            }
+
+            if (animator.GetCurrentAnimatorStateInfo(_stoppingLayer).fullPathHash == PathHash(_stoppingLayer, EMPTY_STATE))
+            {
+                _stoppingLayer = -1;
+            }
+            else if (moving)
+            {
+                CrossFade(_stoppingLayer, EMPTY_STATE);
+                _stoppingLayer = -1;
+            }
+        }
+
+        // Turning in place (facing a station or someone) steps the feet; the rotation itself comes from the AI or the network
+        private void UpdateTurn(bool moving)
+        {
+            float yaw = transform.eulerAngles.y;
+            float deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
+            float rate = Mathf.DeltaAngle(_lastYaw, yaw) / deltaTime;
+            _lastYaw = yaw;
+            _yawRate = Mathf.Lerp(_yawRate, rate, Mathf.Clamp01(deltaTime * 10f));
+
+            int direction = _turnDirection;
+            if (moving || Mathf.Abs(_yawRate) < _turnStopDegreesPerSecond)
+            {
+                direction = 0;
+            }
+            else if (Mathf.Abs(_yawRate) > _turnStartDegreesPerSecond)
+            {
+                direction = _yawRate > 0f ? 1 : -1;
+            }
+
+            if (direction == _turnDirection)
+            {
+                return;
+            }
+
+            _turnDirection = direction;
+            int layer = animator.GetLayerIndex(BASE_LAYER);
+            string state = direction > 0 ? TURN_RIGHT_STATE : direction < 0 ? TURN_LEFT_STATE : LOCOMOTION_STATE;
+            if (layer >= 0 && HasState(layer, state))
+            {
+                CrossFade(layer, state);
+            }
+        }
+
+        private int FindActionLayer(string state)
+        {
+            foreach (string layerName in ACTION_LAYERS)
+            {
+                int layer = animator.GetLayerIndex(layerName);
+                if (layer >= 0 && HasState(layer, state))
+                {
+                    return layer;
+                }
+            }
+
+            return -1;
+        }
+
+        private void CrossFade(int layer, string state)
+        {
+            animator.CrossFadeInFixedTime(PathHash(layer, state), _crossFadeSeconds, layer);
+        }
+
+        private bool HasState(int layer, string state)
+        {
+            return animator.HasState(layer, PathHash(layer, state));
+        }
+
+        // States sit directly under their layer, so "<layer>.<state>" is their full path
+        private int PathHash(int layer, string state)
+        {
+            return Animator.StringToHash(animator.GetLayerName(layer) + "." + state);
         }
 
         private void HandleStateChanged(AIState oldState, AIState newState)
         {
-            if (animator != null)
-            {
-                animator.SetInteger(STATE_PARAM, (int)newState);
-            }
+            SetIntegerIfExists(STATE_PARAM, (int)newState);
         }
 
         public Animator Animator => animator;
