@@ -36,8 +36,8 @@ public class PlayerInputReader : MonoBehaviour
     // InputManager가 소유하는 공용 액션 (Enable/Disable/Dispose는 InputManager가 담당)
     private ShamanInput _input;
     private InputAction _cycleSlot;
-    private InputAction _dropItem;
-    private bool _ownsDropAction;
+    //private InputAction _dropItem;
+    //private bool _ownsDropAction;
     private float _nextScrollTime;
     private PlayerInventory _inventory;
     private PlayerItemController _items;
@@ -78,7 +78,7 @@ public class PlayerInputReader : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (_ownsDropAction) _dropItem?.Dispose();
+        //if (_ownsDropAction) _dropItem?.Dispose();
         if (_cancelUIManager != null) _cancelUIManager.MenuOpenChanged -= OnMenuOpenChanged;
     }
 
@@ -95,15 +95,18 @@ public class PlayerInputReader : MonoBehaviour
     {
         TrackCancelUIManager();
         _input = InputManager.Instance.Actions;
+        //_cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
+        //if (_dropItem == null)
+        //{
+        //    _dropItem = _input.asset.FindAction("Player/DropItem", false);
+        //    _ownsDropAction = _dropItem == null;
+        //    if (_ownsDropAction) _dropItem = new InputAction("DropItem", InputActionType.Button, "<Keyboard>/g");
+        //}
+        //_dropItem.performed += OnDropItem;
+        //if (_ownsDropAction) _dropItem.Enable();
+
         _cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
-        if (_dropItem == null)
-        {
-            _dropItem = _input.asset.FindAction("Player/DropItem", false);
-            _ownsDropAction = _dropItem == null;
-            if (_ownsDropAction) _dropItem = new InputAction("DropItem", InputActionType.Button, "<Keyboard>/g");
-        }
-        _dropItem.performed += OnDropItem;
-        if (_ownsDropAction) _dropItem.Enable();
+        //_input.Player.DropItem.performed += OnDropItem;
 
         _input.Spectator.Previous.performed += OnSpectatePrevious;
         _input.Spectator.Next.performed += OnSpectateNext;
@@ -155,11 +158,11 @@ public class PlayerInputReader : MonoBehaviour
 
     private void OnDisable()
     {
-        if (_dropItem != null)
-        {
-            _dropItem.performed -= OnDropItem;
-            if (_ownsDropAction) _dropItem.Disable();
-        }
+        //if (_dropItem != null)
+        //{
+        //    _dropItem.performed -= OnDropItem;
+        //    if (_ownsDropAction) _dropItem.Disable();
+        //}
         // 종료 중 InputManager가 새로 생기지 않도록 Instance 대신 캐시된 _input 사용
         if (_input == null)
         {
@@ -167,6 +170,7 @@ public class PlayerInputReader : MonoBehaviour
         }
 
         _input.Player.Interact.performed -= OnInteract;
+        //_input.Player.DropItem.performed -= OnDropItem;
         _input.UI.Cancel.performed -= OnCancel;
         _input.UI.Notebook.performed -= OnNotebook;
         _input.Player.Jump.performed -= OnJump;
