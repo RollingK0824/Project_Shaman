@@ -5,8 +5,10 @@ using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Stress;
 using ProjectShaman.AI.Trace;
+using ProjectShaman.AI.World;
 using ProjectShaman.Map;
 
 namespace ProjectShaman.AI.Dialogue
@@ -24,27 +26,27 @@ namespace ProjectShaman.AI.Dialogue
     }
 
     // Server only. What a resting villager can be asked and what it answers, from its own memory.
-    // Fixed questions plus questions built from the team's active quests. The team gets a few questions
-    // per villager per day, so asking around is a choice, not a sweep.
+    // Fixed questions plus questions built from the team's active quests. No question limit: the same question
+    // always gets the same answer (one fact, a fixed twist), so asking again digs up nothing new.
     public static class VillagerDialogueService
     {
         public const string ASK_ANOMALY = "ask.anomaly";
         public const string ASK_RUMOR = "ask.rumor";
         public const string ASK_TODAY = "ask.today";
+        public const string ASK_TODAY_NEXT = "ask.today.next";
         public const string ASK_FEELING = "ask.feeling";
         public const string ASK_TOOL = "ask.tool";
         public const string ASK_TRACE = "ask.trace";
         public const string ASK_BYE = "ask.bye";
 
-        private static readonly Dictionary<string, int> _asked = new Dictionary<string, int>();
         private static readonly Dictionary<string, HashSet<uint>> _thanked = new Dictionary<string, HashSet<uint>>();
         private static readonly List<MemoryEntry> _facts = new List<MemoryEntry>();
+        private static readonly List<string> _companions = new List<string>();
         private static readonly System.Random _random = new System.Random();
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetOnLoad()
         {
-            _asked.Clear();
             _thanked.Clear();
         }
 
@@ -85,23 +87,17 @@ namespace ProjectShaman.AI.Dialogue
             return DialogueLibrary.Line(atHome ? "bye.home" : "bye", _random);
         }
 
-        public static bool HasQuestionsLeft(AI_Conversation villager, AIBehaviourConfig config)
-        {
-            return AskedToday(villager) < config.PlayerQuestionsPerDay;
-        }
-
-        public static List<DialogueTopic> BuildTopics(AI_Conversation villager, AIBehaviourConfig config)
+        // todayNext = the routine of today the next "today" question asks about: the first one, then "and after?"
+        // one at a time (gone once all are told)
+        public static List<DialogueTopic> BuildTopics(AI_Conversation villager, AIBehaviourConfig config, int todayNext = 0)
         {
             List<DialogueTopic> topics = new List<DialogueTopic>();
 
-            if (HasQuestionsLeft(villager, config))
-            {
-                topics.Add(new DialogueTopic(ASK_ANOMALY, DialogueLibrary.Line(ASK_ANOMALY, null)));
-                topics.Add(new DialogueTopic(ASK_RUMOR, DialogueLibrary.Line(ASK_RUMOR, null)));
-                topics.Add(new DialogueTopic(ASK_TODAY, DialogueLibrary.Line(ASK_TODAY, null)));
-                topics.Add(new DialogueTopic(ASK_FEELING, DialogueLibrary.Line(ASK_FEELING, null)));
-                AddQuestTopics(topics);
-            }
+            topics.Add(new DialogueTopic(ASK_ANOMALY, DialogueLibrary.Line(ASK_ANOMALY, null)));
+            topics.Add(new DialogueTopic(ASK_RUMOR, DialogueLibrary.Line(ASK_RUMOR, null)));
+            AddTodayTopic(topics, villager, todayNext);
+            topics.Add(new DialogueTopic(ASK_FEELING, DialogueLibrary.Line(ASK_FEELING, null)));
+            AddQuestTopics(topics);
 
             topics.Add(new DialogueTopic(ASK_BYE, DialogueLibrary.Line(ASK_BYE, null)));
             return topics;
@@ -118,13 +114,6 @@ namespace ProjectShaman.AI.Dialogue
                 return Farewell(villager);
             }
 
-            if (!HasQuestionsLeft(villager, config))
-            {
-                ends = true;
-                return DialogueLibrary.Line("budget", _random);
-            }
-
-            CountQuestion(villager);
             AI_Memory memory = villager.GetComponent<AI_Memory>();
             int day = memory != null ? memory.CurrentDay : 0;
             Split(topicId, out string kind, out string arg);
@@ -136,7 +125,7 @@ namespace ProjectShaman.AI.Dialogue
                 case ASK_RUMOR:
                     return AnswerFact(villager, memory, day, f => f.Source == MemorySource.Heard, false) ?? DialogueLibrary.Line("rumor.none", _random);
                 case ASK_TODAY:
-                    return AnswerToday(memory);
+                    return AnswerToday(villager, memory, TodayIndex(topicId));
                 case ASK_FEELING:
                     return AnswerFeeling(villager, config);
                 case ASK_TOOL:
@@ -233,20 +222,76 @@ namespace ProjectShaman.AI.Dialogue
             return best.HasValue ? DialogueComposer.DescribeFact(AnswerDistortion.Apply(speaker, best.Value), day, _random) : null;
         }
 
-        private static string AnswerToday(AI_Memory memory)
+        // The alibi: each routine of today, where, and who was there. Checked by asking those named the same question
+        // "오늘 뭐 했소?" first, then "그다음엔 뭐 했소?" while routines are left to tell; the id carries which one
+        private static void AddTodayTopic(List<DialogueTopic> topics, AI_Conversation villager, int todayNext)
         {
-            if (memory != null && memory.Events != null)
+            AI_Memory memory = villager != null ? villager.GetComponent<AI_Memory>() : null;
+            int count = memory != null ? memory.TodayRoutines.Count : 0;
+
+            if (todayNext <= 0)
             {
-                foreach (MemoryEntry entry in memory.Events.Get(MemoryKind.Routine))
-                {
-                    if (entry.DayCount == memory.CurrentDay)
-                    {
-                        return DialogueComposer.Fill(DialogueLibrary.Line("today", _random), "area", DialogueComposer.AreaName(entry.PlaceId, entry.Position));
-                    }
-                }
+                topics.Add(new DialogueTopic($"{ASK_TODAY}:0", DialogueLibrary.Line(ASK_TODAY, null)));
+            }
+            else if (todayNext < count)
+            {
+                topics.Add(new DialogueTopic($"{ASK_TODAY}:{todayNext}", DialogueLibrary.Line(ASK_TODAY_NEXT, null)));
+            }
+        }
+
+        // Which routine a "today" topic asks about; -1 for any other topic
+        public static int TodayIndex(string topicId)
+        {
+            Split(topicId, out string kind, out string arg);
+            return kind == ASK_TODAY ? (int.TryParse(arg, out int index) ? index : 0) : -1;
+        }
+
+        // The alibi, one routine per question: where, and who was there. Checked by asking those named the same
+        private static string AnswerToday(AI_Conversation villager, AI_Memory memory, int index)
+        {
+            if (memory == null || index < 0 || index >= memory.TodayRoutines.Count)
+            {
+                return DialogueLibrary.Line("today.none", _random);
             }
 
-            return DialogueLibrary.Line("today.none", _random);
+            RoutineAccount account = memory.TodayRoutines[index];
+            AnswerDistortion.ApplyAlibi(villager, account, _companions, out bool coversCorruption);
+
+            Vector3 where = coversCorruption ? ScheduledPosition(account.Routine) : account.Routine.TargetPosition;
+            string area = DialogueComposer.AreaName(MapAreaRegistry.ResolveId(where), where);
+            string when = DialogueLibrary.Noun(index == 0 ? "alibi.when.0" : "alibi.when.n", string.Empty);
+            string work = account.Routine.Source.DisplayName;
+            bool rest = account.Routine.Category == RoutineCategory.Rest || string.IsNullOrEmpty(work);
+
+            string text = DialogueComposer.Fill(DialogueLibrary.Line(rest ? "alibi.rest" : "alibi.work", _random), "when", when, "area", area, "work", work)
+                + " " + (_companions.Count > 0
+                    ? DialogueComposer.Fill(DialogueLibrary.Line("alibi.with", _random), "names", JoinNames(_companions))
+                    : DialogueLibrary.Line("alibi.alone", _random));
+
+            _companions.Clear();
+            return text;
+        }
+
+        // Where the schedule sent the villager, for a host covering a routine the ghost moved
+        private static Vector3 ScheduledPosition(in ResolvedRoutine routine)
+        {
+            return PlaceRegistry.TryPick(routine.Source.PlaceId, routine.TargetPosition, out PlaceArea place) ? place.Center : routine.TargetPosition;
+        }
+
+        private static string JoinNames(List<string> villagerIds)
+        {
+            System.Text.StringBuilder names = new System.Text.StringBuilder();
+            for (int i = 0; i < villagerIds.Count; i++)
+            {
+                if (i > 0)
+                {
+                    names.Append(", ");
+                }
+
+                names.Append(DialogueComposer.NameOf(villagerIds[i]));
+            }
+
+            return names.ToString();
         }
 
         private static string AnswerTool(AI_Conversation speaker, AI_Memory memory, string toolType)
@@ -269,23 +314,6 @@ namespace ProjectShaman.AI.Dialogue
             }
 
             return DialogueComposer.Fill(DialogueLibrary.Line("tool.none", _random), "tool", AIDisplayNames.Tool(toolType));
-        }
-
-        private static int AskedToday(AI_Conversation villager)
-        {
-            return _asked.TryGetValue(BudgetKey(villager), out int count) ? count : 0;
-        }
-
-        private static void CountQuestion(AI_Conversation villager)
-        {
-            string key = BudgetKey(villager);
-            _asked[key] = AskedToday(villager) + 1;
-        }
-
-        private static string BudgetKey(AI_Conversation villager)
-        {
-            AI_Memory memory = villager.GetComponent<AI_Memory>();
-            return $"{villager.VillagerId}:{(memory != null ? memory.CurrentDay : 0)}";
         }
 
         private static void Split(string topicId, out string kind, out string arg)
