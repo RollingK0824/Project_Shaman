@@ -180,7 +180,8 @@ public sealed class PlayerStatusHUD : MonoBehaviour
         float unit = PlayerItemUIStyle.ViewportUnit(_feedRoot);
         PlayerItemUIStyle.Place(_feedRoot, new Vector2(0,.5f), new Vector2(0,.5f), new Vector2(24 * unit,0), new Vector2(300,176));
         PlayerItemUIStyle.Place(_timerRoot, Vector2.zero, Vector2.zero, new Vector2(24,116) * unit, _timerRoot.sizeDelta);
-        _feedRoot.localScale = _timerRoot.localScale = Vector3.one * unit;
+        PlayerItemUIStyle.SetScale(_feedRoot, Vector3.one * unit);
+        PlayerItemUIStyle.SetScale(_timerRoot, Vector3.one * unit);
     }
     private void LateUpdate()
     {
@@ -193,7 +194,8 @@ public sealed class PlayerStatusHUD : MonoBehaviour
         {
             float age = Time.unscaledTime - _entries[i].Updated;
             if (age >= _feedDuration) { RemoveEntry(i); continue; }
-            _entries[i].Group.alpha = Mathf.Clamp01((_feedDuration - age) / Mathf.Max(.1f,_fadeDuration));
+            float alpha = Mathf.Clamp01((_feedDuration - age) / Mathf.Max(.1f,_fadeDuration));
+            if (_entries[i].Group.alpha != alpha) _entries[i].Group.alpha = alpha;
         }
         for (int i=0;i<_entries.Count;i++)
             PlayerItemUIStyle.Place(_entries[i].Root, new Vector2(0,1), new Vector2(0,1), new Vector2(0,-44*i), new Vector2(300,40));
@@ -217,7 +219,8 @@ public sealed class PlayerStatusHUD : MonoBehaviour
         }
         string value = _text.ToString();
         if (_timerText.text != value) _timerText.text = value;
-        _timerRoot.sizeDelta = new Vector2(300,12+rows*24);
+        var timerSize = new Vector2(300,12+rows*24);
+        if (_timerRoot.sizeDelta != timerSize) _timerRoot.sizeDelta = timerSize;
         _timerRoot.gameObject.SetActive(rows > 0);
     }
     private void AppendTime(string name, float remaining)

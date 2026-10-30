@@ -49,9 +49,13 @@ public class QuickSlotUI : MonoBehaviour
         var rect = transform as RectTransform;
         if (rect == null || rect.rect.width <= 0f) return;
         float unit = PlayerItemUIStyle.ViewportUnit(rect);
-        rect.localScale = Vector3.one * (560f / rect.rect.width) * unit;
-        rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
-        rect.anchoredPosition = new Vector2(0f, 62f * unit);
+        // Write only on change: transform writes dirty the whole HUD canvas even with equal values.
+        Vector3 scale = Vector3.one * (560f / rect.rect.width) * unit;
+        Vector2 anchor = new Vector2(.5f, 0f), position = new Vector2(0f, 62f * unit);
+        if (rect.localScale != scale) rect.localScale = scale;
+        if (rect.anchorMin != anchor) rect.anchorMin = anchor;
+        if (rect.anchorMax != anchor) rect.anchorMax = anchor;
+        if (rect.anchoredPosition != position) rect.anchoredPosition = position;
     }
 
     private void ResolveLocalPlayer()

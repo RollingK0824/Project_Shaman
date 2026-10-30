@@ -55,9 +55,15 @@ public class PlayerStressHUD : MonoBehaviour
         var canvas = parent.GetComponentInParent<Canvas>();
         RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screen,
             canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, out var local);
-        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(.5f, .5f);
-        panel.sizeDelta = new Vector2(320, 72); panel.anchoredPosition = local;
-        panel.localScale = Vector3.one * scale / Mathf.Max(.001f, Mathf.Abs(parent.lossyScale.x));
+        // Write only on change: transform writes dirty the whole canvas even with equal values.
+        Vector2 center = new Vector2(.5f, .5f), size = new Vector2(320, 72);
+        Vector3 localScale = Vector3.one * scale / Mathf.Max(.001f, Mathf.Abs(parent.lossyScale.x));
+        if (panel.anchorMin != center) panel.anchorMin = center;
+        if (panel.anchorMax != center) panel.anchorMax = center;
+        if (panel.pivot != center) panel.pivot = center;
+        if (panel.sizeDelta != size) panel.sizeDelta = size;
+        if (panel.anchoredPosition != local) panel.anchoredPosition = local;
+        if (panel.localScale != localScale) panel.localScale = localScale;
     }
 
     public void Bind(PlayerStressController stress, PlayerHealth health)
