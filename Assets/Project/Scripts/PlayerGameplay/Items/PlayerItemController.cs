@@ -152,14 +152,26 @@ public class PlayerItemController : MonoBehaviour
         var timed = GetComponent<PlayerTimedItemUse>();
         bool released = timed != null && timed.HideHeldItem(_remotePresentation ? _remoteHeldItem : EquippedItemData);
         SetVisualVisibility(_firstPersonRenderers, !released && firstPerson && local && !_firstPersonPresentationSuppressed);
-        SetVisualVisibility(_thirdPersonRenderers, !released && PlayerActionGuard.CanAct(gameObject) && (!local || !firstPerson));
+        bool heldVisible = !released && PlayerActionGuard.CanAct(gameObject);
+        SetVisualVisibility(_thirdPersonRenderers, heldVisible && (!local || !firstPerson), heldVisible && local && firstPerson);
+        // The camera-relative model is deliberately offset from the real hand. Its shadow
+        // must come from the hand-attached third-person model, just like the hidden body.
+        if (_firstPersonRenderers != null)
+            foreach (var visual in _firstPersonRenderers)
+                if (visual != null) visual.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
     }
 
-    private static void SetVisualVisibility(Renderer[] renderers, bool visible)
+    private static void SetVisualVisibility(Renderer[] renderers, bool visible, bool shadowsOnly = false)
     {
         if (renderers == null) return;
         foreach (Renderer visual in renderers)
-            if (visual != null) visual.enabled = visible;
+        {
+            if (visual == null) continue;
+            bool mesh = visual is MeshRenderer || visual is SkinnedMeshRenderer;
+            visual.enabled = visible || shadowsOnly && mesh;
+            if (mesh && (shadowsOnly || visual.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly))
+                visual.shadowCastingMode = shadowsOnly ? UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly : UnityEngine.Rendering.ShadowCastingMode.On;
+        }
     }
 
 
@@ -569,6 +581,12 @@ public class PlayerItemController : MonoBehaviour
         }
         if (found) point = bounds.center;
         return found;
+    }
+
+    public bool TryGetThirdPersonBellEffectPoint(out Vector3 point)
+    {
+        return ItemVfxPresentation.TryGetBellEmissionPoint(
+            _thirdPersonVisual != null ? _thirdPersonVisual.transform : null, out point);
     }
 
     public bool TryGetThirdPersonReleasePoint(out Vector3 point)

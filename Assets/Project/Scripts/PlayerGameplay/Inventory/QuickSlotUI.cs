@@ -142,6 +142,7 @@ public class QuickSlotUI : MonoBehaviour
 
     private void ApplyPresentationLayout()
     {
+        AlignSlotsToArtwork();
         // The ornamental art is a child Image. A sprite-less panel behind it leaves gray square corners.
         var backdrop = GetComponent<Image>();
         if (backdrop != null && backdrop.sprite == null && GetComponent<Mask>() == null)
@@ -158,7 +159,7 @@ public class QuickSlotUI : MonoBehaviour
             var rect = icon.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
             rect.pivot = new Vector2(.5f, .5f);
-            rect.anchoredPosition = new Vector2(2f, -1f);
+            rect.anchoredPosition = Vector2.zero;
             rect.sizeDelta = Vector2.one * Mathf.Min(slot.rectTransform.rect.width, slot.rectTransform.rect.height) * _iconAreaRatio;
             icon.raycastTarget = false;
             if (i >= _countTexts.Length || _countTexts[i] == null) continue;
@@ -172,6 +173,37 @@ public class QuickSlotUI : MonoBehaviour
             count.alignment = TextAlignmentOptions.BottomRight;
             count.color = new Color(.23f, .14f, .07f, 1f);
             count.raycastTarget = false;
+        }
+    }
+
+    private void AlignSlotsToArtwork()
+    {
+        var art = transform.Find("BarBackground") as RectTransform;
+        if (art == null) return;
+        var image = art.GetComponent<Image>();
+        if (image == null || image.sprite == null) return;
+        // The six painted cells occupy 7.3%..92.7% of the source image, not the
+        // old 90px cells + 10px layout spacing. Include the image's transparent margins.
+        var layout = GetComponent<HorizontalLayoutGroup>();
+        if (layout != null) layout.enabled = false;
+        Rect drawing = art.rect;
+        float aspect = image.sprite.rect.width / image.sprite.rect.height;
+        if (image.preserveAspect)
+        {
+            Vector2 size = drawing.size;
+            if (size.x / size.y > aspect) size.x = size.y * aspect;
+            else size.y = size.x / aspect;
+            drawing = new Rect(drawing.center - size * .5f, size);
+        }
+        for (int i = 0; i < _slotBackgrounds.Length; i++)
+        {
+            if (_slotBackgrounds[i] == null) continue;
+            var slot = _slotBackgrounds[i].rectTransform;
+            slot.anchorMin = slot.anchorMax = slot.pivot = new Vector2(.5f, .5f);
+            slot.sizeDelta = new Vector2(drawing.width * .123f, drawing.height * .355f);
+            slot.position = art.TransformPoint(new Vector3(
+                drawing.xMin + drawing.width * (.135f + i * .146f),
+                drawing.yMin + drawing.height * .51f, 0f));
         }
     }
 

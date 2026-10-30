@@ -67,7 +67,7 @@ public class QuestTestDriver : MonoBehaviour
             if (quest.State == QuestState.Offered)
             {
                 bool accepted = QuestManager.Instance.TryAcceptQuest(TEST_PLAYER_ID, quest.GiverId);
-                Debug.Log($"[QuestTestDriver] Accept #{quest.InstanceId}: {accepted}");
+                GameLog.Log($"[QuestTestDriver] Accept #{quest.InstanceId}: {accepted}");
                 return;
             }
         }
@@ -91,7 +91,7 @@ public class QuestTestDriver : MonoBehaviour
 
     private void Log(string what, IQuestView quest)
     {
-        Debug.Log($"[QuestTestDriver] {what}: #{quest.InstanceId} {quest.Definition.Id} giver={quest.GiverId} " +
+        GameLog.Log($"[QuestTestDriver] {what}: #{quest.InstanceId} {quest.Definition.Id} giver={quest.GiverId} " +
                   $"state={quest.State} progress={quest.Progress}/{quest.Definition.RequiredAmount} context={quest.ContextId}");
     }
 }

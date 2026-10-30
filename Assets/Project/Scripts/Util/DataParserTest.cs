@@ -7,15 +7,15 @@ public class DataParserTest : MonoBehaviour
         string resourcePath = "Data/AIData_Sample";
         if (loader.TryLoad<AIDataContainer>(resourcePath, out var data))
         {
-            Debug.Log($"<color=green>[SUCCESS]</color> Version: {data.version}");
-            Debug.Log($"Loaded Names: {data.names.Count}");
-            Debug.Log($"Loaded Jobs: {data.jobs.Count}");
-            Debug.Log($"Loaded Routines: {data.routines.Count}");
+            GameLog.Log($"<color=green>[SUCCESS]</color> Version: {data.version}");
+            GameLog.Log($"Loaded Names: {data.names.Count}");
+            GameLog.Log($"Loaded Jobs: {data.jobs.Count}");
+            GameLog.Log($"Loaded Routines: {data.routines.Count}");
             
             if (data.routines.Count > 0)
             {
                 var routine = data.routines[0];
-                Debug.Log($"First Routine: ID='{routine.RoutineId}', Display='{routine.DisplayName}', Place='{routine.PlaceId}', Category='{routine.Category}'");
+                GameLog.Log($"First Routine: ID='{routine.RoutineId}', Display='{routine.DisplayName}', Place='{routine.PlaceId}', Category='{routine.Category}'");
             }
         }
         else

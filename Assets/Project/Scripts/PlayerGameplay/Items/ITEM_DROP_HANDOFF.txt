@@ -1,0 +1,19 @@
+Item drop animation handoff
+
+Player-side: PlayerItemDropController captures the held-item position before inventory removal.
+After TryDropUnit succeeds, ItemDropPresentation.Play(releasePoint) animates only mesh presentation.
+WorldItem transform, colliders, pickup ownership and inventory transaction remain unchanged.
+Local offline and host presentation are wired. Network files/prefabs were not changed.
+
+Network owner follow-up:
+1. In the successful server drop path, retain the dropped WorldItem returned by TryDropFinal.
+2. Send the confirmed spawned item's netId and server-validated release point to observers.
+3. On each remote client, wait for that netId to resolve, then get/add ItemDropPresentation
+   on that WorldItem and call Play(releasePoint) exactly once. Do not replay on the host.
+4. Use the remote character hand position for observer presentation; on the dropping local
+   client, cache the first-person held position before sending the request (before unequip).
+5. Failed requests and scene-placed items must not play. Do not spawn a second pickup,
+   remove inventory again or animate the network root. Ignore events for despawned items.
+6. Test host/client drops in first/third person, pickup during flight, despawn and rejection.
+
+No remote-client multiplayer animation has been verified in this change.
