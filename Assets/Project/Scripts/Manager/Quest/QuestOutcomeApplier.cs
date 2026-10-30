@@ -45,7 +45,7 @@ public static class QuestOutcomeApplier
             return;
         }
 
-        Debug.Log($"[QuestOutcome] #{quest.InstanceId} {quest.Definition.Id} completed → {recipient.name} +{item.DisplayName} x{reward.Amount}");
+        GameLog.Log($"[QuestOutcome] #{quest.InstanceId} {quest.Definition.Id} completed → {recipient.name} +{item.DisplayName} x{reward.Amount}");
     }
 
     private static void ApplyPenalty(IQuestView quest)
@@ -66,7 +66,7 @@ public static class QuestOutcomeApplier
             }
         }
 
-        Debug.Log($"[QuestOutcome] #{quest.InstanceId} {quest.Definition.Id} failed → stress +{penalty.Amount} to {count} players");
+        GameLog.Log($"[QuestOutcome] #{quest.InstanceId} {quest.Definition.Id} failed → stress +{penalty.Amount} to {count} players");
     }
 
     // The player who accepted it, else anyone alive (offline: the local player)

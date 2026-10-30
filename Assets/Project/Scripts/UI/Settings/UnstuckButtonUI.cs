@@ -20,6 +20,9 @@ public class UnstuckButtonUI : MonoBehaviour
 
     private float _readyTime;
 
+    // Seconds the label shows (0 = ready), so it rebuilds once a second instead of every frame
+    private int _shownSeconds = -1;
+
     public float Remaining => Mathf.Max(0f, _readyTime - Time.unscaledTime);
     public bool IsReady => Remaining <= 0f;
 
@@ -56,7 +59,14 @@ public class UnstuckButtonUI : MonoBehaviour
             return;
         }
 
-        _button.interactable = IsReady;
-        _label.SetText(IsReady ? "끼임 탈출" : $"({Mathf.CeilToInt(Remaining)}초)");
+        int seconds = Mathf.CeilToInt(Remaining);
+        if (seconds == _shownSeconds)
+        {
+            return;
+        }
+
+        _shownSeconds = seconds;
+        _button.interactable = seconds == 0;
+        _label.SetText(seconds == 0 ? "끼임 탈출" : $"({seconds}초)");
     }
 }

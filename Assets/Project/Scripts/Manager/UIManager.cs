@@ -20,7 +20,7 @@ public class UIManager : SceneSingleton<UIManager>
     {
         if (panel == null || _openPanels.Contains(panel))
         {
-            Debug.Log("Unable to open UI.");
+            GameLog.Log("Unable to open UI.");
             return;
         }
 
@@ -33,7 +33,7 @@ public class UIManager : SceneSingleton<UIManager>
     {
         if (panel == null || !_openPanels.Remove(panel))
         {
-            Debug.Log("Unable to close UI.");
+            GameLog.Log("Unable to close UI.");
             return;
         }
 
