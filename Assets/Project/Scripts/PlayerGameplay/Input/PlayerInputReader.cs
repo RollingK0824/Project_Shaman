@@ -95,7 +95,7 @@ public class PlayerInputReader : MonoBehaviour
     {
         TrackCancelUIManager();
         _input = InputManager.Instance.Actions;
-        _cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
+        //_cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
         if (_dropItem == null)
         {
             _dropItem = _input.asset.FindAction("Player/DropItem", false);
@@ -104,6 +104,9 @@ public class PlayerInputReader : MonoBehaviour
         }
         _dropItem.performed += OnDropItem;
         if (_ownsDropAction) _dropItem.Enable();
+
+        _cycleSlot = _input.asset.FindAction("Player/CycleSlot", false);
+        //_input.Player.DropItem.performed += OnDropItem;
 
         _input.Spectator.Previous.performed += OnSpectatePrevious;
         _input.Spectator.Next.performed += OnSpectateNext;
@@ -167,6 +170,7 @@ public class PlayerInputReader : MonoBehaviour
         }
 
         _input.Player.Interact.performed -= OnInteract;
+        //_input.Player.DropItem.performed -= OnDropItem;
         _input.UI.Cancel.performed -= OnCancel;
         _input.UI.Notebook.performed -= OnNotebook;
         _input.Player.Jump.performed -= OnJump;

@@ -12,6 +12,9 @@ GameObject:
   - component: {fileID: 8532145904612312501}
   - component: {fileID: 6907231160243186000}
   - component: {fileID: 9087928344029218392}
+  - component: {fileID: -1085382672949355311}
+  - component: {fileID: 6296270087870701119}
+  - component: {fileID: 5752020660933802745}
   m_Layer: 0
   m_Name: NetBeanMugwortWorldItem
   m_TagString: Untagged
@@ -54,8 +57,8 @@ BoxCollider:
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
+  m_Size: {x: 0.6, y: 0.6, z: 0.6}
+  m_Center: {x: 0.03, y: 0, z: 0}
 --- !u!114 &6907231160243186000
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -86,6 +89,86 @@ MonoBehaviour:
   serverOnly: 0
   visibility: 0
   hasSpawned: 0
+--- !u!54 &-1085382672949355311
+Rigidbody:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5174153962862473414}
+  serializedVersion: 5
+  m_Mass: 1
+  m_LinearDamping: 0
+  m_AngularDamping: 0.05
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_InertiaTensor: {x: 1, y: 1, z: 1}
+  m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ImplicitCom: 1
+  m_ImplicitTensor: 1
+  m_UseGravity: 1
+  m_IsKinematic: 1
+  m_Interpolate: 1
+  m_Constraints: 112
+  m_CollisionDetection: 3
+--- !u!114 &6296270087870701119
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5174153962862473414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f0144e90041c56849a76dbdb9b4e7363, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetWorldItemPhysics
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _dropHeight: 0.6
+  _maxFallTime: 4
+  _maxFallDistance: 20
+  _restSpeed: 0.05
+--- !u!114 &5752020660933802745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5174153962862473414}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3b20dc110904e47f8a154cdcf6433eae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror.Components::Mirror.NetworkRigidbodyUnreliable
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  target: {fileID: 9143201055312412217}
+  syncPosition: 1
+  syncRotation: 0
+  syncScale: 0
+  onlySyncOnChange: 1
+  compressRotation: 1
+  interpolatePosition: 1
+  interpolateRotation: 1
+  interpolateScale: 1
+  coordinateSpace: 0
+  timelineOffset: 1
+  showGizmos: 0
+  showOverlay: 0
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  bufferResetMultiplier: 3
+  useFixedUpdate: 0
+  positionSensitivity: 0.01
+  rotationSensitivity: 0.01
+  scaleSensitivity: 0.01
 --- !u!1001 &5208110353721056219
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -94,6 +177,18 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 9143201055312412217}
     m_Modifications:
+    - target: {fileID: -8679921383154817045, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
+      propertyPath: m_LocalScale.x
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
+      propertyPath: m_LocalScale.y
+      value: 0.6
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
+      propertyPath: m_LocalScale.z
+      value: 0.6
+      objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
       propertyPath: m_LocalPosition.x
       value: 0
@@ -133,6 +228,10 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8679921383154817045, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
+      propertyPath: m_ConstrainProportionsScale
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: a0d4d050f1a23324cb002a26399a4528, type: 3}
       propertyPath: m_Name

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
+using ProjectShaman.AI.Defines;
 
 namespace ProjectShaman.AI.Ghost
 {
@@ -9,23 +10,27 @@ namespace ProjectShaman.AI.Ghost
         [Header("Runtime (server only)")]
         [SerializeField] private string _ghostId;
         [SerializeField] private int _seed;
+        [SerializeField] private GhostType _ghostType;
         [SerializeField] private float _yin;
         [SerializeField] private float _pendingYin;
         [SerializeField] private List<string> _planDebug = new List<string>();
 
         public string GhostId => _ghostId;
         public int Seed => _seed;
+        // Fixed at villager creation: the ghost from this host is the same kind (and model) every night
+        public GhostType GhostType => _ghostType;
         public float Yin => _yin;
         public float PendingYin => _pendingYin;
         public CorruptionPlan TodayPlan { get; private set; }
 
-        public void Initialize(string ghostId, int seed, float initialYin)
+        public void Initialize(string ghostId, int seed, GhostType ghostType, float initialYin)
         {
             _ghostId = ghostId;
             _seed = seed;
+            _ghostType = ghostType;
             _yin = initialYin;
             _pendingYin = 0f;
-            AILog.Log(AILog.GHOST, name, $"Possessed by {ghostId} (seed={seed}, yin={initialYin})");
+            AILog.Log(AILog.GHOST, name, $"Possessed by {ghostId} (seed={seed}, type={ghostType}, yin={initialYin})");
         }
 
         public void AddPendingYin(float amount, string reason)

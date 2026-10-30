@@ -452,7 +452,7 @@ public class SaltTargetingTests
     [Test]
     public void ActualMinionPrefabCurrentlyRejectsSlowWithoutDamageOrHitVfx()
     {
-        var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/AI/Temp_Minion.prefab");
+        var prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/AI/Ghost/Temp_Minion.prefab");
         Assert.IsNotNull(prefab);
         var parent = Create("Inactive test parent", 0);
         parent.SetActive(false);

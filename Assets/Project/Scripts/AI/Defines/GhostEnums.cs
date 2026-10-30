@@ -2,6 +2,16 @@ using Unity.Behavior;
 
 namespace ProjectShaman.AI.Defines
 {
+    // Which ghost possesses a host, fixed at villager creation (each one at most once while there are enough kinds).
+    // The order is the order of Temp_GhostEntity's model list (AI_ModelVisual)
+    public enum GhostType
+    {
+        DrownedGhost,
+        Dueoksini,
+        FacelessGhost,
+        GhostGirl
+    }
+
     [BlackboardEnum]
     public enum CorruptionAxis
     {
