@@ -51,6 +51,11 @@ namespace ProjectShaman.AI
             return marker;
         }
 
+        public void SetColor(Color color)
+        {
+            _text.color = color;
+        }
+
         // null or empty hides the marker
         public void Show(string symbol)
         {

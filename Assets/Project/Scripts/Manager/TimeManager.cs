@@ -70,7 +70,10 @@ public class TimeManager : SceneSingleton<TimeManager>
         Time.timeScale = 1f;
     }
 
-    public string GetTextTime() { return _textTime[_textTimeIndex < 0 ? _startTextTimeIndex : _textTimeIndex]; }
+    public int TextTimeIndex => _textTimeIndex < 0 ? _startTextTimeIndex : _textTimeIndex;
+    // 자시 = 0 기준 연속 시 위치 (0 ~ 12). HUD 시 띠가 매 프레임 이 값으로 움직인다
+    public float TextTimePosition => (_startTextTimeIndex + (float)(Math.Max(0, Elapsed) % CYCLE_DURATION) / (CYCLE_DURATION / _textTime.Count)) % _textTime.Count;
+    public string GetTextTime() { return _textTime[TextTimeIndex]; }
 
     private void Update()
     {

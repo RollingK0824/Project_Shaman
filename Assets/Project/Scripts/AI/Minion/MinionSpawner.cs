@@ -253,6 +253,7 @@ namespace ProjectShaman.AI.Minion
             }
 
             minion.Initialize(_battlefield);
+            instance.GetComponent<AI_ModelVisual>()?.Choose(_random.Next());
 
             AI_DeathDespawner despawner = instance.GetComponent<AI_DeathDespawner>();
             if (despawner != null)
