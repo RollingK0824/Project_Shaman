@@ -21,12 +21,13 @@ namespace ProjectShaman.AI.Work
 
             foreach (ActionEntry action in actions)
             {
-                if (action == null || string.IsNullOrEmpty(action.ActionId) || string.IsNullOrEmpty(action.Animation))
+                if (action == null || string.IsNullOrEmpty(action.ActionId))
                 {
                     continue;
                 }
 
-                _animations[action.ActionId] = action.Animation;
+                // An empty animation is kept: the action is known and plays no clip (standing work)
+                _animations[action.ActionId] = action.Animation ?? string.Empty;
             }
         }
 
@@ -38,7 +39,7 @@ namespace ProjectShaman.AI.Work
 
             foreach (KeyValuePair<string, string> action in _animations)
             {
-                if (action.Key != actionId && action.Value != own)
+                if (action.Key != actionId && action.Value != own && action.Value.Length > 0)
                 {
                     result.Add(action.Key);
                 }

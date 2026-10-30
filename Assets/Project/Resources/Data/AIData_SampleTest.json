@@ -766,6 +766,20 @@
           "Elder"
         ]
       }
+    },
+    {
+      "jobId": "Merchant",
+      "displayName": "상인",
+      "condition": {
+        "genders": [],
+        "socialClasses": [
+          "Sangmin"
+        ],
+        "ageGroups": [
+          "Adult",
+          "Elder"
+        ]
+      }
     }
   ],
   "routines": [
@@ -1273,6 +1287,132 @@
       "wrongToolIds": [],
       "wrongActionIds": [],
       "wrongPlaceIds": []
+    },
+    {
+      "routineId": "Hawking",
+      "displayName": "호객 행위",
+      "category": "Work",
+      "jobIds": [
+        "Merchant"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Market",
+      "toolId": "",
+      "actionId": "Hawk",
+      "isCoop": true,
+      "maxPeople": 3,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "GoodsDisplay",
+      "displayName": "물건 진열",
+      "category": "Work",
+      "jobIds": [
+        "Merchant"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Market",
+      "toolId": "",
+      "actionId": "Arrange",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "Haggling",
+      "displayName": "흥정하기",
+      "category": "Work",
+      "jobIds": [
+        "Merchant"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Market",
+      "toolId": "",
+      "actionId": "Bargain",
+      "isCoop": true,
+      "maxPeople": 3,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "StockCarrying",
+      "displayName": "짐 나르기",
+      "category": "Work",
+      "jobIds": [
+        "Merchant"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Market",
+      "toolId": "",
+      "actionId": "Carry",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "LedgerKeeping",
+      "displayName": "장부 정리",
+      "category": "Work",
+      "jobIds": [
+        "Merchant"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Market",
+      "toolId": "",
+      "actionId": "Count",
+      "isCoop": false,
+      "maxPeople": 1,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "TavernDeal",
+      "displayName": "주막 거래",
+      "category": "Work",
+      "jobIds": [
+        "Merchant"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Tavern",
+      "toolId": "",
+      "actionId": "Bargain",
+      "isCoop": true,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
     }
   ],
   "actions": [
@@ -1323,6 +1463,22 @@
     {
       "actionId": "Sow",
       "animation": "Crouching"
+    },
+    {
+      "actionId": "Hawk",
+      "animation": ""
+    },
+    {
+      "actionId": "Bargain",
+      "animation": ""
+    },
+    {
+      "actionId": "Count",
+      "animation": ""
+    },
+    {
+      "actionId": "Arrange",
+      "animation": "Gathering"
     }
   ]
 }
