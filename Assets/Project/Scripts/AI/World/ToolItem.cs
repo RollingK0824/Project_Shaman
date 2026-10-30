@@ -135,6 +135,21 @@ namespace ProjectShaman.AI.World
             }
         }
 
+        public Transform HolderSocket => _holderSocket;
+
+        // The holder's hand changed (its body was replaced): keep following the new one
+        public void RebindSocket(Transform socket)
+        {
+            if (_holderSocket != null || IsHeld)
+            {
+                _holderSocket = socket;
+                if (_holderSocket != null)
+                {
+                    FollowSocket();
+                }
+            }
+        }
+
         public bool TryPickUp(string villagerId, Transform socket)
         {
             if (!IsAvailableFor(villagerId))
