@@ -49,6 +49,7 @@ namespace ProjectShaman.Network.AI
         private bool _toolDelivery;
         // The "today" routine the next question asks about (one at a time, from the first)
         private int _todayNext;
+        private int _anomalyNext;
         private float _dialogueDeadline;
         private AI_QuestMarker _marker;
         private QuestManager _subscribedQuests;
@@ -281,10 +282,11 @@ namespace ProjectShaman.Network.AI
             _holdsVillager = true;
             _questOffer = false;
             _todayNext = 0;
+            _anomalyNext = 0;
             _toolDelivery = false;
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
 
-            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext), out string[] ids, out string[] labels);
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext, _anomalyNext), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
             // Called on at home in the evening: a late-caller greeting instead of the daytime one
             string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random) : VillagerDialogueService.Greeting());
@@ -343,8 +345,9 @@ namespace ProjectShaman.Network.AI
 
             _questOffer = false;
             _todayNext = 0;
+            _anomalyNext = 0;
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
-            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, _conversation.Config, _todayNext), out string[] ids, out string[] labels);
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, _conversation.Config, _todayNext, _anomalyNext), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Quest offer left for the usual dialogue ({ids.Length} topics)");
             TalkGesture();
             TargetAnswer(sender, "그러시오, 무슨 얘기요?", ids, labels);
@@ -550,6 +553,12 @@ namespace ProjectShaman.Network.AI
                 _todayNext = todayIndex + 1;
             }
 
+            int anomalyIndex = VillagerDialogueService.AnomalyIndex(topicId);
+            if (anomalyIndex >= 0)
+            {
+                _anomalyNext = anomalyIndex + 1;
+            }
+
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Asked {topicId}: {answer}");
 
             if (ends)
@@ -561,7 +570,7 @@ namespace ProjectShaman.Network.AI
             }
 
             _dialogueDeadline = Time.time + _dialogueIdleTimeout;
-            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext), out string[] ids, out string[] labels);
+            SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext, _anomalyNext), out string[] ids, out string[] labels);
             TalkGesture();
             TargetAnswer(sender, answer, ids, labels);
         }

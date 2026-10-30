@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Collections.Generic;
 using UnityEngine;
 using ProjectShaman.AI.Core;
@@ -31,6 +32,7 @@ namespace ProjectShaman.AI.Dialogue
     public static class VillagerDialogueService
     {
         public const string ASK_ANOMALY = "ask.anomaly";
+        public const string ASK_ANOMALY_NEXT = "ask.anomaly.next";
         public const string ASK_RUMOR = "ask.rumor";
         public const string ASK_TODAY = "ask.today";
         public const string ASK_TODAY_NEXT = "ask.today.next";
@@ -89,11 +91,13 @@ namespace ProjectShaman.AI.Dialogue
 
         // todayNext = the routine of today the next "today" question asks about: the first one, then "and after?"
         // one at a time (gone once all are told)
-        public static List<DialogueTopic> BuildTopics(AI_Conversation villager, AIBehaviourConfig config, int todayNext = 0)
+        // anomalyNext = which odd thing the next "anything strange?" question tells: the first one, then "anything else?"
+        // while there are more (gone once all are told)
+        public static List<DialogueTopic> BuildTopics(AI_Conversation villager, AIBehaviourConfig config, int todayNext = 0, int anomalyNext = 0)
         {
             List<DialogueTopic> topics = new List<DialogueTopic>();
 
-            topics.Add(new DialogueTopic(ASK_ANOMALY, DialogueLibrary.Line(ASK_ANOMALY, null)));
+            AddAnomalyTopic(topics, villager, anomalyNext);
             topics.Add(new DialogueTopic(ASK_RUMOR, DialogueLibrary.Line(ASK_RUMOR, null)));
             AddTodayTopic(topics, villager, todayNext);
             topics.Add(new DialogueTopic(ASK_FEELING, DialogueLibrary.Line(ASK_FEELING, null)));
@@ -121,7 +125,7 @@ namespace ProjectShaman.AI.Dialogue
             switch (kind)
             {
                 case ASK_ANOMALY:
-                    return AnswerFact(villager, memory, day, f => f.IsAnomalous, true) ?? DialogueLibrary.Line("answer.none", _random);
+                    return AnswerFact(villager, memory, day, f => f.IsAnomalous, true, AnomalyIndex(topicId)) ?? DialogueLibrary.Line("answer.none", _random);
                 case ASK_RUMOR:
                     return AnswerFact(villager, memory, day, f => f.Source == MemorySource.Heard, false) ?? DialogueLibrary.Line("rumor.none", _random);
                 case ASK_TODAY:
@@ -194,8 +198,53 @@ namespace ProjectShaman.AI.Dialogue
             }
         }
 
-        // The host and stressed villagers twist one detail of what they say (AnswerDistortion)
-        private static string AnswerFact(AI_Conversation speaker, AI_Memory memory, int day, System.Predicate<MemoryEntry> match, bool preferSeen)
+        // "Anything strange?": the first odd thing, then "anything else?" one at a time. What the villager saw itself comes first
+        private static void AddAnomalyTopic(List<DialogueTopic> topics, AI_Conversation villager, int anomalyNext)
+        {
+            AI_Memory memory = villager != null ? villager.GetComponent<AI_Memory>() : null;
+            int count = CountFacts(memory, f => f.IsAnomalous);
+
+            if (anomalyNext <= 0)
+            {
+                topics.Add(new DialogueTopic($"{ASK_ANOMALY}:0", DialogueLibrary.Line(ASK_ANOMALY, null)));
+            }
+            else if (anomalyNext < count)
+            {
+                topics.Add(new DialogueTopic($"{ASK_ANOMALY}:{anomalyNext}", DialogueLibrary.Line(ASK_ANOMALY_NEXT, null)));
+            }
+        }
+
+        // Which odd thing an anomaly topic asks about; -1 for any other topic
+        public static int AnomalyIndex(string topicId)
+        {
+            Split(topicId, out string kind, out string arg);
+            return kind == ASK_ANOMALY ? (int.TryParse(arg, out int index) ? index : 0) : -1;
+        }
+
+        private static int CountFacts(AI_Memory memory, System.Predicate<MemoryEntry> match)
+        {
+            if (memory == null || memory.Events == null)
+            {
+                return 0;
+            }
+
+            memory.Events.CollectFacts(_facts);
+            int count = 0;
+            foreach (MemoryEntry fact in _facts)
+            {
+                if (match(fact))
+                {
+                    count++;
+                }
+            }
+
+            _facts.Clear();
+            return count;
+        }
+
+        // The host and stressed villagers twist one detail of what they say (AnswerDistortion).
+        // index = which matching fact: the ones seen first-hand come before the heard ones, otherwise in memory order
+        private static string AnswerFact(AI_Conversation speaker, AI_Memory memory, int day, System.Predicate<MemoryEntry> match, bool preferSeen, int index = 0)
         {
             if (memory == null || memory.Events == null)
             {
@@ -203,23 +252,30 @@ namespace ProjectShaman.AI.Dialogue
             }
 
             memory.Events.CollectFacts(_facts);
-            MemoryEntry? best = null;
+            List<MemoryEntry> matches = new List<MemoryEntry>();
 
             foreach (MemoryEntry fact in _facts)
             {
-                if (!match(fact))
+                if (match(fact))
                 {
-                    continue;
-                }
-
-                if (best == null || (preferSeen && fact.Source == MemorySource.Direct && best.Value.Source != MemorySource.Direct))
-                {
-                    best = fact;
+                    matches.Add(fact);
                 }
             }
 
             _facts.Clear();
-            return best.HasValue ? DialogueComposer.DescribeFact(AnswerDistortion.Apply(speaker, best.Value), day, _random) : null;
+
+            if (preferSeen)
+            {
+                // Stable: seen first-hand before heard, memory order kept inside each group
+                matches = matches.FindAll(f => f.Source == MemorySource.Direct).Concat(matches.FindAll(f => f.Source != MemorySource.Direct)).ToList();
+            }
+
+            if (index < 0 || index >= matches.Count)
+            {
+                return null;
+            }
+
+            return DialogueComposer.DescribeFact(AnswerDistortion.Apply(speaker, matches[index]), day, _random);
         }
 
         // The alibi: each routine of today, where, and who was there. Checked by asking those named the same question

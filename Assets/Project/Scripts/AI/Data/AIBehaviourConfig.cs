@@ -66,8 +66,23 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private int _minCorruptionsPerDay = 1;
         [SerializeField, Range(0f, 1f)] private float _timeDelayMinRatio = 0.15f;
         [SerializeField, Range(0f, 1f)] private float _timeDelayMaxRatio = 0.25f;
-        [SerializeField] private int _maxSymptomsPerRestSlot = 3;
-        [SerializeField, Range(0f, 1f)] private float _workSlotSymptomMultiplier = 0.5f;
+        [Header("Possession Symptoms")]
+        [Tooltip("Per-symptom yin gate, weight, context and appearance length. Behaviour symptoms show only while walking or resting; appearance symptoms (shadow, skin, eyes) come and go on their own")]
+        [SerializeField] private List<SymptomRule> _symptomRules = SymptomRule.CreateDefaults();
+        [Tooltip("Seconds between two rolls for a possessed villager (behaviour and appearance)")]
+        [SerializeField, Min(0.5f)] private float _symptomCheckInterval = 6f;
+        [Tooltip("Chance per roll that a behaviour symptom shows, at yin 0 and at yin for max frequency")]
+        [SerializeField, Range(0f, 1f)] private float _behaviourSymptomChanceAtZeroYin = 0.1f;
+        [SerializeField, Range(0f, 1f)] private float _behaviourSymptomChanceAtMaxYin = 0.5f;
+        [Tooltip("After a behaviour symptom the villager shows no other one for this long")]
+        [SerializeField, Min(0f)] private float _behaviourSymptomCooldown = 12f;
+        [Tooltip("Chance per roll that a new appearance episode starts (for each appearance symptom the yin allows), at yin 0 and at yin for max frequency")]
+        [SerializeField, Range(0f, 1f)] private float _appearanceSymptomChanceAtZeroYin = 0.03f;
+        [SerializeField, Range(0f, 1f)] private float _appearanceSymptomChanceAtMaxYin = 0.2f;
+        [Tooltip("Seconds an appearance symptom stays away after an episode ends")]
+        [SerializeField, Min(0f)] private float _appearanceSymptomRest = 20f;
+        [Tooltip("When a host is startled by an item and its yin is violent (Item Violent Yin), chance that the reaction is a frightening symptom instead of a weak one")]
+        [SerializeField, Range(0f, 1f)] private float _itemViolentSymptomChance = 0.25f;
         [SerializeField] private float _emptyHandToolYinThreshold = 80f;
         [SerializeField, Range(0f, 1f)] private float _emptyHandToolChance = 0.25f;
         [SerializeField] private float _toolCorruptionSearchRadius = 25f;
@@ -274,8 +289,15 @@ namespace ProjectShaman.AI.Data
         public int MinCorruptionsPerDay => _minCorruptionsPerDay;
         public float TimeDelayMinRatio => _timeDelayMinRatio;
         public float TimeDelayMaxRatio => _timeDelayMaxRatio;
-        public int MaxSymptomsPerRestSlot => _maxSymptomsPerRestSlot;
-        public float WorkSlotSymptomMultiplier => _workSlotSymptomMultiplier;
+        public IReadOnlyList<SymptomRule> SymptomRules => _symptomRules;
+        public float SymptomCheckInterval => _symptomCheckInterval;
+        public float BehaviourSymptomChanceAtZeroYin => _behaviourSymptomChanceAtZeroYin;
+        public float BehaviourSymptomChanceAtMaxYin => _behaviourSymptomChanceAtMaxYin;
+        public float BehaviourSymptomCooldown => _behaviourSymptomCooldown;
+        public float AppearanceSymptomChanceAtZeroYin => _appearanceSymptomChanceAtZeroYin;
+        public float AppearanceSymptomChanceAtMaxYin => _appearanceSymptomChanceAtMaxYin;
+        public float AppearanceSymptomRest => _appearanceSymptomRest;
+        public float ItemViolentSymptomChance => _itemViolentSymptomChance;
         public float EmptyHandToolYinThreshold => _emptyHandToolYinThreshold;
         public float EmptyHandToolChance => _emptyHandToolChance;
         public float ToolCorruptionSearchRadius => _toolCorruptionSearchRadius;

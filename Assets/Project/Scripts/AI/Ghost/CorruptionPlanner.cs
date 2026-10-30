@@ -8,14 +8,6 @@ namespace ProjectShaman.AI.Ghost
 {
     public static class CorruptionPlanner
     {
-        private static readonly SymptomType[] REST_SYMPTOMS =
-        {
-            SymptomType.Tremble,
-            SymptomType.StareIntoVoid,
-            SymptomType.Nonsense,
-            SymptomType.Grotesque
-        };
-
         public static System.Random CreateRandom(int seed, int dayCount, int salt)
         {
             return new System.Random(unchecked(seed * 486187739 + dayCount * 16777619 + salt * 31));
@@ -51,12 +43,6 @@ namespace ProjectShaman.AI.Ghost
                     {
                         plan.SetSlotAxis(slot, PickAxis(routine, random));
                     }
-
-                    PlanSymptoms(plan, slot, yinFactor * config.WorkSlotSymptomMultiplier, config, random);
-                }
-                else if (routine.Category == RoutineCategory.Rest)
-                {
-                    PlanSymptoms(plan, slot, yinFactor, config, random);
                 }
             }
 
@@ -91,21 +77,6 @@ namespace ProjectShaman.AI.Ghost
 
             axes.Add(CorruptionAxis.Time);
             return axes;
-        }
-
-        private static void PlanSymptoms(CorruptionPlan plan, int slot, float frequency, AIBehaviourConfig config, System.Random random)
-        {
-            int count = Mathf.RoundToInt(frequency * config.MaxSymptomsPerRestSlot);
-
-            for (int i = 0; i < count; i++)
-            {
-                plan.Symptoms.Add(new PlannedSymptom
-                {
-                    Slot = slot,
-                    SlotFraction = Mathf.Lerp(0.2f, 0.9f, (float)random.NextDouble()),
-                    Type = REST_SYMPTOMS[random.Next(REST_SYMPTOMS.Length)]
-                });
-            }
         }
 
         private static void EnsureMinimum(CorruptionPlan plan, VillagerSchedule schedule, int dayCount, List<int> workSlots, int slotsPerDay, int minimum, System.Random random)

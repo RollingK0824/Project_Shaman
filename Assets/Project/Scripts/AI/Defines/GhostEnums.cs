@@ -29,7 +29,23 @@ namespace ProjectShaman.AI.Defines
         StareIntoVoid,
         Nonsense,
         Grotesque,
-        EmptyHandTool
+        EmptyHandTool,
+        // Behaviour symptoms (only while walking or resting, played as an animation): appended so saved values stay valid
+        NeckTwist,
+        WaistBend,
+        // Appearance symptoms (a body change that comes and goes by itself, shown on every peer): see SymptomRule
+        NoShadow,
+        PaleSkin,
+        BlackEyes
+    }
+
+    // Where a behaviour symptom may show: on the move, or standing/sitting at rest (never while working or talking)
+    [System.Flags]
+    public enum SymptomContext
+    {
+        None = 0,
+        Moving = 1,
+        Resting = 2
     }
 
     [BlackboardEnum]

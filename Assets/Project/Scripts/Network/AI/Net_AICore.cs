@@ -26,6 +26,8 @@ namespace ProjectShaman.Network.AI
         [SyncVar] private VillagerAgeGroup _syncAgeGroup;
         [SyncVar] private string _syncHomePlaceId;
         [SyncVar(hook = nameof(OnPossessionMarkChanged))] private bool _syncPossessionMarked;
+        // Appearance symptoms active now (bit mask over SymptomType): shadow, skin and eyes come and go on every peer
+        [SyncVar(hook = nameof(OnAppearanceMaskChanged))] private int _syncAppearance;
         // Action animation by Animator state name: clients cross-fade it themselves, which NetworkAnimator does not replicate
         [SyncVar(hook = nameof(OnActionAnimationChanged))] private string _syncActionAnimation = string.Empty;
 
@@ -73,6 +75,7 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered += HandleSymptomTriggered;
+                aiCore.OnAppearanceChanged += WriteAppearance;
                 aiCore.OnEffectTriggered += RpcTriggerEffect;
                 aiCore.OnTodayBlocksChanged += WriteTodayBlocks;
                 WriteTodayBlocks();
@@ -105,6 +108,7 @@ namespace ProjectShaman.Network.AI
                     aiCore.SetTodayBlocks(_syncBlocksDay, _syncBlockHours, _syncLeaveHour, _syncHomeHour, _syncBedHour);
                     ApplyPossessionMark(_syncPossessionMarked);
                     ApplyActionAnimation(_syncActionAnimation);
+                    aiCore.ApplyNetworkAppearance(_syncAppearance);
                     gameObject.name = $"Villager_{_syncVillagerId}";
                     RegisterToRegistry();
                 }
@@ -142,6 +146,7 @@ namespace ProjectShaman.Network.AI
             if (aiCore != null)
             {
                 aiCore.OnSymptomTriggered -= HandleSymptomTriggered;
+                aiCore.OnAppearanceChanged -= WriteAppearance;
                 aiCore.OnEffectTriggered -= RpcTriggerEffect;
                 aiCore.OnTodayBlocksChanged -= WriteTodayBlocks;
             }
@@ -153,6 +158,21 @@ namespace ProjectShaman.Network.AI
         private void HandleSymptomTriggered(SymptomType symptom)
         {
             RpcTriggerEffect($"Symptom{symptom}");
+        }
+
+        [Server]
+        private void WriteAppearance(int mask)
+        {
+            _syncAppearance = mask;
+        }
+
+        private void OnAppearanceMaskChanged(int oldValue, int newValue)
+        {
+            // The server's AI_Core already holds it
+            if (!isServer && aiCore != null)
+            {
+                aiCore.ApplyNetworkAppearance(newValue);
+            }
         }
 
         [Server]
