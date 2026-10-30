@@ -56,6 +56,7 @@ public abstract class ItemBase : MonoBehaviour
     }
 
     public abstract void OnUseStarted();
+    public virtual void OnUseReleased() { }
 
     public virtual void OnUseCanceled()
     {

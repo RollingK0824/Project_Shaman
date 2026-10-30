@@ -109,6 +109,7 @@ public class PlayerItemController : MonoBehaviour
 
         _inputReader.UseItemCanceled +=
             UseItemCanceled;
+        _inputReader.UseItemReleased += UseItemReleased;
 
         if (_itemHoldDriver != null)
         {
@@ -132,6 +133,7 @@ public class PlayerItemController : MonoBehaviour
 
             _inputReader.UseItemCanceled -=
                 UseItemCanceled;
+            _inputReader.UseItemReleased -= UseItemReleased;
         }
 
         if (_itemHoldDriver != null)
@@ -552,6 +554,23 @@ public class PlayerItemController : MonoBehaviour
 
     // One world-space spray for either the local third-person view or the existing remote RPC.
     // Damage, consumption and success events remain owned by SaltUseAction.Execute.
+    public bool TryGetFirstPersonReleasePoint(out Vector3 point)
+    {
+        point = transform.position;
+        if (_equippedObject == null || _firstPersonRenderers == null) return false;
+        bool found = false;
+        Bounds bounds = default;
+        foreach (var renderer in _firstPersonRenderers)
+        {
+            if (renderer == null || !renderer.gameObject.activeInHierarchy ||
+                (!(renderer is MeshRenderer) && !(renderer is SkinnedMeshRenderer))) continue;
+            if (!found) { bounds = renderer.bounds; found = true; }
+            else bounds.Encapsulate(renderer.bounds);
+        }
+        if (found) point = bounds.center;
+        return found;
+    }
+
     public bool TryGetThirdPersonReleasePoint(out Vector3 point)
     {
         point = transform.position;
@@ -651,6 +670,11 @@ public class PlayerItemController : MonoBehaviour
         }
 
         _equippedItem.OnUseCanceled();
+    }
+
+    private void UseItemReleased()
+    {
+        if (CanUseItem()) _equippedItem?.OnUseReleased();
     }
 
 

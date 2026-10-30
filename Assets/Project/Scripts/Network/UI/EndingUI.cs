@@ -74,6 +74,10 @@ public class EndingUI : MonoBehaviour
 
         if (!IsShown)
         {
+            // 마지막 퇴마면 봉인 항아리 연출이 끝난 뒤에 표시 (승리와 성공 단계는 같은 오브젝트 SyncVar라 같이 도착)
+            NetDefenseState ritual = NetDefenseState.Instance;
+            if (ritual != null && ritual.Phase == RitualPhase.Succeeded && ritual.RemainingTime > 0f) return;
+
             IsShown = true;
             _panel.SetActive(true);
         }

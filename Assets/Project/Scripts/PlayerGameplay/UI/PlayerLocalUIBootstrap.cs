@@ -54,12 +54,18 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     public PlayerStatusHUD StatusHUD => _hud != null ? _hud.StatusHUD : null;
     private PlayerCrosshair _crosshair;
     private PlayerInteractor _interactor;
+    private QuickSlotUI _quickSlots;
+    private GameObject _ownedQuickSlotRoot;
+    private PlayerInventory _inventory;
+    private GameObject _quickSlotPrefab;
+    private bool _quickSlotLoadAttempted;
 
     private void Awake()
     {
         _identity = GetComponent<NetworkIdentity>();
         _input = GetComponent<PlayerInputReader>();
         _interactor = GetComponent<PlayerInteractor>();
+        _inventory = GetComponent<PlayerInventory>();
         if (_stress == null) _stress = GetComponent<PlayerStressController>();
         if (_health == null) _health = GetComponent<PlayerHealth>();
     }
@@ -68,6 +74,7 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     {
         bool local = (!NetworkClient.active && !NetworkServer.active) ||
                      (_identity != null && _identity.isLocalPlayer);
+        UpdateQuickSlots(local);
         if (local && _notebookUI == null && _notebookPrefab != null)
         {
             NotebookPanel existing = null;
@@ -88,6 +95,48 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
         if (!local && _notebookUI != null) ReleaseNotebook();
         UpdateStressHUD(local);
         UpdateCrosshair(local);
+    }
+
+    private void UpdateQuickSlots(bool local)
+    {
+        if (!local) { ReleaseQuickSlots(); return; }
+        if (_quickSlots != null || _inventory == null || _input == null) return;
+
+        // Reuse prototype scene HUDs; never take a HUD already owned by another player.
+        foreach (var candidate in FindObjectsByType<QuickSlotUI>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+        {
+            if (!candidate.transform.root.gameObject.activeInHierarchy ||
+                (candidate.BoundInventory != null && candidate.BoundInventory != _inventory)) continue;
+            _quickSlots = candidate;
+            break;
+        }
+        if (_quickSlots == null)
+        {
+            if (!_quickSlotLoadAttempted)
+            {
+                _quickSlotLoadAttempted = true;
+                // Resources keeps the production HUD in builds without editing network prefabs/scenes.
+                _quickSlotPrefab = Resources.Load<GameObject>("PlayerUI/QuickSlotHUD");
+                if (_quickSlotPrefab == null) Debug.LogError("[Player UI] Missing PlayerUI/QuickSlotHUD prefab", this);
+            }
+            if (_quickSlotPrefab == null) return;
+            _ownedQuickSlotRoot = Instantiate(_quickSlotPrefab);
+            _ownedQuickSlotRoot.name = "Local QuickSlot HUD";
+            _quickSlots = _ownedQuickSlotRoot.GetComponentInChildren<QuickSlotUI>(true);
+        }
+        _quickSlots.Bind(_inventory, _input);
+    }
+
+    private void ReleaseQuickSlots()
+    {
+        if (_quickSlots != null && _quickSlots.BoundInventory == _inventory) _quickSlots.Bind(null, null);
+        if (_ownedQuickSlotRoot != null)
+        {
+            _ownedQuickSlotRoot.SetActive(false);
+            Destroy(_ownedQuickSlotRoot);
+        }
+        _ownedQuickSlotRoot = null;
+        _quickSlots = null;
     }
 
     private void UpdateStressHUD(bool local)
@@ -122,6 +171,7 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
 
     private void OnDisable()
     {
+        ReleaseQuickSlots();
         ReleaseNotebook();
         if (_hud != null) { _hud.gameObject.SetActive(false); Destroy(_hud.gameObject); }
         if (_crosshair != null) { _crosshair.gameObject.SetActive(false); Destroy(_crosshair.gameObject); }

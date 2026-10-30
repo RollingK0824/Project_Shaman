@@ -5,6 +5,7 @@ using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Interfaces;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.Stress;
 using ProjectShaman.Map;
 
@@ -116,6 +117,52 @@ namespace ProjectShaman.AI.Dialogue
 
             AILog.Log(AILog.INTERACTION, speaker.VillagerId, $"Tool answer twisted ({(possessed ? "host lie" : "stress hallucination")}): {sighting}");
             return twisted;
+        }
+
+        // "Who was there with you". The host covers a routine the ghost moved in place or time: it was where the schedule
+        // says, and saw nobody (those really there will not name it). Unreliable speakers otherwise drop or swap one
+        // companion, fixed per speaker and routine, so one missing name never tells host from stressed villager
+        public static void ApplyAlibi(AI_Conversation speaker, RoutineAccount account, List<string> companions, out bool coversCorruption)
+        {
+            companions.Clear();
+            companions.AddRange(account.Companions);
+            coversCorruption = false;
+
+            if (!IsUnreliable(speaker, out bool possessed))
+            {
+                return;
+            }
+
+            ResolvedRoutine routine = account.Routine;
+            if (possessed && routine.IsCorrupted && (routine.CorruptionAxis == CorruptionAxis.Place || routine.CorruptionAxis == CorruptionAxis.Time))
+            {
+                companions.Clear();
+                coversCorruption = true;
+                AILog.Log(AILog.INTERACTION, speaker.VillagerId, $"Alibi covers corrupted {routine.Source.RoutineId} ({routine.CorruptionAxis}): scheduled place, nobody");
+                return;
+            }
+
+            if (companions.Count == 0)
+            {
+                return;
+            }
+
+            System.Random random = new System.Random(StableHash(speaker.VillagerId + "|alibi|" + routine.DayCount + "|" + routine.Serial));
+            int index = random.Next(companions.Count);
+            string replaced = companions[index];
+            string other = random.Next(2) == 0 ? OtherVillager(random, replaced, speaker.VillagerId) : null;
+
+            bool swapped = other != null && !companions.Contains(other);
+            if (swapped)
+            {
+                companions[index] = other;
+            }
+            else
+            {
+                companions.RemoveAt(index);
+            }
+
+            AILog.Log(AILog.INTERACTION, speaker.VillagerId, $"Alibi twisted ({(possessed ? "host lie" : "stress hallucination")}): {replaced} → {(swapped ? other : "dropped")}");
         }
 
         private static string OtherVillager(System.Random random, string exclude, string speakerId)

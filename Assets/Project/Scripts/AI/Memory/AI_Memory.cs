@@ -26,10 +26,12 @@ namespace ProjectShaman.AI.Memory
         private AIRuntimeContext _context;
         private int _currentDay;
         private readonly Dictionary<string, (int Day, float Time)> _lastSeen = new Dictionary<string, (int, float)>();
+        private readonly List<RoutineAccount> _todayRoutines = new List<RoutineAccount>();
 
         public ToolSightingStore ToolSightings { get; private set; }
         public int CurrentDay => _currentDay;
         public EventMemoryStore Events { get; private set; }
+        public IReadOnlyList<RoutineAccount> TodayRoutines => _todayRoutines;
 
         private void Awake()
         {
@@ -65,6 +67,7 @@ namespace ProjectShaman.AI.Memory
         public void BeginDay(int dayCount)
         {
             _currentDay = dayCount;
+            _todayRoutines.Clear();
 
             if (Events == null)
             {
@@ -109,6 +112,54 @@ namespace ProjectShaman.AI.Memory
 
             string detail = routine.IsCorrupted ? $"{routine.ActionId} corrupted={routine.CorruptionAxis}" : routine.ActionId;
             Record(MemoryKind.Routine, routine.Source.RoutineId, routine.PlaceId, routine.TargetPosition, detail);
+
+            if (routine.Category == RoutineCategory.Work || routine.Category == RoutineCategory.Rest)
+            {
+                _todayRoutines.Add(new RoutineAccount(routine));
+            }
+        }
+
+        // A routine given up (no tool, ...) was never done: the rest taken instead is the account, not it
+        public void ForgetRoutine(int serial)
+        {
+            _todayRoutines.RemoveAll(account => account.Routine.Serial == serial);
+        }
+
+        // Only at the place of the routine still under way (not on the road there, not on the way home), until the account is full:
+        // the observation scan asks this first, so a full or finished account costs no line-of-sight test
+        public bool WantsCompanion(string villagerId)
+        {
+            RoutineAccount account = CurrentAccount();
+            return account != null && account.Companions.Count < _context.Config.AlibiCompanionsPerRoutine && !account.Companions.Contains(villagerId);
+        }
+
+        public void RecordCompanion(string villagerId)
+        {
+            RoutineAccount account = CurrentAccount();
+            if (account == null || string.IsNullOrEmpty(villagerId) || account.Companions.Contains(villagerId))
+            {
+                return;
+            }
+
+            account.Companions.Add(villagerId);
+            AILog.Log(AILog.MEMORY, _core.LogId, $"With {villagerId} at {account.Routine.Source.RoutineId} @ {account.Routine.PlaceId}");
+        }
+
+        private RoutineAccount CurrentAccount()
+        {
+            if (_context == null || _todayRoutines.Count == 0 || !_core.HasRoutine || _core.MustGoHome)
+            {
+                return null;
+            }
+
+            RoutineAccount account = _todayRoutines[_todayRoutines.Count - 1];
+            if (account.Routine.Serial != _core.CurrentRoutine.Serial)
+            {
+                return null;
+            }
+
+            float radius = _context.Config.ObservationRadius;
+            return (transform.position - account.Routine.TargetPosition).sqrMagnitude <= radius * radius ? account : null;
         }
 
         public void RecordToolLost(string toolTypeId)

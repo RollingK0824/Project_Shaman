@@ -1023,6 +1023,8 @@ GameObject:
   - component: {fileID: 1463238138606123897}
   - component: {fileID: -4600253240461387966}
   - component: {fileID: 2451827278666494891}
+  - component: {fileID: 7480215936602145301}
+  - component: {fileID: 7480215936602146403}
   m_Layer: 0
   m_Name: NetPlayer_Base
   m_TagString: Untagged
@@ -2261,3 +2263,31 @@ AudioDistortionFilter:
   m_GameObject: {fileID: 9005810808144654130}
   m_Enabled: 1
   m_DistortionLevel: 0.15
+--- !u!208 &7480215936602145301
+NavMeshObstacle:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  serializedVersion: 3
+  m_Shape: 0
+  m_Extents: {x: 0.4375, y: 1.08125, z: 0.4375}
+  m_MoveThreshold: 0.1
+  m_Carve: 0
+  m_CarveOnlyStationary: 1
+  m_Center: {x: 0, y: 1.125, z: 0}
+  m_TimeToStationary: 0.5
+--- !u!114 &7480215936602146403
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8447093390330310050}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 78b51d3f03c085e51b759f5c1fd8a3da, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetPlayerNavObstacle

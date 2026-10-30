@@ -166,15 +166,34 @@ namespace ProjectShaman.AI.Observation
 
             foreach (AIManager.VillagerRuntime other in villagers)
             {
-                if (other == villager || other.Core == null || villager.Memory.HasSeenToday(other.Id))
+                if (other == villager || other.Core == null)
+                {
+                    continue;
+                }
+
+                // Seen today already: looked at again only to remember who was there during this routine (the alibi),
+                // at most a few per routine, so the line-of-sight tests stay bounded
+                bool seenToday = villager.Memory.HasSeenToday(other.Id);
+                bool wantsCompanion = villager.Memory.WantsCompanion(other.Id);
+                if (seenToday && !wantsCompanion)
                 {
                     continue;
                 }
 
                 Vector3 position = other.Core.transform.position;
-                if ((position - from).sqrMagnitude <= radiusSqr && perception.CanSee(position + Vector3.up * ACTOR_EYE_OFFSET))
+                if ((position - from).sqrMagnitude > radiusSqr || !perception.CanSee(position + Vector3.up * ACTOR_EYE_OFFSET))
+                {
+                    continue;
+                }
+
+                if (!seenToday)
                 {
                     villager.Memory.RecordSeenVillager(other.Id);
+                }
+
+                if (wantsCompanion)
+                {
+                    villager.Memory.RecordCompanion(other.Id);
                 }
             }
         }

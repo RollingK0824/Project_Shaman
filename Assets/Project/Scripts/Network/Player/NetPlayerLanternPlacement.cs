@@ -67,9 +67,15 @@ public class NetPlayerLanternPlacement : NetworkBehaviour
         bool success = Placement.TryPlaceAuthoritative(requestId, aim,
             () => ServerValidateState() == null,
             ServerResolvePrefab, ServerPublish, ServerRollback,
-            out _, authoritativeEquippedItem: _equipment.EquippedItem);
+            out WorldItem placed, authoritativeEquippedItem: _equipment.EquippedItem);
 
-        if (!success) TargetPlaceFailed("여기에는 초롱불을 걸 수 없습니다.");
+        if (!success)
+        {
+            TargetPlaceFailed("여기에는 초롱불을 걸 수 없습니다.");
+            return;
+        }
+
+        RpcPresentPlaced(requestId, placed.transform.position);
     }
 
     [Server]
@@ -128,5 +134,11 @@ public class NetPlayerLanternPlacement : NetworkBehaviour
     private void TargetPlaceFailed(string message)
     {
         if (TryGetComponent(out PlayerItemFeedback feedback)) feedback.Unavailable(message);
+    }
+
+    [ClientRpc]
+    private void RpcPresentPlaced(long requestId, Vector3 position)
+    {
+        Placement.PresentPlacementConfirmed(requestId, position);
     }
 }

@@ -1,0 +1,326 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &162264972969761946
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 3012205497796513400}
+  m_Layer: 0
+  m_Name: Visual
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &3012205497796513400
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 162264972969761946}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 5081882651800564986}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &370358293719328386
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5081882651800564986}
+  - component: {fileID: 5892124183681195446}
+  - component: {fileID: 6482841292186840878}
+  - component: {fileID: 4397440419873100088}
+  - component: {fileID: 8595304086226700934}
+  - component: {fileID: 8752787911056484865}
+  - component: {fileID: 3070340092247269476}
+  - component: {fileID: 5978610833913882716}
+  - component: {fileID: 6321828689928807905}
+  - component: {fileID: 7073921401587017176}
+  - component: {fileID: 2070534927183921552}
+  - component: {fileID: 8301073052698845230}
+  - component: {fileID: 7480215936602144201}
+  - component: {fileID: 7480215936602144202}
+  m_Layer: 0
+  m_Name: Temp_Minion
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5081882651800564986
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3012205497796513400}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5892124183681195446
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9b91ecbcc199f4492b9a91e820070131, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror::Mirror.NetworkIdentity
+  sceneId: 0
+  _assetId: 2471420542
+  serverOnly: 0
+  visibility: 0
+  hasSpawned: 0
+--- !u!114 &6482841292186840878
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a553cb17010b2403e8523b558bffbc14, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Mirror.Components::Mirror.NetworkTransformUnreliable
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  target: {fileID: 5081882651800564986}
+  syncPosition: 1
+  syncRotation: 1
+  syncScale: 0
+  onlySyncOnChange: 1
+  compressRotation: 1
+  interpolatePosition: 1
+  interpolateRotation: 1
+  interpolateScale: 1
+  coordinateSpace: 0
+  timelineOffset: 1
+  showGizmos: 0
+  showOverlay: 0
+  overlayColor: {r: 0, g: 0, b: 0, a: 0.5}
+  bufferResetMultiplier: 3
+  useFixedUpdate: 0
+  positionSensitivity: 0.01
+  rotationSensitivity: 0.01
+  scaleSensitivity: 0.01
+--- !u!136 &4397440419873100088
+CapsuleCollider:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Material: {fileID: 0}
+  m_IncludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_ExcludeLayers:
+    serializedVersion: 2
+    m_Bits: 0
+  m_LayerOverridePriority: 0
+  m_IsTrigger: 0
+  m_ProvidesContacts: 0
+  m_Enabled: 1
+  serializedVersion: 2
+  m_Radius: 0.25
+  m_Height: 2
+  m_Direction: 1
+  m_Center: {x: 0, y: 1, z: 0}
+--- !u!114 &8595304086226700934
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 48dab93141ff4a7287de0f5dd3e929cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_FlyingMovement
+  _defaultSpeed: 3
+  _arriveDistance: 0.5
+  _acceleration: 10
+  _turnSpeed: 180
+  _cruiseHeightRange: {x: 4, y: 8}
+  _diveDistance: 8
+  _hoverHeight: 0.8
+  _groundClearance: 0.5
+  _maxHeight: 10
+  _heightFollowRate: 3
+  _bobAmplitude: 0.15
+  _bobFrequency: 1.5
+  _weaveAmplitude: 1.5
+  _weaveFrequency: 0.35
+  _approachRadius: 8
+  _separationRadius: 1.2
+  _separationStrength: 1.5
+  _isActive: 0
+  _isStopped: 1
+  _destination: {x: 0, y: 0, z: 0}
+  _speed: 0
+--- !u!114 &8752787911056484865
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2f6f74d812d2479cb9838687639e4c1f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_Status
+  _data: {fileID: 11400000, guid: 0292c7c4731cd0048a45436d17ec32f7, type: 2}
+  _maxHealth: 1
+  _deathDespawnDelay: 0
+  _health: 0
+  _isDead: 0
+  _isActive: 0
+--- !u!114 &3070340092247269476
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bcd8e05a9cc64a21ae74550fb782a94d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_AIStatus
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _acceptRequestedDamage: 1
+--- !u!114 &5978610833913882716
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 400ac94dfcce44bbb8ea4efe471c46c4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::DamageTypeTag
+  _damageType: 1
+--- !u!114 &6321828689928807905
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6192c5f812d347c8ae391dcd60b1caa4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_DamageReceiver
+--- !u!114 &7073921401587017176
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b399e57d50434069bdddcbe7d44559f3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_DeathDespawner
+--- !u!114 &2070534927183921552
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52866faad2cd4df4bbc5548d8ab97569, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Minion.AI_Minion
+  _data: {fileID: 11400000, guid: ad096b4bf15e9304ab75f35c4b398663, type: 2}
+  _lungeStartDistance: 3
+  _lungeSpeed: 9
+  _pierceThroughDistance: 3
+  _fadeSeconds: 1.2
+  _bellStaggerRadius: 5
+  _fleeLookAhead: 4
+  _state: 0
+  _targetName: 
+  _distanceToObjective: 0
+--- !u!114 &8301073052698845230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0e18e86e213edeb44a88f9f910d29c85, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_Minion
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+--- !u!114 &7480215936602144201
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ee92af14761f884c8eea45ae75e4153, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.AI_ModelVisual
+  _visualRoot: {fileID: 3012205497796513400}
+  _modelPrefabs:
+  - {fileID: 3281112308234323704, guid: 502a7246bcc5494488dd41f757ea30d2, type: 3}
+  - {fileID: 6047742007795317715, guid: 4af90b5415e6c8546b84f60c6e36081a, type: 3}
+  - {fileID: 7331120808683262883, guid: d3c66b89cd5e41c43a4c2f02426e1a51, type: 3}
+  _modelIndex: -1
+--- !u!114 &7480215936602144202
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 370358293719328386}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ecf742c3a03aa4f44ac313a30edc5286, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.Network.AI.Net_ModelVisual
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0

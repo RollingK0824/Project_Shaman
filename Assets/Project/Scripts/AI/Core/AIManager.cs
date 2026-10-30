@@ -1161,6 +1161,11 @@ namespace ProjectShaman.AI.Core
             float now = GetDayElapsed();
             float endTime = villager.IsBlockStarted ? villager.BlockEndTime : Mathf.Min(now + _behaviourConfig.RoutineSeconds, TimeManager.DAY_DURATION);
             villager.WaitingToolType = failed.ToolTypeId;
+            if (villager.Memory != null)
+            {
+                villager.Memory.ForgetRoutine(failed.Serial);
+            }
+
             SkipRoutine(villager, failed.Slot, endTime, reason);
             MarkRestedForTool(villager, failed.Slot, true);
 

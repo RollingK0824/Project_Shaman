@@ -20,13 +20,19 @@ public sealed class ItemVfxPresentation : MonoBehaviour
         if(!gong)return Chime(owner);
         var lib=ItemVfxLibrary.Default;if(!owner||!lib)return false;
         var pos=owner.transform.position+Vector3.up*1.25f+owner.transform.forward*.85f;
+        var view=owner.GetComponent<PlayerViewModeController>();
+        var camera=owner.GetComponentInChildren<Camera>();
+        bool firstPerson=PlayerLocalPresentation.IsLocal(owner) && camera!=null &&
+            (view==null || view.CurrentViewMode==PlayerViewModeController.ViewMode.FirstPerson);
+        if(firstPerson)pos=camera.transform.position+camera.transform.rotation*GongViewPulse.CameraOffset;
         var go=Spawn(gong?lib.GongPulse:lib.BellPulse,pos,Quaternion.identity,1.8f);
         if(!go)return false;
+        if(firstPerson)go.AddComponent<GongViewPulse>().Bind(owner,camera,view);
         // Per-camera, temporary opaque copies. Do not change the project's URP asset or team cameras on disk.
-        foreach(var camera in Camera.allCameras)
+        foreach(var renderCamera in Camera.allCameras)
         {
-            if(camera.cameraType!=CameraType.Game || !camera.TryGetComponent<UniversalAdditionalCameraData>(out var data) || data.renderType!=CameraRenderType.Base)continue;
-            var lease=camera.GetComponent<ItemVfxOpaqueLease>()??camera.gameObject.AddComponent<ItemVfxOpaqueLease>();lease.Request(data,1.9f);
+            if(renderCamera.cameraType!=CameraType.Game || !renderCamera.TryGetComponent<UniversalAdditionalCameraData>(out var data) || data.renderType!=CameraRenderType.Base)continue;
+            var lease=renderCamera.GetComponent<ItemVfxOpaqueLease>()??renderCamera.gameObject.AddComponent<ItemVfxOpaqueLease>();lease.Request(data,1.9f);
         }
         return true;
     }
