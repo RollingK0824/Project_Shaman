@@ -2,11 +2,17 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-// 플레이어별 음소거 한 줄: 이름 + 음소거 토글 + 말하는 중 아이콘. 이 PC에서만 적용
+// 플레이어별 음성 한 줄: 이름 + 볼륨 슬라이더 + 음소거 토글 + 말하는 중 아이콘. 이 PC에서만 적용
 public class VoicePlayerRowUI : MonoBehaviour
 {
     [SerializeField]
     private TMP_Text _nameText;
+
+    [SerializeField]
+    private Slider _volumeSlider;
+
+    [SerializeField]
+    private TMP_Text _volumeText;
 
     [SerializeField]
     private Toggle _muteToggle;
@@ -18,12 +24,17 @@ public class VoicePlayerRowUI : MonoBehaviour
 
     private void Awake()
     {
-        if (_muteToggle == null)
+        if (_volumeSlider != null)
         {
-            return;
+            _volumeSlider.minValue = 0f;
+            _volumeSlider.maxValue = 1f;
+            _volumeSlider.onValueChanged.AddListener(HandleSliderChanged);
         }
 
-        _muteToggle.onValueChanged.AddListener(HandleToggleChanged);
+        if (_muteToggle != null)
+        {
+            _muteToggle.onValueChanged.AddListener(HandleToggleChanged);
+        }
     }
 
     public void Bind(NetPlayerVoice player)
@@ -32,7 +43,9 @@ public class VoicePlayerRowUI : MonoBehaviour
 
         _player = player;
         _player.MutedLocallyChanged += HandleMutedChanged;
+        _player.LocalVolumeChanged += HandleVolumeChanged;
         HandleMutedChanged(_player.IsMutedLocally);
+        HandleVolumeChanged(_player.LocalVolume);
     }
 
     // 이름 SyncVar가 줄을 만든 뒤에 올 수 있어서 매 프레임 갱신
@@ -64,6 +77,36 @@ public class VoicePlayerRowUI : MonoBehaviour
         _player.SetMutedLocally(muted);
     }
 
+    private void HandleSliderChanged(float v)
+    {
+        if (_player == null)
+        {
+            return;
+        }
+
+        _player.SetLocalVolume(v);
+        UpdateVolumeLabel(v);
+    }
+
+    private void HandleVolumeChanged(float v)
+    {
+        if (_volumeSlider != null)
+        {
+            _volumeSlider.SetValueWithoutNotify(v);
+        }
+        UpdateVolumeLabel(v);
+    }
+
+    private void UpdateVolumeLabel(float v)
+    {
+        if (_volumeText == null)
+        {
+            return;
+        }
+
+        _volumeText.SetText($"{Mathf.RoundToInt(v * 100)}%");
+    }
+
     private void HandleMutedChanged(bool muted)
     {
         if (_muteToggle == null)
@@ -80,6 +123,7 @@ public class VoicePlayerRowUI : MonoBehaviour
         if (_player != null)
         {
             _player.MutedLocallyChanged -= HandleMutedChanged;
+            _player.LocalVolumeChanged -= HandleVolumeChanged;
         }
         _player = null;
     }

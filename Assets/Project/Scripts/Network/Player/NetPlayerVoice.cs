@@ -79,6 +79,22 @@ public class NetPlayerVoice : NetworkBehaviour
         MutedLocallyChanged?.Invoke(muted);
     }
 
+    // [로컬 클라] 이 플레이어 목소리 볼륨 (0~1, 기본 1). 이 PC에서만, 그 판에만 적용 (저장 안 함)
+    // VoiceSettings.Volume에 곱해짐. 무전 신호음에도 적용
+    public float LocalVolume { get; private set; } = 1f;
+    public event Action<float> LocalVolumeChanged;
+
+    public void SetLocalVolume(float volume)
+    {
+        volume = Mathf.Clamp01(volume);
+        if (IsLocal || Mathf.Approximately(LocalVolume, volume)) return;
+
+        LocalVolume = volume;
+        _proximityPlayback.SetPlayerVolume(volume);
+        _radioPlayback.SetPlayerVolume(volume);
+        LocalVolumeChanged?.Invoke(volume);
+    }
+
     // Enter Play Mode에서 도메인 리로드를 꺼 둔 경우 대비
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetStatics()

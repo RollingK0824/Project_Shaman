@@ -19,6 +19,9 @@ public class VoicePlayback : MonoBehaviour
     private int _startSamples;
     private bool _buffering = true;
 
+    // 플레이어별 볼륨 (0~1). 전체 음성 볼륨에 곱해서 적용
+    private float _playerVolume = 1f;
+
     public bool IsInitialized => _ring != null;
 
     public void Init(int sampleRate)
@@ -40,7 +43,17 @@ public class VoicePlayback : MonoBehaviour
     {
         if (_source != null) _source.spatialBlend = spatial ? 1f : 0f;
     }
-    private void ApplyVolume(float volume) => _source.volume = volume;
+    public void SetPlayerVolume(float volume)
+    {
+        _playerVolume = Mathf.Clamp01(volume);
+        ApplyVolume(VoiceSettings.Volume);
+    }
+
+    // Init 전 (Steam 미초기화 등)에는 _source가 없음. 값만 저장해 두고 Init에서 적용
+    private void ApplyVolume(float volume)
+    {
+        if (_source != null) _source.volume = volume * _playerVolume;
+    }
 
     // 무전 신호음. 같은 AudioSource로 재생해서 필터와 음성 볼륨이 그대로 적용
     public void PlayCue(AudioClip clip, float volumeScale)
