@@ -241,6 +241,26 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""interactions"": """",
                     ""initialStateCheck"": true,
                     ""priority"": 0
+                },
+                {
+                    ""name"": ""DropItem"",
+                    ""type"": ""Button"",
+                    ""id"": ""e7a785b9-89d4-4ae1-83a4-b2f1dd498a0b"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false,
+                    ""priority"": 0
+                },
+                {
+                    ""name"": ""VoiceRadio"",
+                    ""type"": ""Button"",
+                    ""id"": ""97c7e664-b9b0-41cc-86e5-dc38ff7c34c2"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false,
+                    ""priority"": 0
                 }
             ],
             ""bindings"": [
@@ -452,6 +472,28 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""action"": ""CycleSlot"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""30148194-07ee-487f-a485-56a3c637b561"",
+                    ""path"": ""<Keyboard>/g"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""DropItem"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""820d8351-2caf-482e-b76b-84a56cc3cff7"",
+                    ""path"": ""<Keyboard>/b"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""VoiceRadio"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
                 }
             ]
         },
@@ -473,6 +515,16 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""name"": ""Cancel"",
                     ""type"": ""Button"",
                     ""id"": ""e60df279-ab30-4082-b85f-77bee029dace"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false,
+                    ""priority"": 0
+                },
+                {
+                    ""name"": ""MicMute"",
+                    ""type"": ""Button"",
+                    ""id"": ""e3e02371-58fe-42e4-ad0a-9892d60f1f6b"",
                     ""expectedControlType"": """",
                     ""processors"": """",
                     ""interactions"": """",
@@ -500,6 +552,17 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""Cancel"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""427a3ca4-3afe-4091-ab1e-8175ea43c14c"",
+                    ""path"": ""<Keyboard>/m"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""MicMute"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -733,10 +796,13 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         m_Player_Crouch = m_Player.FindAction("Crouch", throwIfNotFound: true);
         m_Player_ViewToggle = m_Player.FindAction("ViewToggle", throwIfNotFound: true);
         m_Player_CycleSlot = m_Player.FindAction("CycleSlot", throwIfNotFound: true);
+        m_Player_DropItem = m_Player.FindAction("DropItem", throwIfNotFound: true);
+        m_Player_VoiceRadio = m_Player.FindAction("VoiceRadio", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Notebook = m_UI.FindAction("Notebook", throwIfNotFound: true);
         m_UI_Cancel = m_UI.FindAction("Cancel", throwIfNotFound: true);
+        m_UI_MicMute = m_UI.FindAction("MicMute", throwIfNotFound: true);
         // Spectator
         m_Spectator = asset.FindActionMap("Spectator", throwIfNotFound: true);
         m_Spectator_Up = m_Spectator.FindAction("Up", throwIfNotFound: true);
@@ -845,6 +911,8 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Crouch;
     private readonly InputAction m_Player_ViewToggle;
     private readonly InputAction m_Player_CycleSlot;
+    private readonly InputAction m_Player_DropItem;
+    private readonly InputAction m_Player_VoiceRadio;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -917,6 +985,14 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         /// </summary>
         public InputAction @CycleSlot => m_Wrapper.m_Player_CycleSlot;
         /// <summary>
+        /// Provides access to the underlying input action "Player/DropItem".
+        /// </summary>
+        public InputAction @DropItem => m_Wrapper.m_Player_DropItem;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/VoiceRadio".
+        /// </summary>
+        public InputAction @VoiceRadio => m_Wrapper.m_Player_VoiceRadio;
+        /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
         public InputActionMap Get() { return m_Wrapper.m_Player; }
@@ -987,6 +1063,12 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
             @CycleSlot.started += instance.OnCycleSlot;
             @CycleSlot.performed += instance.OnCycleSlot;
             @CycleSlot.canceled += instance.OnCycleSlot;
+            @DropItem.started += instance.OnDropItem;
+            @DropItem.performed += instance.OnDropItem;
+            @DropItem.canceled += instance.OnDropItem;
+            @VoiceRadio.started += instance.OnVoiceRadio;
+            @VoiceRadio.performed += instance.OnVoiceRadio;
+            @VoiceRadio.canceled += instance.OnVoiceRadio;
         }
 
         /// <summary>
@@ -1043,6 +1125,12 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
             @CycleSlot.started -= instance.OnCycleSlot;
             @CycleSlot.performed -= instance.OnCycleSlot;
             @CycleSlot.canceled -= instance.OnCycleSlot;
+            @DropItem.started -= instance.OnDropItem;
+            @DropItem.performed -= instance.OnDropItem;
+            @DropItem.canceled -= instance.OnDropItem;
+            @VoiceRadio.started -= instance.OnVoiceRadio;
+            @VoiceRadio.performed -= instance.OnVoiceRadio;
+            @VoiceRadio.canceled -= instance.OnVoiceRadio;
         }
 
         /// <summary>
@@ -1082,6 +1170,7 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
     private List<IUIActions> m_UIActionsCallbackInterfaces = new List<IUIActions>();
     private readonly InputAction m_UI_Notebook;
     private readonly InputAction m_UI_Cancel;
+    private readonly InputAction m_UI_MicMute;
     /// <summary>
     /// Provides access to input actions defined in input action map "UI".
     /// </summary>
@@ -1101,6 +1190,10 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "UI/Cancel".
         /// </summary>
         public InputAction @Cancel => m_Wrapper.m_UI_Cancel;
+        /// <summary>
+        /// Provides access to the underlying input action "UI/MicMute".
+        /// </summary>
+        public InputAction @MicMute => m_Wrapper.m_UI_MicMute;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1133,6 +1226,9 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
             @Cancel.started += instance.OnCancel;
             @Cancel.performed += instance.OnCancel;
             @Cancel.canceled += instance.OnCancel;
+            @MicMute.started += instance.OnMicMute;
+            @MicMute.performed += instance.OnMicMute;
+            @MicMute.canceled += instance.OnMicMute;
         }
 
         /// <summary>
@@ -1150,6 +1246,9 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
             @Cancel.started -= instance.OnCancel;
             @Cancel.performed -= instance.OnCancel;
             @Cancel.canceled -= instance.OnCancel;
+            @MicMute.started -= instance.OnMicMute;
+            @MicMute.performed -= instance.OnMicMute;
+            @MicMute.canceled -= instance.OnMicMute;
         }
 
         /// <summary>
@@ -1531,6 +1630,20 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnCycleSlot(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "DropItem" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDropItem(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "VoiceRadio" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnVoiceRadio(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.
@@ -1553,6 +1666,13 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnCancel(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "MicMute" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnMicMute(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "Spectator" which allows adding and removing callbacks.

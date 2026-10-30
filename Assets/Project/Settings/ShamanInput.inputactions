@@ -153,7 +153,28 @@
                     "expectedControlType": "Axis",
                     "processors": "",
                     "interactions": "",
-                    "initialStateCheck": false
+                    "initialStateCheck": true,
+                    "priority": 0
+                },
+                {
+                    "name": "DropItem",
+                    "type": "Button",
+                    "id": "e7a785b9-89d4-4ae1-83a4-b2f1dd498a0b",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "VoiceRadio",
+                    "type": "Button",
+                    "id": "97c7e664-b9b0-41cc-86e5-dc38ff7c34c2",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
                 }
             ],
             "bindings": [
@@ -365,6 +386,28 @@
                     "action": "CycleSlot",
                     "isComposite": false,
                     "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "30148194-07ee-487f-a485-56a3c637b561",
+                    "path": "<Keyboard>/g",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DropItem",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "820d8351-2caf-482e-b76b-84a56cc3cff7",
+                    "path": "<Keyboard>/b",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "VoiceRadio",
+                    "isComposite": false,
+                    "isPartOfComposite": false
                 }
             ]
         },
@@ -386,6 +429,16 @@
                     "name": "Cancel",
                     "type": "Button",
                     "id": "e60df279-ab30-4082-b85f-77bee029dace",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false,
+                    "priority": 0
+                },
+                {
+                    "name": "MicMute",
+                    "type": "Button",
+                    "id": "e3e02371-58fe-42e4-ad0a-9892d60f1f6b",
                     "expectedControlType": "",
                     "processors": "",
                     "interactions": "",
@@ -413,6 +466,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Cancel",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "427a3ca4-3afe-4091-ab1e-8175ea43c14c",
+                    "path": "<Keyboard>/m",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "MicMute",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

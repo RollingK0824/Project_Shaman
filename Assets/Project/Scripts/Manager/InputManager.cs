@@ -41,6 +41,18 @@ public class InputManager : GlobalSingleton<InputManager>
         }
 
         _actions.Enable();
+        _micMute = _actions.asset.FindAction("UI/MicMute");
+    }
+
+    // 마이크 음소거 단축키 (UI 맵이라 생존/관전/메뉴 어디서나 동작)
+    private InputAction _micMute;
+
+    private void Update()
+    {
+        if (_micMute != null && _micMute.WasPerformedThisFrame())
+        {
+            VoiceSettings.ToggleMicMuted();
+        }
     }
 
     // 기본값과 다른 키만 저장

@@ -36,6 +36,7 @@ public class NetPlayerVoice : NetworkBehaviour
 
     // [로컬 클라] 방울 무전 키. 플레이어 입력 에셋 (ShamanInput)과 별도로 관리
     private InputAction _radioAction;
+    private bool _ownsRadioAction;
 
     private NetPlayerStatus _status;
     private NetPlayerEquipment _equipment;
@@ -135,7 +136,14 @@ public class NetPlayerVoice : NetworkBehaviour
             return;
         }
 
-        //_radioAction = InputManager.Instance.Actions.Player.VoiceRadio;
+        // ShamanInput에 Player/VoiceRadio가 있으면 공용 액션(키 재설정 가능), 없으면 B 키 임시 액션
+        _radioAction = InputManager.Instance.Actions.asset.FindAction("Player/VoiceRadio", false);
+        _ownsRadioAction = _radioAction == null;
+        if (_ownsRadioAction)
+        {
+            _radioAction = new InputAction("VoiceRadio", InputActionType.Button, "<Keyboard>/b");
+            _radioAction.Enable();
+        }
         SteamUser.StartVoiceRecording();
         _recording = true;
         _inventory.QuickSlotChanged += HandleQuickSlotChanged;
@@ -150,6 +158,8 @@ public class NetPlayerVoice : NetworkBehaviour
             _recording = false;
         }
 
+        if (_ownsRadioAction) _radioAction?.Dispose();
+        _ownsRadioAction = false;
         _radioAction = null;
         _inventory.QuickSlotChanged -= HandleQuickSlotChanged;
         base.OnStopLocalPlayer();
