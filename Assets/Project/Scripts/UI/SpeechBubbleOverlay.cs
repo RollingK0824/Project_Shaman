@@ -46,6 +46,9 @@ public class SpeechBubbleOverlay : MonoBehaviour
     private readonly List<Bubble> _active = new List<Bubble>();
     private readonly List<Bubble> _free = new List<Bubble>();
     private readonly List<Bubble> _names = new List<Bubble>();
+    // Name tags keep their smaller font and fainter background, so they get their own pool
+    private readonly List<Bubble> _freeNames = new List<Bubble>();
+    private readonly RaycastHit[] _hits = new RaycastHit[16];
     private RectTransform _area;
 
     public static void Show(Transform speaker, string line, float seconds)
@@ -123,7 +126,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
         }
 
         // One bubble per speaker: a new line replaces the old one
-        Bubble bubble = _active.Find(b => b.Speaker == speaker);
+        Bubble bubble = FindBySpeaker(_active, speaker);
         if (bubble == null)
         {
             bubble = Rent();
@@ -143,7 +146,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
             return;
         }
 
-        Bubble tag = _names.Find(b => b.Speaker == target);
+        Bubble tag = FindBySpeaker(_names, target);
         if (tag == null)
         {
             tag = CreateNameTag();
@@ -161,14 +164,44 @@ public class SpeechBubbleOverlay : MonoBehaviour
         {
             if (_names[i].Speaker == target)
             {
-                Destroy(_names[i].Rect.gameObject);
-                _names.RemoveAt(i);
+                ReleaseName(i);
             }
         }
     }
 
+    private void ReleaseName(int index)
+    {
+        Bubble tag = _names[index];
+        tag.Rect.gameObject.SetActive(false);
+        tag.Speaker = null;
+        tag.NextVisibilityCheck = 0f;
+        _names.RemoveAt(index);
+        _freeNames.Add(tag);
+    }
+
+    // No closure (List.Find with a lambda allocates one per call), and NameHeight runs per bubble every frame
+    private static Bubble FindBySpeaker(List<Bubble> list, Transform speaker)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            if (list[i].Speaker == speaker)
+            {
+                return list[i];
+            }
+        }
+
+        return null;
+    }
+
     private Bubble CreateNameTag()
     {
+        if (_freeNames.Count > 0)
+        {
+            Bubble reused = _freeNames[_freeNames.Count - 1];
+            _freeNames.RemoveAt(_freeNames.Count - 1);
+            return reused;
+        }
+
         Bubble tag = Rent();
         tag.Rect.name = "NameTag";
         tag.Text.fontSize *= _nameFontScale;
@@ -229,10 +262,16 @@ public class SpeechBubbleOverlay : MonoBehaviour
         }
 
         // Nearer speakers draw on top of farther ones
+        // Only reorder on change: SetSiblingIndex dirties the canvas even when the index is the same
         _active.Sort((a, b) => b.Distance.CompareTo(a.Distance));
+        int first = _template.GetSiblingIndex() + 1;
         for (int i = 0; i < _active.Count; i++)
         {
-            _active[i].Rect.SetSiblingIndex(_template.GetSiblingIndex() + 1 + i);
+            RectTransform rect = _active[i].Rect;
+            if (rect.GetSiblingIndex() != first + i)
+            {
+                rect.SetSiblingIndex(first + i);
+            }
         }
     }
 
@@ -243,8 +282,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
             Bubble tag = _names[i];
             if (tag.Speaker == null)
             {
-                Destroy(tag.Rect.gameObject);
-                _names.RemoveAt(i);
+                ReleaseName(i);
                 continue;
             }
 
@@ -284,11 +322,11 @@ public class SpeechBubbleOverlay : MonoBehaviour
         }
 
         Transform viewerRoot = viewer.transform.root;
-        RaycastHit[] hits = Physics.RaycastAll(eye, toHead / distance, distance, _nameOcclusionMask, QueryTriggerInteraction.Ignore);
+        int count = Physics.RaycastNonAlloc(eye, toHead / distance, _hits, distance, _nameOcclusionMask, QueryTriggerInteraction.Ignore);
 
-        foreach (RaycastHit hit in hits)
+        for (int i = 0; i < count; i++)
         {
-            Transform hitTransform = hit.transform;
+            Transform hitTransform = _hits[i].transform;
             if (hitTransform.IsChildOf(target) || hitTransform.IsChildOf(viewerRoot))
             {
                 continue;
@@ -302,7 +340,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
 
     private float NameHeight(Transform speaker)
     {
-        Bubble tag = _names.Find(b => b.Speaker == speaker);
+        Bubble tag = FindBySpeaker(_names, speaker);
         return tag != null && tag.Rect.gameObject.activeSelf ? tag.Rect.rect.height + SCREEN_MARGIN * 0.5f : 0f;
     }
 

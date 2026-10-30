@@ -58,7 +58,7 @@ public class TimeManager : SceneSingleton<TimeManager>
         _rebaseTime = rebaseTime;
         _elapsedAtRebase = elapsedAtRebase;
         Time.timeScale = Speed;
-        Debug.Log($"[TimeManager] 시간 배속 x{Speed:0.#}");
+        GameLog.Log($"[TimeManager] 시간 배속 x{Speed:0.#}");
         // Also in the AI session log: above x3 agents take steps past their arrival radius, so lateness and
         // approach timeouts from then on are not real
         string note = Speed > 3f ? " (above x3 movement and arrival timings are unreliable)" : string.Empty;
@@ -123,7 +123,7 @@ public class TimeManager : SceneSingleton<TimeManager>
         {
             _textTimeIndex = newTextTimeIndex;
 
-            Debug.Log("[TimeManager] Current Time: " + _textTime[_textTimeIndex]);
+            GameLog.Log("[TimeManager] Current Time: " + _textTime[_textTimeIndex]);
 
             OnTextTimeChange?.Invoke();
         }
