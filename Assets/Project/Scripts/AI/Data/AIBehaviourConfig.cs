@@ -134,7 +134,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _ghostStalkSpeed = 3f;
         [SerializeField] private float _ghostStalkCreepSpeed = 1f;
         [Tooltip("Stress per second on every player inside a ghost's presence radius (stalked or not)")]
-        [SerializeField] private float _ghostStalkStressPerSecond = 0.5f;
+        [SerializeField] private float _ghostStalkStressPerSecond = 0.125f;
         [Tooltip("Presence radius at yin 0 and at max yin. Never below the stalk max distance, so a stalked player is always inside")]
         [SerializeField] private float _ghostStressRadiusMin = 7f;
         [SerializeField] private float _ghostStressRadiusMax = 12f;
