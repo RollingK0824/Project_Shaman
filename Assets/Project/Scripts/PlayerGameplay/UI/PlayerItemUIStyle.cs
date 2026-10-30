@@ -18,7 +18,7 @@ public static class PlayerItemUIStyle
         var parent = rect.parent as RectTransform;
         if (parent == null) return;
         Place(rect, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(1000, 640));
-        rect.localScale = Vector3.one * Mathf.Max(.01f, Mathf.Min(parent.rect.width / 1000f, parent.rect.height / 640f));
+        SetScale(rect, Vector3.one * Mathf.Max(.01f, Mathf.Min(parent.rect.width / 1000f, parent.rect.height / 640f)));
     }
 
     public static RectTransform NotebookRect(Transform parent, string name, float x, float y, float width, float height)
@@ -74,10 +74,8 @@ public static class PlayerItemUIStyle
 
     public static void FitPanel(RectTransform rect)
     {
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, .5f);
-        rect.anchoredPosition = Vector2.zero;
-        rect.sizeDelta = new Vector2(980f, 520f);
-        rect.localScale = Vector3.one * ViewportUnit(rect);
+        Place(rect, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(980f, 520f));
+        SetScale(rect, Vector3.one * ViewportUnit(rect));
     }
 
     // Notebook pages define their own available area inside the existing book artwork.
@@ -85,15 +83,23 @@ public static class PlayerItemUIStyle
     {
         var parent = rect.parent as RectTransform;
         if (parent == null) return;
-        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(.5f, .5f);
-        rect.anchoredPosition = Vector2.zero; rect.sizeDelta = new Vector2(980f, 520f);
-        rect.localScale = Vector3.one * Mathf.Max(.01f, Mathf.Min(parent.rect.width / 980f, parent.rect.height / 520f));
+        Place(rect, new Vector2(.5f, .5f), new Vector2(.5f, .5f), Vector2.zero, new Vector2(980f, 520f));
+        SetScale(rect, Vector3.one * Mathf.Max(.01f, Mathf.Min(parent.rect.width / 980f, parent.rect.height / 520f)));
     }
 
+    // Per-frame layout calls write only on change: transform writes dirty the whole canvas even with equal values.
     public static void Place(RectTransform rect, Vector2 anchor, Vector2 pivot, Vector2 position, Vector2 size)
     {
-        rect.anchorMin = rect.anchorMax = anchor; rect.pivot = pivot;
-        rect.anchoredPosition = position; rect.sizeDelta = size;
+        if (rect.anchorMin != anchor) rect.anchorMin = anchor;
+        if (rect.anchorMax != anchor) rect.anchorMax = anchor;
+        if (rect.pivot != pivot) rect.pivot = pivot;
+        if (rect.anchoredPosition != position) rect.anchoredPosition = position;
+        if (rect.sizeDelta != size) rect.sizeDelta = size;
+    }
+
+    public static void SetScale(Transform transform, Vector3 scale)
+    {
+        if (transform.localScale != scale) transform.localScale = scale;
     }
 
     public static void Stretch(RectTransform rect, Vector2 min, Vector2 max)

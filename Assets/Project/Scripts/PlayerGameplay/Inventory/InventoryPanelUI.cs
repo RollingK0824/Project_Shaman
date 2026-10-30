@@ -116,7 +116,7 @@ public class InventoryPanelUI : MonoBehaviour
             if (_embedded)
             {
                 PlayerItemUIStyle.Place((RectTransform)transform, new Vector2(0, 1), new Vector2(0, 1), new Vector2(540, 0), new Vector2(440, 640));
-                transform.localScale = Vector3.one;
+                PlayerItemUIStyle.SetScale(transform, Vector3.one);
             }
             else PlayerItemUIStyle.FitPanel((RectTransform)transform);
         }
