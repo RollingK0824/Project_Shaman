@@ -30,6 +30,23 @@ namespace ProjectShaman.AI.Work
             }
         }
 
+        // Actions that play a different animation from this one, for a corrupted routine that must look wrong
+        public static void CollectOtherLooking(string actionId, List<string> result)
+        {
+            result.Clear();
+            _animations.TryGetValue(actionId ?? string.Empty, out string own);
+
+            foreach (KeyValuePair<string, string> action in _animations)
+            {
+                if (action.Key != actionId && action.Value != own)
+                {
+                    result.Add(action.Key);
+                }
+            }
+
+            result.Sort(string.CompareOrdinal);
+        }
+
         // Empty when the action has no animation: the villager keeps its locomotion pose
         public static string Get(string actionId)
         {

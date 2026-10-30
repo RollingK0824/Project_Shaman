@@ -58,25 +58,10 @@ namespace ProjectShaman.AI.Ghost
 
         public static List<CorruptionAxis> GetAvailableAxes(RoutineEntry routine)
         {
-            List<CorruptionAxis> axes = new List<CorruptionAxis>();
-
-            if (routine.WrongToolIds.Count > 0)
-            {
-                axes.Add(CorruptionAxis.Tool);
-            }
-
-            if (routine.WrongActionIds.Count > 0)
-            {
-                axes.Add(CorruptionAxis.Action);
-            }
-
-            if (routine.WrongPlaceIds.Count > 0)
-            {
-                axes.Add(CorruptionAxis.Place);
-            }
-
-            axes.Add(CorruptionAxis.Time);
-            return axes;
+            // Wrong tool, action and place are open to every routine: an empty wrong list in the data means any other one
+            // (RoutineResolver picks it from the scene), a filled list limits it. An axis with nothing to swap to at
+            // resolve time falls through to the next one, time always works
+            return new List<CorruptionAxis> { CorruptionAxis.Tool, CorruptionAxis.Action, CorruptionAxis.Place, CorruptionAxis.Time };
         }
 
         private static void EnsureMinimum(CorruptionPlan plan, VillagerSchedule schedule, int dayCount, List<int> workSlots, int slotsPerDay, int minimum, System.Random random)

@@ -374,7 +374,7 @@ namespace ProjectShaman.AI
 
         // A behaviour symptom: the Animator state "Symptom_<Name>" (Symptom_Tremble, Symptom_NeckTwist ...) on the first action
         // layer that has it (the upper-body layer, so walking goes on). It is not an action (work keeps its own state) and is
-        // faded out after a few seconds even when the clip loops. A state the Animator lacks is reported once.
+        // faded out when the clip ends (capped for a looping clip). A state the Animator lacks is reported once.
         public void PlaySymptom(string symptomName)
         {
             if (animator == null || !animator.isActiveAndEnabled || string.IsNullOrEmpty(symptomName))
@@ -409,9 +409,19 @@ namespace ProjectShaman.AI
             _symptomRoutine = StartCoroutine(EndSymptom(layer, _symptomSeconds));
         }
 
-        private System.Collections.IEnumerator EndSymptom(int layer, float seconds)
+        // Back to Empty when the clip has played once (the symptom clips do not loop), or after the cap for a looping one
+        private System.Collections.IEnumerator EndSymptom(int layer, float maxSeconds)
         {
-            yield return new WaitForSeconds(seconds);
+            float giveUpAt = Time.time + maxSeconds;
+
+            // The cross-fade reaches the symptom state only after it has blended in
+            yield return new WaitForSeconds(_crossFadeSeconds + 0.05f);
+            while (Time.time < giveUpAt && animator != null && animator.isActiveAndEnabled && StateIsSymptom(layer) &&
+                   animator.GetCurrentAnimatorStateInfo(layer).normalizedTime < 1f)
+            {
+                yield return null;
+            }
+
             _symptomRoutine = null;
 
             // Cut only our own state: work may have taken the layer meanwhile

@@ -740,6 +740,32 @@
           "Elder"
         ]
       }
+    },
+    {
+      "jobId": "Slave",
+      "displayName": "노비",
+      "condition": {
+        "genders": [],
+        "socialClasses": [
+          "Cheonmin"
+        ],
+        "ageGroups": []
+      }
+    },
+    {
+      "jobId": "Fisher",
+      "displayName": "어부",
+      "condition": {
+        "genders": [],
+        "socialClasses": [
+          "Sangmin",
+          "Cheonmin"
+        ],
+        "ageGroups": [
+          "Adult",
+          "Elder"
+        ]
+      }
     }
   ],
   "routines": [
@@ -763,13 +789,9 @@
       "actionId": "Till",
       "isCoop": false,
       "maxPeople": 2,
-      "wrongToolIds": [
-        "Axe"
-      ],
+      "wrongToolIds": [],
       "wrongActionIds": [],
-      "wrongPlaceIds": [
-        "Woodpile"
-      ]
+      "wrongPlaceIds": []
     },
     {
       "routineId": "Weeding",
@@ -790,9 +812,7 @@
       "maxPeople": 4,
       "wrongToolIds": [],
       "wrongActionIds": [],
-      "wrongPlaceIds": [
-        "Woodpile"
-      ]
+      "wrongPlaceIds": []
     },
     {
       "routineId": "Chopping",
@@ -811,15 +831,9 @@
       "actionId": "Chop",
       "isCoop": false,
       "maxPeople": 2,
-      "wrongToolIds": [
-        "Hoe"
-      ],
-      "wrongActionIds": [
-        "Stack"
-      ],
-      "wrongPlaceIds": [
-        "CropField"
-      ]
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
     },
     {
       "routineId": "Stacking",
@@ -839,16 +853,12 @@
       "isCoop": false,
       "maxPeople": 2,
       "wrongToolIds": [],
-      "wrongActionIds": [
-        "Chop"
-      ],
-      "wrongPlaceIds": [
-        "Tavern"
-      ]
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
     },
     {
       "routineId": "Blacksmithing",
-      "displayName": "농기구 수리",
+      "displayName": "망치질하기",
       "category": "Work",
       "jobIds": [
         "Blacksmith"
@@ -870,16 +880,9 @@
       "actionId": "Forge",
       "isCoop": false,
       "maxPeople": 1,
-      "wrongToolIds": [
-        "Hoe",
-        "Axe"
-      ],
-      "wrongActionIds": [
-        "Chop"
-      ],
-      "wrongPlaceIds": [
-        "CropField"
-      ]
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
     },
     {
       "routineId": "TavernRest",
@@ -929,13 +932,9 @@
       "actionId": "Pound",
       "isCoop": true,
       "maxPeople": 2,
-      "wrongToolIds": [
-        "Hammer"
-      ],
+      "wrongToolIds": [],
       "wrongActionIds": [],
-      "wrongPlaceIds": [
-        "Woodpile"
-      ]
+      "wrongPlaceIds": []
     },
     {
       "routineId": "Logging",
@@ -958,13 +957,9 @@
       "actionId": "Chop",
       "isCoop": true,
       "maxPeople": 3,
-      "wrongToolIds": [
-        "Hoe"
-      ],
+      "wrongToolIds": [],
       "wrongActionIds": [],
-      "wrongPlaceIds": [
-        "CropField"
-      ]
+      "wrongPlaceIds": []
     },
     {
       "routineId": "FuelGathering",
@@ -989,15 +984,9 @@
       "actionId": "Chop",
       "isCoop": false,
       "maxPeople": 1,
-      "wrongToolIds": [
-        "Hoe"
-      ],
-      "wrongActionIds": [
-        "Stack"
-      ],
-      "wrongPlaceIds": [
-        "Tavern"
-      ]
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
     },
     {
       "routineId": "ShadeRest",
@@ -1116,6 +1105,174 @@
       "wrongToolIds": [],
       "wrongActionIds": [],
       "wrongPlaceIds": []
+    },
+    {
+      "routineId": "YardSweeping",
+      "displayName": "마당 쓸기",
+      "category": "Work",
+      "jobIds": [
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Yard",
+      "toolId": "Broom",
+      "actionId": "Sweep",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "Laundry",
+      "displayName": "빨래하기",
+      "category": "Work",
+      "jobIds": [
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Stream",
+      "toolId": "ClothRoller",
+      "actionId": "Wash",
+      "isCoop": true,
+      "maxPeople": 3,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "FirewoodCarrying",
+      "displayName": "장작 나르기",
+      "category": "Work",
+      "jobIds": [
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Woodpile",
+      "toolId": "",
+      "actionId": "Carry",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "TavernChores",
+      "displayName": "주막 허드렛일",
+      "category": "Work",
+      "jobIds": [
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Tavern",
+      "toolId": "Broom",
+      "actionId": "Sweep",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "Fishing",
+      "displayName": "낚시하기",
+      "category": "Work",
+      "jobIds": [
+        "Fisher"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Stream",
+      "toolId": "",
+      "actionId": "Fish",
+      "isCoop": false,
+      "maxPeople": 3,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "NetMending",
+      "displayName": "그물 손질",
+      "category": "Work",
+      "jobIds": [
+        "Fisher"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Stream",
+      "toolId": "",
+      "actionId": "Mend",
+      "isCoop": true,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "FishCarrying",
+      "displayName": "생선 나르기",
+      "category": "Work",
+      "jobIds": [
+        "Fisher"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "Market",
+      "toolId": "",
+      "actionId": "Carry",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "Sowing",
+      "displayName": "씨 뿌리기",
+      "category": "Work",
+      "jobIds": [
+        "Farmer"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "CropField",
+      "toolId": "",
+      "actionId": "Sow",
+      "isCoop": true,
+      "maxPeople": 3,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
     }
   ],
   "actions": [
@@ -1142,6 +1299,30 @@
     {
       "actionId": "Pound",
       "animation": "Hammering"
+    },
+    {
+      "actionId": "Sweep",
+      "animation": "Farming"
+    },
+    {
+      "actionId": "Wash",
+      "animation": "Hammering"
+    },
+    {
+      "actionId": "Fish",
+      "animation": "Crouching"
+    },
+    {
+      "actionId": "Mend",
+      "animation": "Crouching"
+    },
+    {
+      "actionId": "Carry",
+      "animation": "Gathering"
+    },
+    {
+      "actionId": "Sow",
+      "animation": "Crouching"
     }
   ]
 }

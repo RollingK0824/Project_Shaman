@@ -4,6 +4,7 @@ using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
+using ProjectShaman.AI.Work;
 using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Routine
@@ -146,28 +147,25 @@ namespace ProjectShaman.AI.Routine
                 case CorruptionAxis.Tool:
                     return TryApplyToolAxis(routine, possession, random, ref resolved);
                 case CorruptionAxis.Action:
-                    if (routine.WrongActionIds.Count == 0)
+                    List<string> actions = WrongActions(routine);
+                    if (actions.Count == 0)
                     {
                         return false;
                     }
 
-                    resolved.ActionOverride = routine.WrongActionIds[random.Next(routine.WrongActionIds.Count)];
+                    resolved.ActionOverride = actions[random.Next(actions.Count)];
                     resolved.CorruptionDetail = $"action {routine.ActionId} → {resolved.ActionOverride}";
                     return true;
                 case CorruptionAxis.Place:
-                    if (routine.WrongPlaceIds.Count == 0)
+                    List<PlaceArea> places = WrongPlaces(routine, resolved.PlaceId);
+                    if (places.Count == 0)
                     {
                         return false;
                     }
 
-                    string wrongPlaceId = routine.WrongPlaceIds[random.Next(routine.WrongPlaceIds.Count)];
-                    if (!PlaceRegistry.TryGet(wrongPlaceId, out PlaceArea wrongPlace))
-                    {
-                        return false;
-                    }
-
+                    PlaceArea wrongPlace = places[random.Next(places.Count)];
                     resolved.TargetPosition = wrongPlace.GetRandomPoint(_random);
-                    resolved.CorruptionDetail = $"place {resolved.PlaceId} → {wrongPlaceId}";
+                    resolved.CorruptionDetail = $"place {resolved.PlaceId} → {wrongPlace.PlaceId}";
                     return true;
                 case CorruptionAxis.Time:
                     float slotLength = Mathf.Max(1f, resolved.EndTime - resolved.StartTime);
@@ -180,16 +178,74 @@ namespace ProjectShaman.AI.Routine
             }
         }
 
+        // The data's list when it has one, otherwise every tool kind in the scene but the routine's own
+        private static List<string> WrongTools(RoutineEntry routine)
+        {
+            if (routine.WrongToolIds.Count > 0)
+            {
+                return routine.WrongToolIds;
+            }
+
+            List<string> kinds = new List<string>();
+            foreach (ToolItem tool in ToolRegistry.All)
+            {
+                if (tool != null && !string.IsNullOrEmpty(tool.TypeId) && tool.TypeId != routine.ToolId && !kinds.Contains(tool.TypeId))
+                {
+                    kinds.Add(tool.TypeId);
+                }
+            }
+
+            return kinds;
+        }
+
+        // The data's list when it has one, otherwise every action whose animation looks different from the routine's own
+        // (an action sharing its animation would not look wrong to anyone)
+        private static List<string> WrongActions(RoutineEntry routine)
+        {
+            if (routine.WrongActionIds.Count > 0)
+            {
+                return routine.WrongActionIds;
+            }
+
+            List<string> actions = new List<string>();
+            WorkAnimationTable.CollectOtherLooking(routine.ActionId, actions);
+            return actions;
+        }
+
+        // The data's places when it lists some, otherwise every work place in the scene that is not the routine's own
+        // (nor another member of its place group)
+        private static List<PlaceArea> WrongPlaces(RoutineEntry routine, string ownPlaceId)
+        {
+            List<PlaceArea> places = new List<PlaceArea>();
+
+            if (routine.WrongPlaceIds.Count > 0)
+            {
+                foreach (string placeId in routine.WrongPlaceIds)
+                {
+                    if (PlaceRegistry.TryGet(placeId, out PlaceArea listed))
+                    {
+                        places.Add(listed);
+                    }
+                }
+
+                return places;
+            }
+
+            PlaceRegistry.CollectByType(PlaceType.Work, places);
+            places.RemoveAll(p => p.PlaceId == ownPlaceId || p.PlaceId == routine.PlaceId || p.Group == routine.PlaceId);
+            return places;
+        }
+
         private bool TryApplyToolAxis(RoutineEntry routine, AI_Possession possession, System.Random random, ref ResolvedRoutine resolved)
         {
-            if (routine.WrongToolIds.Count == 0 || !PlaceRegistry.TryGet(resolved.PlaceId, out PlaceArea place))
+            if (!PlaceRegistry.TryGet(resolved.PlaceId, out PlaceArea place))
             {
                 return false;
             }
 
             List<string> feasible = new List<string>();
 
-            foreach (string toolType in routine.WrongToolIds)
+            foreach (string toolType in WrongTools(routine))
             {
                 if (ToolRegistry.FindAvailableNear(toolType, place.Center, _config.ToolCorruptionSearchRadius, null) != null)
                 {
