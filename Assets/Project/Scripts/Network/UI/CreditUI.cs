@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // [로컬] 메인 메뉴 크레딧. 열면 아래에서 위로 자동 스크롤, 끝까지 가거나 Esc/닫기 버튼이면 닫힘
-public class CreditsUI : MonoBehaviour
+public class CreditUI : MonoBehaviour
 {
     [SerializeField] private RectTransform _viewport;   // 보이는 영역 (RectMask2D)
     [SerializeField] private RectTransform _content;    // 올라갈 내용 (크레딧 TMP 텍스트)
