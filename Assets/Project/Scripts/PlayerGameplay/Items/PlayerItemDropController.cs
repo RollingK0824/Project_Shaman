@@ -75,6 +75,8 @@ public sealed class PlayerItemDropController : MonoBehaviour
         {
             GameObject prefab = _resolvePrefab != null ? _resolvePrefab(item) : null;
             if (prefab == null) prefab = item.WorldPrefab;
+            // Capture before TryDropUnit can unequip and destroy the held visual.
+            Vector3 releasePoint = GetDropReleasePoint(item);
 
             var prototype = prefab.GetComponent<WorldItem>();
             if (!prefab.activeSelf || prototype == null || !prototype.enabled || prototype.ItemData != item ||
@@ -121,6 +123,19 @@ public sealed class PlayerItemDropController : MonoBehaviour
                 return world != null && world.isActiveAndEnabled;
             });
             if (!committed) { LastMessage = "버리지 못했습니다. 소지품은 유지됩니다."; return false; }
+            // Presentation failure must never turn an already committed drop into a failed transaction.
+            ItemDropPresentation presentation = null;
+            try
+            {
+                presentation = world.GetComponent<ItemDropPresentation>();
+                if (presentation == null) presentation = world.gameObject.AddComponent<ItemDropPresentation>();
+                presentation.Play(releasePoint);
+            }
+            catch (Exception e)
+            {
+                if (presentation != null) presentation.enabled = false;
+                Debug.LogException(e, world);
+            }
             dropped = world; LastMessage = "아이템 1개를 바닥에 내려놓았습니다.";
             return true;
         }
@@ -148,6 +163,26 @@ public sealed class PlayerItemDropController : MonoBehaviour
         if (requestId != _pendingRequest) return;
         _pendingRequest = 0; LastMessage = message;
         DropResolved?.Invoke(requestId, success, message);
+    }
+    private Vector3 GetDropReleasePoint(ItemData item)
+    {
+        var held = GetComponent<PlayerItemController>();
+        var view = GetComponent<PlayerViewModeController>();
+        var identity = GetComponent<NetworkIdentity>();
+        bool local = !NetworkClient.active && !NetworkServer.active || identity != null && identity.isLocalPlayer;
+        if (held != null && held.EquippedItemData == item)
+        {
+            if (local && view != null && view.CurrentViewMode == PlayerViewModeController.ViewMode.FirstPerson &&
+                held.TryGetFirstPersonReleasePoint(out var first)) return first;
+            if (held.TryGetThirdPersonReleasePoint(out var third)) return third;
+        }
+        var animator = GetComponentInChildren<Animator>();
+        if (animator != null && animator.isHuman)
+        {
+            var hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            if (hand != null) return hand.position;
+        }
+        return transform.position + Vector3.up + transform.forward * .35f;
     }
     private static bool TryBounds(GameObject root, out Bounds bounds)
     {
