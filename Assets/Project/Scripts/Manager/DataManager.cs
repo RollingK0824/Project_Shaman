@@ -60,7 +60,7 @@ public class DataManager : GlobalSingleton<DataManager>
             DataLoaded = true;
             OnDataLoaded?.Invoke();
 
-            Debug.Log("[DataManager] Data successfully loaded!");
+            GameLog.Log("[DataManager] Data successfully loaded!");
         }
         else
         {

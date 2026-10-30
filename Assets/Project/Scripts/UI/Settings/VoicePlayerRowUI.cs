@@ -21,6 +21,8 @@ public class VoicePlayerRowUI : MonoBehaviour
     private GameObject _speakingIcon;
 
     private NetPlayerVoice _player;
+    private string _shownName;
+    private bool _shownSpeaking;
 
     private void Awake()
     {
@@ -42,13 +44,15 @@ public class VoicePlayerRowUI : MonoBehaviour
         Unbind();
 
         _player = player;
+        _shownName = null;
+        _shownSpeaking = !player.IsSpeaking;    // forces the first Update to set the icon
         _player.MutedLocallyChanged += HandleMutedChanged;
         _player.LocalVolumeChanged += HandleVolumeChanged;
         HandleMutedChanged(_player.IsMutedLocally);
         HandleVolumeChanged(_player.LocalVolume);
     }
 
-    // 이름 SyncVar가 줄을 만든 뒤에 올 수 있어서 매 프레임 갱신
+    // 이름 SyncVar가 줄을 만든 뒤에 올 수 있어서 매 프레임 확인하고, 바뀔 때만 갱신
     private void Update()
     {
         if (_player == null)
@@ -56,14 +60,18 @@ public class VoicePlayerRowUI : MonoBehaviour
             return;
         }
 
-        if (_nameText != null)
+        string displayName = _player.DisplayName;
+        if (_nameText != null && displayName != _shownName)
         {
-            _nameText.SetText(_player.DisplayName);
+            _shownName = displayName;
+            _nameText.SetText(displayName);
         }
 
-        if (_speakingIcon != null)
+        bool speaking = _player.IsSpeaking;
+        if (_speakingIcon != null && speaking != _shownSpeaking)
         {
-            _speakingIcon.SetActive(_player.IsSpeaking);
+            _shownSpeaking = speaking;
+            _speakingIcon.SetActive(speaking);
         }
     }
 

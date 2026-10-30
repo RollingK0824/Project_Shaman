@@ -29,7 +29,7 @@ public class DefenseManager : SceneSingleton<DefenseManager>
     {
         if (State != DefenseState.Idle)
         {
-            Debug.Log("[DefenseManager] A defense is already in progress!");
+            GameLog.Log("[DefenseManager] A defense is already in progress!");
             return;
         }
 

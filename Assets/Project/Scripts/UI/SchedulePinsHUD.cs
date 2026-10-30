@@ -66,7 +66,10 @@ public class SchedulePinsHUD : MonoBehaviour
     private Color _sleepColor = new(.14f, .12f, .11f, .40f);
 
     private readonly List<DayBlock> _dayBlocks = new List<DayBlock>();
-    private List<(Image wash, TMP_Text label)>[] _blocks;
+    // Each pooled block keeps what it last showed, so the 0.5s refresh only rebuilds text that changed
+    private List<(Image wash, TMP_Text label, DayBlock shown)>[] _blocks;
+    private string[] _shownNames;
+    private bool[] _shownDead;
     private float _nextRefresh;
 
     private void Awake()
@@ -83,8 +86,10 @@ public class SchedulePinsHUD : MonoBehaviour
             label.gameObject.SetActive(true);
         }
 
-        _blocks = new List<(Image, TMP_Text)>[_columns.Length];
-        for (int i = 0; i < _blocks.Length; i++) _blocks[i] = new List<(Image, TMP_Text)>();
+        _blocks = new List<(Image, TMP_Text, DayBlock)>[_columns.Length];
+        for (int i = 0; i < _blocks.Length; i++) _blocks[i] = new List<(Image, TMP_Text, DayBlock)>();
+        _shownNames = new string[_names.Length];
+        _shownDead = new bool[_names.Length];
     }
 
     private void OnEnable()
@@ -129,20 +134,33 @@ public class SchedulePinsHUD : MonoBehaviour
             {
                 IVillagerView villager = null;
                 registry?.TryGet(pinned[column], out villager);
-                ShowName(_names[column], villager);
+                ShowName(column, villager);
                 // Death known: crossed-out name, no blocks (TryBuild returns false)
                 if (VillagerDayBlocks.TryBuild(villager, _dayBlocks))
                     foreach (DayBlock block in _dayBlocks) ShowBlock(column, shown++, block);
             }
 
-            for (int i = shown; i < _blocks[column].Count; i++) _blocks[column][i].wash.gameObject.SetActive(false);
+            List<(Image wash, TMP_Text label, DayBlock shown)> pool = _blocks[column];
+            for (int i = shown; i < pool.Count; i++)
+            {
+                pool[i].wash.gameObject.SetActive(false);
+                pool[i] = (pool[i].wash, pool[i].label, default);
+            }
         }
 
         _panel.SetActive(pinned.Count > 0);
     }
 
-    private void ShowName(TMP_Text cell, IVillagerView villager)
+    // A missing villager counts as dead, so the default (null, false) never matches and the first call always draws
+    private void ShowName(int column, IVillagerView villager)
     {
+        string name = villager?.DisplayName;
+        bool dead = villager == null || villager.IsDeathKnown;
+        if (name == _shownNames[column] && dead == _shownDead[column]) return;
+        _shownNames[column] = name;
+        _shownDead[column] = dead;
+
+        TMP_Text cell = _names[column];
         if (villager == null)
         {
             cell.SetText("???");
@@ -154,18 +172,21 @@ public class SchedulePinsHUD : MonoBehaviour
         cell.color = villager.IsDeathKnown ? _deadNameColor : _nameColor;
     }
 
-    // Re-places every pooled block each refresh, so one that moved or vanished leaves nothing behind
+    // Re-places a pooled block only when it differs from what it last showed; hidden blocks are reset to default
     private void ShowBlock(int column, int index, DayBlock block)
     {
-        List<(Image wash, TMP_Text label)> pool = _blocks[column];
+        List<(Image wash, TMP_Text label, DayBlock shown)> pool = _blocks[column];
         while (pool.Count <= index)
         {
             Image wash = Instantiate(_blockTemplate, _columns[column]);
             wash.name = "Block" + pool.Count;
-            pool.Add((wash, wash.GetComponentInChildren<TMP_Text>(true)));
+            pool.Add((wash, wash.GetComponentInChildren<TMP_Text>(true), default));
         }
 
-        var (image, label) = pool[index];
+        var (image, label, shown) = pool[index];
+        if (Same(shown, block)) return;
+        pool[index] = (image, label, block);
+
         int from = block.StartHour - DayClock.DAY_START_HOUR;
         int to = block.EndHour - DayClock.DAY_START_HOUR;
         PlaceRow(image.rectTransform, from, to, _blockInset);
@@ -173,6 +194,10 @@ public class SchedulePinsHUD : MonoBehaviour
         label.SetText(string.IsNullOrEmpty(block.Place) ? block.Title : $"{block.Title}\n<size=72%>{block.Place}</size>");
         image.gameObject.SetActive(true);
     }
+
+    // default never matches a real block (Add drops blocks with EndHour <= StartHour)
+    private static bool Same(DayBlock a, DayBlock b) =>
+        a.StartHour == b.StartHour && a.EndHour == b.EndHour && a.Kind == b.Kind && a.Title == b.Title && a.Place == b.Place;
 
     // Stretches across its parent's width, covering rows [from, to) from the top
     private void PlaceRow(RectTransform rect, float from, float to, float inset)
