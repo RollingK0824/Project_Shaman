@@ -536,7 +536,7 @@ public partial class @ShamanInput: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""52329e48-84da-4643-844a-a8b2a6a0b348"",
-                    ""path"": ""<Keyboard>/n"",
+                    ""path"": ""<Keyboard>/tab"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

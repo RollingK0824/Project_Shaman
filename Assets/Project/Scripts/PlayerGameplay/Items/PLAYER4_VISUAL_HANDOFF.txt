@@ -1,0 +1,41 @@
+Player 4 visual fit / Network prefab handoff (2026-10-30)
+
+Applied to the local Player (4).prefab only:
+- SM_Pigtails01b -> Assets/Project/Visuals/Models/Player/PL_4_SM_Pigtails01b_MovementFit.asset
+- SM_Jeogori01b -> Assets/Project/Visuals/Models/Player/PL_4_SM_Jeogori01b_MovementFit.asset
+- SM_Daeran_Chima -> Assets/Project/Visuals/Models/Player/PL_4_SM_Daeran_Chima_MovementFit.asset
+- All three renderers update when offscreen. Bone order and existing Avatar/Animator retained.
+- Hair: head/chest weight blend and rear clearance, preserving braid/ribbon thickness.
+- Jacket: lower torso clearance. Skirt: upper waist inside jacket and extra front/side clearance.
+- Existing skirt leg/calf deformation retained with pelvis blend from the earlier mesh.
+- Original FBX, body geometry, material/UV/texture assets preserved. No body triangles removed.
+
+Verification correction:
+Earlier tests missed Read/Write-disabled mesh edits and conflicting Animator/Playable output.
+This pass edits readable copies, tests without a competing AnimatorController, and writes
+vertices, bone weights, bindposes and bounds explicitly. CopySerialized alone did not persist
+all mesh data correctly. Final saved assets were reloaded and tested WITHOUT adjustment code.
+
+Verified in isolated local Player 4 model in Unity Play:
+- HumanM Walk01 Forward/Backward and Run01 Forward/Backward.
+- Eight phases each, with Hold_OneHandFront + RightUpperBody mask (32 poses).
+- Front, side and rear captures reviewed; rear saved/reloaded renders match all 32 candidate
+  images pixel-for-pixel. Hair remains visible; jagged jacket/waist overlap corrected in these poses.
+- This is animation sampling, not a complete user-controlled gameplay or multiplayer test.
+- Skirt still folds strongly with leg motion; this is skinned geometry, not simulated cloth.
+  Jump/crouch/death/all item poses are not certified by this test.
+- Existing scene logs report Player (5) missing NetworkIdentity; unrelated and not modified.
+
+Network owner:
+Match the three SkinnedMeshRenderers in NetPlayer4 to local Player (4): sharedMesh,
+bones in the same order, and updateWhenOffscreen. Do not replace Avatar/Animator/Network components.
+Network prefab was NOT modified. Scene-specific mesh overrides can retain earlier models.
+
+Related earlier Player-side shadow change:
+PlayerItemController disables the camera-offset first-person visual shadow and uses the
+hand-attached third-person mesh as ShadowsOnly in first person, visible in third person.
+This pass does not re-verify full gameplay shadow/equipment transitions.
+
+Evidence, prior assets and temporary harness archive: D:/Jun/Player4RebindQA/
+Original prefab/mesh backups for this pass: D:/Jun/Player4RebindQA/Backup/
+No scene saved, no Network/AI/Core changes, no commit or staging performed.
