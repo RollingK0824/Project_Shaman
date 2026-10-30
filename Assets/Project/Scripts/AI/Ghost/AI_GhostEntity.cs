@@ -539,6 +539,18 @@ namespace ProjectShaman.AI.Ghost
             return offset.sqrMagnitude <= range * range;
         }
 
+        // Which body the corpse trace shows: a villager's gender, an animal's kind (AI_CorpseVisual)
+        private static string CorpseKeyOf(GameObject target)
+        {
+            if (target.TryGetComponent(out AI_Core villager) && villager.PublicInfo != null)
+            {
+                return villager.PublicInfo.Gender.ToString();
+            }
+
+            ProjectShaman.AI.World.Animal animal = target.GetComponentInParent<ProjectShaman.AI.World.Animal>();
+            return animal != null ? animal.CorpseKey : null;
+        }
+
         private bool IsTargetUsable(out string reason)
         {
             if (!IsTargetValid())
@@ -881,6 +893,7 @@ namespace ProjectShaman.AI.Ghost
             GhostActionContext context = CreateContext();
             Vector3 tracePosition;
             string victimId = null;
+            string corpseKey = null;
 
             if (_session.Shape == GhostActionShape.Carry)
             {
@@ -903,6 +916,7 @@ namespace ProjectShaman.AI.Ghost
 
                 tracePosition = _session.Target.gameObject.transform.position;
                 victimId = _session.Target.gameObject.TryGetComponent(out AI_Core victim) ? victim.LogId : null;
+                corpseKey = CorpseKeyOf(_session.Target.gameObject);
 
                 if (!GhostVerbExecutor.TryApply(_session.Target, context))
                 {
@@ -919,6 +933,10 @@ namespace ProjectShaman.AI.Ghost
             if (action.TracePrefab != null)
             {
                 GameObject traceObject = _ledger.SpawnTrace(action.TracePrefab, tracePosition, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+                if (traceObject != null && !string.IsNullOrEmpty(corpseKey) && traceObject.TryGetComponent(out Trace.GhostTrace left))
+                {
+                    left.SetVisualKey(corpseKey);
+                }
                 if (action.IsHunt && victimId != null && traceObject != null && traceObject.TryGetComponent(out Trace.GhostTrace body))
                 {
                     body.SetVictim(victimId);
