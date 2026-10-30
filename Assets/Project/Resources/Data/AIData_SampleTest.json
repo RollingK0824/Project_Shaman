@@ -1403,6 +1403,37 @@
       ]
     },
     {
+      "routineId": "ClothPounding",
+      "displayName": "다듬이질",
+      "category": "Work",
+      "jobIds": [],
+      "condition": {
+        "genders": [
+          "Female"
+        ],
+        "socialClasses": [
+          "Sangmin",
+          "Cheonmin"
+        ],
+        "ageGroups": [
+          "Adult",
+          "Elder"
+        ]
+      },
+      "placeId": "Yard",
+      "toolId": "ClothRoller",
+      "actionId": "Pound",
+      "isCoop": true,
+      "maxPeople": 2,
+      "wrongToolIds": [
+        "Hammer"
+      ],
+      "wrongActionIds": [],
+      "wrongPlaceIds": [
+        "Woodpile"
+      ]
+    },
+    {
       "routineId": "WaterDrawing",
       "displayName": "우물에서 물 긷기",
       "category": "Work",
@@ -2433,6 +2464,10 @@
     },
     {
       "actionId": "Forge",
+      "animation": "Hammering"
+    },
+    {
+      "actionId": "Pound",
       "animation": "Hammering"
     }
   ]

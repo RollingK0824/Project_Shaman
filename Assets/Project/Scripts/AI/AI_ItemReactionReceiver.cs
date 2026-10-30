@@ -65,7 +65,8 @@ namespace ProjectShaman.AI
 
         private bool React(PlayerItemKind item, GameObject user)
         {
-            if (_config == null || _core.Profile == null || (_status != null && _status.IsDead))
+            // A sleeper notices nothing: no line, no stress, no symptom, and the item's cooldown stays untouched
+            if (_config == null || _core.Profile == null || _core.IsAsleep || (_status != null && _status.IsDead))
             {
                 return false;
             }
