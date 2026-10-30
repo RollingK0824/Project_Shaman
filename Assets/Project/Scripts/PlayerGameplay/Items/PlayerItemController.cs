@@ -583,6 +583,12 @@ public class PlayerItemController : MonoBehaviour
         return found;
     }
 
+    public bool TryGetThirdPersonBellEffectPoint(out Vector3 point)
+    {
+        return ItemVfxPresentation.TryGetBellEmissionPoint(
+            _thirdPersonVisual != null ? _thirdPersonVisual.transform : null, out point);
+    }
+
     public bool TryGetThirdPersonReleasePoint(out Vector3 point)
     {
         point = transform.position;

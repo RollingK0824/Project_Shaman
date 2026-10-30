@@ -43,10 +43,37 @@ public sealed class ItemVfxPresentation : MonoBehaviour
         var view=owner.GetComponent<PlayerViewModeController>();
         bool firstPerson=heldSource!=null && PlayerLocalPresentation.IsLocal(owner) &&
             view!=null && view.CurrentViewMode==PlayerViewModeController.ViewMode.FirstPerson;
-        if(firstPerson)point=heldSource.position;
-        else if(owner.TryGetComponent<PlayerItemController>(out var items)&&items.TryGetThirdPersonReleasePoint(out var hand))point=hand;
-        return Spawn(lib.BellPulse,point,Quaternion.identity,.85f)!=null;
+        if(firstPerson)
+        {
+            if(!TryGetBellEmissionPoint(heldSource,out point))point=heldSource.position;
+        }
+        else if(owner.TryGetComponent<PlayerItemController>(out var items))
+        {
+            if(items.TryGetThirdPersonBellEffectPoint(out var bellPoint))point=bellPoint;
+            else if(items.TryGetThirdPersonReleasePoint(out var hand))point=hand;
+        }
+        return Spawn(lib.BellPulse,point,Quaternion.identity,1.4f)!=null;
     }
+    // The Bell_* mesh parts are the metal bells; the visual root is near the handle.
+    // World bounds account for first-person sizing, third-person grip and bell swing.
+    public static bool TryGetBellEmissionPoint(Transform visual, out Vector3 point)
+    {
+        point = visual != null ? visual.position : Vector3.zero;
+        if (visual == null) return false;
+        bool found = false;
+        Bounds bells = default;
+        foreach (var renderer in visual.GetComponentsInChildren<Renderer>(true))
+        {
+            if (!(renderer is MeshRenderer || renderer is SkinnedMeshRenderer) ||
+                !renderer.gameObject.activeInHierarchy ||
+                !renderer.name.StartsWith("Bell_", System.StringComparison.Ordinal)) continue;
+            if (!found) { bells = renderer.bounds; found = true; }
+            else bells.Encapsulate(renderer.bounds);
+        }
+        if (found) point = bells.center;
+        return found;
+    }
+
     public static void Barrier(Vector3 point) {var l=ItemVfxLibrary.Default;if(l)Spawn(l.BarrierActivate,point,Quaternion.identity,2f);}
     public static void Talisman(GameObject owner) {var l=ItemVfxLibrary.Default;if(l&&owner)Spawn(l.TalismanActivate,owner.transform.position+Vector3.up*.15f,Quaternion.identity,2f,owner.transform);}
     public static void Trail(Transform projectile) {var l=ItemVfxLibrary.Default;if(l&&projectile)Spawn(l.BeanTrail,projectile.position,Quaternion.identity,6.5f,projectile);}
