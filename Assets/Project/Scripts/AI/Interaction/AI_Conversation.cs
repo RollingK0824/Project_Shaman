@@ -66,11 +66,30 @@ namespace ProjectShaman.AI.Interaction
             {
                 _all.Add(this);
             }
+
+            if (_core != null)
+            {
+                _core.OnSymptomTriggered += HandleSymptom;
+            }
         }
 
         private void OnDisable()
         {
             _all.Remove(this);
+
+            if (_core != null)
+            {
+                _core.OnSymptomTriggered -= HandleSymptom;
+            }
+        }
+
+        // A host talking nonsense mutters to itself: the words are the symptom, whoever is near hears them
+        private void HandleSymptom(SymptomType symptom)
+        {
+            if (symptom == SymptomType.Nonsense)
+            {
+                Say(ProjectShaman.AI.Dialogue.DialogueLibrary.Line("symptom.nonsense", _lineRandom), "nonsense symptom");
+            }
         }
 
         public void Configure(AIRuntimeContext context)
