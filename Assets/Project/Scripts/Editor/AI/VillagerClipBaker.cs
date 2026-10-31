@@ -48,6 +48,7 @@ public static class VillagerClipBaker
         public bool Custom;            // false plants the foot where the idle has it
         public Vector3 Pos;            // root space, absolute
         public Vector3 Pole;           // where the knee points, root space, absolute
+        public Vector3 Toes;           // where the toes point, root space (zero leaves the foot as the shin carries it)
     }
 
     private class Pose
@@ -87,7 +88,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MODEL_PATH));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 7\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 9\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -367,6 +368,19 @@ public static class VillagerClipBaker
                     float bend = Vector3.Angle(T(HumanBodyBones.Spine).position - hips, T(HumanBodyBones.Neck).position - chest.position);
                     float feet = Mathf.Min(T(HumanBodyBones.LeftFoot).position.y, T(HumanBodyBones.RightFoot).position.y);
                     report.AppendLine($"    {clip.name}: lean {lean:F0}°, bend {bend:F0}°, seat {hips.y - feet:F2}m, hips {hips.y:F2}m");
+                    if (hips.y < 0.5f)
+                    {
+                        // Seated legs: where each knee and foot ends up, and how far each knee bends (180° = straight)
+                        foreach (bool right in new[] { true, false })
+                        {
+                            Vector3 hip = T(right ? HumanBodyBones.RightUpperLeg : HumanBodyBones.LeftUpperLeg).position;
+                            Vector3 knee = T(right ? HumanBodyBones.RightLowerLeg : HumanBodyBones.LeftLowerLeg).position;
+                            Vector3 foot = T(right ? HumanBodyBones.RightFoot : HumanBodyBones.LeftFoot).position;
+                            Transform toes = T(right ? HumanBodyBones.RightToes : HumanBodyBones.LeftToes);
+                            report.AppendLine($"      {(right ? "R" : "L")} hip {hip:F2} knee {knee:F2} foot {foot:F2} toes {(toes != null ? toes.position.ToString("F2") : "-")} " +
+                                $"kneeAngle {Vector3.Angle(hip - knee, foot - knee):F0}°, toes {(toes != null ? (toes.position - foot).normalized.ToString("F2") : "-")}");
+                        }
+                    }
                 }
             }
             finally
@@ -422,10 +436,18 @@ public static class VillagerClipBaker
         {
             rightFoot.rotation = rightFootRot;
         }
+        else if (spec.RightLeg.Toes != Vector3.zero)
+        {
+            AimToes(rightFoot, Bone(HumanBodyBones.RightToes), spec.RightLeg.Toes);
+        }
 
         if (!spec.LeftLeg.Custom)
         {
             leftFoot.rotation = leftFootRot;
+        }
+        else if (spec.LeftLeg.Toes != Vector3.zero)
+        {
+            AimToes(leftFoot, Bone(HumanBodyBones.LeftToes), spec.LeftLeg.Toes);
         }
 
         rightTarget = SolveArm(spec.Right, true, chestFrame, rightIdleHand);
@@ -549,6 +571,14 @@ public static class VillagerClipBaker
         Vector3 current = end.position - lower.position;
         Vector3 wanted = a + dir * distance - lower.position;
         lower.rotation = Quaternion.FromToRotation(current, wanted) * lower.rotation;
+    }
+
+    private static void AimToes(Transform foot, Transform toes, Vector3 direction)
+    {
+        if (toes != null)
+        {
+            foot.rotation = Quaternion.FromToRotation(toes.position - foot.position, direction) * foot.rotation;
+        }
     }
 
     private static void AimHand(bool right, Vector3 fwd, Vector3 palm, float weight)
@@ -752,8 +782,8 @@ public static class VillagerClipBaker
     {
         pose.HipsHeight = SIT_HIPS;
         pose.HipsOffset = V(0f, 0f, -0.05f);
-        pose.RightLeg = new Leg { Custom = true, Pos = V(-0.16f, 0.07f, 0.30f), Pole = V(1f, 0.25f, 0.6f) };
-        pose.LeftLeg = new Leg { Custom = true, Pos = V(0.17f, 0.06f, 0.16f), Pole = V(-1f, 0.25f, 0.6f) };
+        pose.RightLeg = new Leg { Custom = true, Pos = V(-0.16f, 0.07f, 0.30f), Pole = V(1f, 0.25f, 0.6f), Toes = V(-1f, 0f, 0.35f) };
+        pose.LeftLeg = new Leg { Custom = true, Pos = V(0.17f, 0.06f, 0.16f), Pole = V(-1f, 0.25f, 0.6f), Toes = V(1f, 0f, 0.35f) };
     }
 
     private static IEnumerable<ClipDef> Definitions()
