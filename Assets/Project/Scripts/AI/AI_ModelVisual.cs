@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 
@@ -17,6 +18,10 @@ namespace ProjectShaman.AI
 
         private GameObject _model;
 
+        // The new model, for parts that live on it (the ghost's carry socket in its hand)
+        public event Action<GameObject> OnModelChanged;
+
+        public GameObject CurrentModel => _model;
         public int ModelCount => _modelPrefabs != null ? _modelPrefabs.Length : 0;
         public int ModelIndex => _modelIndex;
 
@@ -54,6 +59,7 @@ namespace ProjectShaman.AI
             _model = Instantiate(_modelPrefabs[index], root, false);
             _modelIndex = index;
             AILog.Log(AILog.CORE, name, $"Model {index}: {_modelPrefabs[index].name}");
+            OnModelChanged?.Invoke(_model);
         }
     }
 }
