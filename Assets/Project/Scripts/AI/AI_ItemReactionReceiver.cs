@@ -11,7 +11,7 @@ namespace ProjectShaman.AI
 {
     // A player's ritual item reaching a villager: salt sprinkled on them, bean-mugwort thrown, a bell or gong rung nearby.
     // Everyone is startled alike (same line, small stress). In a host the ghost also shows through in proportion to its yin:
-    // low yin looks like anyone startled, enough yin forces a quiet symptom at once, high yin twists the body.
+    // low yin looks like anyone startled, enough yin forces a weak symptom at once (SymptomRule.ItemReaction), high yin only sometimes twists the body.
     // No animation yet: the reaction is an animator trigger on every peer (Item{Kind}Startled / Symptom*) plus a line.
     [RequireComponent(typeof(AI_Core))]
     public class AI_ItemReactionReceiver : MonoBehaviour, IItemControlReceiver, ISaltReactable, IAIConfigurable
@@ -65,7 +65,8 @@ namespace ProjectShaman.AI
 
         private bool React(PlayerItemKind item, GameObject user)
         {
-            if (_config == null || _core.Profile == null || (_status != null && _status.IsDead))
+            // A sleeper notices nothing: no line, no stress, no symptom, and the item's cooldown stays untouched
+            if (_config == null || _core.Profile == null || _core.IsAsleep || (_status != null && _status.IsDead))
             {
                 return false;
             }
@@ -96,7 +97,7 @@ namespace ProjectShaman.AI
             }
 
             bool violent = yin >= _config.ItemViolentYin;
-            SymptomType symptom = PickSymptom(violent);
+            SymptomType symptom = PickSymptom(violent, yin);
             AILog.Log(AILog.GHOST, villagerId, $"Host reacts to {item} from {userName}: {symptom} (yin {yin:F0}{(violent ? ", violent" : "")})");
 
             if (AIManager.Existing != null)
@@ -111,16 +112,40 @@ namespace ProjectShaman.AI
             return true;
         }
 
-        // The ghost shows through as one of its usual symptoms: high yin twists the body, otherwise a quieter one
-        private SymptomType PickSymptom(bool violent)
+        // The ghost shows through as a weak symptom its yin already allows (SymptomRule.ItemReaction); only a violent host
+        // now and then twists its body instead
+        private SymptomType PickSymptom(bool violent, float yin)
         {
-            if (violent)
+            if (violent && _random.NextDouble() < _config.ItemViolentSymptomChance)
             {
                 return SymptomType.Grotesque;
             }
 
-            SymptomType[] quiet = { SymptomType.Tremble, SymptomType.StareIntoVoid, SymptomType.Nonsense };
-            return quiet[_random.Next(quiet.Length)];
+            float total = 0f;
+            foreach (SymptomRule rule in _config.SymptomRules)
+            {
+                if (rule != null && rule.ItemReaction && rule.IsBehaviour && yin >= rule.MinYin && rule.Weight > 0f)
+                {
+                    total += rule.Weight;
+                }
+            }
+
+            double pick = _random.NextDouble() * total;
+            SymptomType chosen = SymptomType.Tremble;
+            foreach (SymptomRule rule in _config.SymptomRules)
+            {
+                if (rule != null && rule.ItemReaction && rule.IsBehaviour && yin >= rule.MinYin && rule.Weight > 0f)
+                {
+                    chosen = rule.Type;
+                    pick -= rule.Weight;
+                    if (pick <= 0d)
+                    {
+                        break;
+                    }
+                }
+            }
+
+            return chosen;
         }
 
         private void Say(string lineId, string reason)

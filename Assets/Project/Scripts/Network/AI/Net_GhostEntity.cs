@@ -27,6 +27,15 @@ namespace ProjectShaman.Network.AI
         private AI_ChannelGauge _gauge;
         private AI_RevealOutline _outline;
         private NetworkTransformBase _networkTransform;
+        private AI_Movement _movement;
+        private Animator _animator;
+
+        private const string MOVE_SPEED_PARAM = "Speed";
+        // Smaller changes are not worth a sync
+        private const float SPEED_SYNC_STEP = 0.1f;
+
+        // Server's NavMeshAgent speed: clients have no agent running, so they play locomotion from this
+        [SyncVar] private float _moveSpeed;
 
         // Channel snapshot at the last server change: elapsed seconds then, total seconds, pause end and slow window
         // (NetworkTime). Duration 0 = not channeling
@@ -64,6 +73,7 @@ namespace ProjectShaman.Network.AI
         {
             _entity = GetComponent<AI_GhostEntity>();
             _networkTransform = GetComponent<NetworkTransformBase>();
+            _movement = GetComponent<AI_Movement>();
         }
 
         public override void OnStartServer()
@@ -103,6 +113,8 @@ namespace ProjectShaman.Network.AI
         // Revealed: every peer turns the glow outline on and off from the same synced end time (late joiners included)
         private void Update()
         {
+            UpdateLocomotion();
+
             if (_gauge == null)
             {
                 return;
@@ -118,6 +130,25 @@ namespace ProjectShaman.Network.AI
             }
 
             _gauge.Show(progress);
+        }
+
+        // The model is built after spawn and may be swapped, so the Animator is looked up again whenever it is gone
+        private void UpdateLocomotion()
+        {
+            if (isServer && _movement != null && Mathf.Abs(_movement.CurrentSpeed - _moveSpeed) > SPEED_SYNC_STEP)
+            {
+                _moveSpeed = _movement.CurrentSpeed;
+            }
+
+            if (_animator == null)
+            {
+                _animator = GetComponentInChildren<Animator>();
+            }
+
+            if (_animator != null && _animator.isActiveAndEnabled)
+            {
+                _animator.SetFloat(MOVE_SPEED_PARAM, isServer && _movement != null ? _movement.CurrentSpeed : _moveSpeed);
+            }
         }
 
         private bool IsViewerWithin(float distance)

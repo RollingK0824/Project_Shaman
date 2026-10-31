@@ -49,6 +49,8 @@ namespace ProjectShaman.AI
         public event Action<string> OnRoutineFailed;
         public event Action<string> OnRoutineCleared;
         public event Action<SymptomType> OnSymptomTriggered;
+        // Appearance symptoms (shadow, skin, eyes) active now, as a bit mask over SymptomType; raised when it changes
+        public event Action<int> OnAppearanceChanged;
         public event Action<string> OnEffectTriggered;
         // Set when the villager is sent home in the evening, cleared at the next day start
         public event Action<bool> OnMustGoHomeChanged;
@@ -198,6 +200,34 @@ namespace ProjectShaman.AI
         {
             AILog.Log(AILog.GHOST, LogId, $"Symptom {symptom}");
             OnSymptomTriggered?.Invoke(symptom);
+        }
+
+        public int AppearanceMask { get; private set; }
+
+        public bool HasAppearance(SymptomType symptom)
+        {
+            return (AppearanceMask & (1 << (int)symptom)) != 0;
+        }
+
+        // Server: a body change that lasts a while (not a one-off animation like TriggerSymptom)
+        public void SetAppearance(SymptomType symptom, bool on)
+        {
+            int mask = on ? AppearanceMask | (1 << (int)symptom) : AppearanceMask & ~(1 << (int)symptom);
+            if (mask == AppearanceMask)
+            {
+                return;
+            }
+
+            AppearanceMask = mask;
+            AILog.Log(AILog.GHOST, LogId, $"Appearance {symptom} {(on ? "on" : "off")}");
+            OnAppearanceChanged?.Invoke(mask);
+        }
+
+        // Client: the server's mask arrived (late joiners included)
+        public void ApplyNetworkAppearance(int mask)
+        {
+            AppearanceMask = mask;
+            OnAppearanceChanged?.Invoke(mask);
         }
 
         // Animator trigger on every peer for a one-off reaction outside the symptoms (startled by an item ...)

@@ -126,6 +126,7 @@ GameObject:
   - component: {fileID: 477200555583587539}
   - component: {fileID: 2047173391362770437}
   - component: {fileID: 2159288038944932150}
+  - component: {fileID: 3901882645312774501}
   m_Layer: 0
   m_Name: Temp_Villager_Corpse
   m_TagString: Untagged
@@ -205,3 +206,33 @@ MonoBehaviour:
   syncInterval: 0
   _interactionPrompt: "\uCE58\uC6B0\uAE30"
   _maxClearDistance: 4
+--- !u!114 &3901882645312774501
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6548776866134421849}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbf9a98e12e84ccdaa80e90f4f559dc2, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.Trace.AI_CorpseVisual
+  _placeholder: {fileID: 2704281401118891072}
+  _variants:
+  - Key: Male
+    Model: {fileID: 1917956565172271263, guid: 5ad35fbc2f5241743b98c9c94856b530, type: 3}
+    PoseController: {fileID: 9100000, guid: e04b5e01a1b2c3d4e5f60718293a4c01, type: 2}
+    DieState: Die
+    PoseState: Dead
+    LocalPosition: {x: 0, y: 0, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    LocalScale: {x: 1, y: 1, z: 1}
+  - Key: Female
+    Model: {fileID: 5689006092174252741, guid: 68b2d422c48e36446ba0098edd315e50, type: 3}
+    PoseController: {fileID: 9100000, guid: e04b5e01a1b2c3d4e5f60718293a4c01, type: 2}
+    DieState: Die
+    PoseState: Dead
+    LocalPosition: {x: 0, y: 0, z: 0}
+    LocalEuler: {x: 0, y: 0, z: 0}
+    LocalScale: {x: 1, y: 1, z: 1}

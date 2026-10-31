@@ -66,11 +66,64 @@ namespace ProjectShaman.AI.Interaction
             {
                 _all.Add(this);
             }
+
+            if (_core != null)
+            {
+                _core.OnSymptomTriggered += HandleSymptom;
+            }
         }
 
         private void OnDisable()
         {
             _all.Remove(this);
+
+            if (_core != null)
+            {
+                _core.OnSymptomTriggered -= HandleSymptom;
+            }
+        }
+
+        // A host talking nonsense mutters to itself about its own name, job and routine (all from the villager's data)
+        private void HandleSymptom(SymptomType symptom)
+        {
+            if (symptom != SymptomType.Nonsense)
+            {
+                return;
+            }
+
+            VillagerPublicInfo info = _core.PublicInfo;
+            string name = info != null ? info.DisplayName : null;
+            string job = info != null ? info.JobName : null;
+            string routine = _core.HasRoutine && _core.CurrentRoutine.Source != null ? _core.CurrentRoutine.Source.DisplayName : null;
+
+            // Templates that need a value the villager does not have are left out
+            List<string> templates = new List<string>();
+            if (!string.IsNullOrEmpty(name))
+            {
+                templates.Add("{name}… {name}… 그게 내 이름이 맞는가…");
+                templates.Add("누가 자꾸 {name:을} 부르는디…");
+            }
+
+            if (!string.IsNullOrEmpty(job))
+            {
+                templates.Add("나는 {job:이} 아니여… 아니라니께…");
+                templates.Add("{job} 노릇은 이제 싫다…");
+            }
+
+            if (!string.IsNullOrEmpty(routine))
+            {
+                templates.Add("{routine:을} 해야 하는디… 손이 말을 안 듣는구먼…");
+                templates.Add("또 {routine}… 언제까지 해야 하는 것이여…");
+            }
+
+            if (templates.Count == 0)
+            {
+                return;
+            }
+
+            string line = TextTemplate.Fill(templates[_lineRandom.Next(templates.Count)], key =>
+                key == "name" ? name : key == "job" ? job : key == "routine" ? routine : null);
+            Say(line, "nonsense symptom");
         }
 
         public void Configure(AIRuntimeContext context)

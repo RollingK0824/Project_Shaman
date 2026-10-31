@@ -30,6 +30,11 @@ namespace ProjectShaman.AI
 
         public const string TALK_GESTURE = "Talk";
 
+        // The server sends "Symptom<Type>"; the Animator state is "Symptom_<Type>"
+        private const string SYMPTOM_PREFIX = "Symptom";
+        private const string SYMPTOM_STATE_PREFIX = "Symptom_";
+        private static readonly string[] SYMPTOM_NAMES = { "Tremble", "StareIntoVoid", "Nonsense", "Grotesque", "NeckTwist", "WaistBend" };
+
         [SerializeField] private float _crossFadeSeconds = 0.2f;
         [Tooltip("Turning in place faster than this plays the turn step")]
         [SerializeField] private float _turnStartDegreesPerSecond = 30f;
@@ -38,6 +43,10 @@ namespace ProjectShaman.AI
         [Tooltip("Share of spoken lines that come with the talk gesture, so it does not repeat on every line")]
         [SerializeField, Range(0f, 1f)] private float _talkGestureChance = 0.35f;
 
+        [Tooltip("A symptom animation is faded out after this long, so a looping clip cannot stay on")]
+        [SerializeField, Min(0.5f)] private float _symptomSeconds = 6f;
+
+        private Coroutine _symptomRoutine;
         private AI_Core core;
         private AI_Movement movement;
         private Animator animator;
@@ -65,6 +74,13 @@ namespace ProjectShaman.AI
             _lastPosition = transform.position;
 
             core.OnStateChanged += HandleStateChanged;
+
+            // Shadow, skin and eye changes of the possession symptoms (shown on every peer from the core's appearance mask)
+            if (!TryGetComponent(out AI_SymptomVisual _))
+            {
+                gameObject.AddComponent<AI_SymptomVisual>();
+            }
+
             if (TryGetComponent(out AI_VillagerModel model))
             {
                 model.OnModelChanged += BindAnimator;
@@ -344,10 +360,89 @@ namespace ProjectShaman.AI
 
         public void TriggerActionEffect(string triggerName)
         {
+            if (triggerName != null && triggerName.StartsWith(SYMPTOM_PREFIX))
+            {
+                PlaySymptom(triggerName.Substring(SYMPTOM_PREFIX.Length));
+                return;
+            }
+
             if (HasParameter(triggerName))
             {
                 animator.SetTrigger(triggerName);
             }
+        }
+
+        // A behaviour symptom: the Animator state "Symptom_<Name>" (Symptom_Tremble, Symptom_NeckTwist ...) on the first action
+        // layer that has it (the upper-body layer, so walking goes on). It is not an action (work keeps its own state) and is
+        // faded out when the clip ends (capped for a looping clip). A state the Animator lacks is reported once.
+        public void PlaySymptom(string symptomName)
+        {
+            if (animator == null || !animator.isActiveAndEnabled || string.IsNullOrEmpty(symptomName))
+            {
+                return;
+            }
+
+            string state = SYMPTOM_STATE_PREFIX + symptomName;
+            int layer = FindActionLayer(state);
+            if (layer < 0)
+            {
+                if (_reportedMissing.Add(state))
+                {
+                    AILog.Warn(AILog.GHOST, $"{name}: no Animator state '{state}' in the action layers (symptom has no animation yet)");
+                }
+
+                return;
+            }
+
+            // Only a layer that is idle: a symptom never cuts off a work animation on the same layer
+            if (animator.GetCurrentAnimatorStateInfo(layer).fullPathHash != PathHash(layer, EMPTY_STATE))
+            {
+                return;
+            }
+
+            CrossFade(layer, state);
+            if (_symptomRoutine != null)
+            {
+                StopCoroutine(_symptomRoutine);
+            }
+
+            _symptomRoutine = StartCoroutine(EndSymptom(layer, _symptomSeconds));
+        }
+
+        // Back to Empty when the clip has played once (the symptom clips do not loop), or after the cap for a looping one
+        private System.Collections.IEnumerator EndSymptom(int layer, float maxSeconds)
+        {
+            float giveUpAt = Time.time + maxSeconds;
+
+            // The cross-fade reaches the symptom state only after it has blended in
+            yield return new WaitForSeconds(_crossFadeSeconds + 0.05f);
+            while (Time.time < giveUpAt && animator != null && animator.isActiveAndEnabled && StateIsSymptom(layer) &&
+                   animator.GetCurrentAnimatorStateInfo(layer).normalizedTime < 1f)
+            {
+                yield return null;
+            }
+
+            _symptomRoutine = null;
+
+            // Cut only our own state: work may have taken the layer meanwhile
+            if (animator != null && animator.isActiveAndEnabled && StateIsSymptom(layer))
+            {
+                CrossFade(layer, EMPTY_STATE);
+            }
+        }
+
+        private bool StateIsSymptom(int layer)
+        {
+            AnimatorStateInfo info = animator.GetCurrentAnimatorStateInfo(layer);
+            foreach (string suffix in SYMPTOM_NAMES)
+            {
+                if (info.fullPathHash == PathHash(layer, SYMPTOM_STATE_PREFIX + suffix))
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         void OnDestroy()

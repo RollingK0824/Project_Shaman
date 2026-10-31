@@ -14,6 +14,8 @@ GameObject:
   - component: {fileID: 3843366677350717220}
   - component: {fileID: 3926866429911123657}
   - component: {fileID: 7899165763930421961}
+  - component: {fileID: 4127730915562841001}
+  - component: {fileID: 4127730915562841002}
   m_Layer: 0
   m_Name: NetLivestock_Cattle
   m_TagString: Untagged
@@ -159,6 +161,35 @@ CapsuleCollider:
   m_Height: 1
   m_Direction: 1
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &4127730915562841001
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8696750402871717298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e993a54da1b34248a165a051261a1013, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Project.Runtime::NetLivestockHealth
+  syncDirection: 0
+  syncMode: 0
+  syncInterval: 0
+  _maxHealth: 1
+--- !u!114 &4127730915562841002
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8696750402871717298}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65032686b3694c37b5d6e8937cb1a561, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.World.Animal
+  _corpseKey: Cattle
 --- !u!1001 &5977452015665108981
 PrefabInstance:
   m_ObjectHideFlags: 0
