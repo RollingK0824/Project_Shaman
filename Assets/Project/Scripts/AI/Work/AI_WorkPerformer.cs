@@ -42,6 +42,7 @@ namespace ProjectShaman.AI.Work
         private System.Random _lineRandom;
         private WorkStation _station;
         private float _nextHitTime;
+        private bool _hitsFromClip;
 
         public bool IsWorking => _isWorking;
 
@@ -147,6 +148,7 @@ namespace ProjectShaman.AI.Work
             _currentActionId = routine.ActionId;
             _currentStationId = _station != null ? _station.StationId : string.Empty;
             _hitCount = 0;
+            _hitsFromClip = false;
             _nextHitTime = Time.time + _hitIntervalSeconds;
 
             _core.SetState(AIState.Working);
@@ -173,7 +175,7 @@ namespace ProjectShaman.AI.Work
 
             FaceStation(deltaTime);
 
-            if (!_useAnimationEvent && Time.time >= _nextHitTime)
+            if (!_useAnimationEvent && !_hitsFromClip && Time.time >= _nextHitTime)
             {
                 _nextHitTime = Time.time + _hitIntervalSeconds;
                 DeliverHit();
@@ -189,14 +191,17 @@ namespace ProjectShaman.AI.Work
 
             _isWorking = false;
             _visual.StopAction();
-            AILog.Log(AILog.WORK, _core.LogId, $"EndWork action='{_currentActionId}' hits={_hitCount}");
+            AILog.Log(AILog.WORK, _core.LogId, $"EndWork action='{_currentActionId}' hits={_hitCount} ({(_hitsFromClip ? "clip" : "timer")})");
             _station = null;
         }
 
+        // A clip with an OnWorkImpact event drives the hits itself from its first blow (the axe splits the log as it lands);
+        // clips without one keep the timer
         public void HandleImpactEvent()
         {
-            if (_isWorking && _useAnimationEvent)
+            if (_isWorking)
             {
+                _hitsFromClip = true;
                 DeliverHit();
             }
         }

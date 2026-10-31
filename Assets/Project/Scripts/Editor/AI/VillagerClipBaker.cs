@@ -93,7 +93,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(VILLAGER_MODELS[0]));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 15\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 16\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -364,7 +364,7 @@ public static class VillagerClipBaker
         new[] { "Empty" },
         new[] { "Farming", "Farming Loop", "Farming Stop" },
         new[] { "Chopping", "Gathering", "Crouching", "Fishing" },
-        new[] { "Work_Sweep", "Work_Sow", "Work_NetMend", "Work_Pound" },
+        new[] { "Work_Sweep", "Work_Sow", "Work_NetMend", "Work_Pound", "Work_Chop" },
         new[] { "Rest_Sit", "Rest_Drink", "Rest_Play", "Rest_Chat" },
         new[] { "Sleep", "Sleep Stop" },
     };
@@ -1102,6 +1102,34 @@ public static class VillagerClipBaker
                 };
                 SitLegs(pose);
                 return pose;
+            },
+        };
+
+        // 장작 패기·나무 베기·숯감 마련 (Axe): both hands on the haft, raised over the head, brought down onto the block with the
+        // knees and the back bending into the blow, a small rebound, lifted again. One blow per loop: the impact splits the log
+        yield return new ClipDef
+        {
+            Name = "Work_Chop",
+            Length = 1.4f,
+            Impacts = new[] { 0.72f },
+            Sample = t =>
+            {
+                const float L = 1.4f;
+                Vector3 right = Keys(t, L, (0f, V(0.06f, 0.30f, 0.02f)), (0.45f, V(0.05f, 0.34f, -0.02f)), (0.72f, V(0.05f, -0.26f, 0.38f)),
+                    (0.84f, V(0.05f, -0.22f, 0.37f)), (1.12f, V(0.05f, 0.02f, 0.28f)));
+                Vector3 left = right + Keys(t, L, (0f, V(-0.05f, -0.07f, -0.02f)), (0.72f, V(-0.07f, -0.05f, -0.06f)), (1.12f, V(-0.06f, -0.06f, -0.04f)));
+                Vector3 pole = Keys(t, L, (0f, V(1f, 0.2f, 0.5f)), (0.45f, V(1f, 0.3f, 0.3f)), (0.72f, V(0.6f, -1f, 0f)), (1.12f, V(0.8f, -0.6f, 0.3f)));
+                float bend = Keys(t, L, (0f, -8f), (0.45f, -12f), (0.72f, 28f), (0.84f, 26f), (1.12f, 8f));
+                float dip = Keys(t, L, (0f, 0f), (0.45f, 0f), (0.72f, -0.09f), (0.84f, -0.08f), (1.12f, -0.03f));
+                return new Pose
+                {
+                    HipsOffset = V(0f, dip, -0.02f),
+                    HipsEuler = V(bend * 0.25f, 0f, 0f),
+                    SpineEuler = V(bend * 0.75f, -6f, 0f),
+                    HeadEuler = V(Mathf.Max(0f, bend) * 0.4f + 6f, 4f, 0f),
+                    Right = Reach(Space.Chest, right, 1f, pole),
+                    Left = Reach(Space.Chest, left, 1f, V(pole.x * 0.8f, pole.y, pole.z)),
+                };
             },
         };
 
