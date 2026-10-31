@@ -50,7 +50,52 @@ namespace ProjectShaman.AI.Work
         public bool IsHolding => _heldTool != null;
         public string VillagerId => Core.LogId;
 
-        private Transform Socket => _handSocket != null ? _handSocket : transform;
+        private Transform _foundHand;
+
+        // The right hand of the body in use (the Humanoid bone, else a bone named hand_r), found again after the body is
+        // swapped for the villager's gender. The root only when the body has no hand, so a tool never stays behind at the feet
+        private Transform Socket
+        {
+            get
+            {
+                if (_handSocket != null)
+                {
+                    return _handSocket;
+                }
+
+                if (_foundHand == null)
+                {
+                    _foundHand = FindRightHand();
+                }
+
+                return _foundHand != null ? _foundHand : transform;
+            }
+        }
+
+        private Transform FindRightHand()
+        {
+            foreach (Animator animator in GetComponentsInChildren<Animator>())
+            {
+                if (animator.isHuman)
+                {
+                    Transform bone = animator.GetBoneTransform(HumanBodyBones.RightHand);
+                    if (bone != null)
+                    {
+                        return bone;
+                    }
+                }
+            }
+
+            foreach (Transform child in GetComponentsInChildren<Transform>())
+            {
+                if (child.name == "hand_r")
+                {
+                    return child;
+                }
+            }
+
+            return null;
+        }
 
         private void Awake()
         {
@@ -104,6 +149,12 @@ namespace ProjectShaman.AI.Work
 
         private void Update()
         {
+            // The body was swapped while a tool was held: the old hand is gone, the tool follows the new one
+            if (_heldTool != null && _heldTool.HolderSocket != Socket)
+            {
+                _heldTool.RebindSocket(Socket);
+            }
+
             if (Context != null)
             {
                 _inquiry.Tick();

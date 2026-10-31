@@ -41,6 +41,7 @@ namespace ProjectShaman.AI.Core
         private ConversationService _conversations;
         private VillagerRequestRouter _requests;
         private ObservationService _observation;
+        private PossessionSymptoms _symptoms;
         private AbsenceTracker _absence;
         private readonly List<VillagerProfile> _profiles = new List<VillagerProfile>();
         private readonly Dictionary<string, int> _visitedDay = new Dictionary<string, int>();
@@ -116,6 +117,7 @@ namespace ProjectShaman.AI.Core
             _requests = null;
             _observation?.Clear();
             _observation = null;
+            _symptoms = null;
             _absence?.Clear();
             _absence = null;
             _profiles.Clear();
@@ -158,6 +160,7 @@ namespace ProjectShaman.AI.Core
 
             StartRequests();
             _observation = IsAuthority() ? new ObservationService(_behaviourConfig, _factory.Seed + 4) : null;
+            _symptoms = IsAuthority() ? new PossessionSymptoms(_behaviourConfig, ShowSymptom, _factory.Seed + 5) : null;
             _absence = IsAuthority() ? new AbsenceTracker(_factory.Registry) : null;
 
             AILog.Log(AILog.MANAGER, $"Registered {_villagers.Count} villagers, places={PlaceRegistry.Count}, day={TimeManager.DAY_DURATION}s night={TimeManager.NIGHT_DURATION}s");
@@ -601,6 +604,11 @@ namespace ProjectShaman.AI.Core
                 _nightWalkers.Clear();
                 foreach (VillagerRuntime villager in _villagers)
                 {
+                    if (villager.Core != null)
+                    {
+                        _symptoms?.TickEnd(villager);
+                    }
+
                     if (villager.Core != null && villager.IsHomeOrdered)
                     {
                         TickHomeward(villager, now);
@@ -628,7 +636,7 @@ namespace ProjectShaman.AI.Core
 
                 TickVillager(villager, now);
                 TryAssignWaitingStation(villager);
-                TickSymptoms(villager, now);
+                _symptoms?.Tick(villager);
             }
 
             _conversations?.Tick(_villagers, now);
@@ -1027,40 +1035,10 @@ namespace ProjectShaman.AI.Core
             possession.ApplyMorningYin(_behaviourConfig.MinimumYin, _behaviourConfig.MaxYin);
             CorruptionPlan plan = CorruptionPlanner.Build(possession, villager.Profile.Schedule, dayCount, _behaviourConfig.RoutinesPerDay, _behaviourConfig);
             possession.SetPlan(plan);
-            AILog.Log(AILog.GHOST, villager.Id, $"Corruption plan Day{dayCount}: yin={plan.MorningYin:F0}, corrupted slots={plan.CorruptedSlotCount}, symptoms={plan.Symptoms.Count}");
+            AILog.Log(AILog.GHOST, villager.Id, $"Corruption plan Day{dayCount}: yin={plan.MorningYin:F0}, corrupted slots={plan.CorruptedSlotCount}");
         }
 
-        private void TickSymptoms(VillagerRuntime villager, float now)
-        {
-            AI_Possession possession = villager.Profile.Possession;
-            ResolvedRoutine current = villager.Current;
-
-            if (possession == null || possession.TodayPlan == null || villager.IsHomeOrdered || (current.Category != RoutineCategory.Rest && current.Category != RoutineCategory.Work))
-            {
-                return;
-            }
-
-            float length = Mathf.Max(1f, current.EndTime - current.StartTime);
-            float fraction = (now - current.StartTime) / length;
-            List<PlannedSymptom> symptoms = possession.TodayPlan.Symptoms;
-
-            for (int i = 0; i < symptoms.Count; i++)
-            {
-                PlannedSymptom symptom = symptoms[i];
-                if (symptom.HasFired || symptom.Slot != current.Slot || fraction < symptom.SlotFraction)
-                {
-                    continue;
-                }
-
-                symptom.HasFired = true;
-                symptoms[i] = symptom;
-                villager.Core.TriggerSymptom(symptom.Type);
-                _observation?.OnSymptom(villager.Core, symptom.Type);
-                possession.RefreshDebug();
-            }
-        }
-
-        // A symptom forced out of a host outside today's plan (struck by salt ...): shown and witnessed like a planned one
+        // A behaviour symptom shown now (rolled by PossessionSymptoms, or forced out of a host by salt ...): played and witnessed
         public void ShowSymptom(AI_Core core, SymptomType symptom)
         {
             if (core == null)
@@ -1088,6 +1066,7 @@ namespace ProjectShaman.AI.Core
 
             AILog.Log(AILog.MANAGER, villager.Id, $"Removed ({reason}), remaining={_villagers.Count}");
             _observation?.OnVillagerRemoved(villager.Id);
+            _symptoms?.Forget(villager.Id);
             _factory.Registry?.MarkDead(villager.Id);
             AIEvents.RaiseVillagerDied(villager.Id, reason);
 

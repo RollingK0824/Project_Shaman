@@ -30,6 +30,8 @@ namespace ProjectShaman.Network.AI
         [SyncVar(hook = nameof(OnActiveQuestChanged))] private bool _hasActiveQuest;
         // Whose body it is, so the prompt can name it on every client ("노첨지의 시신 치우기")
         [SyncVar] private string _victimId;
+        // Which body the corpse shows (gender, animal kind), set with the trace on the server
+        [SyncVar(hook = nameof(OnVisualKeyChanged))] private string _visualKey;
 
         public string InteractionPrompt => string.IsNullOrEmpty(_victimId) ? _interactionPrompt : $"{VictimName()}의 시신 {_interactionPrompt}";
 
@@ -69,8 +71,21 @@ namespace ProjectShaman.Network.AI
             _subscribedQuests = null;
         }
 
+        private void OnVisualKeyChanged(string oldValue, string newValue)
+        {
+            if (!isServer)
+            {
+                _trace.SetVisualKey(newValue);
+            }
+        }
+
         public override void OnStartClient()
         {
+            if (!isServer && !string.IsNullOrEmpty(_visualKey))
+            {
+                _trace.SetVisualKey(_visualKey);
+            }
+
             ApplyMarker(_hasActiveQuest);
         }
 
@@ -112,6 +127,11 @@ namespace ProjectShaman.Network.AI
             if (_victimId != _trace.VictimId)
             {
                 _victimId = _trace.VictimId;
+            }
+
+            if (_visualKey != _trace.VisualKey)
+            {
+                _visualKey = _trace.VisualKey;
             }
 
             if (!_trace.IsActive || Time.time < _nextInspectCheck)

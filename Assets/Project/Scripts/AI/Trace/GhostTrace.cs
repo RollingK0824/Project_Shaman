@@ -44,6 +44,9 @@ namespace ProjectShaman.AI.Trace
         public InteractionProfile Profile => _profile;
         public string QuestContextId => InteractableId;
         public string VictimId { get; private set; }
+        // Which body a corpse shows (AI_CorpseVisual): the victim's gender, or the animal kind
+        public string VisualKey { get; private set; }
+        public event Action<string> OnVisualKeyChanged;
         public string DisplayName => string.IsNullOrEmpty(VictimId) ? AIDisplayNames.Trace(_kind) : $"{VictimName()}의 {AIDisplayNames.Trace(_kind)}";
         public Vector3 Position => transform.position;
         public Vector3 LookPoint => _lookPoint != null ? _lookPoint.position : transform.position;
@@ -135,6 +138,18 @@ namespace ProjectShaman.AI.Trace
         {
             VictimId = villagerId;
             AILog.Log(AILog.TRACE, InteractableId, $"Body of {villagerId} ({BundleKey})");
+        }
+
+        // Server: set when the trace is left; clients get it from Net_GhostTrace
+        public void SetVisualKey(string key)
+        {
+            if (key == VisualKey)
+            {
+                return;
+            }
+
+            VisualKey = key;
+            OnVisualKeyChanged?.Invoke(key);
         }
 
         private string VictimName()

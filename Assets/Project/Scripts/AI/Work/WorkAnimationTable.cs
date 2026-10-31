@@ -21,13 +21,31 @@ namespace ProjectShaman.AI.Work
 
             foreach (ActionEntry action in actions)
             {
-                if (action == null || string.IsNullOrEmpty(action.ActionId) || string.IsNullOrEmpty(action.Animation))
+                if (action == null || string.IsNullOrEmpty(action.ActionId))
                 {
                     continue;
                 }
 
-                _animations[action.ActionId] = action.Animation;
+                // An empty animation is kept: the action is known and plays no clip (standing work)
+                _animations[action.ActionId] = action.Animation ?? string.Empty;
             }
+        }
+
+        // Actions that play a different animation from this one, for a corrupted routine that must look wrong
+        public static void CollectOtherLooking(string actionId, List<string> result)
+        {
+            result.Clear();
+            _animations.TryGetValue(actionId ?? string.Empty, out string own);
+
+            foreach (KeyValuePair<string, string> action in _animations)
+            {
+                if (action.Key != actionId && action.Value != own && action.Value.Length > 0)
+                {
+                    result.Add(action.Key);
+                }
+            }
+
+            result.Sort(string.CompareOrdinal);
         }
 
         // Empty when the action has no animation: the villager keeps its locomotion pose

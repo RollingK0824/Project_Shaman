@@ -8,14 +8,6 @@ namespace ProjectShaman.AI.Ghost
 {
     public static class CorruptionPlanner
     {
-        private static readonly SymptomType[] REST_SYMPTOMS =
-        {
-            SymptomType.Tremble,
-            SymptomType.StareIntoVoid,
-            SymptomType.Nonsense,
-            SymptomType.Grotesque
-        };
-
         public static System.Random CreateRandom(int seed, int dayCount, int salt)
         {
             return new System.Random(unchecked(seed * 486187739 + dayCount * 16777619 + salt * 31));
@@ -51,12 +43,6 @@ namespace ProjectShaman.AI.Ghost
                     {
                         plan.SetSlotAxis(slot, PickAxis(routine, random));
                     }
-
-                    PlanSymptoms(plan, slot, yinFactor * config.WorkSlotSymptomMultiplier, config, random);
-                }
-                else if (routine.Category == RoutineCategory.Rest)
-                {
-                    PlanSymptoms(plan, slot, yinFactor, config, random);
                 }
             }
 
@@ -72,40 +58,10 @@ namespace ProjectShaman.AI.Ghost
 
         public static List<CorruptionAxis> GetAvailableAxes(RoutineEntry routine)
         {
-            List<CorruptionAxis> axes = new List<CorruptionAxis>();
-
-            if (routine.WrongToolIds.Count > 0)
-            {
-                axes.Add(CorruptionAxis.Tool);
-            }
-
-            if (routine.WrongActionIds.Count > 0)
-            {
-                axes.Add(CorruptionAxis.Action);
-            }
-
-            if (routine.WrongPlaceIds.Count > 0)
-            {
-                axes.Add(CorruptionAxis.Place);
-            }
-
-            axes.Add(CorruptionAxis.Time);
-            return axes;
-        }
-
-        private static void PlanSymptoms(CorruptionPlan plan, int slot, float frequency, AIBehaviourConfig config, System.Random random)
-        {
-            int count = Mathf.RoundToInt(frequency * config.MaxSymptomsPerRestSlot);
-
-            for (int i = 0; i < count; i++)
-            {
-                plan.Symptoms.Add(new PlannedSymptom
-                {
-                    Slot = slot,
-                    SlotFraction = Mathf.Lerp(0.2f, 0.9f, (float)random.NextDouble()),
-                    Type = REST_SYMPTOMS[random.Next(REST_SYMPTOMS.Length)]
-                });
-            }
+            // Wrong tool, action and place are open to every routine: an empty wrong list in the data means any other one
+            // (RoutineResolver picks it from the scene), a filled list limits it. An axis with nothing to swap to at
+            // resolve time falls through to the next one, time always works
+            return new List<CorruptionAxis> { CorruptionAxis.Tool, CorruptionAxis.Action, CorruptionAxis.Place, CorruptionAxis.Time };
         }
 
         private static void EnsureMinimum(CorruptionPlan plan, VillagerSchedule schedule, int dayCount, List<int> workSlots, int slotsPerDay, int minimum, System.Random random)
