@@ -17,7 +17,8 @@ namespace ProjectShaman.AI
         private const string BASE_LAYER = "Base Layer";
         private const string GESTURE_LAYER = "Gesture";
         // Full-body actions first, then the upper-body ones that keep the legs standing (hammering)
-        private static readonly string[] ACTION_LAYERS = { "Action", "UpperAction" };
+        private const string UPPER_ACTION_LAYER = "UpperAction";
+        private static readonly string[] ACTION_LAYERS = { "Action", UPPER_ACTION_LAYER };
         private const string EMPTY_STATE = "Empty";
         private const string STOP_SUFFIX = " Stop";
         private const string LOCOMOTION_STATE = "Locomotion";
@@ -275,6 +276,12 @@ namespace ProjectShaman.AI
             string covering = null;
             foreach (string layerName in ACTION_LAYERS)
             {
+                // The upper-body layer is masked to the arms and head: a symptom there leaves the legs walking
+                if (layerName == UPPER_ACTION_LAYER)
+                {
+                    continue;
+                }
+
                 int layer = animator.GetLayerIndex(layerName);
                 if (layer >= 0 && animator.GetCurrentAnimatorStateInfo(layer).fullPathHash != PathHash(layer, EMPTY_STATE))
                 {
