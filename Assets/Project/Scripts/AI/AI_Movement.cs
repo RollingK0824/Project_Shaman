@@ -7,11 +7,14 @@ namespace ProjectShaman.AI
     [RequireComponent(typeof(NavMeshAgent))]
     public class AI_Movement : MonoBehaviour, INetworkMovable
     {
+        private const float UNREACHABLE_GAP = 1f;
+
         private NavMeshAgent agent;
         private float defaultSpeed;
         // Callers set the speed they want; a slow effect scales it without them knowing
         private float baseSpeed;
         private float speedMultiplier = 1f;
+        private bool destinationRejected;
 
         public bool IsStopped => agent != null && agent.isStopped;
         public bool HasReachedDestination
@@ -22,6 +25,19 @@ namespace ProjectShaman.AI
                 if (agent.pathPending) return false;
                 if (agent.remainingDistance > agent.stoppingDistance) return false;
                 return agent.hasPath || Vector3.Distance(transform.position, agent.destination) <= agent.stoppingDistance;
+            }
+        }
+        public bool IsDestinationUnreachable
+        {
+            get
+            {
+                if (agent == null || !agent.isActiveAndEnabled || agent.pathPending) return false;
+                if (destinationRejected || agent.pathStatus == NavMeshPathStatus.PathInvalid) return true;
+                if (agent.pathStatus != NavMeshPathStatus.PathPartial) return false;
+
+                Vector3 gap = agent.pathEndPosition - agent.destination;
+                gap.y = 0f;
+                return gap.sqrMagnitude > UNREACHABLE_GAP * UNREACHABLE_GAP;
             }
         }
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
@@ -106,7 +122,7 @@ namespace ProjectShaman.AI
             if (agent != null && agent.isActiveAndEnabled)
             {
                 agent.isStopped = false;
-                agent.SetDestination(destination);
+                destinationRejected = !agent.SetDestination(destination);
             }
         }
 
