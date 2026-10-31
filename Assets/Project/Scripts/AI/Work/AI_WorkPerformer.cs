@@ -19,8 +19,17 @@ namespace ProjectShaman.AI.Work
         [SerializeField] private string _currentStationId;
         [SerializeField] private int _hitCount;
 
+        [Header("Rest")]
+        [SerializeField] private float _restArriveDistance = 2f;
+        [SerializeField] private float _restStillSpeed = 0.1f;
+        [Tooltip("Rest animations sitting on the floor: a villager in one stays seated in a conversation")]
+        [SerializeField] private string[] _seatedRestAnimations = { "Rest_Sit", "Rest_Drink" };
+        [SerializeField] private string _seatedTalkAnimation = "Rest_Sit";
+        [SerializeField] private string _restAnimation = string.Empty;
+
         private AI_Core _core;
         private AI_VisualController _visual;
+        private AI_Movement _movement;
         private WorkStation _station;
         private float _nextHitTime;
 
@@ -30,6 +39,67 @@ namespace ProjectShaman.AI.Work
         {
             _core = GetComponent<AI_Core>();
             _visual = GetComponent<AI_VisualController>();
+            _movement = GetComponent<AI_Movement>();
+        }
+
+        // Rest routines have no work node: the rest action plays once the villager stands still at the rest place (server only,
+        // the animation reaches clients through the synced action state) and stops when it moves, sleeps or the routine changes.
+        // A conversation stands a standing rest up for the full-body talk, but a seated one stays down and only talks
+        private void Update()
+        {
+            if (_isWorking || !_core.IsSimulating)
+            {
+                return;
+            }
+
+            string wanted = string.Empty;
+            if (IsRestingInPlace())
+            {
+                bool seated = System.Array.IndexOf(_seatedRestAnimations, _restAnimation) >= 0;
+                wanted = _core.CurrentState != AIState.Interacting ? WorkAnimationTable.Get(_core.CurrentRoutine.ActionId)
+                    : seated ? _seatedTalkAnimation : string.Empty;
+            }
+
+            if (wanted == _restAnimation)
+            {
+                return;
+            }
+
+            if (wanted.Length > 0)
+            {
+                _visual.PlayAction(wanted);
+            }
+            else if (_visual.CurrentAction == _restAnimation)
+            {
+                _visual.StopAction();
+            }
+
+            AILog.Log(AILog.WORK, _core.LogId, wanted.Length > 0 ? $"Rest pose '{wanted}' ({_core.CurrentRoutine.Source.RoutineId})" : $"Rest pose end '{_restAnimation}'");
+            _restAnimation = wanted;
+        }
+
+        private bool IsRestingInPlace()
+        {
+            ResolvedRoutine routine = _core.CurrentRoutine;
+            if (routine.Source == null || routine.Category != RoutineCategory.Rest || _core.IsAsleep || _core.IsHomeForNight || _core.MustGoHome)
+            {
+                return false;
+            }
+
+            AIState state = _core.CurrentState;
+            if (state == AIState.Sleeping || state == AIState.Panicking || state == AIState.Working)
+            {
+                return false;
+            }
+
+            if (_movement != null && _movement.CurrentSpeed > _restStillSpeed)
+            {
+                return false;
+            }
+
+            Vector3 offset = routine.TargetPosition - transform.position;
+            offset.y = 0f;
+            return offset.sqrMagnitude <= _restArriveDistance * _restArriveDistance;
         }
 
         public bool BeginWork()
@@ -58,6 +128,7 @@ namespace ProjectShaman.AI.Work
             _nextHitTime = Time.time + _hitIntervalSeconds;
 
             _core.SetState(AIState.Working);
+            _restAnimation = string.Empty;
             _visual.PlayAction(WorkAnimationTable.Get(_currentActionId));
 
             AILog.Log(AILog.WORK, _core.LogId, $"BeginWork action='{_currentActionId}' station={(_station != null ? _station.StationId : "none")} mode={(_useAnimationEvent ? "AnimEvent" : "Timer")}");
