@@ -305,6 +305,12 @@ namespace ProjectShaman.AI.Dialogue
         // The alibi, one routine per question: where, and who was there. Checked by asking those named the same
         private static string AnswerToday(AI_Conversation villager, AI_Memory memory, int index)
         {
+            // Nothing begun yet today (still on the way to the first routine)
+            if (memory != null && memory.TodayRoutines.Count == 0)
+            {
+                return DialogueLibrary.Line("today.notyet", _random);
+            }
+
             if (memory == null || index < 0 || index >= memory.TodayRoutines.Count)
             {
                 return DialogueLibrary.Line("today.none", _random);
@@ -313,16 +319,18 @@ namespace ProjectShaman.AI.Dialogue
             RoutineAccount account = memory.TodayRoutines[index];
             AnswerDistortion.ApplyAlibi(villager, account, _companions, out bool coversCorruption);
 
+            // The routine still under way is told as one being done, the rest as done
+            string tense = memory.IsUnderWay(account) ? ".now" : string.Empty;
             Vector3 where = coversCorruption ? ScheduledPosition(account.Routine) : account.Routine.TargetPosition;
             string area = DialogueComposer.AreaName(MapAreaRegistry.ResolveId(where), where);
-            string when = DialogueLibrary.Noun(index == 0 ? "alibi.when.0" : "alibi.when.n", string.Empty);
+            string when = DialogueLibrary.Noun(tense.Length > 0 ? "alibi.when.now" : index == 0 ? "alibi.when.0" : "alibi.when.n", string.Empty);
             string work = account.Routine.Source.DisplayName;
             bool rest = account.Routine.Category == RoutineCategory.Rest || string.IsNullOrEmpty(work);
 
-            string text = DialogueComposer.Fill(DialogueLibrary.Line(rest ? "alibi.rest" : "alibi.work", _random), "when", when, "area", area, "work", work)
+            string text = DialogueComposer.Fill(DialogueLibrary.Line((rest ? "alibi.rest" : "alibi.work") + tense, _random), "when", when, "area", area, "work", work)
                 + " " + (_companions.Count > 0
-                    ? DialogueComposer.Fill(DialogueLibrary.Line("alibi.with", _random), "names", JoinNames(_companions))
-                    : DialogueLibrary.Line("alibi.alone", _random));
+                    ? DialogueComposer.Fill(DialogueLibrary.Line("alibi.with" + tense, _random), "names", JoinNames(_companions))
+                    : DialogueLibrary.Line("alibi.alone" + tense, _random));
 
             _companions.Clear();
             return text;
