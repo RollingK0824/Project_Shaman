@@ -238,6 +238,11 @@ public class NetworkTestTrigger : MonoBehaviour
         if (GUILayout.Button("스트레스 +20")) RequestSelfStress(20f);
         if (GUILayout.Button("스트레스 -20")) RequestSelfStress(-20f);
 
+        // 이 PC에서만 보임: 빙의된 주민에게 노란 테두리 (기본 꺼짐, 추리 테스트 때는 끈 채로)
+        bool showPossessed = ProjectShaman.AI.AI_PossessionMarker.Visible;
+        bool toggled = GUILayout.Toggle(showPossessed, " 빙의 주민 노란 테두리 표시 (내 화면만)");
+        if (toggled != showPossessed) ProjectShaman.AI.AI_PossessionMarker.SetVisible(toggled);
+
         // 호스트 전용
         GUILayout.Space(6);
         GUILayout.Label("── 호스트 전용 ──");

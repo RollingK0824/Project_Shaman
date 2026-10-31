@@ -231,7 +231,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _requestFailedStress = 10f;
 
         [Header("Debug")]
-        [SerializeField, Tooltip("Temporary: possessed villagers wear the debug material on every peer")]
+        [SerializeField, Tooltip("Test aid: every peer is told which villagers are possessed, shown as a yellow outline only where the F1 test panel switches it on (off by default). Turn off for a build, so a client cannot read it")]
         private bool _showPossessedMaterial = true;
         [SerializeField] private Material _possessedDebugMaterial;
 
@@ -376,7 +376,7 @@ namespace ProjectShaman.AI.Data
         public int AlibiCompanionsPerRoutine => Mathf.Max(1, _alibiCompanionsPerRoutine);
         public float RequestCompletedStressRelief => _requestCompletedStressRelief;
         public float RequestFailedStress => _requestFailedStress;
-        public bool ShowPossessedMaterial => _showPossessedMaterial && _possessedDebugMaterial != null;
+        public bool ShowPossessedMaterial => _showPossessedMaterial;
         public Material PossessedDebugMaterial => _possessedDebugMaterial;
 
         // "Kind:Detail" wins over "Kind", so one tool or trace kind can get its own quest

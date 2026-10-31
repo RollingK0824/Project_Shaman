@@ -1,71 +1,110 @@
-using System.Collections.Generic;
+using System;
 using UnityEngine;
 
 namespace ProjectShaman.AI
 {
+    // Test aid: marks a possessed villager with a yellow glow outline so a tester can see who the hosts are.
+    // Off by default on every peer (the test is whether players can deduce hosts without it); the F1 test panel turns it on
+    // for that peer. An outline (AI_RevealOutline copies of the renderers), not a material swap, so it never fights the
+    // symptom tint on the body's own materials and follows a body that is replaced for the villager's gender.
     public class AI_PossessionMarker : MonoBehaviour
     {
-        private readonly List<Renderer> _renderers = new List<Renderer>();
-        private readonly List<Material[]> _originals = new List<Material[]>();
+        private static readonly Color MARK_COLOR = new Color(1f, 0.85f, 0.1f, 1f);
 
-        public bool IsMarked { get; private set; }
+        private AI_RevealOutline _outline;
+        private AI_VillagerModel _model;
+        private bool _marked;
 
-        public void SetMarked(bool marked, Material material)
+        // Whether this peer shows the marks (the F1 panel toggles it)
+        public static bool Visible { get; private set; }
+        public static event Action<bool> VisibilityChanged;
+
+        public bool IsMarked => _marked;
+
+        public static void SetVisible(bool visible)
         {
-            if (marked == IsMarked || (marked && material == null))
+            if (visible == Visible)
             {
                 return;
             }
 
-            if (marked)
-            {
-                Apply(material);
-            }
-            else
-            {
-                Restore();
-            }
-
-            IsMarked = marked;
+            Visible = visible;
+            VisibilityChanged?.Invoke(visible);
         }
 
-        private void Apply(Material material)
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetOnLoad()
         {
-            _renderers.Clear();
-            _originals.Clear();
+            Visible = false;
+            VisibilityChanged = null;
+        }
 
-            foreach (Renderer target in GetComponentsInChildren<Renderer>(true))
+        // marked = the server says this villager is possessed (synced to every peer); shown only while Visible
+        public void SetMarked(bool marked)
+        {
+            _marked = marked;
+            Refresh();
+        }
+
+        private void Awake()
+        {
+            TryGetComponent(out _model);
+            if (_model != null)
             {
-                if (!(target is MeshRenderer) && !(target is SkinnedMeshRenderer))
-                {
-                    continue;
-                }
-
-                Material[] original = target.sharedMaterials;
-                Material[] replaced = new Material[original.Length];
-                for (int i = 0; i < replaced.Length; i++)
-                {
-                    replaced[i] = material;
-                }
-
-                _renderers.Add(target);
-                _originals.Add(original);
-                target.sharedMaterials = replaced;
+                _model.OnModelChanged += HandleModelChanged;
             }
         }
 
-        private void Restore()
+        private void OnEnable()
         {
-            for (int i = 0; i < _renderers.Count; i++)
+            VisibilityChanged += HandleVisibility;
+            Refresh();
+        }
+
+        private void OnDisable()
+        {
+            VisibilityChanged -= HandleVisibility;
+        }
+
+        private void OnDestroy()
+        {
+            if (_model != null)
             {
-                if (_renderers[i] != null)
-                {
-                    _renderers[i].sharedMaterials = _originals[i];
-                }
+                _model.OnModelChanged -= HandleModelChanged;
+            }
+        }
+
+        private void HandleVisibility(bool visible)
+        {
+            Refresh();
+        }
+
+        // The body was swapped: the outline copies went with the old one, so they are built again on the new one
+        private void HandleModelChanged(Animator animator)
+        {
+            if (_outline != null)
+            {
+                _outline.Invalidate();
             }
 
-            _renderers.Clear();
-            _originals.Clear();
+            Refresh();
+        }
+
+        private void Refresh()
+        {
+            bool show = _marked && Visible;
+            if (_outline == null)
+            {
+                if (!show)
+                {
+                    return;
+                }
+
+                _outline = gameObject.AddComponent<AI_RevealOutline>();
+                _outline.SetColor(MARK_COLOR);
+            }
+
+            _outline.Show(show);
         }
     }
 }

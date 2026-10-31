@@ -305,9 +305,6 @@ namespace ProjectShaman.Network.AI
 
         private void ApplyPossessionMark(bool marked)
         {
-            AIBehaviourConfig config = AIManager.Instance != null ? AIManager.Instance.Config : null;
-            Material material = config != null ? config.PossessedDebugMaterial : null;
-
             if (!TryGetComponent(out AI_PossessionMarker marker))
             {
                 if (!marked)
@@ -318,7 +315,7 @@ namespace ProjectShaman.Network.AI
                 marker = gameObject.AddComponent<AI_PossessionMarker>();
             }
 
-            marker.SetMarked(marked, material);
+            marker.SetMarked(marked);
         }
 
         private void OnStateChanged(AIState oldVal, AIState newVal)
