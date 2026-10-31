@@ -224,12 +224,13 @@ namespace ProjectShaman.AI.Interaction
             OnLineSpoken?.Invoke(session, line);
         }
 
-        // A player can stop a villager to talk while it rests, works or walks about its routine (the behaviour tree restarts on
-        // the interaction and picks the routine up again afterwards). Not while it searches for a tool, heads home or is
-        // already held by something else
+        // A player can stop a villager to talk while it rests, works, walks about its routine or goes looking for a tool
+        // (the behaviour tree restarts on the interaction and picks the routine or the search up again afterwards).
+        // Not while it heads home before nightfall or is already held by something else
         private static bool IsTalkableActivity(VillagerActivity activity)
         {
-            return activity == VillagerActivity.Rest || activity == VillagerActivity.Work || activity == VillagerActivity.Moving;
+            return activity == VillagerActivity.Rest || activity == VillagerActivity.Work || activity == VillagerActivity.Moving
+                || activity == VillagerActivity.ToolSearch;
         }
 
         // Resting or at work (alone, or in a chat with another villager) and not heading home: a player can stop it and talk
