@@ -39,6 +39,9 @@ Network / AI / Core / 팀원 씬·프리팹은 수정하지 않았습니다.
 - 별도 재료 차감/Consume/ReportUse를 추가하지 마세요. TryDropUnit이 소지품 이전을 원자적으로 처리합니다.
 
 3. 음기향
+- 2026-10-31 변경: YinIncenseDetector의 시각 효과는 TimeManager의 Night에서만 재생합니다.
+  Day 전환/시간 시스템 미시작 시 잔여 파티클까지 제거합니다. 1인칭/3인칭 공통 HeldVisual에 적용됩니다.
+  아래 숙주 탐지 API 자체는 유지하되 낮에는 연기 표시 및 Detector의 탐지 요청을 중단합니다.
 - PlayerItemController.Awake에서 PlayerYinIncenseSense를 준비합니다.
 - 서버/오프라인 TrySampleAuthoritative(out Vector3 direction, out bool near)는 낮/밤 제한 없이
   현재 살아 있는 미퇴마 숙주를 반경 15m에서 탐색합니다. 음기 최소치 제한 없음.

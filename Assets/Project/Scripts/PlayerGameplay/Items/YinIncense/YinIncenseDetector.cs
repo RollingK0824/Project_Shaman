@@ -12,6 +12,7 @@ public class YinIncenseDetector : MonoBehaviour, IItemVisualContext
     private float _directionSmoothSpeed = 3f;
 
     private ParticleSystem _smoke;
+    private ParticleSystem[] _smokeSystems;
     private Vector3 _currentDirection;
     private PlayerYinIncenseSense _sense;
     private bool _wasNear;
@@ -25,6 +26,7 @@ public class YinIncenseDetector : MonoBehaviour, IItemVisualContext
     {
         _smoke =
             GetComponentInChildren<ParticleSystem>(true);
+        _smokeSystems = GetComponentsInChildren<ParticleSystem>(true);
 
         if (_smoke == null)
         {
@@ -35,15 +37,39 @@ public class YinIncenseDetector : MonoBehaviour, IItemVisualContext
         }
     }
 
+    private void OnEnable() => UpdateNightVisibility();
+    private void OnDisable() => StopSmoke();
 
-    private void Update()
+    private void StopSmoke()
+    {
+        if (_smokeSystems == null) return;
+        foreach (var system in _smokeSystems)
+            if (system != null) system.Stop(false, ParticleSystemStopBehavior.StopEmittingAndClear);
+        _currentDirection = Vector3.zero;
+        _wasNear = false;
+    }
+
+    private bool UpdateNightVisibility()
+    {
+        var clock = TimeManager.Existing;
+        bool night = clock != null && clock.IsRunning && double.IsFinite(clock.Elapsed) &&
+            clock.Elapsed >= 0 && clock.CurrentTimePhase == TimeOfDay.Night;
+        if (!night) { StopSmoke(); return false; }
+        if (_smokeSystems != null)
+            foreach (var system in _smokeSystems)
+                if (system != null && system.gameObject.activeInHierarchy && !system.isPlaying) system.Play(false);
+        return true;
+    }
+
+    // After the clock's Update so dawn clears every remaining particle this frame.
+    private void LateUpdate()
     {
         if (_smoke == null)
         {
             return;
         }
 
-        UpdateSmokeDirection();
+        if (UpdateNightVisibility()) UpdateSmokeDirection();
     }
 
 

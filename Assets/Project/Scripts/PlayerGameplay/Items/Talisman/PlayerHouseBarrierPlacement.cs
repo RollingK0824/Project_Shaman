@@ -13,7 +13,6 @@ using ProjectShaman.AI.World;
 public sealed class PlayerHouseBarrierPlacement : MonoBehaviour
 {
     [SerializeField, Min(.1f)] private float _reach = 3f;
-    [SerializeField, Min(.1f)] private float _duration = 60f;
     [SerializeField] private LayerMask _surfaceMask = ~0;
     public event Action<ItemUseContext> PlacementRequested;
     public event Action<HouseBarrierWard> PlacementConfirmed;
@@ -53,6 +52,7 @@ public sealed class PlayerHouseBarrierPlacement : MonoBehaviour
         var camera = GetComponentInChildren<Camera>();
         if (camera == null) return;
         var context = new ItemUseContext(gameObject, data, camera.transform.position, camera.transform.forward);
+        if (!HouseBarrierWard.HasRunningClock) { Unavailable("게임 시간이 시작된 뒤 부착할 수 있습니다"); return; }
         if (!TryFindHome(context, out _, out _, out var reason)) { Unavailable(reason); return; }
         if (NetworkClient.active || NetworkServer.active)
         {
@@ -67,7 +67,7 @@ public sealed class PlayerHouseBarrierPlacement : MonoBehaviour
             ward => true, ward => Destroy(ward.gameObject), out var placed))
         {
             PlayerItemActions.ReportUse(gameObject, data);
-            Debug.Log($"[HouseBarrier] {placed.Home.DisplayName} 보호: {_duration:0}초", this);
+            Debug.Log($"[HouseBarrier] {placed.Home.DisplayName} 보호: 다음 날 아침까지", this);
         }
     }
 
@@ -80,7 +80,7 @@ public sealed class PlayerHouseBarrierPlacement : MonoBehaviour
     {
         ward = null;
         if (_placing || context.Owner != gameObject || !ItemAttackAuthority.CanResolve(gameObject) ||
-            Time.time < _nextPlacement || !float.IsFinite(_duration) || _duration <= 0f ||
+            Time.time < _nextPlacement || !HouseBarrierWard.HasRunningClock ||
             !(context.Data is TalismanItemData data) || data.TalismanType != TalismanType.Barrier ||
             !(data.UseAction is BarrierTalismanUseAction) || isEquipped == null || tryConsumeOne == null ||
             registerSpawn == null || despawn == null) return false;
@@ -97,8 +97,8 @@ public sealed class PlayerHouseBarrierPlacement : MonoBehaviour
             if (!registerSpawn(created) || created == null || !created.gameObject.activeInHierarchy ||
                 home == null || !home.isActiveAndEnabled || home.OwnerId != created.ResidentId ||
                 !ItemAttackAuthority.CanResolve(gameObject) || !isEquipped() || HouseBarrierWard.IsProtecting(home) ||
-                !tryConsumeOne()) return false;
-            created.Arm(_duration);
+                !HouseBarrierWard.HasRunningClock || !tryConsumeOne()) return false;
+            created.Arm();
             _nextPlacement = Time.time + .6f;
             ward = created;
             committed = true;
@@ -129,12 +129,64 @@ public sealed class PlayerHouseBarrierPlacement : MonoBehaviour
         _homes.Clear(); PlaceRegistry.CollectByType(PlaceType.Home, _homes);
         foreach (var candidate in _homes)
         {
-            if (!candidate.isActiveAndEnabled || string.IsNullOrEmpty(candidate.OwnerId) || !candidate.Contains(hit.point)) continue;
+            if (!candidate.isActiveAndEnabled || string.IsNullOrEmpty(candidate.OwnerId) ||
+                !MatchesHomeSurface(candidate, hit)) continue;
             if (home == null || candidate.Depth > home.Depth || (candidate.Depth == home.Depth && candidate.Footprint < home.Footprint)) home = candidate;
         }
         if (home == null) return false;
         if (HouseBarrierWard.IsProtecting(home)) { reason = "이미 결계로 보호 중인 집입니다"; return false; }
         return true;
+    }
+
+    // Home markers can describe a resident's standing point (radius 1m), rather than
+    // the house footprint. Resolve walls through the floor below that registered point.
+    // Never select the nearest home across the village or enlarge AI-owned home areas.
+    private bool MatchesHomeSurface(PlaceArea home, RaycastHit surface)
+    {
+        if (home.Contains(surface.point)) return true;
+        var floors = Physics.RaycastAll(home.Center + Vector3.up * .25f, Vector3.down, 6f,
+            ~0, QueryTriggerInteraction.Ignore);
+        Array.Sort(floors, (a, b) => a.distance.CompareTo(b.distance));
+        foreach (var floor in floors)
+        {
+            if (floor.collider.GetComponentInParent<PlayerHealth>() != null ||
+                floor.collider.GetComponentInParent<AI_Core>() != null ||
+                floor.collider.GetComponentInParent<WorldItem>() != null) continue;
+            if (floor.collider is TerrainCollider) return false;
+            if (floor.normal.y < .5f) continue;
+            var building = floor.transform.parent;
+            if (building == null || !surface.transform.IsChildOf(building)) continue;
+
+            // A scene/village container is not a building. Reject large common roots
+            // instead of accepting a neighbour's wall through a shared parent.
+            bool found = false;
+            Bounds bounds = default;
+            foreach (var collider in building.GetComponentsInChildren<Collider>())
+            {
+                if (!collider.enabled || collider.isTrigger) continue;
+                if (collider is TerrainCollider) return false;
+                if (!found) { bounds = collider.bounds; found = true; }
+                else bounds.Encapsulate(collider.bounds);
+            }
+            if (!found) return false;
+            if (bounds.size.x <= 30f && bounds.size.z <= 30f) return true;
+
+            // Some house assets contain oversized decorative colliders. A large bounds
+            // alone must not invalidate their real walls, but a shared village root must.
+            if (Vector3.Distance(floor.point, surface.point) > 15f) return false;
+            foreach (var other in _homes)
+            {
+                if (other == home || !other.isActiveAndEnabled) continue;
+                foreach (var support in Physics.RaycastAll(other.Center + Vector3.up * .25f,
+                    Vector3.down, 6f, ~0, QueryTriggerInteraction.Ignore))
+                {
+                    if (!(support.collider is TerrainCollider) && support.normal.y > .5f &&
+                        support.transform.IsChildOf(building)) return false;
+                }
+            }
+            return true;
+        }
+        return false;
     }
     private void Unavailable(string message) => GetComponent<PlayerItemFeedback>()?.Unavailable(message);
     private static bool Finite(Vector3 value) => float.IsFinite(value.x) && float.IsFinite(value.y) && float.IsFinite(value.z);
