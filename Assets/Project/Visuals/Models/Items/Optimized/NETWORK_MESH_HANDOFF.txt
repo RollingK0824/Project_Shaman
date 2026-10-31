@@ -1,0 +1,66 @@
+멀티플레이 부적·재료 경량화 연결 요청
+
+아래 Network 프리팹은 원본 FBX를 직접 참조하므로 담당자 쪽 메시 교체가 필요합니다.
+각 프리팹의 표시된 자식 오브젝트에서 MeshFilter.sharedMesh만 오른쪽 경량화 .asset으로 교체해 주세요.
+Transform / MeshRenderer 머티리얼 / Collider / NetworkBehaviour / ItemData 연결은 유지합니다.
+효과부적의 TalismanDrawingSurface 및 _paperRenderer 참조도 유지합니다.
+Network 파일은 이번 작업에서 수정하지 않았습니다.
+
+프리팹 | 자식 오브젝트 경로 | 경량화 메시
+Assets/Project/Prefabs/Network/Items/NetBarrierTalismanWorld.prefab | AuthoredModel | Assets/Project/Visuals/Models/Items/Optimized/Talisman/BarrierTalisman/Talisman_BarrierTalisman_6897036035272085146.asset
+Assets/Project/Prefabs/Network/Items/NetMBeansWorldItem.prefab | tripo_convert_a916a41d-004f-44fc-bd2e-866deee41ea8 | Assets/Project/Visuals/Models/Items/Optimized/CraftingItems/Beans/CraftingItems_Beans_7655192715281249961.asset
+Assets/Project/Prefabs/Network/Items/NetMChickenBloodWorldItem.prefab | Visual/tripo_convert_3f555395-659b-4569-8ac9-f90013178226 | Assets/Project/Visuals/Models/Items/Optimized/CraftingItems/CBlood/CraftingItems_CBlood_8493893299005874420.asset
+Assets/Project/Prefabs/Network/Items/NetMCoarseSaltWorldItem.prefab | tripo_convert_410d50c4-ea10-425c-b1ac-d1c1b634ced5 | Assets/Project/Visuals/Models/Items/Optimized/CraftingItems/CoarseSalt/CraftingItems_CoarseSalt_n4679269300916161051.asset
+Assets/Project/Prefabs/Network/Items/NetMCoilWorldItem.prefab | tripo_convert_7af74df9-0256-4343-9cab-4778d3f2bbd8 | Assets/Project/Visuals/Models/Items/Optimized/CraftingItems/Coil/CraftingItems_Coil_2027164046547970655.asset
+Assets/Project/Prefabs/Network/Items/NetRegistryTalismanWorld.prefab | AuthoredModel | Assets/Project/Visuals/Models/Items/Optimized/Talisman/RegistryTalisman/Talisman_RegistryTalisman_n8143063379506465889.asset
+
+확인: 호스트/클라이언트에서 바닥 부적·재료가 정상 표시되는지, 줍기 및 부적 문양 표시가 정상인지 확인.
+
+
+2026-10-31 additional models
+Read-only network prefab audit. Replace MeshFilter.sharedMesh only; keep transforms/materials/colliders/components.
+Do not edit the source FBX or NetworkBehaviour settings.
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_0 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_f184a9eadabcbe042aabd5ae78735089_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_1 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_8bf914fb26639b54eb46a7f0b224d1a9_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_2 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_054179231962af740b46ae2596588603_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_3 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_1bbd63030742bda46bfd01a24a4727c4_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_4 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_0165a0226c78b93438ab900fcd676354_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_5 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_fb5b63e233863a945b96791def50810c_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_6 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_9d65146fbbd35a24e9f55dd48612a540_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_7 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_b082cfe7cd8a4574c9389e607c215f9c_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_8 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_89ad9d7aa50f9a64d8391c9e1c467a1b_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_9 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_23af139935d3f5741ab0525b0cea9ceb_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_10 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_181566fa4e2921341949a021f0ee446b_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_11 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_ef01303786375974eb10d643581e9860_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_12 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_818a849bfc3a6d5478cf7db6f00da1b9_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_13 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_99d027f9f0c53374ea232ee39141410f_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_14 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_df6679b6d5d762e4996e399c112a43dd_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_15 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_84331b40ee2c0cf4bb02c007722edaac_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_16 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_84203f215e7802c49a4a6184ce185f2e_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_17 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_799783afcd48bc742a34d2070475128e_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_18 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_97b3dfa9ccb8ce44991a57dca0a07798_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_19 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_4ad6f2561c5c9804faf228fd7a86bcc0_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_20 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_fbb3fdadfc9e94f48a792730b703c047_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_21 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_15d335f041e64fe4192ceb299558d9ca_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_22 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_b6b7121e085291d47b877ffe687a59ba_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_23 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_7b5a7ae5ed535f04a95fb387f3d477d4_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_24 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_b758acc45a5d8e74796848f31c6b10cd_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_25 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_372e1a750d0877e49a290a6f438f7082_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_26 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_63be6b949ef08d842abd3fba6106abb5_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_27 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_8979f258f25bc544cb552178fcbea120_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_28 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_7a30ec252a81514408317355151e0be7_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Bell_29 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_9f4a8fb4059004c44bb09eb6679b523a_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_30 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_661c44fb90f1fed45b1daab39c93d294_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_31 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_e6762ed2e2a6b244fb5caffe149cf942_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_32 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_d3f5ab0bb8ed49643926535d344a06db_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_33 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_b0f3e4edda176e94aa1b55c131f32074_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_34 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_42f84422e1cd3574fb02f2e1e9e443c7_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_35 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_e5a922e0c425f4045bf979251336472f_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_36 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_8ca44974111139d47a239786eaf9890b_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_37 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_ff3f924f205e98342938bf8674387192_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_38 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_6a247680f73f0974baae1e049049acf4_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_39 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_1c5aa9a1e1e7acb40ab1837b937369c7_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_40 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_f5777e6f7bfc12549bf71212b81abe06_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetBellItem.prefab | Visual/OrnateBellRattle/Fixed_41 | Assets/Project/Visuals/Models/Items/Optimized/Bell/Bell_0b4a6a248fa9a294b89341ddc135c8e4_4300000.asset
+Assets/Project/Prefabs/Network/Items/NetMirrorWorldItem.prefab | Visual/tripo_convert_16ce54d9-42ec-4d4d-af3e-5dd8895e7ec5 | Assets/Project/Visuals/Models/Items/Optimized/Mirror/Mirror_b95bff62e4d13b34f819ed94646442c4_857428290551202233.asset
+
