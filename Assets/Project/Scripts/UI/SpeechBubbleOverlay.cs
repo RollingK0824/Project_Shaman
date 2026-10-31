@@ -10,6 +10,8 @@ using ProjectShaman.AI;
 public class SpeechBubbleOverlay : MonoBehaviour
 {
     private const float HEAD_HEIGHT = 2f;
+    // Above the head bone: a standing villager's tag stays where the fixed 2m put it, a seated one's comes down with the head
+    private const float HEAD_BONE_CLEARANCE = 0.4f;
     private const float SCREEN_MARGIN = 8f;
 
     [SerializeField] private RectTransform _template;
@@ -39,6 +41,8 @@ public class SpeechBubbleOverlay : MonoBehaviour
         public float Distance;
         public float NextVisibilityCheck;
         public bool IsInSight;
+        public Transform HeadBone;
+        public Transform HeadBoneOf;
     }
 
     private static SpeechBubbleOverlay _instance;
@@ -287,14 +291,27 @@ public class SpeechBubbleOverlay : MonoBehaviour
             }
 
             bool shown = _showNames && viewer != null && tag.Speaker.gameObject.activeInHierarchy
-                && IsOnScreen(tag.Speaker, viewer) && IsInSight(tag, viewer) && Place(tag, viewer, _nameMaxDistance, 0f);
+                && IsOnScreen(TopOfHead(tag), viewer) && IsInSight(tag, viewer) && Place(tag, viewer, _nameMaxDistance, 0f);
             tag.Rect.gameObject.SetActive(shown);
         }
     }
 
-    private static bool IsOnScreen(Transform target, Camera viewer)
+    // The head bone of a humanoid speaker (looked up once per speaker), otherwise a fixed height over its feet
+    private static Vector3 TopOfHead(Bubble bubble)
     {
-        Vector3 viewport = viewer.WorldToViewportPoint(target.position + Vector3.up * HEAD_HEIGHT);
+        if (bubble.HeadBoneOf != bubble.Speaker)
+        {
+            bubble.HeadBoneOf = bubble.Speaker;
+            Animator animator = bubble.Speaker.GetComponentInChildren<Animator>();
+            bubble.HeadBone = animator != null && animator.isHuman ? animator.GetBoneTransform(HumanBodyBones.Head) : null;
+        }
+
+        return bubble.HeadBone != null ? bubble.HeadBone.position + Vector3.up * HEAD_BONE_CLEARANCE : bubble.Speaker.position + Vector3.up * HEAD_HEIGHT;
+    }
+
+    private static bool IsOnScreen(Vector3 head, Camera viewer)
+    {
+        Vector3 viewport = viewer.WorldToViewportPoint(head);
         return viewport.z > 0f && viewport.x >= 0f && viewport.x <= 1f && viewport.y >= 0f && viewport.y <= 1f;
     }
 
@@ -306,14 +323,13 @@ public class SpeechBubbleOverlay : MonoBehaviour
         }
 
         tag.NextVisibilityCheck = Time.time + _nameVisibilityInterval;
-        tag.IsInSight = HasLineOfSight(tag.Speaker, viewer);
+        tag.IsInSight = HasLineOfSight(tag.Speaker, TopOfHead(tag) - Vector3.up * (HEAD_HEIGHT * 0.15f), viewer);
         return tag.IsInSight;
     }
 
-    private bool HasLineOfSight(Transform target, Camera viewer)
+    private bool HasLineOfSight(Transform target, Vector3 head, Camera viewer)
     {
         Vector3 eye = viewer.transform.position;
-        Vector3 head = target.position + Vector3.up * HEAD_HEIGHT * 0.85f;
         Vector3 toHead = head - eye;
         float distance = toHead.magnitude;
         if (distance < 0.01f)
@@ -346,7 +362,7 @@ public class SpeechBubbleOverlay : MonoBehaviour
 
     private bool Place(Bubble bubble, Camera viewer, float maxDistance, float extraOffset)
     {
-        Vector3 head = bubble.Speaker.position + Vector3.up * HEAD_HEIGHT;
+        Vector3 head = TopOfHead(bubble);
         Vector3 screen = viewer.WorldToScreenPoint(head);
         bubble.Distance = screen.z;
 

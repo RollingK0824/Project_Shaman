@@ -34,6 +34,14 @@ namespace ProjectShaman.AI
             baseSpeed = defaultSpeed;
         }
 
+        // The villager's own walking pace (picked once at spawn); SetSpeed/ResetSpeed and the late run are measured from it
+        public void SetDefaultSpeed(float speed)
+        {
+            defaultSpeed = Mathf.Max(0.1f, speed);
+            baseSpeed = defaultSpeed;
+            ApplySpeed();
+        }
+
         public void SetSpeed(float speed)
         {
             baseSpeed = Mathf.Max(0.1f, speed);

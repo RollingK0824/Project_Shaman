@@ -27,12 +27,12 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Range(0f, 1f)] private float _minRemainingRatio = 0.5f;
         [Tooltip("Schedule tab estimates only: the tidy-up and getting ready before each routine, and the walking speed")]
         [SerializeField] private float _toolTidySecondsEstimate = 5f;
-        [SerializeField] private float _walkSpeedEstimate = 3.5f;
+        [SerializeField] private float _walkSpeedEstimate = 2.5f;
         [Tooltip("Sent home at nightfall, a villager runs at this many times the walk speed (C121)")]
         [SerializeField, Min(1f)] private float _lateRunSpeedMultiplier = 1.8f;
         [Tooltip("NavMesh path search steps per frame for every agent together (Unity default 100). Too low and villagers sent home " +
                  "at once stand for seconds waiting for their long paths (pathPending)")]
-        [SerializeField, Min(100)] private int _pathfindingIterationsPerFrame = 100;
+        [SerializeField, Min(100)] private int _pathfindingIterationsPerFrame = 500;
 
         [Header("Villager Attributes")]
         [Tooltip("Relative weights a villager's gender, class and age are rolled with (Joseon village: a few more men, commoners the most, " +
