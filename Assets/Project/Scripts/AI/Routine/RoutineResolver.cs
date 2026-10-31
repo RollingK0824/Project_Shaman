@@ -54,7 +54,7 @@ namespace ProjectShaman.AI.Routine
                 Slot = slot,
                 Serial = serial,
                 Category = routine.Category,
-                TargetPosition = place.GetRandomPoint(_random),
+                TargetPosition = place.ClaimPoint(_random, profile.VillagerId),
                 StartTime = startTime,
                 EndTime = endTime,
                 IsCorrupted = false
