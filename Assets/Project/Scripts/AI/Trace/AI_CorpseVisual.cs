@@ -28,7 +28,7 @@ namespace ProjectShaman.AI.Trace
             public Vector3 LocalScale = Vector3.one;
         }
 
-        [Tooltip("Shown until a variant is chosen, hidden after")]
+        [Tooltip("Shown until a variant is chosen, then only its renderers are hidden; its collider stays as the clear target")]
         [SerializeField] private GameObject _placeholder;
         [SerializeField] private Variant[] _variants = Array.Empty<Variant>();
 
@@ -117,9 +117,13 @@ namespace ProjectShaman.AI.Trace
                 }
             }
 
+            // Only the look goes: the placeholder's collider is what the player's interaction ray hits to clear the body
             if (_placeholder != null)
             {
-                _placeholder.SetActive(false);
+                foreach (Renderer part in _placeholder.GetComponentsInChildren<Renderer>(true))
+                {
+                    part.enabled = false;
+                }
             }
         }
     }

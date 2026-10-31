@@ -204,7 +204,7 @@ namespace ProjectShaman.AI.Data
         [Header("Observation")]
         [SerializeField, Min(1f)] private float _observationRadius = 10f;
         [SerializeField, Min(0.1f)] private float _observationInterval = 1f;
-        [SerializeField, Range(1, 3)] private int _witnessTraitMin = 1;
+        [SerializeField, Range(1, 3)] private int _witnessTraitMin = 2;
         [SerializeField, Range(1, 3)] private int _witnessTraitMax = 2;
         [SerializeField, Min(5f)] private float _anxiousMutterInterval = 30f;
         [SerializeField, Range(0f, 1f)] private float _anxiousMutterChance = 0.35f;
