@@ -87,7 +87,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MODEL_PATH));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 6\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 7\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -307,8 +307,17 @@ public static class VillagerClipBaker
         AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(CONTROLLER_PATH);
         foreach (AnimatorControllerLayer layer in controller.layers)
         {
-            if (layer.stateMachine.states.Any(s => s.state.name == stateName))
+            AnimatorState existing = layer.stateMachine.states.Select(s => s.state).FirstOrDefault(s => s.name == stateName);
+            if (existing != null)
             {
+                // The baked clips carry no IK goal curves: Foot IK would pull the feet to empty goals (bent legs, a floating seat)
+                if (existing.iKOnFeet)
+                {
+                    existing.iKOnFeet = false;
+                    EditorUtility.SetDirty(controller);
+                    report.AppendLine($"  state '{stateName}': Foot IK off");
+                }
+
                 return;
             }
         }
