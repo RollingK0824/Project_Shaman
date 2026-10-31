@@ -48,6 +48,11 @@ namespace ProjectShaman.AI.Observation
                 case SymptomType.StareIntoVoid: return ObservationVerbs.STARE_VOID;
                 case SymptomType.Nonsense: return ObservationVerbs.TALK_NONSENSE;
                 case SymptomType.Grotesque: return ObservationVerbs.WALK_GROTESQUE;
+                case SymptomType.NeckTwist: return ObservationVerbs.NECK_TWIST;
+                case SymptomType.WaistBend: return ObservationVerbs.WAIST_BEND;
+                case SymptomType.NoShadow: return ObservationVerbs.NO_SHADOW;
+                case SymptomType.PaleSkin: return ObservationVerbs.PALE_SKIN;
+                case SymptomType.BlackEyes: return ObservationVerbs.BLACK_EYES;
                 default: return ObservationVerbs.EMPTY_HAND_WORK;
             }
         }
@@ -278,6 +283,11 @@ namespace ProjectShaman.AI.Observation
         public const string STARE_VOID = "stare_void";
         public const string TALK_NONSENSE = "talk_nonsense";
         public const string WALK_GROTESQUE = "walk_grotesque";
+        public const string NECK_TWIST = "neck_twist";
+        public const string WAIST_BEND = "waist_bend";
+        public const string NO_SHADOW = "no_shadow";
+        public const string PALE_SKIN = "pale_skin";
+        public const string BLACK_EYES = "black_eyes";
         public const string EMPTY_HAND_WORK = "empty_hand_work";
         public const string WORK_WRONG_TOOL = "work_wrong_tool";
         public const string WORK_WRONG_ACTION = "work_wrong_action";

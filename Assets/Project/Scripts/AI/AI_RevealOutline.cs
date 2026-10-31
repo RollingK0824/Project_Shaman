@@ -18,8 +18,32 @@ namespace ProjectShaman.AI
         private static Material _bandMaterial;
         private readonly List<Renderer> _copies = new List<Renderer>();
         private bool _isBuilt;
+        // A colour of its own (the possession mark): this outline then draws with its own copies of the two materials
+        private bool _hasColor;
+        private Color _color;
+        private Material _ownMask;
+        private Material _ownBand;
 
         public bool IsShown { get; private set; }
+
+        // Before the first Show: outline in this colour instead of the shared material's
+        public void SetColor(Color color)
+        {
+            _hasColor = true;
+            _color = color;
+        }
+
+        // The body under this object was replaced: the copies are gone with it, built again on the next Show
+        public void Invalidate()
+        {
+            ClearCopies();
+            _isBuilt = false;
+            if (IsShown)
+            {
+                IsShown = false;
+                Show(true);
+            }
+        }
 
         public void Show(bool shown)
         {
@@ -74,6 +98,22 @@ namespace ProjectShaman.AI
                 return false;
             }
 
+            Material maskMaterial = _maskMaterial;
+            Material bandMaterial = _bandMaterial;
+            if (_hasColor)
+            {
+                if (_ownMask == null)
+                {
+                    _ownMask = new Material(_maskMaterial);
+                    _ownBand = new Material(_bandMaterial);
+                    _ownMask.SetColor("_OutlineColor", _color);
+                    _ownBand.SetColor("_OutlineColor", _color);
+                }
+
+                maskMaterial = _ownMask;
+                bandMaterial = _ownBand;
+            }
+
             List<Renderer> targets = new List<Renderer>();
             foreach (Renderer target in GetComponentsInChildren<Renderer>(true))
             {
@@ -85,8 +125,8 @@ namespace ProjectShaman.AI
 
             foreach (Renderer target in targets)
             {
-                AddCopy(target, _maskMaterial);
-                AddCopy(target, _bandMaterial);
+                AddCopy(target, maskMaterial);
+                AddCopy(target, bandMaterial);
             }
 
             _isBuilt = true;
@@ -135,7 +175,7 @@ namespace ProjectShaman.AI
             _copies.Add(copy);
         }
 
-        private void OnDestroy()
+        private void ClearCopies()
         {
             foreach (Renderer copy in _copies)
             {
@@ -146,6 +186,17 @@ namespace ProjectShaman.AI
             }
 
             _copies.Clear();
+        }
+
+        private void OnDestroy()
+        {
+            ClearCopies();
+
+            if (_ownMask != null)
+            {
+                Destroy(_ownMask);
+                Destroy(_ownBand);
+            }
         }
     }
 }
