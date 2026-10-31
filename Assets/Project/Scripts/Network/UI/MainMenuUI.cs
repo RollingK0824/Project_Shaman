@@ -13,11 +13,28 @@ public class MainMenuUI : MonoBehaviour
     [SerializeField] private GameObject _steamUI;   // 새롭게 생성
     [SerializeField] private GameObject[] _closeOnInvite;  // 초대를 받게 되면 닫을 화면
 
+    [Header("사운드")]
+    [SerializeField] private AudioClip _bgm;
+
+    private SoundManager _sound;
+
     private void Awake() => SteamLobbyService.InviteReady += OpenSteamScreenForInvite;
-    private void OnDestroy() => SteamLobbyService.InviteReady -= OpenSteamScreenForInvite;
+    private void OnDestroy()
+    {
+        SteamLobbyService.InviteReady -= OpenSteamScreenForInvite;
+
+        // 메인메뉴를 떠날 때(로비 등) BGM 끄기
+        if (_sound != null) _sound.StopBGM();
+    }
     private void Start()
     {
         _noticePanel.SetActive(false);
+
+        if (_bgm != null)
+        {
+            _sound = SoundManager.Instance;
+            _sound.PlayBGM(_bgm);
+        }
 
         DisconnectNotice notice = RoomManager.ConsumeNotice();
         if (notice == DisconnectNotice.HostLost)
