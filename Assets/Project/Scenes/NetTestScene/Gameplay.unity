@@ -13249,6 +13249,7 @@ GameObject:
   - component: {fileID: 347610720}
   - component: {fileID: 347610721}
   - component: {fileID: 347610722}
+  - component: {fileID: 347610723}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -13399,6 +13400,31 @@ MonoBehaviour:
   syncDirection: 0
   syncMode: 0
   syncInterval: 0
+--- !u!114 &347610723
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 347610713}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 88d7ce01282a9344683d801ceca9f346, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetDefenseAudio
+  _state: {fileID: 347610721}
+  _flagPoint: {fileID: 1608004931}
+  _sfxGroup: {fileID: 3461085129099107493, guid: 2ac82c5cdbacc9644ad9bb47dbdd89f7, type: 2}
+  _startClip: {fileID: 8300000, guid: 9695e4bd75dd9c94b85e6039ae338e6b, type: 3}
+  _loopClip: {fileID: 0}
+  _flagHitClip: {fileID: 8300000, guid: 60f87152a52b4f2a8113150472ff00fa, type: 3}
+  _successClip: {fileID: 8300000, guid: 3dc21fbc762d21549b8a7b13dc28c4b0, type: 3}
+  _failClip: {fileID: 8300000, guid: a81ee805e2b345c0a120c20a953596e5, type: 3}
+  _loopVolume: 0.8
+  _loopMinDistance: 5
+  _loopMaxDistance: 40
+  _fadeOutTime: 0.5
+  _hitInterval: 0.3
 --- !u!1001 &348086911
 PrefabInstance:
   m_ObjectHideFlags: 0
