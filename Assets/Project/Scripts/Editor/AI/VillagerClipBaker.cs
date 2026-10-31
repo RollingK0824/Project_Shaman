@@ -7,8 +7,10 @@ using UnityEditor.Animations;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-// Bakes the villager routine clips on the reference model (HumanM_Model): each frame starts from the Kevin Iglesias idle,
-// bends the body by hand-written keys, places hands and feet with two-bone IK and is read back as Humanoid muscles
+// Bakes the villager routine clips: each frame starts from the Kevin Iglesias idle, bends the body by hand-written keys,
+// places hands and feet with two-bone IK and is read back as Humanoid muscles. The IK runs on the villager body itself
+// (Male_Villager): muscles carry angles, not positions, so a seated pose solved on the Kevin body put an MPFB villager's
+// feet at lap height. The Kevin body and the female villager are kept in the comparison
 public static class VillagerClipBaker
 {
     private const string MODEL_PATH = "Assets/ThirdParty/Kevin Iglesias/Human Animations/Models/HumanM_Model.fbx";
@@ -87,9 +89,9 @@ public static class VillagerClipBaker
     [MenuItem("ProjectShaman/AI/Bake Villager Routine Clips")]
     public static void BakeAll()
     {
-        GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MODEL_PATH));
+        GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(VILLAGER_MODELS[0]));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 13\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 14\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -1033,8 +1035,8 @@ public static class VillagerClipBaker
                     HipsEuler = V(6f, 0f, 0f),
                     SpineEuler = V(2f + 1.5f * Wave(t, 3f), look * 0.2f, 0f),
                     HeadEuler = V(2f * Wave(t, 3f, 0.2f), look, 0f),
-                    Right = Reach(Space.Thigh, V(0f, 0.15f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
-                    Left = Reach(Space.Thigh, V(0f, 0.15f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Right = Reach(Space.Thigh, V(0f, 0.08f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Left = Reach(Space.Thigh, V(0f, 0.08f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
                 };
                 SitLegs(pose);
                 return pose;
@@ -1051,7 +1053,7 @@ public static class VillagerClipBaker
                 const float L = 5.0f;
                 float lift = Keys(t, L, (0f, 0f), (1.0f, 0f), (1.8f, 1f), (3.2f, 1f), (4.0f, 0f));
                 float tip = Keys(t, L, (0f, 0f), (1.9f, 0f), (2.4f, -16f), (2.9f, -16f), (3.3f, 0f));
-                Arm right = Reach(Space.Thigh, V(0f, 0.18f, 0.02f), 0.55f, V(1f, -0.6f, -0.3f));
+                Arm right = Reach(Space.Thigh, V(0f, 0.11f, 0.02f), 0.55f, V(1f, -0.6f, -0.3f));
                 right.Space2 = Space.Shoulder;
                 right.Pos2 = V(-0.13f, 0.02f, 0.22f) + V(0f, -tip * 0.002f, 0f);
                 right.Blend = lift;
@@ -1062,7 +1064,7 @@ public static class VillagerClipBaker
                     SpineEuler = V(2f + tip * 0.5f, 0f, 0f),
                     HeadEuler = V(tip, 0f, 0f),
                     Right = right,
-                    Left = Reach(Space.Thigh, V(0f, 0.15f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Left = Reach(Space.Thigh, V(0f, 0.08f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
                 };
                 SitLegs(pose);
                 return pose;
