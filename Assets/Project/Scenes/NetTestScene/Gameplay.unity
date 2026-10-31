@@ -1320,6 +1320,9 @@ Transform:
   - {fileID: 1453896087}
   - {fileID: 1777010208}
   - {fileID: 1901759690}
+  - {fileID: 1630058706}
+  - {fileID: 1865064185}
+  - {fileID: 54240110}
   m_Father: {fileID: 999489054}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &8492410
@@ -2922,6 +2925,58 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8714066801036744096, guid: e283a4c1124b3bc418173a3ab70e2e0d, type: 3}
   m_PrefabInstance: {fileID: 53460928}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &54240109
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 54240110}
+  - component: {fileID: 54240111}
+  m_Layer: 0
+  m_Name: Place_ChickenCoop
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &54240110
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54240109}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 96.7635, y: 3.0030882, z: 143.56569}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7474801}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &54240111
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 54240109}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da82edad07b615341b8e423e2f250f97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.World.PlaceArea
+  _placeId: ChickenCoop
+  _displayName: "\uB2ED\uC7A5"
+  _group: 
+  _placeType: 0
+  _shape: 0
+  _radius: 6.892925
+  _boxSize: {x: 4, y: 2, z: 4}
+  _maxPeople: 3
 --- !u!1 &57484763
 GameObject:
   m_ObjectHideFlags: 0
@@ -63932,6 +63987,58 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 8714066801036744096, guid: e283a4c1124b3bc418173a3ab70e2e0d, type: 3}
   m_PrefabInstance: {fileID: 1620351945}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1630058705
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1630058706}
+  - component: {fileID: 1630058707}
+  m_Layer: 0
+  m_Name: Place_CattleShed
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1630058706
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1630058705}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0.32985842, z: -0, w: 0.94403046}
+  m_LocalPosition: {x: 86.66311, y: 3.4400082, z: 124.459274}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7474801}
+  m_LocalEulerAnglesHint: {x: 0, y: -38.52, z: 0}
+--- !u!114 &1630058707
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1630058705}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da82edad07b615341b8e423e2f250f97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.World.PlaceArea
+  _placeId: CattleShed
+  _displayName: "\uC678\uC591\uAC04"
+  _group: 
+  _placeType: 0
+  _shape: 1
+  _radius: 10.258527
+  _boxSize: {x: 4.68, y: 2, z: 21.28}
+  _maxPeople: 2
 --- !u!1001 &1632325593
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -71899,6 +72006,58 @@ Transform:
   - {fileID: 1577145313}
   m_Father: {fileID: 1521336416}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1865064184
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1865064185}
+  - component: {fileID: 1865064186}
+  m_Layer: 0
+  m_Name: Place_PigPen
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1865064185
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1865064184}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 106.4025, y: 3.545, z: 129.08238}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 7474801}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1865064186
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1865064184}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: da82edad07b615341b8e423e2f250f97, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ProjectShaman.AI.World.PlaceArea
+  _placeId: PigPen
+  _displayName: "\uB3FC\uC9C0\uC6B0\uB9AC"
+  _group: 
+  _placeType: 0
+  _shape: 0
+  _radius: 5.9563456
+  _boxSize: {x: 4, y: 2, z: 4}
+  _maxPeople: 2
 --- !u!1 &1865503493
 GameObject:
   m_ObjectHideFlags: 0

@@ -1331,27 +1331,6 @@
       "wrongPlaceIds": []
     },
     {
-      "routineId": "Haggling",
-      "displayName": "흥정하기",
-      "category": "Work",
-      "jobIds": [
-        "Merchant"
-      ],
-      "condition": {
-        "genders": [],
-        "socialClasses": [],
-        "ageGroups": []
-      },
-      "placeId": "Market",
-      "toolId": "",
-      "actionId": "Bargain",
-      "isCoop": true,
-      "maxPeople": 3,
-      "wrongToolIds": [],
-      "wrongActionIds": [],
-      "wrongPlaceIds": []
-    },
-    {
       "routineId": "StockCarrying",
       "displayName": "짐 나르기",
       "category": "Work",
@@ -1394,22 +1373,116 @@
       "wrongPlaceIds": []
     },
     {
-      "routineId": "TavernDeal",
-      "displayName": "주막 거래",
+      "routineId": "CattleFeeding",
+      "displayName": "소 여물 주기",
       "category": "Work",
       "jobIds": [
-        "Merchant"
+        "Farmer",
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": [
+          "Adult",
+          "Elder"
+        ]
+      },
+      "placeId": "CattleShed",
+      "toolId": "",
+      "actionId": "Feed",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "ShedCleaning",
+      "displayName": "외양간 치우기",
+      "category": "Work",
+      "jobIds": [
+        "Slave"
       ],
       "condition": {
         "genders": [],
         "socialClasses": [],
         "ageGroups": []
       },
-      "placeId": "Tavern",
-      "toolId": "",
-      "actionId": "Bargain",
-      "isCoop": true,
+      "placeId": "CattleShed",
+      "toolId": "Broom",
+      "actionId": "Sweep",
+      "isCoop": false,
       "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "PigFeeding",
+      "displayName": "돼지 먹이 주기",
+      "category": "Work",
+      "jobIds": [
+        "Farmer",
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": [
+          "Adult",
+          "Elder"
+        ]
+      },
+      "placeId": "PigPen",
+      "toolId": "",
+      "actionId": "Feed",
+      "isCoop": false,
+      "maxPeople": 2,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "ChickenFeeding",
+      "displayName": "닭 모이 주기",
+      "category": "Work",
+      "jobIds": [
+        "Farmer",
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "ChickenCoop",
+      "toolId": "",
+      "actionId": "Scatter",
+      "isCoop": true,
+      "maxPeople": 3,
+      "wrongToolIds": [],
+      "wrongActionIds": [],
+      "wrongPlaceIds": []
+    },
+    {
+      "routineId": "EggGathering",
+      "displayName": "달걀 줍기",
+      "category": "Work",
+      "jobIds": [
+        "Farmer",
+        "Slave"
+      ],
+      "condition": {
+        "genders": [],
+        "socialClasses": [],
+        "ageGroups": []
+      },
+      "placeId": "ChickenCoop",
+      "toolId": "",
+      "actionId": "Collect",
+      "isCoop": true,
+      "maxPeople": 3,
       "wrongToolIds": [],
       "wrongActionIds": [],
       "wrongPlaceIds": []
@@ -1495,6 +1568,18 @@
     {
       "actionId": "Talk",
       "animation": "Rest_Chat"
+    },
+    {
+      "actionId": "Feed",
+      "animation": "Gathering"
+    },
+    {
+      "actionId": "Scatter",
+      "animation": "Work_Sow"
+    },
+    {
+      "actionId": "Collect",
+      "animation": "Crouching"
     }
   ]
 }
