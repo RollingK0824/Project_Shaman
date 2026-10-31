@@ -1,7 +1,7 @@
 using UnityEngine;
 
 // Existing numeric values remain readable for older definitions and integrations.
-public enum TalismanEffectType { MovementSpeed, StressGain, StressRecovery, StressRelief, HealthRestore }
+public enum TalismanEffectType { MovementSpeed, StressGain, StressRecovery, StressRelief, HealthRestore, VillagerTracking }
 public enum TalismanStackPolicy { RefreshDuration, RejectWhileActive }
 
 [CreateAssetMenu(menuName = "Project Shaman/Talisman Effect", fileName = "TalismanEffect")]
@@ -19,6 +19,7 @@ public class TalismanEffectDefinition : ScriptableObject
     public string DisplayName => _displayName;
     public string Description => _effectType switch
     {
+        TalismanEffectType.VillagerTracking => "주민에게 부착하면 다음 날 아침까지 위치를 표시합니다. 다른 주민에게 새 추적 부적을 사용하면 대상만 변경되며, 만료 시각은 연장되지 않습니다.",
         TalismanEffectType.MovementSpeed => $"{_duration:0.#}초 동안 이동속도가 {_magnitude:0.##}배가 됩니다.",
         TalismanEffectType.StressRelief => $"사용 즉시 스트레스가 {_magnitude:0.#} 감소합니다.",
         TalismanEffectType.HealthRestore => $"사용 즉시 체력이 {_magnitude:0.#} 회복됩니다.",

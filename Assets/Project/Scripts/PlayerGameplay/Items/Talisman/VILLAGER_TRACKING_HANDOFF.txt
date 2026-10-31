@@ -1,0 +1,30 @@
+추적 효과부적 연결 안내
+
+Player 구현 범위
+- RegistryTalisman의 효과 목록에 track_villager([추적]) 추가. 기존 드로잉/저장/퀵슬롯 경로 사용.
+- 근접(2.5m) 주민을 바라보고 좌클릭. 한 플레이어당 동시 추적 1명.
+- 다른 주민에게 새 추적 부적을 사용하면 새 부적 1장을 소모하고 기존 대상을 교체. 같은 주민 재부착은 소모 없이 거절.
+- 만료 시각은 (floor(TimeManager.Elapsed / TimeManager.CYCLE_DURATION) + 1) * TimeManager.CYCLE_DURATION.
+  즉 부착한 날의 다음 날 아침까지 유효. 1일차 아침/밤 모두 Elapsed=480에서 만료하며, 대상 교체로 연장되지 않음.
+  effect asset의 Duration(480)은 고정 남은 시간이 아님. 서버가 확정한 Tracking.ExpiresAt을 사용해야 함.
+- 사용한 플레이어만 이름/직선거리/남은 시간 표시. 화면 밖은 방향 화살표.
+- 대상 비활성/사망, 사용자 사망, 시계 초기화 및 라운드 초기화 시 해제.
+- NPC/Network/Core 파일 및 팀원 프리팹/씬은 수정하지 않음.
+
+Network 담당 연결 (필수: 기존 CmdUse(string)에는 대상이 없어 사용할 수 없음)
+1. PlayerTalismanCollection.Tracking으로 컴포넌트를 얻고 AttachRequested(instanceId, AI_Core target, origin, direction) 구독.
+2. 소유 클라이언트 요청을 Command로 전달. 대상은 서버에서 netId/VillagerId로 다시 조회. 클라이언트가 보낸 위치를 확정 위치로 사용하지 말 것.
+3. 기존 collection/effects SetAuthorityCheck 연결 유지. 서버에서 collection.TryUseTracking(instanceId, resolvedTarget, validatedOrigin, validatedDirection) 호출.
+   실제 보유/장착된 부적, 살아있는 주민, 거리, 첫 Raycast 충돌, 플레이어 몸 기준 추가 가림 검사, 시계 가동 상태를 검사함.
+   성공하면 이 메서드가 부적 소모/퀵슬롯 갱신 이벤트/ReportUse/UseCommitted를 처리하므로 추가 소모 또는 ReportUse 금지.
+4. Tracking.StateChanged를 서버에서 구독해 Target 식별자와 ExpiresAt을 해당 소유자 TargetRpc에만 전달.
+   대상 변경도 같은 상태 슬롯을 덮어씀. 주민별 마커나 별도 타이머를 추가하지 말 것.
+   클라이언트는 같은 주민의 AI_Core를 조회한 후 Tracking.ApplyConfirmed(increasingVersion, resolvedTarget, expiresAt) 호출.
+   clear는 target=null, expiresAt=0. 아직 주민이 spawn되지 않았으면 잠시 보류 후 동일 버전으로 재시도.
+   호스트 자신의 추적은 서버 상태로 바로 표시됨. 모든 클라이언트에 ClientRpc로 방송하지 말 것.
+5. 추적은 기존 TalismanEffectState에 넣지 말 것. 대상/절대 게임시간 정보가 별도로 필요함.
+6. 라운드 종료 시 기존 collection.ResetRound()가 추적/스냅샷 버전도 초기화. 서버 전송 버전도 같은 라운드 기준으로 초기화하고 이전 라운드 메시지는 폐기.
+7. Target despawn/관심 영역 제외 시 UI는 추적 해제됨. 거리별 despawn 정책이 있으면 담당자와 위치 스냅샷 방식 추가 합의 필요.
+
+미연결 멀티플레이에서는 안내만 표시하고 소모하지 않음. 로컬 검사와 별도로 호스트/원격 클라이언트 실플레이 검증 필요.
+검증 결과 및 재현 도구: D:/Jun/TrackingTalismanQA_20261031

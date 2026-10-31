@@ -13,17 +13,23 @@ public sealed class HouseBarrierWard : MonoBehaviour, IGhostBarrier
     private static readonly Dictionary<PlaceArea, HouseBarrierWard> Active = new();
     private PlaceArea _home;
     private string _residentId;
-    private float _expiresAt;
+    private double _expiresAt, _lastClockTime;
+    private TimeManager _clock;
     private bool _armed;
     private Action<HouseBarrierWard> _despawn;
     private Material _paperMaterial;
+    private Renderer _protectionGlow;
     public PlaceArea Home => _home;
     public string HomeId => _home != null ? _home.PlaceId : null;
     public string ResidentId => _residentId;
-    public float RemainingDuration => IsActive ? Mathf.Max(0f, _expiresAt - Time.time) : 0f;
+    public float RemainingDuration => IsActive ? (float)Math.Max(0, _expiresAt - _clock.Elapsed) : 0f;
     public bool IsActive => _armed && isActiveAndEnabled && _home != null && _home.isActiveAndEnabled &&
-        _home.OwnerId == _residentId && Time.time < _expiresAt &&
+        _home.OwnerId == _residentId && _clock != null && TimeManager.Existing == _clock &&
+        _clock.IsRunning && double.IsFinite(_clock.Elapsed) && _clock.Elapsed >= _lastClockTime && _clock.Elapsed < _expiresAt &&
         (!NetworkClient.active || NetworkServer.active);
+
+    internal static bool HasRunningClock => TimeManager.Existing != null && TimeManager.Existing.IsRunning &&
+        double.IsFinite(TimeManager.Existing.Elapsed) && TimeManager.Existing.Elapsed >= 0;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     private static void ResetRegistry() => Active.Clear();
@@ -42,22 +48,48 @@ public sealed class HouseBarrierWard : MonoBehaviour, IGhostBarrier
         var visual = GameObject.CreatePrimitive(PrimitiveType.Quad);
         visual.name = "Attached talisman";
         visual.transform.SetParent(transform, false);
-        visual.transform.localScale = new Vector3(.14f, .28f, 1f);
+        // Unity's Quad faces local -Z; face its front out along the wall normal.
+        visual.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+        float aspect = paper != null && paper.height > 0 ? (float)paper.width / paper.height : .5f;
+        visual.transform.localScale = new Vector3(.28f * aspect, .28f, 1f);
         visual.GetComponent<Collider>().enabled = false;
-        var shader = Shader.Find("Universal Render Pipeline/Unlit");
-        if (shader == null) throw new InvalidOperationException("House ward requires the URP Unlit shader.");
-        _paperMaterial = new Material(shader) { name = "House ward paper (runtime)" };
-        _paperMaterial.SetColor("_BaseColor", new Color(.84f, .76f, .58f));
-        _paperMaterial.SetFloat("_Cull", 0f);
+        // Include the cutout material in builds, so the alpha-test shader variant is retained.
+        var template = Resources.Load<Material>("PlayerItems/HouseBarrierPaper");
+        if (template == null) throw new InvalidOperationException("House ward paper material is missing.");
+        _paperMaterial = new Material(template) { name = "House ward paper (runtime)" };
         if (paper != null) _paperMaterial.SetTexture("_BaseMap", paper);
         visual.GetComponent<Renderer>().sharedMaterial = _paperMaterial;
+        var glowMaterial = Resources.Load<Material>("PlayerItems/HouseBarrierGlow");
+        if (glowMaterial != null)
+        {
+            var glow = GameObject.CreatePrimitive(PrimitiveType.Quad);
+            glow.name = "Active house protection";
+            glow.transform.SetParent(transform, false);
+            glow.transform.localPosition = new Vector3(0f, 0f, .002f);
+            glow.transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
+            glow.transform.localScale = new Vector3(.38f * aspect, .38f, 1f);
+            glow.GetComponent<Collider>().enabled = false;
+            _protectionGlow = glow.GetComponent<Renderer>();
+            _protectionGlow.sharedMaterial = glowMaterial;
+            var glowProperties = new MaterialPropertyBlock();
+            if (paper != null) glowProperties.SetTexture("_BaseMap", paper);
+            _protectionGlow.SetPropertyBlock(glowProperties);
+            _protectionGlow.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            // Remote Prepare is invoked only for a confirmed SyncList entry. It must
+            // show protection without registering an authoritative AI barrier.
+            _protectionGlow.enabled = NetworkClient.active && !NetworkServer.active;
+        }
     }
 
-    internal void Arm(float duration)
+    internal void Arm()
     {
+        _clock = TimeManager.Existing;
+        if (!HasRunningClock) throw new InvalidOperationException("House protection requires a running game clock.");
         bool firstActivation = !_armed;
-        _expiresAt = Time.time + duration;
+        _lastClockTime = _clock.Elapsed;
+        _expiresAt = (Math.Floor(_lastClockTime / TimeManager.CYCLE_DURATION) + 1) * TimeManager.CYCLE_DURATION;
         _armed = true;
+        if (_protectionGlow != null) _protectionGlow.enabled = true;
         Active[_home] = this;
         GhostBarrierRegistry.Register(this);
         if (firstActivation)
@@ -68,7 +100,12 @@ public sealed class HouseBarrierWard : MonoBehaviour, IGhostBarrier
     }
 
     public bool Blocks(Vector3 position, GhostActionVerb verb) => IsActive && _home.Contains(position);
-    private void Update() { if (_armed && !IsActive) Expire(); }
+    private void Update()
+    {
+        if (!_armed) return;
+        if (!IsActive) { Expire(); return; }
+        _lastClockTime = _clock.Elapsed;
+    }
     public void Expire()
     {
         Unregister();
@@ -80,6 +117,7 @@ public sealed class HouseBarrierWard : MonoBehaviour, IGhostBarrier
     private void Unregister()
     {
         _armed = false;
+        if (_protectionGlow != null) _protectionGlow.enabled = false;
         GhostBarrierRegistry.Unregister(this);
         if (!ReferenceEquals(_home, null) && Active.TryGetValue(_home, out var current) && current == this)
             Active.Remove(_home);

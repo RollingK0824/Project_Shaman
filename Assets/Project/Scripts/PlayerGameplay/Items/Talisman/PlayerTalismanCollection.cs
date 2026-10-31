@@ -29,6 +29,7 @@ public class PlayerTalismanCollection : MonoBehaviour
     public bool CanExecute => isActiveAndEnabled && PlayerActionGuard.CanAct(gameObject) &&
         (!NetworkClient.active && !NetworkServer.active ? _authorityCheck == null || _authorityCheck() :
         NetworkServer.active && _authorityCheck != null && _authorityCheck());
+    public PlayerVillagerTracking Tracking => GetComponent<PlayerVillagerTracking>() ?? gameObject.AddComponent<PlayerVillagerTracking>();
     private void Awake() { _inventory = GetComponent<PlayerInventory>(); _effects = GetComponent<PlayerTalismanEffectController>(); }
     private void OnEnable()
     {
@@ -92,9 +93,32 @@ public class PlayerTalismanCollection : MonoBehaviour
     }
     public bool RequestUse(string id)
     {
+        var record = Find(id, out var template);
+        if (template != null && template.FindEffect(record?.EffectId)?.EffectType == TalismanEffectType.VillagerTracking)
+            return Tracking.RequestAttach(id);
         if (CanExecute) return TryUse(id);
         if (isActiveAndEnabled && PlayerActionGuard.CanAct(gameObject) && Find(id, out _) != null) UseRequested?.Invoke(id);
         return false;
+    }
+    // Trusted server adapter entry. Validation precedes the same unique-instance consumption commit.
+    public bool TryUseTracking(string id, ProjectShaman.AI.AI_Core target, Vector3 origin, Vector3 direction)
+    {
+        if (_busy || !CanExecute) return false;
+        var drawing = Find(id, out var item);
+        var definition = item != null ? item.FindEffect(drawing?.EffectId) : null;
+        if (drawing == null || definition == null || definition.EffectType != TalismanEffectType.VillagerTracking ||
+            !Tracking.CanAttach(id, target, origin, direction)) return false;
+        _busy = true;
+        try
+        {
+            Tracking.Commit(target);
+            if (definition.ConsumeOnUse) { _instances[item].Remove(drawing); _selected.Remove(item); }
+            try { PlayerItemActions.ReportUse(gameObject, item); } catch (Exception e) { Debug.LogException(e, this); }
+            try { SelectionChanged?.Invoke(); UseCommitted?.Invoke(id); } catch (Exception e) { Debug.LogException(e, this); }
+            Tracking.Publish();
+            return true;
+        }
+        finally { _busy = false; }
     }
     public TalismanDrawingData Find(string id, out TalismanItemData item)
     {
@@ -142,7 +166,7 @@ public class PlayerTalismanCollection : MonoBehaviour
     }
     public void ResetRound()
     {
-        _instances.Clear(); _selected.Clear(); _savedIds.Clear(); _snapshotVersion = -1; _effects.ResetEffects(); SelectionChanged?.Invoke();
+        _instances.Clear(); _selected.Clear(); _savedIds.Clear(); _snapshotVersion = -1; _effects.ResetEffects(); GetComponent<PlayerVillagerTracking>()?.ResetRoundTracking(); SelectionChanged?.Invoke();
     }
     private void HandleUnits(ItemData item, int delta)
     {

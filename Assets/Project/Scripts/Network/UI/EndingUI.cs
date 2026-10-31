@@ -80,13 +80,19 @@ public class EndingUI : MonoBehaviour
 
             IsShown = true;
             _panel.SetActive(true);
+            Time.timeScale = 0f; // 결과 화면 동안 AI 이동·애니메이션·물리 정지
         }
 
         HoldLocalPlayer();
         Refresh(gm);
     }
 
-    private void OnDestroy() => IsShown = false;
+    // timeScale은 씬이 바뀌어도 남으므로 로비 복귀·나가기 때 되돌림
+    private void OnDestroy()
+    {
+        if (IsShown) Time.timeScale = 1f;
+        IsShown = false;
+    }
 
 
     // 수첩 등이 닫히면서 입력 커서를 되돌려도 결과 화면 동안은 계속 잠금
