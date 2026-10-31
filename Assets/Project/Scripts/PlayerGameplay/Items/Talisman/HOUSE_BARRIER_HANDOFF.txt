@@ -4,12 +4,27 @@ Player 쪽 구현
 - PlayerItemController.Awake가 PlayerHouseBarrierPlacement를 설치합니다.
 - 좌클릭의 TalismanItem / BarrierTalismanUseAction / 개인 방어막 경로는 그대로입니다.
 - 우클릭: 사거리 3m, 첫 충돌면, 주민이 배정된 PlaceType.Home 영역인지 검사합니다.
+- Home이 반경 1m의 주민 위치 마커인 경우, 그 아래 바닥과 같은 건물 계층에 속한 벽도 부착 대상으로 판정합니다.
+  주변에서 가장 가까운 집으로 임의 연결하지 않으며, Terrain/마을 공통 계층은 제외합니다.
+  이 보정은 부착 대상 조회만 변경합니다. AI의 PlaceArea 범위와 실제 이동 차단 구현은 변경하지 않았습니다.
 - 성공 시 벽/바닥에 부적 표시, 1개 소모, 해당 집 구역을 GhostBarrierRegistry에 등록합니다.
-- 기본 지속 시간 60초(기존 개인 결계와 같은 임시 기본값), 중복 집 부착 불가.
+- 부착 모습은 BarrierTalisman.PaperTexture의 붉은 결계 문양과 Resources/PlayerItems/HouseBarrierPaper의 알파 컷아웃 재질을 사용합니다.
+  Prepare(Texture) 호출 계약은 유지하므로 NetHouseBarriers의 기존 호출에도 동일하게 적용됩니다.
+- 집 결계는 TimeManager.Elapsed 기준 다음 날 아침까지 유지됩니다. 아침/밤 어느 때 붙여도 같은 날의 끝에 만료됩니다.
+  고정 60초 타이머는 제거했습니다. 게임 시계 미시작/미존재 시 부착·소모를 거절합니다.
+  중복 집 부착은 불가하며 좌클릭 개인 방어막의 지속 시간은 변경하지 않았습니다.
+- 보호 중 붉은 문양 자체의 발광과 부적 주변에 흐르는 회백색 기운이 계속 표시됩니다.
+  사각 테두리/줄지어 움직이는 입자는 제거했습니다. Unlit 종이와 가산 발광으로 야간에도 문양이 보입니다.
+  서버/오프라인은 소모 성공 후 Arm()에서 켜고, 원격 클라이언트는 확정 목록의 Prepare()에서 표시만 켭니다.
+  만료/해제 시 부적과 지속 효과가 함께 사라집니다. 시계 교체/역행 시에도 보호를 해제합니다.
 - 만료, 집 비활성화, 집 OwnerId 변경 시 보호가 해제됩니다. 집 부착물은 사용자 사망과 독립적입니다.
 - 온라인 어댑터가 없으면 안내만 표시하고 소모/생성을 하지 않습니다.
 
 Network 담당 연결
+현재 프로젝트에는 NetPlayerHouseBarrier / NetHouseBarriers 연결이 존재합니다(아래는 호출 계약).
+다음 날 만료는 서버 HouseBarrierWard.Update → Expire → 기존 ServerDespawn → SyncList 제거 경로를 사용합니다.
+Prepare/TryPlaceAuthoritative 호출 계약과 네트워크 payload는 변경하지 않았습니다.
+실제 Host+Client에서 아침 전환/늦은 접속/라운드 종료 시 부적과 지속 효과 제거를 추가 확인해 주세요.
 1. 로컬 플레이어의 PlayerHouseBarrierPlacement.PlacementRequested(ItemUseContext)를 구독합니다.
    현재 InputManager를 수정하지 않고 우클릭을 읽습니다. 추후 SecondaryUse 액션으로 옮길 때
    기존 마우스 폴링을 함께 제거해 중복 요청을 방지하세요. UI/리바인딩 중에는 Player 맵이 꺼져야 합니다.
@@ -28,7 +43,8 @@ Network 담당 연결
 5. 반환값 true일 때만 서버에서 PlayerItemActions.ReportUse(owner, data) 1회와
    필요한 QuestTargets.NotifyItemUsed를 호출합니다. 요청/RPC/VFX에서는 성공 보고 금지.
    PlacementConfirmed는 같은 성공에 발생하는 별도 알림입니다. 양쪽에서 ReportUse하지 마세요.
-6. 성공 후 HomeId, ResidentId, 부착 transform.position/forward, 서버 만료 시각을 동기화합니다.
+6. 현재 NetHouseBarriers는 성공한 집 ID/아이템 ID/부착 위치/회전을 목록으로 동기화합니다.
+   별도 만료 시각 payload 없이 서버의 다음 날 만료에 따른 목록 제거로 클라이언트도 정리됩니다.
    클라이언트는 부적 모습만 생성합니다. Arm/소모/AI 보호 등록은 서버에서만 수행합니다.
    서버 ward에는 NetworkIdentity가 없으므로 NetworkServer.Spawn을 바로 호출하는 방식은 아닙니다.
    기존 NetPlayerBarrier처럼 서버 상태 + 클라이언트 연출 또는 별도 네트워크 표시물을 사용하세요.
@@ -56,6 +72,13 @@ Player4 목 뒤 관통 원인 / Network prefab 담당 연결
   Animator/Avatar/NetworkIdentity/Network 컴포넌트는 교체할 필요 없습니다.
 
 검증 범위
+- 2026-10-31 추가: 격리된 Unity 검사에서 아침/밤/아침 직전 부착의 날짜 경계 만료,
+  만료 콜백 1회, 시계 역행 해제, 성공 전/후 지속 효과 표시 검사 통과.
+  실제 음기향 HeldVisual 프리팹의 낮 정지/밤 재생/아침 잔여 연기 제거/다음 밤 재시작 검사 통과.
+  D:/Jun/HouseBarrierDayQA_20261031 (실제 멀티플레이는 미검증).
+- 2026-10-31: PlayerPrototype/Gameplay 실제 20개 집의 벽 판정 239건 일치.
+  실제 로컬 Player + 등록 주민 집으로 부착 API 실행: 종이 Visual 생성/1장 소모/결계 등록/중복 거절 통과.
+  검증 기록: D:/Jun/HouseBarrierQA_20261031 (마우스 입력 자동 재현 및 멀티플레이 검증은 별도).
 - Unity 컴파일, 실제 Player4 prefab/inventory + 테스트 집의 판정/트랜잭션 API 검사.
 - 실제 Player4/소금 프리팹/스트레스 Volume을 사용한 최대 스트레스 비교 렌더.
 - 실제 로컬/Network Player4를 격리 미리보기에서 비교. 원본 프리팹/씬 저장 없음.
