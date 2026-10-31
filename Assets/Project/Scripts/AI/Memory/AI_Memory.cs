@@ -27,6 +27,7 @@ namespace ProjectShaman.AI.Memory
         private int _currentDay;
         private readonly Dictionary<string, (int Day, float Time)> _lastSeen = new Dictionary<string, (int, float)>();
         private readonly List<RoutineAccount> _todayRoutines = new List<RoutineAccount>();
+        private RoutineAccount _pendingRoutine;
 
         public ToolSightingStore ToolSightings { get; private set; }
         public int CurrentDay => _currentDay;
@@ -68,6 +69,7 @@ namespace ProjectShaman.AI.Memory
         {
             _currentDay = dayCount;
             _todayRoutines.Clear();
+            _pendingRoutine = null;
 
             if (Events == null)
             {
@@ -113,16 +115,41 @@ namespace ProjectShaman.AI.Memory
             string detail = routine.IsCorrupted ? $"{routine.ActionId} corrupted={routine.CorruptionAxis}" : routine.ActionId;
             Record(MemoryKind.Routine, routine.Source.RoutineId, routine.PlaceId, routine.TargetPosition, detail);
 
-            if (routine.Category == RoutineCategory.Work || routine.Category == RoutineCategory.Rest)
+            _pendingRoutine = routine.Category == RoutineCategory.Work || routine.Category == RoutineCategory.Rest ? new RoutineAccount(routine) : null;
+        }
+
+        // On the road there the villager has done nothing of it yet: the routine joins the account once it is begun
+        public bool IsAwaitingStart(int serial)
+        {
+            return _pendingRoutine != null && _pendingRoutine.Routine.Serial == serial;
+        }
+
+        public void MarkRoutineStarted(int serial)
+        {
+            if (!IsAwaitingStart(serial))
             {
-                _todayRoutines.Add(new RoutineAccount(routine));
+                return;
             }
+
+            _todayRoutines.Add(_pendingRoutine);
+            _pendingRoutine = null;
+        }
+
+        // The last account while its routine still runs (not on the way home): told as under way, not as done
+        public bool IsUnderWay(RoutineAccount account)
+        {
+            return _todayRoutines.Count > 0 && account == _todayRoutines[_todayRoutines.Count - 1]
+                && _core.HasRoutine && !_core.MustGoHome && _core.CurrentRoutine.Serial == account.Routine.Serial;
         }
 
         // A routine given up (no tool, ...) was never done: the rest taken instead is the account, not it
         public void ForgetRoutine(int serial)
         {
             _todayRoutines.RemoveAll(account => account.Routine.Serial == serial);
+            if (IsAwaitingStart(serial))
+            {
+                _pendingRoutine = null;
+            }
         }
 
         // Only at the place of the routine still under way (not on the road there, not on the way home), until the account is full:

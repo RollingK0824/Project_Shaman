@@ -657,6 +657,8 @@ namespace ProjectShaman.AI.Core
                 return;
             }
 
+            MarkRoutineReached(villager);
+
             if (villager.LastBlockIndex < 0)
             {
                 StartBlock(villager, 0, now);
@@ -808,6 +810,17 @@ namespace ProjectShaman.AI.Core
             offset.y = 0f;
             return offset.sqrMagnitude <= ROUTINE_ARRIVE_DISTANCE * ROUTINE_ARRIVE_DISTANCE
                 || (current.CorruptionAxis != CorruptionAxis.Place && PlaceRegistry.TryGet(current.PlaceId, out PlaceArea place) && place.Contains(position));
+        }
+
+        // "오늘 뭐 했소?" counts a routine from the villager's arrival at it, not from setting off (a rest taken in place
+        // of a work, free time, included)
+        private void MarkRoutineReached(VillagerRuntime villager)
+        {
+            ResolvedRoutine current = villager.Current;
+            if (villager.Memory != null && current.Source != null && villager.Memory.IsAwaitingStart(current.Serial) && HasReachedRoutine(villager))
+            {
+                villager.Memory.MarkRoutineStarted(current.Serial);
+            }
         }
 
         // The block's length runs from here. The schedule tab is laid again from this start, held up by the ordinary
