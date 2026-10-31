@@ -34,8 +34,8 @@ namespace ProjectShaman.Network.AI
         [Server]
         private void HandleWorkAccepted(string actorId, string actionId)
         {
-            // The hit animation is optional (an anvil or a washing stone has no Animator): the work counts without it
-            if (_networkAnimator.animator == null)
+            // The hit animation is optional (an anvil or a washing stone has an empty Animator): the work counts without it
+            if (_networkAnimator.animator == null || _networkAnimator.animator.runtimeAnimatorController == null)
             {
                 return;
             }
