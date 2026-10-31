@@ -224,7 +224,15 @@ namespace ProjectShaman.AI.Interaction
             OnLineSpoken?.Invoke(session, line);
         }
 
-        // Resting (alone or in a rest chat) and not heading home: a player can sit down and talk
+        // A player can stop a villager to talk while it rests, works or walks about its routine (the behaviour tree restarts on
+        // the interaction and picks the routine up again afterwards). Not while it searches for a tool, heads home or is
+        // already held by something else
+        private static bool IsTalkableActivity(VillagerActivity activity)
+        {
+            return activity == VillagerActivity.Rest || activity == VillagerActivity.Work || activity == VillagerActivity.Moving;
+        }
+
+        // Resting or at work (alone, or in a chat with another villager) and not heading home: a player can stop it and talk
         public bool CanTalkWithPlayer()
         {
             // Home for the evening and still up: it opens the door and talks (asleep it only mumbles, Net_VillagerTalk)
@@ -241,10 +249,11 @@ namespace ProjectShaman.AI.Interaction
             VillagerActivity activity = CurrentActivity();
             if (IsInSession)
             {
-                return Session.Kind == ConversationKind.RestTalk;
+                // The player outranks a chat between villagers, a rest talk or a work talk (TryStartDialogue leaves it)
+                return true;
             }
 
-            return activity == VillagerActivity.Rest && !_interaction.IsInteracting;
+            return IsTalkableActivity(activity) && !_interaction.IsInteracting;
         }
 
         public void RespondToPlayer(GameObject player)
@@ -271,7 +280,7 @@ namespace ProjectShaman.AI.Interaction
                 return;
             }
 
-            if (activity != VillagerActivity.Rest || _interaction.IsInteracting)
+            if (!IsTalkableActivity(activity) || _interaction.IsInteracting)
             {
                 Bark(BUSY_BARKS, $"refused {playerName} ({activity})");
                 return;
