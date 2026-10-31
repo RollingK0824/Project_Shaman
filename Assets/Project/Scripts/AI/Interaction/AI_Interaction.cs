@@ -35,6 +35,7 @@ namespace ProjectShaman.AI.Interaction
 
         private AI_Core _core;
         private AI_ToolHandler _toolHandler;
+        private AI_WorkPerformer _workPerformer;
         private AI_Status _status;
         private Perception.AI_Perception _perception;
         private INetworkMovable _movable;
@@ -45,6 +46,7 @@ namespace ProjectShaman.AI.Interaction
         private string _activeId;
         private InteractionKind _activeKind;
         private bool _startedWhileHoming;
+        private bool _talkingAtWork;
         private float _deadline;
         private NavMeshPath _approachPath;
         private float _nextScanTime;
@@ -63,6 +65,7 @@ namespace ProjectShaman.AI.Interaction
         {
             _core = GetComponent<AI_Core>();
             _toolHandler = GetComponent<AI_ToolHandler>();
+            _workPerformer = GetComponent<AI_WorkPerformer>();
             _status = GetComponent<AI_Status>();
             _perception = GetComponent<Perception.AI_Perception>();
             _movable = GetComponent<INetworkMovable>();
@@ -313,6 +316,16 @@ namespace ProjectShaman.AI.Interaction
 
             target.BeginInteraction(context, response);
 
+            // Stopped at work (a player's talk or request), the villager answers without putting the work down: the behaviour
+            // tree is not told, so it neither turns to the player nor ends the work, and the state stays Working
+            _talkingAtWork = response == InteractionResponse.Stop && _workPerformer != null && _workPerformer.IsWorking;
+            if (_talkingAtWork)
+            {
+                _activeDebug = $"#{_serial} {response} {profile.Label} ({duration:F1}s, at work)";
+                AILog.Log(AILog.INTERACTION, _core.LogId, $"Begin {_activeDebug} priority={profile.Priority} activity={context.Activity}");
+                return;
+            }
+
             _core.SetBlackboardVariable(BB_INTERACTION_RESPONSE, response);
             _core.SetBlackboardVariable(BB_INTERACTION_POSITION, position);
             _core.SetBlackboardVariable(BB_INTERACTION_LOOK_POINT, target.LookPoint);
@@ -382,10 +395,15 @@ namespace ProjectShaman.AI.Interaction
                 ? target.EndInteraction(CreateContext(), response, reason)
                 : InteractionResult.None(id, kind, response);
 
-            _core.SetBlackboardVariable(BB_IS_INTERACTING, false);
-            _core.SetBlackboardVariable(BB_INTERACTION_RESPONSE, InteractionResponse.None);
-            _core.SetBlackboardVariable(BB_INTERACTION_SERIAL, _serial);
-            _core.SetState(AIState.Idle);
+            if (!_talkingAtWork)
+            {
+                _core.SetBlackboardVariable(BB_IS_INTERACTING, false);
+                _core.SetBlackboardVariable(BB_INTERACTION_RESPONSE, InteractionResponse.None);
+                _core.SetBlackboardVariable(BB_INTERACTION_SERIAL, _serial);
+                _core.SetState(AIState.Idle);
+            }
+
+            _talkingAtWork = false;
 
             _activeDebug = string.Empty;
             ApplyResult(result, reason);
