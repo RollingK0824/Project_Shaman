@@ -36,6 +36,9 @@ public sealed class NotebookScheduleView : MonoBehaviour
     [SerializeField] private Color _sleepWash = new(.14f, .12f, .11f, .40f);
     // Pin icon on a row: ink when pinned to the HUD, faded when not
     [SerializeField] private Color _pinOffColor = new(.20f, .14f, .10f, .25f);
+    // The current time drawn across the timetable in red ink
+    [SerializeField] private Color _nowColor = new(.69f, .16f, .14f, .9f);
+    [SerializeField] private float _nowThickness = 3f;
 
     private readonly List<NotebookScheduleRow> _rows = new();
     private readonly List<(Image wash, TMP_Text label)> _blocks = new();
@@ -43,6 +46,7 @@ public sealed class NotebookScheduleView : MonoBehaviour
     private readonly Dictionary<string, (int day, int[] hours, int leave, int home, int bed)> _hours = new();
     private string _selectedId;
     private float _nextRefresh;
+    private Image _nowLine;
 
     private static int DayHours => DayClock.DAY_HOURS;
 
@@ -92,6 +96,68 @@ public sealed class NotebookScheduleView : MonoBehaviour
         IVillagerView chosen = null;
         if (registry != null && !string.IsNullOrEmpty(_selectedId)) registry.TryGet(_selectedId, out chosen);
         ShowDay(chosen);
+        ShowNow();
+    }
+
+    // A line at the current time over the rows (and over the washes), with a small 지금 at its end
+    private void ShowNow()
+    {
+        if (_blockArea == null) return;
+        if (!TryGetHour(out float hour))
+        {
+            if (_nowLine != null) _nowLine.gameObject.SetActive(false);
+            return;
+        }
+
+        if (_nowLine == null) CreateNowLine();
+        float hourHeight = _blockArea.rect.height / TABLE_ROWS;
+        float row = Mathf.Clamp(hour - DayClock.DAY_START_HOUR, 0f, TABLE_ROWS);
+        RectTransform rect = _nowLine.rectTransform;
+        rect.anchoredPosition = new Vector2(0, -row * hourHeight);
+        rect.sizeDelta = new Vector2(0, _nowThickness);
+        _nowLine.transform.SetAsLastSibling();
+        _nowLine.gameObject.SetActive(true);
+    }
+
+    private void CreateNowLine()
+    {
+        GameObject line = new GameObject("NowLine", typeof(RectTransform), typeof(Image));
+        line.transform.SetParent(_blockArea, false);
+        _nowLine = line.GetComponent<Image>();
+        _nowLine.color = _nowColor;
+        _nowLine.raycastTarget = false;
+        RectTransform rect = _nowLine.rectTransform;
+        rect.anchorMin = new Vector2(0, 1);
+        rect.anchorMax = new Vector2(1, 1);
+        rect.pivot = new Vector2(.5f, .5f);
+
+        TMP_Text template = _blockTemplate != null ? _blockTemplate.GetComponentInChildren<TMP_Text>(true) : null;
+        GameObject labelObject = new GameObject("Now", typeof(RectTransform), typeof(TextMeshProUGUI));
+        labelObject.transform.SetParent(line.transform, false);
+        TextMeshProUGUI label = labelObject.GetComponent<TextMeshProUGUI>();
+        if (template != null) label.font = template.font;
+        label.text = "지금";
+        label.fontSize = template != null ? template.fontSize * .7f : 18f;
+        label.color = _nowColor;
+        label.alignment = TextAlignmentOptions.BottomRight;
+        label.raycastTarget = false;
+        RectTransform labelRect = label.rectTransform;
+        labelRect.anchorMin = new Vector2(1, .5f);
+        labelRect.anchorMax = new Vector2(1, .5f);
+        labelRect.pivot = new Vector2(1, 0);
+        labelRect.anchoredPosition = new Vector2(-4f, 2f);
+        labelRect.sizeDelta = new Vector2(80f, 30f);
+    }
+
+    // The hour into the current day and night (Elapsed counts from the start of the game)
+    private static bool TryGetHour(out float hour)
+    {
+        hour = 0f;
+        TimeManager time = TimeManager.Existing;
+        if (time == null) return false;
+        float elapsed = (float)(time.Elapsed % TimeManager.CYCLE_DURATION);
+        hour = elapsed < TimeManager.DAY_DURATION ? DayClock.ToHour(elapsed) : DayClock.NightToHour(elapsed - TimeManager.DAY_DURATION);
+        return true;
     }
 
     private void ShowDay(IVillagerView villager)
@@ -251,16 +317,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
     // Brings the rows around the current hour into view (at night the table would otherwise open on the day)
     private void ScrollToNow()
     {
-        TimeManager time = TimeManager.Existing;
-        if (_tableScroll == null || time == null) return;
+        if (_tableScroll == null || !TryGetHour(out float hour)) return;
         float contentHeight = _tableScroll.content.rect.height;
         float hidden = contentHeight - _tableScroll.viewport.rect.height;
         if (hidden <= 0f) return;
 
         float hourHeight = contentHeight / TABLE_ROWS;
-        // Elapsed counts from the start of the game; the table only needs the time into the current day and night
-        float elapsed = (float)(time.Elapsed % TimeManager.CYCLE_DURATION);
-        float hour = elapsed < TimeManager.DAY_DURATION ? DayClock.ToHour(elapsed) : DayClock.NightToHour(elapsed - TimeManager.DAY_DURATION);
         float row = Mathf.Clamp(hour - DayClock.DAY_START_HOUR, 0f, TABLE_ROWS);
         float top = Mathf.Clamp((row - DayHours * .5f) * hourHeight, 0f, hidden);
         _tableScroll.verticalNormalizedPosition = 1f - top / hidden;
