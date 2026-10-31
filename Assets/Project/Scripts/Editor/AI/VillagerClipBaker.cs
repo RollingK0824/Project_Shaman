@@ -88,7 +88,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MODEL_PATH));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 9\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 11\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -101,6 +101,7 @@ public static class VillagerClipBaker
                 baked.Add(clip);
             }
 
+            LayoutActionLayer();
             AssetDatabase.SaveAssets();
             CompareModels(baked, report);
         }
@@ -332,6 +333,35 @@ public static class VillagerClipBaker
         report.AppendLine($"  + state '{stateName}' in {ACTION_LAYER}");
     }
 
+    // The Action layer in rows by kind, so every state is in view and none hides behind another
+    private static readonly string[][] ACTION_LAYOUT =
+    {
+        new[] { "Empty" },
+        new[] { "Farming", "Farming Loop", "Farming Stop" },
+        new[] { "Chopping", "Gathering", "Crouching", "Fishing" },
+        new[] { "Work_Sweep", "Work_Sow", "Work_NetMend", "Work_Pound" },
+        new[] { "Rest_Sit", "Rest_Drink", "Rest_Play", "Rest_Chat" },
+    };
+
+    private static void LayoutActionLayer()
+    {
+        AnimatorController controller = AssetDatabase.LoadAssetAtPath<AnimatorController>(CONTROLLER_PATH);
+        AnimatorStateMachine machine = controller.layers.First(l => l.name == ACTION_LAYER).stateMachine;
+        ChildAnimatorState[] states = machine.states;
+        int extraRow = ACTION_LAYOUT.Length;
+        int extraColumn = 0;
+        for (int i = 0; i < states.Length; i++)
+        {
+            string name = states[i].state.name;
+            int row = Array.FindIndex(ACTION_LAYOUT, r => r.Contains(name));
+            int column = row >= 0 ? Array.IndexOf(ACTION_LAYOUT[row], name) : extraColumn++;
+            states[i].position = new Vector3(300f + column * 260f, (row >= 0 ? row : extraRow) * 100f, 0f);
+        }
+
+        machine.states = states;
+        EditorUtility.SetDirty(controller);
+    }
+
     // ---------- model check ----------
 
     // Plays each baked clip on the reference and on the villager models: the same muscles should give the same lean and seat height
@@ -377,6 +407,11 @@ public static class VillagerClipBaker
                             Vector3 knee = T(right ? HumanBodyBones.RightLowerLeg : HumanBodyBones.LeftLowerLeg).position;
                             Vector3 foot = T(right ? HumanBodyBones.RightFoot : HumanBodyBones.LeftFoot).position;
                             Transform toes = T(right ? HumanBodyBones.RightToes : HumanBodyBones.LeftToes);
+                            if (knee.y > hip.y + 0.03f)
+                            {
+                                report.AppendLine($"      WARNING {(right ? "R" : "L")} knee {knee.y - hip.y:F2}m above the hip: a cross-legged knee lies by the floor");
+                            }
+
                             report.AppendLine($"      {(right ? "R" : "L")} hip {hip:F2} knee {knee:F2} foot {foot:F2} toes {(toes != null ? toes.position.ToString("F2") : "-")} " +
                                 $"kneeAngle {Vector3.Angle(hip - knee, foot - knee):F0}°, toes {(toes != null ? (toes.position - foot).normalized.ToString("F2") : "-")}");
                         }
@@ -775,15 +810,16 @@ public static class VillagerClipBaker
 
     // ---------- clips ----------
 
-    // Cross-legged on the floor: each foot tucked under the other knee, knees out
+    // Cross-legged on the floor (책상다리): the knees fall out to the sides close to the floor, the shins cross in front
+    // with the right one in front, each foot resting under the other shin on its outer edge, toes pointing across
     private const float SIT_HIPS = 0.14f;
 
     private static void SitLegs(Pose pose)
     {
         pose.HipsHeight = SIT_HIPS;
         pose.HipsOffset = V(0f, 0f, -0.05f);
-        pose.RightLeg = new Leg { Custom = true, Pos = V(-0.16f, 0.07f, 0.30f), Pole = V(1f, 0.25f, 0.6f), Toes = V(-1f, 0f, 0.35f) };
-        pose.LeftLeg = new Leg { Custom = true, Pos = V(0.17f, 0.06f, 0.16f), Pole = V(-1f, 0.25f, 0.6f), Toes = V(1f, 0f, 0.35f) };
+        pose.RightLeg = new Leg { Custom = true, Pos = V(0.04f, 0.07f, 0.36f), Pole = V(1f, 0f, 0.3f), Toes = V(-1f, -0.1f, 0.2f) };
+        pose.LeftLeg = new Leg { Custom = true, Pos = V(-0.06f, 0.06f, 0.26f), Pole = V(-1f, 0f, 0.3f), Toes = V(1f, -0.1f, 0.2f) };
     }
 
     private static IEnumerable<ClipDef> Definitions()
