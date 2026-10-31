@@ -73,6 +73,8 @@ public static class VillagerClipBaker
         public float Length;
         public Func<float, Pose> Sample;
         public float[] Impacts = Array.Empty<float>();
+        public string State;           // Animator state name, the clip name when empty
+        public bool Loop = true;       // false holds the last frame (lying down)
     }
 
     private static Animator _animator;
@@ -91,7 +93,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(VILLAGER_MODELS[0]));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 14\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 15\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -100,7 +102,7 @@ public static class VillagerClipBaker
             foreach (ClipDef def in Definitions())
             {
                 AnimationClip clip = Bake(def, report);
-                AddToController(def.Name, clip, report);
+                AddToController(def.State ?? def.Name, clip, report);
                 baked.Add(clip);
             }
 
@@ -205,9 +207,9 @@ public static class VillagerClipBaker
         Quaternion previousRoot = Quaternion.identity;
         for (int f = 0; f <= frames; f++)
         {
-            // The last key repeats the first so the loop closes exactly
+            // The last key of a loop repeats the first so the loop closes exactly
             float time = f / FPS;
-            float sampleTime = f == frames ? 0f : time;
+            float sampleTime = def.Loop && f == frames ? 0f : time;
             Pose spec = def.Sample(sampleTime);
             BuildPose(spec, sampleTime, out Vector3 rightTarget, out Vector3 leftTarget, out Vector3 rightFoot, out Vector3 leftFoot);
             float rightIk = Vector3.Distance(Bone(HumanBodyBones.RightHand).position, rightTarget);
@@ -277,7 +279,7 @@ public static class VillagerClipBaker
         }
 
         AnimationClipSettings settings = AnimationUtility.GetAnimationClipSettings(clip);
-        settings.loopTime = true;
+        settings.loopTime = def.Loop;
         settings.loopBlend = false;
         settings.loopBlendOrientation = true;
         settings.loopBlendPositionY = true;
@@ -323,6 +325,7 @@ public static class VillagerClipBaker
                     report.AppendLine($"  state '{stateName}': Foot IK off");
                 }
 
+                EnsureStopTransition(layer.stateMachine, existing, controller, report);
                 return;
             }
         }
@@ -332,8 +335,27 @@ public static class VillagerClipBaker
         AnimatorState state = action.stateMachine.AddState(stateName, new Vector3(600f, 60f * count, 0f));
         state.motion = clip;
         state.writeDefaultValues = action.stateMachine.states.First(s => s.state.name == "Work_Sweep").state.writeDefaultValues;
+        EnsureStopTransition(action.stateMachine, state, controller, report);
         EditorUtility.SetDirty(controller);
         report.AppendLine($"  + state '{stateName}' in {ACTION_LAYER}");
+    }
+
+    // "<action> Stop" plays once and returns to Empty by itself (AI_VisualController.StopAction relies on it)
+    private static void EnsureStopTransition(AnimatorStateMachine machine, AnimatorState state, AnimatorController controller, StringBuilder report)
+    {
+        if (!state.name.EndsWith(" Stop") || state.transitions.Length > 0)
+        {
+            return;
+        }
+
+        AnimatorState empty = machine.states.Select(s => s.state).First(s => s.name == "Empty");
+        AnimatorStateTransition back = state.AddTransition(empty);
+        back.hasExitTime = true;
+        back.exitTime = 1f;
+        back.hasFixedDuration = true;
+        back.duration = 0.2f;
+        EditorUtility.SetDirty(controller);
+        report.AppendLine($"  state '{state.name}': back to Empty at its end");
     }
 
     // The Action layer in rows by kind, so every state is in view and none hides behind another
@@ -344,6 +366,7 @@ public static class VillagerClipBaker
         new[] { "Chopping", "Gathering", "Crouching", "Fishing" },
         new[] { "Work_Sweep", "Work_Sow", "Work_NetMend", "Work_Pound" },
         new[] { "Rest_Sit", "Rest_Drink", "Rest_Play", "Rest_Chat" },
+        new[] { "Sleep", "Sleep Stop" },
     };
 
     private static void LayoutActionLayer()
@@ -385,14 +408,16 @@ public static class VillagerClipBaker
                     $"upperChest {(T(HumanBodyBones.UpperChest) != null ? T(HumanBodyBones.UpperChest).name : "-")}, scale {animator.humanScale:F3}");
                 foreach (AnimationClip clip in clips)
                 {
+                    // A looping clip at its start, a held one (lying down) at the frame it stays on
+                    float at = clip.isLooping ? 0f : clip.length;
                     HumanPose pose = new HumanPose { muscles = new float[HumanTrait.MuscleCount] };
                     for (int m = 0; m < pose.muscles.Length; m++)
                     {
-                        pose.muscles[m] = Read(clip, _muscleProps[m], 0f);
+                        pose.muscles[m] = Read(clip, _muscleProps[m], at);
                     }
 
-                    pose.bodyPosition = new Vector3(Read(clip, "RootT.x", 0f), Read(clip, "RootT.y", 0f), Read(clip, "RootT.z", 0f));
-                    pose.bodyRotation = new Quaternion(Read(clip, "RootQ.x", 0f), Read(clip, "RootQ.y", 0f), Read(clip, "RootQ.z", 0f), Read(clip, "RootQ.w", 0f, 1f)).normalized;
+                    pose.bodyPosition = new Vector3(Read(clip, "RootT.x", at), Read(clip, "RootT.y", at), Read(clip, "RootT.z", at));
+                    pose.bodyRotation = new Quaternion(Read(clip, "RootQ.x", at), Read(clip, "RootQ.y", at), Read(clip, "RootQ.z", at), Read(clip, "RootQ.w", at, 1f)).normalized;
                     handler.SetHumanPose(ref pose);
 
                     Vector3 hips = T(HumanBodyBones.Hips).position;
@@ -400,7 +425,8 @@ public static class VillagerClipBaker
                     float lean = Vector3.SignedAngle(Vector3.up, Vector3.ProjectOnPlane(trunk, Vector3.right), Vector3.right);
                     float bend = Vector3.Angle(T(HumanBodyBones.Spine).position - hips, T(HumanBodyBones.Neck).position - chest.position);
                     float feet = Mathf.Min(T(HumanBodyBones.LeftFoot).position.y, T(HumanBodyBones.RightFoot).position.y);
-                    report.AppendLine($"    {clip.name}: lean {lean:F0}°, bend {bend:F0}°, seat {hips.y - feet:F2}m, hips {hips.y:F2}m");
+                    report.AppendLine($"    {clip.name}: lean {lean:F0}°, bend {bend:F0}°, seat {hips.y - feet:F2}m, hips {hips.y:F2}m, head {T(HumanBodyBones.Head).position.y:F2}m" +
+                        (clip.isLooping ? string.Empty : $", feet {feet:F2}m, hands {T(HumanBodyBones.RightHand).position.y:F2}/{T(HumanBodyBones.LeftHand).position.y:F2}m (held frame)"));
                     if (hips.y < 0.5f)
                     {
                         foreach (bool right in new[] { true, false })
@@ -738,7 +764,7 @@ public static class VillagerClipBaker
     private static float LowestPoint()
     {
         float lowest = float.MaxValue;
-        foreach (HumanBodyBones bone in new[] { HumanBodyBones.Hips, HumanBodyBones.RightFoot, HumanBodyBones.LeftFoot, HumanBodyBones.RightToes, HumanBodyBones.LeftToes,
+        foreach (HumanBodyBones bone in new[] { HumanBodyBones.Head, HumanBodyBones.Chest, HumanBodyBones.Spine, HumanBodyBones.Hips, HumanBodyBones.RightFoot, HumanBodyBones.LeftFoot, HumanBodyBones.RightToes, HumanBodyBones.LeftToes,
                      HumanBodyBones.RightLowerLeg, HumanBodyBones.LeftLowerLeg, HumanBodyBones.RightHand, HumanBodyBones.LeftHand })
         {
             Transform t = Bone(bone);
@@ -814,6 +840,31 @@ public static class VillagerClipBaker
         return Keys(t, length, keys.Select(k => (k.time, new Vector3(k.value, 0f, 0f))).ToArray()).x;
     }
 
+    // Keys that do not loop (lying down): eased from one key to the next, held before the first and after the last
+    private static Vector3 Ramp(float t, params (float time, Vector3 value)[] keys)
+    {
+        if (t <= keys[0].time)
+        {
+            return keys[0].value;
+        }
+
+        for (int i = 1; i < keys.Length; i++)
+        {
+            if (t <= keys[i].time)
+            {
+                float u = Mathf.SmoothStep(0f, 1f, (t - keys[i - 1].time) / (keys[i].time - keys[i - 1].time));
+                return Vector3.Lerp(keys[i - 1].value, keys[i].value, u);
+            }
+        }
+
+        return keys[keys.Length - 1].value;
+    }
+
+    private static float Ramp(float t, params (float time, float value)[] keys)
+    {
+        return Ramp(t, keys.Select(k => (k.time, new Vector3(k.value, 0f, 0f))).ToArray()).x;
+    }
+
     private static float Wave(float t, float period, float phase = 0f)
     {
         return Mathf.Sin((t / period + phase) * Mathf.PI * 2f);
@@ -838,8 +889,41 @@ public static class VillagerClipBaker
         pose.LeftLeg = new Leg { Custom = true, Pos = V(-0.06f, 0.06f, 0.26f), Pole = V(-1f, 0f, 0.3f), Toes = V(1f, -0.1f, 0.2f) };
     }
 
+    private const float LIE_DOWN_SECONDS = 2.6f;
+
+    // Feet and knees turn as the body goes from standing to lying: knees forward while crouching, up once seated
+    private static Pose LieDown(float t)
+    {
+        const float CROUCH = 0.9f, SIT = 1.6f, LIE = 2.4f;
+        Vector3 rightFoot = Ramp(t, (0f, V(0.12f, 0.08f, 0f)), (CROUCH, V(0.14f, 0.08f, 0.05f)), (SIT, V(0.14f, 0.08f, 0.45f)), (LIE, V(0.13f, 0.07f, 0.62f)));
+        Vector3 knee = Ramp(t, (0f, V(0f, 0f, 1f)), (CROUCH, V(0.2f, 0f, 1f)), (SIT, V(0.3f, 1f, 0.3f)), (LIE, V(0.1f, 1f, 0.2f)));
+        Vector3 toes = Ramp(t, (0f, V(0f, -0.05f, 1f)), (CROUCH, V(0f, -0.05f, 1f)), (SIT, V(0f, 0.3f, 1f)), (LIE, V(0f, 1f, 0.25f)));
+        Vector3 rightHand = Ramp(t, (0f, V(0.25f, 0.6f, 0.1f)), (CROUCH, V(0.2f, 0.45f, 0.25f)), (SIT, V(0.28f, 0.1f, -0.35f)), (LIE, V(0.27f, 0.06f, -0.35f)));
+        float arms = Ramp(t, (0f, 0f), (CROUCH, 1f));
+        Vector3 Left(Vector3 v) => V(-v.x, v.y, v.z);
+        Arm Hand(Vector3 pos) => Reach(Space.Root, pos, float.NaN, V(1f, 0f, -0.5f)).Weighted(arms);
+
+        return new Pose
+        {
+            HipsHeight = Ramp(t, (0f, 0.945f), (CROUCH, 0.45f), (SIT, 0.13f), (LIE, 0.11f)),
+            HipsOffset = V(0f, 0f, Ramp(t, (0f, 0f), (CROUCH, -0.05f), (SIT, -0.15f), (LIE, -0.25f))),
+            HipsEuler = V(Ramp(t, (0f, 0f), (CROUCH, 15f), (SIT, -5f), (LIE, -88f)), 0f, 0f),
+            SpineEuler = V(Ramp(t, (0f, 0f), (CROUCH, 25f), (SIT, -10f), (LIE, 0f)), 0f, 0f),
+            HeadEuler = V(Ramp(t, (0f, 0f), (CROUCH, 10f), (SIT, 5f), (LIE, -8f)), 0f, 0f),
+            RightLeg = new Leg { Custom = true, Pos = rightFoot, Pole = knee, Toes = toes },
+            LeftLeg = new Leg { Custom = true, Pos = Left(rightFoot), Pole = Left(knee), Toes = Left(toes) },
+            Right = Hand(rightHand),
+            Left = Hand(Left(rightHand)),
+        };
+    }
+
     private static IEnumerable<ClipDef> Definitions()
     {
+        // 취침: lies down on its back in four steps (crouch, sit with the hands behind, lean back, flat) and stays on the last
+        // frame; the get-up clip plays the same backwards when the villager wakes ("Sleep Stop", back to Empty on its own)
+        yield return new ClipDef { Name = "Sleep_LieDown", State = "Sleep", Length = LIE_DOWN_SECONDS, Loop = false, Sample = LieDown };
+        yield return new ClipDef { Name = "Sleep_GetUp", State = "Sleep Stop", Length = LIE_DOWN_SECONDS, Loop = false, Sample = t => LieDown(LIE_DOWN_SECONDS - t) };
+
         // 마당 쓸기·주막 허드렛일 (Broom): bent over, both hands on the handle, fast stroke to the left and a slow lift back
         yield return new ClipDef
         {

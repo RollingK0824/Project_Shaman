@@ -31,6 +31,7 @@ namespace ProjectShaman.AI.Work
         [Tooltip("Rest animations sitting on the floor: a villager in one stays seated in a conversation")]
         [SerializeField] private string[] _seatedRestAnimations = { "Rest_Sit", "Rest_Drink" };
         [SerializeField] private string _seatedTalkAnimation = "Rest_Sit";
+        [SerializeField] private string _sleepAnimation = "Sleep";
         [SerializeField] private string _restAnimation = string.Empty;
 
         private AI_Core _core;
@@ -56,7 +57,8 @@ namespace ProjectShaman.AI.Work
 
         // Rest routines have no work node: the rest action plays once the villager stands still at the rest place (server only,
         // the animation reaches clients through the synced action state) and stops when it moves, sleeps or the routine changes.
-        // A conversation stands a standing rest up for the full-body talk, but a seated one stays down and only talks
+        // A conversation stands a standing rest up for the full-body talk, but a seated one stays down and only talks.
+        // Asleep it lies down where it stands and stays down; waking plays "Sleep Stop" (getting up) through StopAction
         private void Update()
         {
             if (_isWorking || !_core.IsSimulating)
@@ -65,7 +67,14 @@ namespace ProjectShaman.AI.Work
             }
 
             string wanted = string.Empty;
-            if (IsRestingInPlace())
+            if (_core.IsAsleep)
+            {
+                if (_movement == null || _movement.CurrentSpeed <= _restStillSpeed)
+                {
+                    wanted = _sleepAnimation;
+                }
+            }
+            else if (IsRestingInPlace())
             {
                 bool seated = System.Array.IndexOf(_seatedRestAnimations, _restAnimation) >= 0;
                 wanted = _core.CurrentState != AIState.Interacting ? WorkAnimationTable.Get(_core.CurrentRoutine.ActionId)
@@ -86,7 +95,8 @@ namespace ProjectShaman.AI.Work
                 _visual.StopAction();
             }
 
-            AILog.Log(AILog.WORK, _core.LogId, wanted.Length > 0 ? $"Rest pose '{wanted}' ({_core.CurrentRoutine.Source.RoutineId})" : $"Rest pose end '{_restAnimation}'");
+            string reason = _core.IsAsleep ? "asleep" : _core.CurrentRoutine.Source != null ? _core.CurrentRoutine.Source.RoutineId : "no routine";
+            AILog.Log(AILog.WORK, _core.LogId, wanted.Length > 0 ? $"Rest pose '{wanted}' ({reason})" : $"Rest pose end '{_restAnimation}'");
             _restAnimation = wanted;
         }
 
