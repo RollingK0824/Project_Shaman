@@ -14,6 +14,12 @@ public static class VillagerClipBaker
     private const string MODEL_PATH = "Assets/ThirdParty/Kevin Iglesias/Human Animations/Models/HumanM_Model.fbx";
     private const string IDLE_PATH = "Assets/ThirdParty/Kevin Iglesias/Human Animations/Animations/Male/Idles/HumanM@Idle01.fbx";
     private const string GRIP_PATH = "Assets/ThirdParty/Kevin Iglesias/Human Animations/Animations/Male/Work/Hammering/HumanM@HammeringGround01_R - Loop.fbx";
+    private static readonly string[] VILLAGER_MODELS =
+    {
+        "Assets/Project/Visuals/Models/NPC/Male/Model/Male_Villager.fbx",
+        "Assets/Project/Visuals/Models/NPC/Female/Model/NPC_Female.fbx",
+    };
+
     private const string CLIP_FOLDER = "Assets/Project/Animations/Npc/Clip/";
     private const string CONTROLLER_PATH = "Assets/Project/Animations/Npc/Controller/AC_Villager.controller";
     private const string ACTION_LAYER = "Action";
@@ -81,7 +87,9 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MODEL_PATH));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 4\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 6\n");
+        _curves.Clear();
+        List<AnimationClip> baked = new List<AnimationClip>();
         try
         {
             Setup(model, report);
@@ -89,9 +97,11 @@ public static class VillagerClipBaker
             {
                 AnimationClip clip = Bake(def, report);
                 AddToController(def.Name, clip, report);
+                baked.Add(clip);
             }
 
             AssetDatabase.SaveAssets();
+            CompareModels(baked, report);
         }
         finally
         {
@@ -310,6 +320,52 @@ public static class VillagerClipBaker
         state.writeDefaultValues = action.stateMachine.states.First(s => s.state.name == "Work_Sweep").state.writeDefaultValues;
         EditorUtility.SetDirty(controller);
         report.AppendLine($"  + state '{stateName}' in {ACTION_LAYER}");
+    }
+
+    // ---------- model check ----------
+
+    // Plays each baked clip on the reference and on the villager models: the same muscles should give the same lean and seat height
+    private static void CompareModels(List<AnimationClip> clips, StringBuilder report)
+    {
+        report.AppendLine("lean = hips→neck from vertical (+ forward), bend = hips→spine against chest→neck, seat = hips above the lowest foot");
+        foreach (string path in new[] { MODEL_PATH }.Concat(VILLAGER_MODELS))
+        {
+            GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(path));
+            model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+            Animator animator = model.GetComponent<Animator>();
+            HumanPoseHandler handler = new HumanPoseHandler(animator.avatar, model.transform);
+            try
+            {
+                Transform T(HumanBodyBones bone) => animator.GetBoneTransform(bone);
+                Transform chest = T(HumanBodyBones.UpperChest) != null ? T(HumanBodyBones.UpperChest) : T(HumanBodyBones.Chest);
+                report.AppendLine($"  {System.IO.Path.GetFileNameWithoutExtension(path)}: spine {T(HumanBodyBones.Spine).name}, chest {(T(HumanBodyBones.Chest) != null ? T(HumanBodyBones.Chest).name : "-")}, " +
+                    $"upperChest {(T(HumanBodyBones.UpperChest) != null ? T(HumanBodyBones.UpperChest).name : "-")}, scale {animator.humanScale:F3}");
+                foreach (AnimationClip clip in clips)
+                {
+                    HumanPose pose = new HumanPose { muscles = new float[HumanTrait.MuscleCount] };
+                    for (int m = 0; m < pose.muscles.Length; m++)
+                    {
+                        pose.muscles[m] = Read(clip, _muscleProps[m], 0f);
+                    }
+
+                    pose.bodyPosition = new Vector3(Read(clip, "RootT.x", 0f), Read(clip, "RootT.y", 0f), Read(clip, "RootT.z", 0f));
+                    pose.bodyRotation = new Quaternion(Read(clip, "RootQ.x", 0f), Read(clip, "RootQ.y", 0f), Read(clip, "RootQ.z", 0f), Read(clip, "RootQ.w", 0f, 1f)).normalized;
+                    handler.SetHumanPose(ref pose);
+
+                    Vector3 hips = T(HumanBodyBones.Hips).position;
+                    Vector3 trunk = T(HumanBodyBones.Neck).position - hips;
+                    float lean = Vector3.SignedAngle(Vector3.up, Vector3.ProjectOnPlane(trunk, Vector3.right), Vector3.right);
+                    float bend = Vector3.Angle(T(HumanBodyBones.Spine).position - hips, T(HumanBodyBones.Neck).position - chest.position);
+                    float feet = Mathf.Min(T(HumanBodyBones.LeftFoot).position.y, T(HumanBodyBones.RightFoot).position.y);
+                    report.AppendLine($"    {clip.name}: lean {lean:F0}°, bend {bend:F0}°, seat {hips.y - feet:F2}m, hips {hips.y:F2}m");
+                }
+            }
+            finally
+            {
+                handler.Dispose();
+                Object.DestroyImmediate(model);
+            }
+        }
     }
 
     // ---------- posing ----------
@@ -754,8 +810,8 @@ public static class VillagerClipBaker
                 Vector3 pull = Keys(t, L, (0f, Vector3.zero), (1.2f, Vector3.zero), (1.55f, V(0.12f, 0.08f, -0.02f)), (1.8f, V(0.03f, 0.02f, 0f)));
                 Pose pose = new Pose
                 {
-                    HipsEuler = V(-4f, 0f, 0f),
-                    SpineEuler = V(22f + 2f * Wave(t, L), 0f, 0f),
+                    HipsEuler = V(6f, 0f, 0f),
+                    SpineEuler = V(12f + 2f * Wave(t, L), 0f, 0f),
                     HeadEuler = V(22f, 4f * Wave(t, L, 0.25f), 0f),
                     Right = Reach(Space.Chest, V(0.08f, -0.30f, 0.23f) + knot + pull, 0.7f, V(0.8f, -1f, -0.2f)),
                     Left = Reach(Space.Chest, V(-0.09f, -0.31f, 0.22f) - pull * 0.3f, 0.85f, V(0.8f, -1f, -0.2f)),
@@ -846,6 +902,34 @@ public static class VillagerClipBaker
             },
         };
 
+        // 다듬이질·빨래하기 (Pound): sitting on the floor before the stone, the left hand keeps the cloth flat, the right beats it
+        // with the bat in a quick wrist-led rhythm; the body dips a little into each blow
+        yield return new ClipDef
+        {
+            Name = "Work_Pound",
+            Length = 0.9f,
+            Impacts = new[] { 0.3f },
+            Sample = t =>
+            {
+                const float L = 0.9f;
+                Vector3 hand = Keys(t, L, (0f, V(0.00f, -0.12f, 0.24f)), (0.22f, V(-0.04f, -0.28f, 0.28f)), (0.3f, V(-0.05f, -0.34f, 0.28f)),
+                    (0.4f, V(-0.05f, -0.31f, 0.28f)), (0.65f, V(-0.02f, -0.18f, 0.26f)));
+                // The bat leaves the fist on the thumb side: with the palm turned inward the fingers point 90° below it
+                Vector3 bat = Keys(t, L, (0f, V(0f, 1f, -0.3f)), (0.22f, V(0f, 0.3f, 1f)), (0.3f, V(0f, -0.4f, 1f)), (0.4f, V(0f, -0.3f, 1f)), (0.65f, V(0f, 0.7f, 0.5f)));
+                float dip = Keys(t, L, (0f, 0f), (0.3f, 1f), (0.5f, 0.4f), (0.75f, 0f));
+                Pose pose = new Pose
+                {
+                    HipsEuler = V(6f, 0f, 0f),
+                    SpineEuler = V(8f + 4f * dip, 6f, 0f),
+                    HeadEuler = V(20f, -6f, 0f),
+                    Right = Reach(Space.Shoulder, hand, 1f, V(1f, -0.6f, -0.4f)).Aim(V(0f, -bat.z, bat.y), V(-1f, 0f, 0f)),
+                    Left = Reach(Space.Shoulder, V(-0.14f, -0.34f, 0.24f) + V(0f, 0.01f * dip, 0f), 0.2f, V(1f, -1f, -0.2f)).Aim(V(-0.3f, -0.2f, 1f), V(0f, -1f, 0f)),
+                };
+                SitLegs(pose);
+                return pose;
+            },
+        };
+
         // 그늘·정자에서 쉬기: cross-legged, hands on the knees, slow breathing, looking around
         yield return new ClipDef
         {
@@ -857,11 +941,11 @@ public static class VillagerClipBaker
                 float look = Keys(t, L, (0f, 0f), (1.5f, 22f), (2.7f, 18f), (4.0f, -15f), (5.2f, -10f));
                 Pose pose = new Pose
                 {
-                    HipsEuler = V(-6f, 0f, 0f),
-                    SpineEuler = V(12f + 1.5f * Wave(t, 3f), look * 0.2f, 0f),
+                    HipsEuler = V(6f, 0f, 0f),
+                    SpineEuler = V(2f + 1.5f * Wave(t, 3f), look * 0.2f, 0f),
                     HeadEuler = V(2f * Wave(t, 3f, 0.2f), look, 0f),
-                    Right = Reach(Space.Knee, V(-0.17f, 0.10f, -0.21f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
-                    Left = Reach(Space.Knee, V(-0.17f, 0.10f, -0.21f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Right = Reach(Space.Knee, V(-0.20f, 0.11f, -0.26f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Left = Reach(Space.Knee, V(-0.20f, 0.11f, -0.26f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
                 };
                 SitLegs(pose);
                 return pose;
@@ -878,43 +962,18 @@ public static class VillagerClipBaker
                 const float L = 5.0f;
                 float lift = Keys(t, L, (0f, 0f), (1.0f, 0f), (1.8f, 1f), (3.2f, 1f), (4.0f, 0f));
                 float tip = Keys(t, L, (0f, 0f), (1.9f, 0f), (2.4f, -16f), (2.9f, -16f), (3.3f, 0f));
-                Arm right = Reach(Space.Knee, V(-0.17f, 0.12f, -0.19f), 0.55f, V(1f, -0.6f, -0.3f));
+                Arm right = Reach(Space.Knee, V(-0.20f, 0.13f, -0.24f), 0.55f, V(1f, -0.6f, -0.3f));
                 right.Space2 = Space.Shoulder;
                 right.Pos2 = V(-0.13f, 0.02f, 0.22f) + V(0f, -tip * 0.002f, 0f);
                 right.Blend = lift;
                 right = right.Aim(V(-0.6f, 0.4f, 0.6f), V(-0.5f, 0.8f, 0f));
                 Pose pose = new Pose
                 {
-                    HipsEuler = V(-6f, 0f, 0f),
-                    SpineEuler = V(12f + tip * 0.5f, 0f, 0f),
+                    HipsEuler = V(6f, 0f, 0f),
+                    SpineEuler = V(2f + tip * 0.5f, 0f, 0f),
                     HeadEuler = V(tip, 0f, 0f),
                     Right = right,
-                    Left = Reach(Space.Knee, V(-0.17f, 0.10f, -0.21f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
-                };
-                SitLegs(pose);
-                return pose;
-            },
-        };
-
-        // 투전판: cross-legged and leaning in, cards in the left hand, the right draws one and slaps it down
-        yield return new ClipDef
-        {
-            Name = "Rest_Gamble",
-            Length = 3.2f,
-            Sample = t =>
-            {
-                const float L = 3.2f;
-                Vector3 hand = Keys(t, L, (0f, V(-0.14f, -0.24f, 0.24f)), (0.8f, V(-0.02f, -0.05f, 0.28f)), (1.15f, V(0.00f, -0.32f, 0.29f)),
-                    (1.6f, V(0.01f, -0.31f, 0.28f)), (2.4f, V(-0.08f, -0.27f, 0.25f)));
-                float grip = Keys(t, L, (0f, 0.8f), (1.0f, 0.8f), (1.2f, 0.1f), (1.7f, 0.1f), (2.4f, 0.6f));
-                float slap = Keys(t, L, (0f, 0f), (0.8f, -4f), (1.15f, 8f), (1.6f, 6f), (2.4f, 0f));
-                Pose pose = new Pose
-                {
-                    HipsEuler = V(-2f, 0f, 0f),
-                    SpineEuler = V(22f + slap, 0f, 0f),
-                    HeadEuler = V(12f, Keys(t, L, (0f, -8f), (1.15f, 5f), (2.2f, 12f)), 0f),
-                    Right = Reach(Space.Shoulder, hand, grip, V(0.8f, -1f, -0.2f)),
-                    Left = Reach(Space.Shoulder, V(-0.10f, -0.24f, 0.24f), 0.8f, V(1f, -1f, -0.2f)).Aim(V(-0.6f, 0.4f, 0.6f), V(-0.3f, 0.3f, 0.9f)),
+                    Left = Reach(Space.Knee, V(-0.20f, 0.11f, -0.26f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
                 };
                 SitLegs(pose);
                 return pose;
