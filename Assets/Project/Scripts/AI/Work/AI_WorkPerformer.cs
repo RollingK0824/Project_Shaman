@@ -1,6 +1,8 @@
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
+using ProjectShaman.AI.Dialogue;
+using ProjectShaman.AI.Interaction;
 using ProjectShaman.AI.Routine;
 using ProjectShaman.AI.World;
 
@@ -12,12 +14,16 @@ namespace ProjectShaman.AI.Work
         [SerializeField] private bool _useAnimationEvent;
         [SerializeField] private float _hitIntervalSeconds = 2f;
         [SerializeField] private float _turnSpeedDegrees = 120f;
+        [Tooltip("A work with its own lines (work.call.<ActionId> in AIDialogue, a hawker calling out) says one on the first hit and every this many after")]
+        [SerializeField, Min(1)] private int _callEveryHits = 3;
 
         [Header("Runtime")]
         [SerializeField] private bool _isWorking;
         [SerializeField] private string _currentActionId;
         [SerializeField] private string _currentStationId;
         [SerializeField] private int _hitCount;
+
+        private const string WORK_CALL_PREFIX = "work.call.";
 
         [Header("Rest")]
         [SerializeField] private float _restArriveDistance = 2f;
@@ -30,6 +36,9 @@ namespace ProjectShaman.AI.Work
         private AI_Core _core;
         private AI_VisualController _visual;
         private AI_Movement _movement;
+        private AI_Conversation _conversation;
+        private AI_Interaction _interaction;
+        private System.Random _lineRandom;
         private WorkStation _station;
         private float _nextHitTime;
 
@@ -40,6 +49,9 @@ namespace ProjectShaman.AI.Work
             _core = GetComponent<AI_Core>();
             _visual = GetComponent<AI_VisualController>();
             _movement = GetComponent<AI_Movement>();
+            _conversation = GetComponent<AI_Conversation>();
+            _interaction = GetComponent<AI_Interaction>();
+            _lineRandom = new System.Random(GetInstanceID());
         }
 
         // Rest routines have no work node: the rest action plays once the villager stands still at the rest place (server only,
@@ -129,6 +141,13 @@ namespace ProjectShaman.AI.Work
 
             _core.SetState(AIState.Working);
             _restAnimation = string.Empty;
+
+            // Arrival counts within the arrive distance: the agent would otherwise go on walking the last metre to its exact
+            // point (or push against someone standing there) and slide along in the work pose
+            if (_movement != null)
+            {
+                _movement.Stop();
+            }
             _visual.PlayAction(WorkAnimationTable.Get(_currentActionId));
 
             AILog.Log(AILog.WORK, _core.LogId, $"BeginWork action='{_currentActionId}' station={(_station != null ? _station.StationId : "none")} mode={(_useAnimationEvent ? "AnimEvent" : "Timer")}");
@@ -175,6 +194,7 @@ namespace ProjectShaman.AI.Work
         private void DeliverHit()
         {
             _hitCount++;
+            CallOut();
 
             // Each hit is counted, not logged: EndWork reports the total
             if (_station == null)
@@ -183,6 +203,19 @@ namespace ProjectShaman.AI.Work
             }
 
             _station.ReceiveWork(_core.LogId, _currentActionId);
+        }
+
+        // Lines of the work itself, said alone (a chat between villagers at work uses smalltalk.work): not while in a chat or a talk
+        private void CallOut()
+        {
+            string id = WORK_CALL_PREFIX + _currentActionId;
+            if (_conversation == null || (_hitCount - 1) % _callEveryHits != 0 || !DialogueLibrary.HasLine(id)
+                || _conversation.IsInSession || (_interaction != null && _interaction.IsInteracting))
+            {
+                return;
+            }
+
+            _conversation.Say(DialogueLibrary.Line(id, _lineRandom), $"{_currentActionId} call");
         }
 
         private void FaceStation(float deltaTime)
