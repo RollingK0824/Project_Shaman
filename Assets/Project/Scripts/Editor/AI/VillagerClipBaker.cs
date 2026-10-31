@@ -26,8 +26,9 @@ public static class VillagerClipBaker
     private const string IMPACT_EVENT = "OnWorkImpact";
     private const float FPS = 30f;
     private const float ARM_STRETCH = 0.93f;
+    private const float THIGH_REST = 0.45f;
 
-    private enum Space { Root, Chest, Shoulder, Knee }
+    private enum Space { Root, Chest, Shoulder, Knee, Thigh }
 
     private struct Arm
     {
@@ -88,7 +89,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(MODEL_PATH));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 11\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 13\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -400,6 +401,14 @@ public static class VillagerClipBaker
                     report.AppendLine($"    {clip.name}: lean {lean:F0}°, bend {bend:F0}°, seat {hips.y - feet:F2}m, hips {hips.y:F2}m");
                     if (hips.y < 0.5f)
                     {
+                        foreach (bool right in new[] { true, false })
+                        {
+                            Vector3 hand = T(right ? HumanBodyBones.RightHand : HumanBodyBones.LeftHand).position;
+                            Vector3 thigh = Vector3.Lerp(T(right ? HumanBodyBones.RightUpperLeg : HumanBodyBones.LeftUpperLeg).position,
+                                T(right ? HumanBodyBones.RightLowerLeg : HumanBodyBones.LeftLowerLeg).position, THIGH_REST);
+                            report.AppendLine($"      {(right ? "R" : "L")} hand {hand:F2}, {Vector3.Distance(hand, thigh) * 100f:F0}cm from the thigh rest point");
+                        }
+
                         // Seated legs: where each knee and foot ends up, and how far each knee bends (180° = straight)
                         foreach (bool right in new[] { true, false })
                         {
@@ -567,6 +576,11 @@ public static class VillagerClipBaker
                 return mid + chestFrame * pos;
             case Space.Shoulder:
                 return Bone(right ? HumanBodyBones.RightUpperArm : HumanBodyBones.LeftUpperArm).position + chestFrame * Mirror(pos, right);
+            case Space.Thigh:
+                // On top of the thigh a little nearer the hip than the knee: a seated villager's hand rests there
+                Vector3 hip = Bone(right ? HumanBodyBones.RightUpperLeg : HumanBodyBones.LeftUpperLeg).position;
+                Vector3 knee = Bone(right ? HumanBodyBones.RightLowerLeg : HumanBodyBones.LeftLowerLeg).position;
+                return Vector3.Lerp(hip, knee, THIGH_REST) + Mirror(pos, right);
             default:
                 return Bone(right ? HumanBodyBones.RightLowerLeg : HumanBodyBones.LeftLowerLeg).position + Mirror(pos, right);
         }
@@ -1019,8 +1033,8 @@ public static class VillagerClipBaker
                     HipsEuler = V(6f, 0f, 0f),
                     SpineEuler = V(2f + 1.5f * Wave(t, 3f), look * 0.2f, 0f),
                     HeadEuler = V(2f * Wave(t, 3f, 0.2f), look, 0f),
-                    Right = Reach(Space.Knee, V(-0.20f, 0.11f, -0.26f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
-                    Left = Reach(Space.Knee, V(-0.20f, 0.11f, -0.26f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Right = Reach(Space.Thigh, V(0f, 0.15f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Left = Reach(Space.Thigh, V(0f, 0.15f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
                 };
                 SitLegs(pose);
                 return pose;
@@ -1037,7 +1051,7 @@ public static class VillagerClipBaker
                 const float L = 5.0f;
                 float lift = Keys(t, L, (0f, 0f), (1.0f, 0f), (1.8f, 1f), (3.2f, 1f), (4.0f, 0f));
                 float tip = Keys(t, L, (0f, 0f), (1.9f, 0f), (2.4f, -16f), (2.9f, -16f), (3.3f, 0f));
-                Arm right = Reach(Space.Knee, V(-0.20f, 0.13f, -0.24f), 0.55f, V(1f, -0.6f, -0.3f));
+                Arm right = Reach(Space.Thigh, V(0f, 0.18f, 0.02f), 0.55f, V(1f, -0.6f, -0.3f));
                 right.Space2 = Space.Shoulder;
                 right.Pos2 = V(-0.13f, 0.02f, 0.22f) + V(0f, -tip * 0.002f, 0f);
                 right.Blend = lift;
@@ -1048,7 +1062,7 @@ public static class VillagerClipBaker
                     SpineEuler = V(2f + tip * 0.5f, 0f, 0f),
                     HeadEuler = V(tip, 0f, 0f),
                     Right = right,
-                    Left = Reach(Space.Knee, V(-0.20f, 0.11f, -0.26f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
+                    Left = Reach(Space.Thigh, V(0f, 0.15f, 0f), float.NaN, V(1f, -0.3f, -0.5f)).Aim(V(0.2f, -0.2f, 1f), V(0f, -1f, 0f)),
                 };
                 SitLegs(pose);
                 return pose;
