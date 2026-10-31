@@ -2,6 +2,7 @@ using System;
 using Unity.Behavior;
 using Unity.Properties;
 using UnityEngine;
+using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Interfaces;
 using Action = Unity.Behavior.Action;
 
@@ -20,6 +21,7 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
         [SerializeReference] public BlackboardVariable<float> ArriveDistance = new BlackboardVariable<float>(0f);
 
         private INetworkMovable movable;
+        private Vector3 _warnedTarget = Vector3.positiveInfinity;
 
         protected override Status OnStart()
         {
@@ -36,7 +38,18 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
         {
             if (movable == null) return Status.Failure;
 
-            if (movable.HasReachedDestination || IsWithinArriveDistance())
+            if (IsWithinArriveDistance())
+            {
+                return Status.Success;
+            }
+
+            if (movable.IsDestinationUnreachable)
+            {
+                WarnUnreachable();
+                return Status.Failure;
+            }
+
+            if (movable.HasReachedDestination)
             {
                 return Status.Success;
             }
@@ -55,6 +68,17 @@ namespace ProjectShaman.AI.BehaviorTree.Actions
             Vector3 offset = Agent.Value.transform.position - TargetPosition.Value;
             offset.y = 0f;
             return offset.sqrMagnitude <= arrive * arrive;
+        }
+
+        private void WarnUnreachable()
+        {
+            if (_warnedTarget == TargetPosition.Value)
+            {
+                return;
+            }
+
+            _warnedTarget = TargetPosition.Value;
+            AILog.Warn(AILog.CORE, $"{Agent.Value.name} cannot reach {TargetPosition.Value:F2} from {Agent.Value.transform.position:F2}: no NavMesh path (check the bake)");
         }
 
         protected override void OnEnd()

@@ -60,6 +60,7 @@ namespace ProjectShaman.AI
 
         public bool IsStopped => _isStopped;
         public bool HasReachedDestination => _hasDestination && FlatDistance(transform.position, _destination) <= _arriveDistance;
+        public bool IsDestinationUnreachable => false;
         public float CurrentSpeed => _velocity.magnitude;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
