@@ -11,6 +11,9 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     [SerializeField, Range(0f,1f)] private float _volume = .4f;
     private PlayerItemController _items;
     private PlayerInputReader _input;
+    private QuickSlotUI _quickSlots;
+    private float _nextQuickSlotSearch;
+    private readonly Vector3[] _hudCorners = new Vector3[4];
     private Transform _motion;
     private ItemData _data;
     private float _started = -10f, _messageUntil;
@@ -20,6 +23,7 @@ public sealed class PlayerItemFeedback : MonoBehaviour
     private PlayerTalismanCollection _talismans;
     private void OnEnable()
     {
+        Canvas.willRenderCanvases += PositionUseHint;
         _talismans=GetComponent<PlayerTalismanCollection>();
         if(_talismans!=null)_talismans.UseCommitted+=OnTalismanCommitted;
     }
@@ -107,8 +111,54 @@ public sealed class PlayerItemFeedback : MonoBehaviour
         _motion.localRotation=Quaternion.Euler(angle*envelope,0,0);
         _motion.localPosition=new Vector3(0,.008f*envelope,.015f*envelope);
     }
+    // QuickSlotUI sizes itself in LateUpdate. Align immediately before canvas rendering,
+    // converting through screen coordinates because the two HUDs may use different scalers.
+    private void PositionUseHint()
+    {
+        if (_status == null || !PlayerLocalPresentation.IsLocal(gameObject)) return;
+        var hint = (_statusRoot != null ? _statusRoot.transform : _status.transform) as RectTransform;
+        if (hint == null || !hint.gameObject.activeInHierarchy) return;
+        var inventory = GetComponent<PlayerInventory>();
+        if (inventory == null) return;
+        if (_quickSlots == null || _quickSlots.BoundInventory != inventory || !_quickSlots.isActiveAndEnabled)
+        {
+            _quickSlots = null;
+            if (Time.unscaledTime < _nextQuickSlotSearch) return;
+            _nextQuickSlotSearch = Time.unscaledTime + .5f;
+            foreach (var candidate in FindObjectsByType<QuickSlotUI>(FindObjectsSortMode.None))
+                if (candidate.isActiveAndEnabled && candidate.BoundInventory == inventory)
+                { _quickSlots = candidate; break; }
+        }
+        if (_quickSlots != null) AlignUseHint(hint, _quickSlots.transform as RectTransform);
+    }
+
+    private void AlignUseHint(RectTransform hint, RectTransform quick)
+    {
+        if (quick == null || !(hint.parent is RectTransform parent)) return;
+        var quickCanvas = quick.GetComponentInParent<Canvas>();
+        var hintCanvas = hint.GetComponentInParent<Canvas>();
+        if (quickCanvas == null || hintCanvas == null) return;
+        var quickCamera = quickCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : quickCanvas.worldCamera;
+        var hintCamera = hintCanvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : hintCanvas.worldCamera;
+        quick.GetWorldCorners(_hudCorners);
+        float left = float.PositiveInfinity, right = float.NegativeInfinity, top = float.NegativeInfinity;
+        foreach (var corner in _hudCorners)
+        {
+            var screen = RectTransformUtility.WorldToScreenPoint(quickCamera, corner);
+            left = Mathf.Min(left, screen.x); right = Mathf.Max(right, screen.x); top = Mathf.Max(top, screen.y);
+        }
+        hint.GetWorldCorners(_hudCorners);
+        var bottom = RectTransformUtility.WorldToScreenPoint(hintCamera, (_hudCorners[0] + _hudCorners[3]) * .5f);
+        float gap = 12f * Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
+        var target = new Vector2((left + right) * .5f, top + gap);
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, bottom, hintCamera, out var currentLocal) &&
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, target, hintCamera, out var targetLocal))
+            hint.localPosition += (Vector3)(targetLocal - currentLocal);
+    }
+
     private void OnDisable()
     {
+        Canvas.willRenderCanvases -= PositionUseHint;
         if(_talismans!=null)_talismans.UseCommitted-=OnTalismanCommitted;
         if (_motion != null) { _motion.localPosition=Vector3.zero; _motion.localRotation=Quaternion.identity; }
         if (_statusRoot != null) _statusRoot.SetActive(false);
