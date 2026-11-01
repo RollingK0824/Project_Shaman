@@ -90,6 +90,7 @@ namespace ProjectShaman.AI.Ghost
         public event System.Action<AI_GhostEntity> OnChannelChanged;
         public event System.Action<AI_GhostEntity> OnChannelEnded;
         public event System.Action<AI_GhostEntity, float> OnRevealed;
+        public event System.Action<AI_GhostEntity> OnAttackSwing;
         // (ghost, from, to) when salt flings it elsewhere
         public event System.Action<AI_GhostEntity, Vector3, Vector3> OnTeleported;
 
@@ -673,6 +674,15 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
+            // Hitting a player is an attack swing, not a channel: no gauge, the hit lands when the swing ends
+            if (IsPlayerAttack(_session))
+            {
+                _session.BeginChannel(Time.time, _config != null ? _config.GhostPlayerAttackSwingSeconds : 0f);
+                AILog.Log(AILog.GHOST, _ghostId, $"Attack swing {_session}");
+                OnAttackSwing?.Invoke(this);
+                return true;
+            }
+
             // Carry: the channel is the pick-up, so the drop after carrying is instant
             float minimum = _config != null ? _config.GhostMinChannelSeconds : 0f;
             float duration = _session.IsCarrying ? 0f : Mathf.Max(minimum, _session.Action.Duration);
@@ -691,6 +701,11 @@ namespace ProjectShaman.AI.Ghost
             }
 
             return true;
+        }
+
+        private static bool IsPlayerAttack(GhostActionSession session)
+        {
+            return session.Action.Verb == GhostActionVerb.Attack && session.Target != null && session.Target.Kind == GhostTargetKind.Player;
         }
 
         // Salt: whatever the ghost was channelling breaks off (no effect, cost not refunded), the ghost grows angrier (yin)

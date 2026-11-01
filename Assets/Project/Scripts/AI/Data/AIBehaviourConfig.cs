@@ -145,6 +145,8 @@ namespace ProjectShaman.AI.Data
         [Header("Ghost Player Chase")]
         [SerializeField] private float _ghostPlayerDetectDistance = 15f;
         [SerializeField] private float _ghostPlayerAttackCooldown = 10f;
+        [Tooltip("Swing time of the attack animation on a player: the hit lands when it ends (no channel gauge)")]
+        [SerializeField] private float _ghostPlayerAttackSwingSeconds = 0.6f;
 
         [Header("Interaction")]
         [SerializeField] private float _interactionNoticeRadius = 10f;
@@ -335,6 +337,7 @@ namespace ProjectShaman.AI.Data
         public float GhostWanderPauseMax => Mathf.Max(GhostWanderPauseMin, _ghostWanderPauseMax);
         public float GhostPlayerDetectDistance => Mathf.Max(0f, _ghostPlayerDetectDistance);
         public float GhostPlayerAttackCooldown => Mathf.Max(0f, _ghostPlayerAttackCooldown);
+        public float GhostPlayerAttackSwingSeconds => Mathf.Max(0f, _ghostPlayerAttackSwingSeconds);
         public float InteractionNoticeRadius => Mathf.Max(0f, _interactionNoticeRadius);
         public float InteractionScanInterval => Mathf.Max(0.05f, _interactionScanInterval);
         public float GlanceDuration => Mathf.Max(0f, _glanceDuration);
