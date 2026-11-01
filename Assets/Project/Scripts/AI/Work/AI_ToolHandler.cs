@@ -28,6 +28,10 @@ namespace ProjectShaman.AI.Work
         [SerializeField] private bool _isMovingToStorage;
 
         private const float PUT_AWAY_LINGER_SECONDS = 1f;
+        private const int STORAGE_POINT_TRIES = 8;
+        private const float STORAGE_TOOL_SPACING = 0.8f;
+
+        private System.Random _storageRandom;
 
         private ToolItem _heldTool;
         private ToolSearchSession _search;
@@ -223,12 +227,50 @@ namespace ProjectShaman.AI.Work
 
             if (reason == InteractionEndReason.Completed && IsHolding)
             {
-                Drop(transform.position, $"put away at {_putAwayStorage.PlaceId}");
+                Drop(PickStoragePoint(_putAwayStorage), $"put away at {_putAwayStorage.PlaceId}");
                 ClearPutAway();
                 return;
             }
 
             _isPutAwayPending = IsHolding;
+        }
+
+        // Somewhere in the storage clear of the tools already there: every villager used to drop at the one approach point,
+        // so the tools piled up on a single spot
+        private Vector3 PickStoragePoint(PlaceArea storage)
+        {
+            Vector3 best = transform.position;
+            float bestGap = -1f;
+            for (int i = 0; i < STORAGE_POINT_TRIES; i++)
+            {
+                _storageRandom ??= new System.Random(GetInstanceID());
+                Vector3 candidate = storage.GetRandomPoint(_storageRandom);
+                float gap = float.MaxValue;
+                foreach (ToolItem tool in ToolRegistry.All)
+                {
+                    if (tool == null || tool == _heldTool)
+                    {
+                        continue;
+                    }
+
+                    Vector3 offset = tool.transform.position - candidate;
+                    offset.y = 0f;
+                    gap = Mathf.Min(gap, offset.magnitude);
+                }
+
+                if (gap >= STORAGE_TOOL_SPACING)
+                {
+                    return candidate;
+                }
+
+                if (gap > bestGap)
+                {
+                    best = candidate;
+                    bestGap = gap;
+                }
+            }
+
+            return best;
         }
 
         private void ClearPutAway()
