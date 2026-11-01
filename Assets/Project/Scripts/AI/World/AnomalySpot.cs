@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
 
