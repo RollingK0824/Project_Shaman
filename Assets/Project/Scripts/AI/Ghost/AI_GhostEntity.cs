@@ -643,6 +643,12 @@ namespace ProjectShaman.AI.Ghost
                 return villager.PublicInfo.Gender.ToString();
             }
 
+            // An anomaly: which one is left there (handprint, blood, filth)
+            if (target.TryGetComponent(out ProjectShaman.AI.World.AnomalySpot spot))
+            {
+                return spot.PickKind();
+            }
+
             ProjectShaman.AI.World.Animal animal = target.GetComponentInParent<ProjectShaman.AI.World.Animal>();
             return animal != null ? animal.CorpseKey : null;
         }
@@ -1015,6 +1021,7 @@ namespace ProjectShaman.AI.Ghost
             Vector3 tracePosition;
             string victimId = null;
             string corpseKey = null;
+            Transform traceAnchor = null;
 
             if (_session.Shape == GhostActionShape.Carry)
             {
@@ -1038,6 +1045,7 @@ namespace ProjectShaman.AI.Ghost
                 tracePosition = _session.Target.gameObject.transform.position;
                 victimId = _session.Target.gameObject.TryGetComponent(out AI_Core victim) ? victim.LogId : null;
                 corpseKey = CorpseKeyOf(_session.Target.gameObject);
+                traceAnchor = _session.Target.gameObject.TryGetComponent(out ProjectShaman.AI.World.AnomalySpot anomaly) ? anomaly.transform : null;
 
                 if (!GhostVerbExecutor.TryApply(_session.Target, context))
                 {
@@ -1053,7 +1061,9 @@ namespace ProjectShaman.AI.Ghost
 
             if (action.TracePrefab != null)
             {
-                GameObject traceObject = _ledger.SpawnTrace(action.TracePrefab, tracePosition, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+                // An anomaly lies along its spot (a handprint flat on the door); the rest face the way the ghost faced
+                Quaternion traceRotation = traceAnchor != null ? traceAnchor.rotation : Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+                GameObject traceObject = _ledger.SpawnTrace(action.TracePrefab, tracePosition, traceRotation);
                 if (traceObject != null && !string.IsNullOrEmpty(corpseKey) && traceObject.TryGetComponent(out Trace.GhostTrace left))
                 {
                     left.SetVisualKey(corpseKey);
