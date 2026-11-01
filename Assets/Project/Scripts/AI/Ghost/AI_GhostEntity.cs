@@ -24,10 +24,16 @@ namespace ProjectShaman.AI.Ghost
         private const float FOLLOW_UPDATE_DISTANCE = 0.5f;
         private const float IDLE_ARRIVE_DISTANCE = 0.8f;
         private const int REPEL_PLACE_TRIES = 3;
+        // A child of that name in a ghost model prefab (made by ProjectShaman/AI/Setup Ghost Carry Sockets, under the right hand)
+        public const string CARRY_SOCKET_NAME = "CarrySocket";
         // Salt never throws a ghost into a house
         private static readonly PlaceType[] REPEL_PLACE_TYPES = { PlaceType.Work, PlaceType.Rest, PlaceType.Storage, PlaceType.Accumulation, PlaceType.Area };
 
+        [Tooltip("Fallback when the model has no CarrySocket of its own: in front of the body at hand height")]
         [SerializeField] private Transform _carrySocket;
+
+        private AI_ModelVisual _modelVisual;
+        private Transform _modelSocket;
 
         [Header("Runtime (server only)")]
         [SerializeField] private string _ghostId;
@@ -95,12 +101,54 @@ namespace ProjectShaman.AI.Ghost
         public float Radius => _radius;
         public bool IsHunter => _isHunter;
         public GhostActionSession Session => _session;
-        public Transform CarrySocket => _carrySocket != null ? _carrySocket : transform;
+        // The socket in the current model's hand (each ghost model prefab has its own CarrySocket under the right hand),
+        // else the entity's socket in front of the body, else the root
+        public Transform CarrySocket => _modelSocket != null ? _modelSocket : _carrySocket != null ? _carrySocket : transform;
 
         private void Awake()
         {
             _movement = GetComponent<AI_Movement>();
             _behaviorAgent = GetComponent<BehaviorGraphAgent>();
+            _modelVisual = GetComponent<AI_ModelVisual>();
+            if (_modelVisual != null)
+            {
+                _modelVisual.OnModelChanged += BindModelSocket;
+                BindModelSocket(_modelVisual.CurrentModel);
+            }
+        }
+
+        private void BindModelSocket(GameObject model)
+        {
+            _modelSocket = model != null ? FindChild(model.transform, CARRY_SOCKET_NAME) : null;
+            if (model != null && _modelSocket == null)
+            {
+                AILog.Warn(AILog.GHOST, $"{name}: model {model.name} has no {CARRY_SOCKET_NAME}, carrying in front of the body");
+            }
+
+            // Already carrying (the model came late): the tool moves to the new hand
+            if (_session != null && _session.Carried is ToolItem tool)
+            {
+                tool.RebindSocket(CarrySocket);
+            }
+        }
+
+        private static Transform FindChild(Transform parent, string childName)
+        {
+            foreach (Transform child in parent)
+            {
+                if (child.name == childName)
+                {
+                    return child;
+                }
+
+                Transform found = FindChild(child, childName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         public void Initialize(AI_Possession possession, NightOutcomeLedger ledger, IReadOnlyList<GhostNightActionData> actions, string hostVillagerId, Vector3 center, float radius, int huntKills, bool huntIgnoresRadius, bool canChasePlayer, AIBehaviourConfig config, int seed)
@@ -160,6 +208,11 @@ namespace ProjectShaman.AI.Ghost
         private void OnDestroy()
         {
             _idle?.Stop("destroyed");
+
+            if (_modelVisual != null)
+            {
+                _modelVisual.OnModelChanged -= BindModelSocket;
+            }
 
             if (!string.IsNullOrEmpty(_ghostId))
             {

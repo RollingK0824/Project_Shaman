@@ -7,11 +7,14 @@ namespace ProjectShaman.AI
     [RequireComponent(typeof(NavMeshAgent))]
     public class AI_Movement : MonoBehaviour, INetworkMovable
     {
+        private const float UNREACHABLE_GAP = 1f;
+
         private NavMeshAgent agent;
         private float defaultSpeed;
         // Callers set the speed they want; a slow effect scales it without them knowing
         private float baseSpeed;
         private float speedMultiplier = 1f;
+        private bool destinationRejected;
 
         public bool IsStopped => agent != null && agent.isStopped;
         public bool HasReachedDestination
@@ -24,6 +27,19 @@ namespace ProjectShaman.AI
                 return agent.hasPath || Vector3.Distance(transform.position, agent.destination) <= agent.stoppingDistance;
             }
         }
+        public bool IsDestinationUnreachable
+        {
+            get
+            {
+                if (agent == null || !agent.isActiveAndEnabled || agent.pathPending) return false;
+                if (destinationRejected || agent.pathStatus == NavMeshPathStatus.PathInvalid) return true;
+                if (agent.pathStatus != NavMeshPathStatus.PathPartial) return false;
+
+                Vector3 gap = agent.pathEndPosition - agent.destination;
+                gap.y = 0f;
+                return gap.sqrMagnitude > UNREACHABLE_GAP * UNREACHABLE_GAP;
+            }
+        }
         public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
         public float DefaultSpeed => defaultSpeed;
 
@@ -32,6 +48,14 @@ namespace ProjectShaman.AI
             agent = GetComponent<NavMeshAgent>();
             defaultSpeed = agent != null ? agent.speed : 0f;
             baseSpeed = defaultSpeed;
+        }
+
+        // The villager's own walking pace (picked once at spawn); SetSpeed/ResetSpeed and the late run are measured from it
+        public void SetDefaultSpeed(float speed)
+        {
+            defaultSpeed = Mathf.Max(0.1f, speed);
+            baseSpeed = defaultSpeed;
+            ApplySpeed();
         }
 
         public void SetSpeed(float speed)
@@ -98,7 +122,7 @@ namespace ProjectShaman.AI
             if (agent != null && agent.isActiveAndEnabled)
             {
                 agent.isStopped = false;
-                agent.SetDestination(destination);
+                destinationRejected = !agent.SetDestination(destination);
             }
         }
 

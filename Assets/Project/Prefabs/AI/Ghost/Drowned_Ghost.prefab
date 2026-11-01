@@ -1,5 +1,36 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &6226749106134344296
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5940253964731891714}
+  m_Layer: 0
+  m_Name: CarrySocket
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5940253964731891714
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6226749106134344296}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 735636917765462419}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &3746928837530950064
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -74,6 +105,14 @@ PrefabInstance:
       objectReference: {fileID: 9100000, guid: b186fa3d7a9d31b4db55b5cad2e0cf94, type: 2}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
-    m_AddedGameObjects: []
+    m_AddedGameObjects:
+    - targetCorrespondingSourceObject: {fileID: 4164213433230802979, guid: c4e029c5cc1c6ae48a3342a78c8957ef, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 5940253964731891714}
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: c4e029c5cc1c6ae48a3342a78c8957ef, type: 3}
+--- !u!4 &735636917765462419 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 4164213433230802979, guid: c4e029c5cc1c6ae48a3342a78c8957ef, type: 3}
+  m_PrefabInstance: {fileID: 3746928837530950064}
+  m_PrefabAsset: {fileID: 0}

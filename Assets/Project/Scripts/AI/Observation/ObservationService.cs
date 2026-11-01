@@ -241,7 +241,7 @@ namespace ProjectShaman.AI.Observation
             AILog.Log(AILog.STRESS, villager.Id, $"Anxious look-alike behaviour ({(mutter ? "mutter" : "tremble")})");
         }
 
-        // Each witness keeps one or two of gender / age / class, never the name
+        // Each witness keeps two of gender / age / class (config), never the name
         private int PickTraitMask()
         {
             int count = _random.Next(_config.WitnessTraitMin, _config.WitnessTraitMax + 1);

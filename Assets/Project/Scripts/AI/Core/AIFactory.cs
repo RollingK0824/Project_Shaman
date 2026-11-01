@@ -19,6 +19,8 @@ namespace ProjectShaman.AI.Core
         // Around the NavMeshAgent default 50; ghosts and minions keep 50
         private const int AVOIDANCE_PRIORITY_MIN = 30;
         private const int AVOIDANCE_PRIORITY_MAX = 69;
+        // ±20% around the prefab's agent speed
+        private const float WALK_SPEED_SPREAD = 0.2f;
 
         [SerializeField] private GameObject _villagerPrefab;
         [SerializeField] private bool _useJsonData = true;
@@ -34,6 +36,7 @@ namespace ProjectShaman.AI.Core
         private readonly List<AI_Core> _spawnedVillagers = new List<AI_Core>();
         private readonly HashSet<string> _usedNames = new HashSet<string>();
         private readonly List<int> _avoidancePriorities = new List<int>();
+        private System.Random _speedRandom;
         private IAIDataProvider _dataProvider;
         private ScheduleBuilder _scheduleBuilder;
         private System.Random _random;
@@ -153,6 +156,7 @@ namespace ProjectShaman.AI.Core
             OnVillagersCleared?.Invoke();
 
             _spawnedVillagers.Clear();
+            _speedRandom = null;
             _registry?.Clear();
             PlaceRegistry.ClearOwners();
             _usedNames.Clear();
@@ -520,6 +524,7 @@ namespace ProjectShaman.AI.Core
             }
 
             AssignAvoidancePriority(instance, profile);
+            AssignWalkSpeed(instance, profile);
             AILog.Log(AILog.FACTORY, profile.VillagerId, $"Instantiated at {profile.HomePosition}");
             return core;
         }
@@ -544,6 +549,21 @@ namespace ProjectShaman.AI.Core
 
             agent.avoidancePriority = _avoidancePriorities[_spawnedVillagers.Count % _avoidancePriorities.Count];
             AILog.Log(AILog.FACTORY, profile.VillagerId, $"Avoidance priority {agent.avoidancePriority}");
+        }
+
+        // Each villager walks at its own pace around the prefab's speed, from the shared seed so every run of a seed agrees
+        private void AssignWalkSpeed(GameObject instance, VillagerProfile profile)
+        {
+            if (!instance.TryGetComponent(out AI_Movement movement) || movement.DefaultSpeed <= 0f)
+            {
+                return;
+            }
+
+            _speedRandom ??= new System.Random(unchecked(Seed * 31 + 41));
+            float spread = 1f + (float)(_speedRandom.NextDouble() * 2.0 - 1.0) * WALK_SPEED_SPREAD;
+            float speed = movement.DefaultSpeed * spread;
+            movement.SetDefaultSpeed(speed);
+            AILog.Log(AILog.FACTORY, profile.VillagerId, $"Walk speed {speed:F2} (x{spread:F2})");
         }
 
         [ContextMenu("Create Villagers Offline")]

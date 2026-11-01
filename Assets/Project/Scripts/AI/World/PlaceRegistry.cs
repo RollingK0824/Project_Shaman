@@ -101,10 +101,12 @@ namespace ProjectShaman.AI.World
             return !string.IsNullOrEmpty(placeId) && _places.TryGetValue(placeId, out place);
         }
 
-        // A routine's place: the place itself, or of a group the member nearest to `near` (a villager, its home)
+        // A routine's place: the place itself, or of a group the member nearest to `near` (a villager, its home).
+        // A map area of the same id (the whole 장터 street, for naming the map) is never a place to stand and work:
+        // the group's spots are used instead (a hawker was sent to a house wall inside the street's box)
         public static bool TryPick(string placeOrGroupId, Vector3 near, out PlaceArea place)
         {
-            if (TryGet(placeOrGroupId, out place))
+            if (TryGet(placeOrGroupId, out place) && place.Type != PlaceType.Area)
             {
                 return true;
             }
@@ -137,7 +139,8 @@ namespace ProjectShaman.AI.World
 
         public static bool IsGroup(string placeOrGroupId)
         {
-            return !string.IsNullOrEmpty(placeOrGroupId) && !_places.ContainsKey(placeOrGroupId) && CountGroup(placeOrGroupId) > 0;
+            return !string.IsNullOrEmpty(placeOrGroupId) && (!_places.TryGetValue(placeOrGroupId, out PlaceArea place) || place.Type == PlaceType.Area)
+                && CountGroup(placeOrGroupId) > 0;
         }
 
         public static int CountGroup(string group)
