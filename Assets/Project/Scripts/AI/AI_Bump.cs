@@ -76,6 +76,8 @@ namespace ProjectShaman.AI
         public event Action<Vector3, Vector3> OnBumped;
 
         public bool IsSimulating { get; set; }
+        // Being shoved aside or sliding back to its spot: a short stagger shown by the tilt, not a walk
+        public bool IsDisplaced => Time.time < _shoveUntil || _returnAt >= 0f;
         public Vector3 Velocity => _agent != null && _agent.isActiveAndEnabled ? _agent.velocity : Vector3.zero;
 
         private void Awake()

@@ -249,6 +249,8 @@ namespace ProjectShaman.AI
         }
 
         // Measured from the transform, so it also catches a client whose synced Speed lags or a move that bypasses the agent
+        private AI_Bump _bump;
+
         private void CheckWalkingPose()
         {
             float deltaTime = Mathf.Max(Time.deltaTime, 0.0001f);
@@ -257,7 +259,12 @@ namespace ProjectShaman.AI
             step.y = 0f;
             float groundSpeed = step.magnitude / deltaTime;
 
-            string pose = groundSpeed > MISMATCH_SPEED ? DescribeWrongPose() : null;
+            if (_bump == null)
+            {
+                _bump = GetComponent<AI_Bump>();
+            }
+
+            string pose = groundSpeed > MISMATCH_SPEED && (_bump == null || !_bump.IsDisplaced) ? DescribeWrongPose() : null;
             if (pose == null)
             {
                 _mismatchSeconds = 0f;
