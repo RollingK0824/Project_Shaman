@@ -31,7 +31,7 @@ namespace ProjectShaman.AI.Data
         [SerializeField, Min(0f)] private float _objectiveDamage = 1f;
 
         [Header("Item Reaction")]
-        [Tooltip("After reacting to an item a minion ignores that same item for this long. Salt is damage and bean-mugwort does nothing, so only the bell and gong count")]
+        [Tooltip("After reacting to an item a minion ignores that same item for this long. Salt slows it (0 = every hit slows again), bean-mugwort does nothing")]
         [SerializeField] private ItemReactionCooldowns _itemCooldowns = new ItemReactionCooldowns(0f, 0f, 1f, 5f);
 
         public float MoveSpeed => _moveSpeed;
