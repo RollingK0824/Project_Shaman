@@ -61,6 +61,9 @@ namespace ProjectShaman.AI.Work
 
         // The right hand of the body in use (the Humanoid bone, else a bone named hand_r), found again after the body is
         // swapped for the villager's gender. The root only when the body has no hand, so a tool never stays behind at the feet
+        // The right hand a held tool follows (also on clients, which follow it themselves)
+        public Transform HandSocket => Socket;
+
         private Transform Socket
         {
             get
