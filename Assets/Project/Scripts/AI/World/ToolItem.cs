@@ -199,9 +199,15 @@ namespace ProjectShaman.AI.World
 
         private void FollowSocket()
         {
+            FollowSocket(_holderSocket);
+        }
+
+        // Clients: the holder's own hand on this peer (Net_ToolItem), so the tool keeps up with the animation
+        public void FollowSocket(Transform socket)
+        {
             transform.SetPositionAndRotation(
-                _holderSocket.TransformPoint(_heldLocalOffset),
-                _holderSocket.rotation * Quaternion.Euler(_heldLocalEuler));
+                socket.TransformPoint(_heldLocalOffset),
+                socket.rotation * Quaternion.Euler(_heldLocalEuler));
         }
 
         private void OnDrawGizmos()

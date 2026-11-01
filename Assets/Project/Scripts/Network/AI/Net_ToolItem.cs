@@ -3,6 +3,8 @@ using Mirror;
 using UnityEngine;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.World;
+using ProjectShaman.AI.Work;
+using ProjectShaman.AI.Ghost;
 
 namespace ProjectShaman.Network.AI
 {
@@ -26,6 +28,9 @@ namespace ProjectShaman.Network.AI
         [SyncVar(hook = nameof(OnHeldChanged))] private bool _isHeld;
         [SyncVar(hook = nameof(OnStowedChanged))] private bool _isStowed;
         [SyncVar] private bool _isUnclaimed;
+        // Who holds it (villager, ghost or player): clients follow that holder's hand themselves. The synced transform
+        // lagged behind the animation and stopped updating on small moves, so the tool stood still beside a working villager
+        [SyncVar] private uint _holderNetId;
 
         public ToolItem Tool => _tool;
         public GameObject Carrier => _carrier;
@@ -238,6 +243,8 @@ namespace ProjectShaman.Network.AI
         {
             _isHeld = _tool.IsHeld;
             _isUnclaimed = _tool.IsUnclaimed;
+            NetworkIdentity holder = _tool.IsHeld && _tool.HolderSocket != null ? _tool.HolderSocket.GetComponentInParent<NetworkIdentity>() : null;
+            _holderNetId = holder != null ? holder.netId : 0;
 
             if (string.IsNullOrEmpty(_carrierId))
             {
@@ -253,6 +260,36 @@ namespace ProjectShaman.Network.AI
             {
                 DropFromCarrier(_carrier.transform.position, "carrier died");
             }
+        }
+
+        // After the synced transform has been applied this frame: the held tool sits in the holder's hand on this peer
+        private void LateUpdate()
+        {
+            if (isServer || !_isHeld || _holderNetId == 0 || !NetworkClient.spawned.TryGetValue(_holderNetId, out NetworkIdentity holder) || holder == null)
+            {
+                return;
+            }
+
+            Transform socket = FindHolderSocket(holder);
+            if (socket != null)
+            {
+                _tool.FollowSocket(socket);
+            }
+        }
+
+        private static Transform FindHolderSocket(NetworkIdentity holder)
+        {
+            if (holder.TryGetComponent(out AI_ToolHandler villager))
+            {
+                return villager.HandSocket;
+            }
+
+            if (holder.TryGetComponent(out AI_GhostEntity ghost))
+            {
+                return ghost.CarrySocket;
+            }
+
+            return holder.transform.Find(CARRY_ANCHOR_NAME);
         }
 
         private void OnHeldChanged(bool oldValue, bool newValue)

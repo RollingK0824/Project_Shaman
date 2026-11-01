@@ -17,6 +17,8 @@ namespace ProjectShaman.AI.Minion
         private const float PIERCE_TIME_MARGIN = 0.6f;
 
         [SerializeField] private MinionData _data;
+        // x2 per ghost sealed so far (MinionSpawner)
+        private float _speedMultiplier = 1f;
 
         [Header("Pierce attack")]
         [Tooltip("Flat distance to the player from which the minion lunges in (the hit is judged against AttackRange)")]
@@ -97,9 +99,10 @@ namespace ProjectShaman.AI.Minion
             NotifyRemoved();
         }
 
-        public void Initialize(MinionBattlefield battlefield)
+        public void Initialize(MinionBattlefield battlefield, float speedMultiplier = 1f)
         {
             _battlefield = battlefield;
+            _speedMultiplier = Mathf.Max(1f, speedMultiplier);
             _state = MinionState.Inactive;
             _isRemoved = false;
             _player = default;
@@ -192,7 +195,7 @@ namespace ProjectShaman.AI.Minion
                 }
             }
 
-            MoveToward(_battlefield.Objective.position, _data.MoveSpeed);
+            MoveToward(_battlefield.Objective.position, _data.MoveSpeed * _speedMultiplier);
         }
 
         private bool CanAggro()
@@ -242,7 +245,7 @@ namespace ProjectShaman.AI.Minion
                 return;
             }
 
-            MoveToward(playerPosition, _data.ChaseSpeed);
+            MoveToward(playerPosition, _data.ChaseSpeed * _speedMultiplier);
         }
 
         private bool ShouldGiveUpChase(float distance)
@@ -273,7 +276,7 @@ namespace ProjectShaman.AI.Minion
             bool through = MinionBattlefield.FlatDistance(position, _pierceEnd) <= RANGE_TOLERANCE || Time.time >= _pierceUntil;
             if (!through)
             {
-                MoveDirect(_pierceEnd, _lungeSpeed);
+                MoveDirect(_pierceEnd, _lungeSpeed * _speedMultiplier);
                 return;
             }
 
@@ -374,7 +377,7 @@ namespace ProjectShaman.AI.Minion
             _lastPiercePosition = position;
             _pierceEnd = playerPosition + direction * _pierceThroughDistance;
             float length = MinionBattlefield.FlatDistance(position, _pierceEnd);
-            _pierceUntil = Time.time + length / _lungeSpeed + PIERCE_TIME_MARGIN;
+            _pierceUntil = Time.time + length / (_lungeSpeed * _speedMultiplier) + PIERCE_TIME_MARGIN;
             FaceToward(playerPosition);
             OnAttackStarted?.Invoke(this);
         }
@@ -453,7 +456,7 @@ namespace ProjectShaman.AI.Minion
             Vector3 away = transform.position - _fearSource;
             away.y = 0f;
             away = away.sqrMagnitude > 0.0001f ? away.normalized : transform.forward;
-            MoveDirect(transform.position + away * _fleeLookAhead, _data.ChaseSpeed);
+            MoveDirect(transform.position + away * _fleeLookAhead, _data.ChaseSpeed * _speedMultiplier);
         }
 
         private void MoveToward(Vector3 destination, float speed)
