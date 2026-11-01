@@ -8,15 +8,12 @@ namespace ProjectShaman.AI.Work
 {
     public static class ToolSearchPlanner
     {
-        // Known sightings first, then the guesses by distance (work place, use places, the tool's own sheds),
-        // then every other shed in the village, each next one the nearest to the last.
-        // Spots in `excluded` (already looked over this routine) are left out of the guesses;
-        // `storages` receives every shed centre so the caller can tell a shed from other spots
+        // 1st the sheds: the tool's own sheds nearest first, then every other shed in the village, each next one the nearest
+        // to the last. 2nd the memory: where the tool was seen or someone said it was (asking around adds to it).
+        // Spots in `excluded` (already looked over this routine) are left out; `storages` receives every shed centre
         public static void BuildCandidates(
             string toolTypeId,
             IReadOnlyList<ToolSighting> sightings,
-            string currentPlaceId,
-            IReadOnlyDictionary<string, List<string>> toolUsePlaces,
             Vector3 origin,
             float mergeDistance,
             float now,
@@ -28,46 +25,15 @@ namespace ProjectShaman.AI.Work
             result.Clear();
             storages.Clear();
 
-            foreach (ToolSighting sighting in sightings)
-            {
-                float elapsed = now - sighting.SeenTime;
-                bool isSeenInUseJustNow = !string.IsNullOrEmpty(sighting.HolderId) && elapsed >= 0f && elapsed <= freshHeldWindow;
-                if (isSeenInUseJustNow)
-                {
-                    continue;
-                }
-
-                AddUnique(result, sighting.Position, mergeDistance);
-            }
-
-            int knownCount = result.Count;
-            List<Vector3> guesses = new List<Vector3>();
-
-            if (PlaceRegistry.TryGet(currentPlaceId, out PlaceArea currentPlace))
-            {
-                AddGuess(guesses, result, excluded, currentPlace.Center, mergeDistance);
-            }
-
-            if (toolUsePlaces != null && toolUsePlaces.TryGetValue(toolTypeId, out List<string> usePlaces))
-            {
-                foreach (string placeId in usePlaces)
-                {
-                    if (PlaceRegistry.TryGet(placeId, out PlaceArea usePlace))
-                    {
-                        AddGuess(guesses, result, excluded, usePlace.Center, mergeDistance);
-                    }
-                }
-            }
-
+            List<Vector3> ownSheds = new List<Vector3>();
             ToolRegistry.CollectStoragePositions(toolTypeId, storages);
-
             foreach (Vector3 storage in storages)
             {
-                AddGuess(guesses, result, excluded, storage, mergeDistance);
+                AddGuess(ownSheds, result, excluded, storage, mergeDistance);
             }
 
-            guesses.Sort((a, b) => (a - origin).sqrMagnitude.CompareTo((b - origin).sqrMagnitude));
-            result.AddRange(guesses);
+            ownSheds.Sort((a, b) => (a - origin).sqrMagnitude.CompareTo((b - origin).sqrMagnitude));
+            result.AddRange(ownSheds);
 
             List<PlaceArea> sheds = new List<PlaceArea>();
             PlaceRegistry.CollectByType(PlaceType.Storage, sheds);
@@ -79,7 +45,7 @@ namespace ProjectShaman.AI.Work
                 AddGuess(otherSheds, result, excluded, shed.Center, mergeDistance);
             }
 
-            Vector3 from = result.Count > knownCount ? result[result.Count - 1] : origin;
+            Vector3 from = result.Count > 0 ? result[result.Count - 1] : origin;
             while (otherSheds.Count > 0)
             {
                 int nearest = 0;
@@ -94,6 +60,17 @@ namespace ProjectShaman.AI.Work
                 from = otherSheds[nearest];
                 result.Add(from);
                 otherSheds.RemoveAt(nearest);
+            }
+
+            // The caller passes only sightings not looked over since, so a shed someone named again is gone back to
+            foreach (ToolSighting sighting in sightings)
+            {
+                float elapsed = now - sighting.SeenTime;
+                bool isSeenInUseJustNow = !string.IsNullOrEmpty(sighting.HolderId) && elapsed >= 0f && elapsed <= freshHeldWindow;
+                if (!isSeenInUseJustNow)
+                {
+                    AddUnique(result, sighting.Position, mergeDistance);
+                }
             }
         }
 

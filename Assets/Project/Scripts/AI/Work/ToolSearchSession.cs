@@ -9,9 +9,9 @@ using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Work
 {
-    // One routine's search, in rounds with no time limit: the storage and the remembered spots are looked over in plan order;
-    // when none has the tool, the villager asks around nearby (what it hears updates its memory) and the next round plans
-    // again from the storage. After ToolSearchRounds empty rounds it gives up and asks the players (find-tool request)
+    // One routine's search, in rounds with no time limit: first the sheds, then the remembered spots; when none has the
+    // tool, the villager asks the nearest villager (what it hears goes into its memory) and the next round looks over only
+    // what it did not see yet (the new leads). After ToolSearchRounds empty rounds it asks the players (find-tool request)
     public class ToolSearchSession
     {
         private const float SPOT_MERGE_DISTANCE = 2.4f;
@@ -94,10 +94,9 @@ namespace ProjectShaman.AI.Work
 
             _owner.Perception.ScanTools(Position, Config.ToolSightRadius);
 
-            string placeId = routine.Source != null ? routine.PlaceId : null;
             IReadOnlyList<ToolSighting> sightings = _owner.Memory.ToolSightings.Get(RequiredToolType);
             CollectOpenSightings(sightings);
-            ToolSearchPlanner.BuildCandidates(RequiredToolType, _openSightings, placeId, _owner.Context.ToolUsePlaces, Position, SPOT_MERGE_DISTANCE, Now,
+            ToolSearchPlanner.BuildCandidates(RequiredToolType, _openSightings, Position, SPOT_MERGE_DISTANCE, Now,
                 Config.ToolSightInterval * 3f, _checkedPositions, _candidates, _storages);
 
             foreach (ToolSighting sighting in sightings)
@@ -283,9 +282,8 @@ namespace ProjectShaman.AI.Work
 
             if (_round < Config.ToolSearchRounds)
             {
-                // Next round from the storage again: a tool may have been put back there meanwhile
+                // Next round: only the leads heard now (a shed named again counts as new). No lead: the next villager is asked
                 _round++;
-                ForgetStorageChecks();
                 bool asking = _owner.Inquiry.TryStart(RequiredToolType);
                 AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' round {_round - 1} empty ({progress}), {(asking ? "asks around" : "nobody nearby to ask")}, round {_round} next");
                 Cancel();
@@ -307,11 +305,6 @@ namespace ProjectShaman.AI.Work
         {
             _checkedSpots.Add(new CheckedSpot { Position = _currentSpot, Time = Now });
             _checkedPositions.Add(_currentSpot);
-        }
-
-        private void ForgetStorageChecks()
-        {
-            _checkedPositions.RemoveAll(position => ToolSearchPlanner.IsNear(_storages, position, SPOT_MERGE_DISTANCE));
         }
 
         // Sightings at a spot already looked over are stale unless seen there again since
