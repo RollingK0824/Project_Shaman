@@ -29,6 +29,10 @@ namespace ProjectShaman.AI.Work
         [SerializeField] private float _restArriveDistance = 2f;
         [SerializeField] private float _restStillSpeed = 0.1f;
         [Tooltip("Rest animations sitting on the floor: a villager in one stays seated in a conversation")]
+        // Sitting or lying needs this much room around the hips (the body spreads out behind the feet)
+        private const float POSE_CLEARANCE = 0.7f;
+        private const float POSE_CHECK_HEIGHT = 0.5f;
+
         [SerializeField] private string[] _seatedRestAnimations = { "Rest_Sit", "Rest_Drink" };
         [SerializeField] private string _seatedTalkAnimation = "Rest_Sit";
         [SerializeField] private string _sleepAnimation = "Sleep";
@@ -94,6 +98,7 @@ namespace ProjectShaman.AI.Work
 
             if (wanted.Length > 0)
             {
+                ClearSpaceForPose();
                 _visual.PlayAction(wanted);
             }
             else if (_visual.CurrentAction == _restAnimation)
@@ -104,6 +109,52 @@ namespace ProjectShaman.AI.Work
             string reason = _core.IsAsleep ? "asleep" : _core.CurrentRoutine.Source != null ? _core.CurrentRoutine.Source.RoutineId : "no routine";
             AILog.Log(AILog.WORK, _core.LogId, wanted.Length > 0 ? $"Rest pose '{wanted}' ({reason})" : $"Rest pose end '{_restAnimation}'");
             _restAnimation = wanted;
+        }
+
+        // Sitting or lying spreads the body out behind the feet: a villager resting against a tree trunk or a wall sank into
+        // it. Before the pose, it steps clear of the nearest solid thing around its hips and turns its back to it
+        private void ClearSpaceForPose()
+        {
+            Vector3 hips = transform.position + Vector3.up * POSE_CHECK_HEIGHT;
+            Collider nearest = null;
+            Vector3 nearestPoint = default;
+            float nearestSqr = POSE_CLEARANCE * POSE_CLEARANCE;
+
+            foreach (Collider other in Physics.OverlapSphere(hips, POSE_CLEARANCE, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (other is TerrainCollider || other.transform.IsChildOf(transform) || other.attachedRigidbody != null
+                    || other.GetComponentInParent<AI_Core>() != null || other.GetComponentInParent<CharacterController>() != null)
+                {
+                    continue;
+                }
+
+                Vector3 point = other.ClosestPoint(hips);
+                Vector3 flat = hips - point;
+                flat.y = 0f;
+                if (flat.sqrMagnitude < nearestSqr)
+                {
+                    nearest = other;
+                    nearestPoint = point;
+                    nearestSqr = flat.sqrMagnitude;
+                }
+            }
+
+            if (nearest == null)
+            {
+                return;
+            }
+
+            Vector3 away = transform.position - nearestPoint;
+            away.y = 0f;
+            away = away.sqrMagnitude > 0.0001f ? away.normalized : -transform.forward;
+            float push = POSE_CLEARANCE - Mathf.Sqrt(nearestSqr);
+            Vector3 target = transform.position + away * push;
+            if (UnityEngine.AI.NavMesh.SamplePosition(target, out UnityEngine.AI.NavMeshHit hit, push + 0.5f, UnityEngine.AI.NavMesh.AllAreas)
+                && (_movement == null || _movement.Warp(hit.position)))
+            {
+                transform.rotation = Quaternion.LookRotation(away);
+                AILog.Log(AILog.WORK, _core.LogId, $"Stepped {push:F2}m clear of {nearest.name} before the rest pose");
+            }
         }
 
         private bool IsRestingInPlace()

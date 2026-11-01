@@ -82,6 +82,33 @@ namespace ProjectShaman.AI.Dialogue
             return DialogueLibrary.Line("greet", _random);
         }
 
+        // Resting for want of its tool: says why first. Someone it saw or heard of using it today is named
+        public static string ToolWaitGreeting(AI_Conversation villager)
+        {
+            if (villager == null || villager.Core == null || AIManager.Existing == null
+                || !AIManager.Existing.TryGetWaitingTool(villager.VillagerId, out string toolType))
+            {
+                return null;
+            }
+
+            string tool = AIDisplayNames.Tool(toolType);
+            AI_Memory memory = villager.GetComponent<AI_Memory>();
+            int today = villager.Core.CurrentRoutine.DayCount;
+            if (memory != null && memory.ToolSightings != null)
+            {
+                foreach (ToolSighting sighting in memory.ToolSightings.Get(toolType))
+                {
+                    if (sighting.DayCount == today && !string.IsNullOrEmpty(sighting.HolderId) && sighting.HolderId != villager.VillagerId
+                        && !sighting.HolderId.StartsWith("GHOST_") && !sighting.HolderId.StartsWith("Player_"))
+                    {
+                        return DialogueComposer.Fill(DialogueLibrary.Line("greet.tool_in_use", _random), "holder", DialogueComposer.NameOf(sighting.HolderId), "tool", tool);
+                    }
+                }
+            }
+
+            return DialogueComposer.Fill(DialogueLibrary.Line("greet.tool_lost", _random), "tool", tool);
+        }
+
         // In the house for the evening the villager is about to turn in, and says so
         public static string Farewell(AI_Conversation villager)
         {

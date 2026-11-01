@@ -290,7 +290,8 @@ namespace ProjectShaman.Network.AI
             SplitTopics(VillagerDialogueService.BuildTopics(_conversation, config, _todayNext, _anomalyNext), out string[] ids, out string[] labels);
             AILog.Log(AILog.INTERACTION, _conversation.VillagerId, $"Dialogue with {player.name} ({ids.Length} topics)");
             // Called on at home in the evening: a late-caller greeting instead of the daytime one
-            string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random) : VillagerDialogueService.Greeting());
+            string opening = greeting ?? (_core != null && _core.IsHomeForNight ? DialogueLibrary.Line("greet.home", _random)
+                : VillagerDialogueService.ToolWaitGreeting(_conversation) ?? VillagerDialogueService.Greeting());
             TalkGesture();
             TargetOpenDialogue(sender, _conversation.DisplayName, opening, ids, labels);
             return true;
