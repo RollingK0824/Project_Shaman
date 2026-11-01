@@ -70,6 +70,7 @@ namespace ProjectShaman.AI.Ghost
         private readonly List<GhostNightActionData> _candidates = new List<GhostNightActionData>();
         private readonly List<string> _unavailableReasons = new List<string>();
         private GhostActionSession _session;
+        private float _sessionTravelSeconds;
         private GhostHuntPlan _hunt;
         private GhostNightActionData _huntAction;
         private GhostIdleController _idle;
@@ -390,10 +391,11 @@ namespace ProjectShaman.AI.Ghost
             }
 
             _session = new GhostActionSession(++_commandSerial, picked, target, Time.time);
+            _sessionTravelSeconds = TravelSecondsTo(target.gameObject.transform.position);
             _nextTargetCheckTime = Time.time + TARGET_CHECK_INTERVAL;
             ApplyCommandToBlackboard();
             _lastDecision = _session.ToString();
-            AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} (use {UsesOf(picked)}/{FormatMax(picked)})");
+            AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} (use {UsesOf(picked)}/{FormatMax(picked)}, walk {_sessionTravelSeconds:F0}s)");
         }
 
         private bool IsAvailable(GhostNightActionData action, out string reason)
@@ -544,7 +546,9 @@ namespace ProjectShaman.AI.Ghost
 
         private void WatchSession()
         {
-            float timeout = _session.Action.IsHunt ? _config.GhostHuntTimeoutSeconds : _config.GhostCommandTimeoutSeconds;
+            // The timeout is for a ghost that got stuck, so the walk there is added: a far target (livestock in a pen
+            // across the village) took longer than the whole timeout to reach and always failed
+            float timeout = (_session.Action.IsHunt ? _config.GhostHuntTimeoutSeconds : _config.GhostCommandTimeoutSeconds) + _sessionTravelSeconds;
             if (Time.time - _session.StartTime > timeout)
             {
                 FailCommand("timeout");
@@ -809,6 +813,17 @@ namespace ProjectShaman.AI.Ghost
             float channel = Mathf.Max(_config.GhostMinChannelSeconds, action.Duration);
             float needed = walkDistance / speed + channel + _config.GhostHideMaxDistance / speed;
             return needed <= _config.GhostCommandTimeoutSeconds - elapsed;
+        }
+
+        // NavMesh walk time to a point at the default speed; 0 when there is no full path (the timeout then stays as it was)
+        private float TravelSecondsTo(Vector3 point)
+        {
+            if (_movement == null || _movement.DefaultSpeed <= 0f || !TryGetPathLength(point, out float length))
+            {
+                return 0f;
+            }
+
+            return length / _movement.DefaultSpeed;
         }
 
         private bool TryGetPathLength(Vector3 point, out float length)

@@ -38116,7 +38116,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
+  m_fontColor: {r: 0.2, g: 0.14, b: 0.1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -65491,10 +65491,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.VerticalLayoutGroup
   m_Padding:
-    m_Left: 28
-    m_Right: 28
-    m_Top: 22
-    m_Bottom: 22
+    m_Left: 140
+    m_Right: 140
+    m_Top: 175
+    m_Bottom: 250
   m_ChildAlignment: 0
   m_Spacing: 10
   m_ChildForceExpandWidth: 1
@@ -65517,15 +65517,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 0.1, g: 0.08, b: 0.06, a: 0.92}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 0}
-  m_Type: 0
+  m_Sprite: {fileID: 21300000, guid: 428438a4e96d40ea883cbc1dd31b8601, type: 3}
+  m_Type: 1
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -65533,7 +65533,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1
+  m_PixelsPerUnitMultiplier: 1.5
 --- !u!222 &1660804173
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -75233,13 +75233,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  itemPool: []
+  config: {fileID: 0}
   areaCollider: {fileID: 1942600102}
-  groundLayer:
-    serializedVersion: 2
-    m_Bits: 1
-  raycastHeightOffset: 5
-  maxRaycastDistance: 15
 --- !u!114 &1942600104
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -75252,7 +75247,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
-  _spawnOffset: {x: 0, y: 0.5, z: 0}
 --- !u!1001 &1942874918
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -81864,7 +81858,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 1, g: 0.85, b: 0.45, a: 1}
+  m_fontColor: {r: 0.42, g: 0.2, b: 0.1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
