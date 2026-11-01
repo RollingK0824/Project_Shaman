@@ -33,6 +33,8 @@ public static class AnomalyTraceSetup
     private const string ACTION_PATH = "Assets/Project/Data/AI/Ghost/NightActions/NA_HauntAnomaly.asset";
     private const string SPOT_ROOT = "AnomalySpots";
     private const string DECAL_SHADER = "Shader Graphs/Decal";
+    // A house's door is this close to its yard point at most
+    private const float MAX_DOOR_FROM_YARD = 15f;
     private static readonly string[] RENDERERS =
     {
         "Assets/Project/Settings/URPAsset_Renderer.asset",
@@ -286,11 +288,20 @@ public static class AnomalyTraceSetup
         int doors = 0;
         int grounds = 0;
 
-        foreach (NetDoor door in Object.FindObjectsByType<NetDoor>(FindObjectsSortMode.None))
+        // One door per house: the one nearest its yard (the way in), not every door leaf in the village
+        NetDoor[] allDoors = Object.FindObjectsByType<NetDoor>(FindObjectsSortMode.None);
+        foreach (PlaceArea home in homes)
         {
+            Vector3 yard = home.GetHomePoint();
+            NetDoor door = allDoors.OrderBy(candidate => (candidate.transform.position - yard).sqrMagnitude).FirstOrDefault();
+            if (door == null || (door.transform.position - yard).sqrMagnitude > MAX_DOOR_FROM_YARD * MAX_DOOR_FROM_YARD)
+            {
+                continue;
+            }
+
             if (TryDoorSpot(door, homes, out Vector3 position, out Quaternion rotation))
             {
-                AddSpot(root, $"Door_{door.name}_{doors}", position, rotation, AnomalySpot.HANDPRINT);
+                AddSpot(root, $"Door_{home.PlaceId}", position, rotation, AnomalySpot.HANDPRINT);
                 doors++;
             }
         }
