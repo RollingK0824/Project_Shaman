@@ -4,6 +4,7 @@ using UnityEngine.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Defense;
+using ProjectShaman.AI.Interfaces;
 
 namespace ProjectShaman.AI.Minion
 {
@@ -144,6 +145,26 @@ namespace ProjectShaman.AI.Minion
             return 0f;
         }
 
+        private float _sealedMultiplier = 1f;
+
+        private static int CountSealedGhosts()
+        {
+            VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            int count = 0;
+            if (registry != null)
+            {
+                foreach (IVillagerView villager in registry.Villagers)
+                {
+                    if (villager != null && villager.IsExorcised)
+                    {
+                        count++;
+                    }
+                }
+            }
+
+            return count;
+        }
+
         public void BeginDefense(float yin)
         {
             if (_factory == null || _factory.SpawnHandler == null || !_factory.SpawnHandler.CanSpawn)
@@ -154,8 +175,12 @@ namespace ProjectShaman.AI.Minion
 
             StopDefense("restart");
 
-            _settings = MinionWavePlanner.Resolve(_config, yin);
-            _settingsInfo = _settings.ToString();
+            // Each ghost already sealed (exorcised) makes the rest fight harder: minions come twice as often and move twice as fast
+            int sealedCount = CountSealedGhosts();
+            _sealedMultiplier = Mathf.Pow(2f, sealedCount);
+            _settings = MinionWavePlanner.Resolve(_config, yin, _sealedMultiplier);
+            _settingsInfo = $"{_settings} sealed {sealedCount} (x{_sealedMultiplier:F0} spawn rate and speed)";
+            AILog.Log(AILog.MINION, $"Defense waves: {_settingsInfo}");
             IDamageable objectiveDamageable = _objective.GetComponentInParent<IDamageable>();
             _battlefield = new MinionBattlefield(_objective, objectiveDamageable, _factory.SpawnHandler);
             _battlefield.RefreshPlayers();
@@ -257,7 +282,7 @@ namespace ProjectShaman.AI.Minion
                 return false;
             }
 
-            minion.Initialize(_battlefield);
+            minion.Initialize(_battlefield, _sealedMultiplier);
             instance.GetComponent<AI_ModelVisual>()?.Choose(_random.Next());
 
             AI_DeathDespawner despawner = instance.GetComponent<AI_DeathDespawner>();
