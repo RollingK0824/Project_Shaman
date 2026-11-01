@@ -13,6 +13,7 @@ public class VoiceCapture
     private const int ClipSeconds = 1;
     private const int MaxEncodedBytes = 400;
     private const int Bitrate = 24000;
+    private const float InputGain = 3f;
 
     private readonly float _threshold;
     private readonly float _hangover;
@@ -144,6 +145,11 @@ public class VoiceCapture
         if (Mathf.Sqrt(sum / FrameSamples) >= _threshold) _gateUntil = Time.time + _hangover;
 
         if (!_send || Time.time > _gateUntil) return;
+
+        // Keep the voice gate based on the original mic level, then boost what is sent.
+        // Soft limiting avoids hard clipping when a loud input exceeds the sample range.
+        for (int i = 0; i < _frame.Length; i++)
+            _frame[i] = (float)System.Math.Tanh(_frame[i] * InputGain);
 
         int written = _encoder.Encode(_frame, 0, FrameSamples, _encodeBuffer, 0, MaxEncodedBytes);
         if (written <= 0) return;
