@@ -107,7 +107,8 @@ public class PlayerTalismanCollection : MonoBehaviour
         var drawing = Find(id, out var item);
         var definition = item != null ? item.FindEffect(drawing?.EffectId) : null;
         if (drawing == null || definition == null || definition.EffectType != TalismanEffectType.VillagerTracking ||
-            !Tracking.CanAttach(id, target, origin, direction)) return false;
+            !(NetworkServer.active ? Tracking.CanAttachOnServer(id, target, origin, direction) :
+                Tracking.CanAttach(id, target, origin, direction))) return false;
         _busy = true;
         try
         {
