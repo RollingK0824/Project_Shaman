@@ -14,6 +14,7 @@ public sealed class PlayerItemDropController : MonoBehaviour
     private Func<WorldItem, bool> _publishWorld;
     private Action<WorldItem> _rollbackWorld;
     private Func<ItemData, GameObject> _resolvePrefab;
+    private Func<ItemData, bool> _isCarriedWorldObject;
     private long _nextRequest, _lastFinalRequest, _pendingRequest;
     private bool _busy;
     public event Action<long, ItemData> DropRequested;
@@ -30,6 +31,9 @@ public sealed class PlayerItemDropController : MonoBehaviour
     }
 
     public void SetWorldPrefabResolver(Func<ItemData, GameObject> resolve) => _resolvePrefab = resolve;
+    // An item whose world object is already carried along (a villager's tool): dropping only takes it out of the
+    // inventory, and the carried object puts itself down, so no new world item is made
+    public void SetCarriedWorldObjectCheck(Func<ItemData, bool> isCarried) => _isCarriedWorldObject = isCarried;
 
     private bool CanCommit => isActiveAndEnabled && PlayerActionGuard.CanAct(gameObject) &&
         (!NetworkClient.active && !NetworkServer.active ? _authority == null || _authority() :
@@ -68,7 +72,14 @@ public sealed class PlayerItemDropController : MonoBehaviour
         if (!CanCommit || requestId <= _lastFinalRequest || requestId <= 0 || _busy) return false;
         if (_pendingRequest == requestId) _pendingRequest = 0;
         if (!CanDrop(item, out var reason)) { LastMessage = reason; return false; }
-        _lastFinalRequest = requestId; _nextRequest = Math.Max(_nextRequest, requestId); _busy = true;
+        _lastFinalRequest = requestId; _nextRequest = Math.Max(_nextRequest, requestId);
+        if (_isCarriedWorldObject != null && _isCarriedWorldObject(item))
+        {
+            bool removed = _inventory.TryDropUnit(item, () => true);
+            LastMessage = removed ? "아이템 1개를 바닥에 내려놓았습니다." : "버리지 못했습니다. 소지품은 유지됩니다.";
+            return removed;
+        }
+        _busy = true;
         GameObject staging = null, instance = null;
         WorldItem world = null; bool published = false, committed = false;
         try

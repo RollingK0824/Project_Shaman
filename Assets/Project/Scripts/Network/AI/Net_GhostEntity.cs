@@ -31,6 +31,7 @@ namespace ProjectShaman.Network.AI
         private Animator _animator;
 
         private const string MOVE_SPEED_PARAM = "Speed";
+        private static readonly int ATTACK_TRIGGER = Animator.StringToHash("Attack");
         // Smaller changes are not worth a sync
         private const float SPEED_SYNC_STEP = 0.1f;
 
@@ -83,6 +84,7 @@ namespace ProjectShaman.Network.AI
             _entity.OnChannelEnded += HandleServerChannelEnded;
             _entity.OnRevealed += HandleServerRevealed;
             _entity.OnTeleported += HandleServerTeleported;
+            _entity.OnAttackSwing += HandleServerAttackSwing;
             _entity.SetSimulationActive(true);
             AILog.Log(AILog.NET, _entity.GhostId, "Ghost entity OnStartServer → Agent/BT enabled");
         }
@@ -93,6 +95,7 @@ namespace ProjectShaman.Network.AI
             _entity.OnChannelEnded -= HandleServerChannelEnded;
             _entity.OnRevealed -= HandleServerRevealed;
             _entity.OnTeleported -= HandleServerTeleported;
+            _entity.OnAttackSwing -= HandleServerAttackSwing;
             base.OnStopServer();
         }
 
@@ -178,6 +181,39 @@ namespace ProjectShaman.Network.AI
         private void HandleServerChannelEnded(AI_GhostEntity entity)
         {
             _channelDuration = 0f;
+        }
+
+        private void HandleServerAttackSwing(AI_GhostEntity entity)
+        {
+            RpcAttackSwing();
+        }
+
+        // A one-off swing, so an RPC; a model without the Attack trigger (no animator set up yet) just skips it
+        [ClientRpc]
+        private void RpcAttackSwing()
+        {
+            if (_animator == null)
+            {
+                _animator = GetComponentInChildren<Animator>();
+            }
+
+            if (_animator != null && _animator.isActiveAndEnabled && HasParameter(_animator, ATTACK_TRIGGER))
+            {
+                _animator.SetTrigger(ATTACK_TRIGGER);
+            }
+        }
+
+        private static bool HasParameter(Animator animator, int hash)
+        {
+            foreach (AnimatorControllerParameter parameter in animator.parameters)
+            {
+                if (parameter.nameHash == hash)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void HandleServerRevealed(AI_GhostEntity entity, float seconds)

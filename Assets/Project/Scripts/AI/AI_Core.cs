@@ -249,6 +249,8 @@ namespace ProjectShaman.AI
 
         // Server: in the house past the bed hour, until the day starts (AIManager decides)
         public bool IsAsleep { get; private set; }
+        // Time.time it fell asleep (the lie-down clip starts then), -1 while awake
+        public float AsleepSince { get; private set; } = -1f;
         public event Action<bool> OnAsleepChanged;
 
         public void SetAsleep(bool asleep)
@@ -259,6 +261,7 @@ namespace ProjectShaman.AI
             }
 
             IsAsleep = asleep;
+            AsleepSince = asleep ? Time.time : -1f;
             AILog.Log(AILog.CORE, LogId, asleep ? "Fell asleep" : "Woke up");
             OnAsleepChanged?.Invoke(asleep);
         }

@@ -164,7 +164,7 @@ namespace ProjectShaman.Network.AI
 
             if (_marker != null)
             {
-                _marker.SetColor(_isWorking ? _markerBusyColor : _markerColor);
+                _marker.SetColor(_isWorking && !_hasQuestOffer ? _markerBusyColor : _markerColor);
                 _marker.Show(symbol);
             }
         }
@@ -222,11 +222,12 @@ namespace ProjectShaman.Network.AI
             {
                 _conversation.Say("다른 분이랑 얘기 중이오", "dialogue busy");
             }
-            else if ((delivery != null || offer != null) && IsWorking)
+            else if (delivery != null && IsWorking)
             {
-                // Working: the request waits for the rest, as the usual dialogue does (the grey marker says so). The tool too:
-                // a villager without it rests in place of the work that needs it, so this work does not, and its deadline is a later day (C120)
-                _conversation.Say(delivery != null ? "일 끝나고 받으리다. 조금만 기다려 주시오." : "일 끝나고 오시오. 부탁할 게 있소.", "busy working, request later");
+                // Working: the hand-over waits for the rest (the grey marker says so). A villager without the tool rests in place
+                // of the work that needs it, so this work does not, and its deadline is a later day (C120).
+                // An offer is still taken at work or on the way there: otherwise it could hardly ever be accepted
+                _conversation.Say("일 끝나고 받으리다. 조금만 기다려 주시오.", "busy working, delivery later");
             }
             else if (delivery != null)
             {

@@ -13,7 +13,7 @@ namespace ProjectShaman.AI.Core
             { "Hammer", "망치" }, { "Knife", "칼" }, { "Broom", "빗자루" }, { "Book", "책" }, { "Jar", "항아리" },
             { "Ladle", "국자" }, { "FishingRod", "낚싯대" }, { "Whetstone", "숫돌" }, { "Scraper", "긁개" },
             { "Bow", "활" }, { "Spear", "창" }, { "Brush", "붓" }, { "Bundle", "보따리" }, { "Fan", "부채" },
-            { "Mask", "탈" }, { "Scale", "저울" }, { "Teapot", "주전자" }, { "Tray", "쟁반" }
+            { "Mask", "탈" }, { "Scale", "저울" }, { "Teapot", "주전자" }, { "Tray", "쟁반" }, { "ClothRoller", "홍두깨" }
         };
 
         private static readonly Dictionary<string, string> TRACES = new Dictionary<string, string>

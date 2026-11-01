@@ -28,6 +28,8 @@ namespace ProjectShaman.AI.Core
         // Stall log on the way home (diagnostics only, nothing acts on it)
         private const float STALL_MOVE_DISTANCE = 0.5f;
         private const float STALL_LOG_SECONDS = 3f;
+        // Slower than this counts as standing still in the house (got in, not walking any more)
+        private const float SETTLED_SPEED = 0.1f;
         // Within this of its routine's spot the villager is there and the block starts (C131)
         private const float ROUTINE_ARRIVE_DISTANCE = 3f;
 
@@ -981,9 +983,22 @@ namespace ProjectShaman.AI.Core
 
         // Asleep = in the house and past the bed hour. A ghost leaves its host only then (C121)
         // In the house at night (the schedule tab's bed hour only shows it, C131)
+        // The home radius is reached a few steps before the door, so a villager still walking in is not asleep yet: the ghost
+        // used to come out of a host that was seen still on its way into the house
         public bool IsAsleepAtHome(VillagerRuntime villager)
         {
-            return villager != null && villager.Core != null && villager.HasArrivedHome && !_isDayActive;
+            if (villager == null || villager.Core == null || !villager.HasArrivedHome || _isDayActive)
+            {
+                return false;
+            }
+
+            return villager.Core.IsAsleep || villager.Movement == null || villager.Movement.CurrentSpeed < SETTLED_SPEED;
+        }
+
+        // Asleep and done lying down (the Sleep_LieDown clip has played out): a host's ghost comes out only then
+        public bool IsLyingInBed(VillagerRuntime villager)
+        {
+            return IsAsleepAtHome(villager) && villager.Core.IsAsleep && Time.time - villager.Core.AsleepSince >= _behaviourConfig.SleepLieDownSeconds;
         }
 
         // "Home" is the same radius sleep paralysis uses to count a villager as in the house
