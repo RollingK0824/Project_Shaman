@@ -22,6 +22,7 @@ public class NetPlayerItemDrop : NetworkBehaviour
         _drops.SetAuthorityCheck(() => isServer);
         _drops.SetWorldPublisher(ServerPublish, ServerRollback);
         _drops.SetWorldPrefabResolver(ServerResolvePrefab);
+        _drops.SetCarriedWorldObjectCheck(item => ProjectShaman.Network.AI.Net_ToolItem.IsStowedBy(gameObject, item));
     }
 
     public override void OnStartLocalPlayer()

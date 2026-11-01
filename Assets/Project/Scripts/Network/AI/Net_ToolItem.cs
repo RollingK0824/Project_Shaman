@@ -81,6 +81,12 @@ namespace ProjectShaman.Network.AI
             return null;
         }
 
+        // Server: this player has a tool of that item in the inventory (dropping it puts that tool down)
+        public static bool IsStowedBy(GameObject player, ItemData itemData)
+        {
+            return itemData != null && CountStowed(player, itemData) > 0;
+        }
+
         private static int CountStowed(GameObject player, ItemData itemData)
         {
             int count = 0;
