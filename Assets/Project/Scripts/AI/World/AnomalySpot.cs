@@ -8,7 +8,7 @@ namespace ProjectShaman.AI.World
 {
     // A spot a ghost can leave an anomaly at (NA_HauntAnomaly): a bloody handprint on a door, a pool of blood or filth on
     // the ground. The trace (Trace_Anomaly) shows the picked kind (its visual key) and lies along this transform:
-    // forward = out of the door for a handprint, up for one on the ground. Placed by ProjectShaman/AI/Setup Anomaly Traces
+    // forward = out of the door for a handprint, up for one on the ground. Made at run time by AnomalySpotPlanner
     public class AnomalySpot : MonoBehaviour, IGhostHauntable
     {
         public const string HANDPRINT = "Handprint";
@@ -45,6 +45,11 @@ namespace ProjectShaman.AI.World
         public int GetPriority(in GhostActionContext context)
         {
             return 0;
+        }
+
+        public void SetKinds(params string[] kinds)
+        {
+            _kinds = new List<string>(kinds);
         }
 
         // Called just before the haunt lands, so the trace it leaves shows this kind

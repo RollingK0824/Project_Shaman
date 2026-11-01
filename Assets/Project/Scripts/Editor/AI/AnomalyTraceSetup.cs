@@ -20,7 +20,7 @@ using ProjectShaman.AI.World;
 //   (replace those PNGs with the final art and the decals change with them, nothing else to do)
 // - Trace_Anomaly (copied from the livestock corpse trace): cleansed with salt only, shows the kind it was left as
 // - hands it to NA_HauntAnomaly, registers it with the NetworkManagers
-// - AnomalySpots in the open scene: one at each door (handprint) and one at each home's yard (blood, filth)
+// Where anomalies may appear is worked out at run time (AnomalySpotPlanner), nothing is placed in the scene
 public static class AnomalyTraceSetup
 {
     private const string TEXTURE_FOLDER = "Assets/Project/Visuals/Textures/Traces";
@@ -31,10 +31,7 @@ public static class AnomalyTraceSetup
     private const string SOURCE_PROFILE = "Assets/Project/Data/AI/Interaction/IP_Test_LivestockCorpse.asset";
     private const string PROFILE_PATH = "Assets/Project/Data/AI/Interaction/IP_Anomaly.asset";
     private const string ACTION_PATH = "Assets/Project/Data/AI/Ghost/NightActions/NA_HauntAnomaly.asset";
-    private const string SPOT_ROOT = "AnomalySpots";
     private const string DECAL_SHADER = "Shader Graphs/Decal";
-    // A house's door is this close to its yard point at most
-    private const float MAX_DOOR_FROM_YARD = 15f;
     private static readonly string[] RENDERERS =
     {
         "Assets/Project/Settings/URPAsset_Renderer.asset",
@@ -77,7 +74,6 @@ public static class AnomalyTraceSetup
             Register(path, trace);
         }
 
-        PlaceSpots();
         AssetDatabase.SaveAssets();
         Debug.Log("[Anomaly] Setup done. Replace the PNGs in " + TEXTURE_FOLDER + " to change the decals");
     }
@@ -270,105 +266,6 @@ public static class AnomalyTraceSetup
         {
             EditorSceneManager.CloseScene(scene, true);
         }
-    }
-
-    // In the active scene (Gameplay): rebuilt under one root each run
-    private static void PlaceSpots()
-    {
-        Scene scene = SceneManager.GetActiveScene();
-        GameObject old = scene.GetRootGameObjects().FirstOrDefault(go => go.name == SPOT_ROOT);
-        if (old != null)
-        {
-            Undo.DestroyObjectImmediate(old);
-        }
-
-        GameObject root = new GameObject(SPOT_ROOT);
-        Undo.RegisterCreatedObjectUndo(root, "Setup Anomaly Traces");
-        List<PlaceArea> homes = Object.FindObjectsByType<PlaceArea>(FindObjectsSortMode.None).Where(place => place.Type == PlaceType.Home).ToList();
-        int doors = 0;
-        int grounds = 0;
-
-        // One door per house: the one nearest its yard (the way in), not every door leaf in the village
-        NetDoor[] allDoors = Object.FindObjectsByType<NetDoor>(FindObjectsSortMode.None);
-        foreach (PlaceArea home in homes)
-        {
-            Vector3 yard = home.GetHomePoint();
-            NetDoor door = allDoors.OrderBy(candidate => (candidate.transform.position - yard).sqrMagnitude).FirstOrDefault();
-            if (door == null || (door.transform.position - yard).sqrMagnitude > MAX_DOOR_FROM_YARD * MAX_DOOR_FROM_YARD)
-            {
-                continue;
-            }
-
-            if (TryDoorSpot(door, homes, out Vector3 position, out Quaternion rotation))
-            {
-                AddSpot(root, $"Door_{home.PlaceId}", position, rotation, AnomalySpot.HANDPRINT);
-                doors++;
-            }
-        }
-
-        foreach (PlaceArea home in homes)
-        {
-            Vector3 yard = home.GetHomePoint();
-            if (NavMesh.SamplePosition(yard, out NavMeshHit hit, 3f, NavMesh.AllAreas))
-            {
-                AddSpot(root, $"Yard_{home.PlaceId}", hit.position, Quaternion.identity, AnomalySpot.BLOOD, AnomalySpot.FILTH);
-                grounds++;
-            }
-        }
-
-        EditorSceneManager.MarkSceneDirty(scene);
-        Debug.Log($"[Anomaly] {doors} door spot(s), {grounds} yard spot(s) placed under {SPOT_ROOT} in {scene.name}. Save the scene");
-    }
-
-    // Hand height on the door's outer face: the side away from the nearest house centre
-    private static bool TryDoorSpot(NetDoor door, List<PlaceArea> homes, out Vector3 position, out Quaternion rotation)
-    {
-        position = default;
-        rotation = default;
-        Renderer[] renderers = door.GetComponentsInChildren<Renderer>();
-        if (renderers.Length == 0)
-        {
-            return false;
-        }
-
-        Bounds bounds = renderers[0].bounds;
-        foreach (Renderer part in renderers)
-        {
-            bounds.Encapsulate(part.bounds);
-        }
-
-        Vector3 center = bounds.center;
-        PlaceArea house = homes.OrderBy(home => (home.transform.position - center).sqrMagnitude).FirstOrDefault();
-        Vector3 away = house != null ? center - house.transform.position : door.transform.forward;
-        away.y = 0f;
-
-        // The door's own flat axis closest to "away from the house"
-        Vector3[] axes = { door.transform.forward, -door.transform.forward, door.transform.right, -door.transform.right };
-        Vector3 outward = axes.OrderByDescending(axis => Vector3.Dot(new Vector3(axis.x, 0f, axis.z).normalized, away.normalized)).First();
-        outward.y = 0f;
-        outward.Normalize();
-
-        float halfDepth = Mathf.Abs(Vector3.Dot(bounds.extents, new Vector3(Mathf.Abs(outward.x), 0f, Mathf.Abs(outward.z))));
-        position = new Vector3(center.x, Mathf.Min(center.y, bounds.min.y + 1.3f), center.z) + outward * (halfDepth + 0.05f);
-        rotation = Quaternion.LookRotation(outward);
-        return true;
-    }
-
-    private static void AddSpot(GameObject root, string name, Vector3 position, Quaternion rotation, params string[] kinds)
-    {
-        GameObject spot = new GameObject(name);
-        spot.transform.SetParent(root.transform, false);
-        spot.transform.SetPositionAndRotation(position, rotation);
-        AnomalySpot anomaly = spot.AddComponent<AnomalySpot>();
-        SerializedObject so = new SerializedObject(anomaly);
-        SerializedProperty list = so.FindProperty("_kinds");
-        list.arraySize = kinds.Length;
-        for (int i = 0; i < kinds.Length; i++)
-        {
-            list.GetArrayElementAtIndex(i).stringValue = kinds[i];
-        }
-
-        so.ApplyModifiedProperties();
     }
 
     private readonly struct InteractionProfileRef
