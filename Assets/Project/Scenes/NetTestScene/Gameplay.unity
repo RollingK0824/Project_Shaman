@@ -3904,6 +3904,7 @@ MonoBehaviour:
   _bgmGroup: {fileID: -6983517904764976099, guid: 2ac82c5cdbacc9644ad9bb47dbdd89f7, type: 2}
   _dayClip: {fileID: 8300000, guid: a2fa3283c6bfa254db7a9a890e2636b6, type: 3}
   _nightClip: {fileID: 8300000, guid: d5116c9ff3d5ceb4cada9e52cc3b88f5, type: 3}
+  _defenseClip: {fileID: 8300000, guid: 3ebf6990fd4725b4db7b9a3349aba3e1, type: 3}
   _volume: 0.6
   _crossfadeTime: 4
 --- !u!1 &99840042
@@ -36044,7 +36045,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 0.2, g: 0.14, b: 0.1, a: 1}
+  m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
@@ -43646,7 +43647,6 @@ MonoBehaviour:
   _nightActions:
   - {fileID: 11400000, guid: 2ee0020f961647318e15fdfed4e7d4d9, type: 2}
   - {fileID: 11400000, guid: 2aa05c7ace0c4e8da66808400ff2e335, type: 2}
-  - {fileID: 11400000, guid: ea74eeeac5954deaa3edbe7b7b3820e7, type: 2}
   - {fileID: 11400000, guid: 52df8e9577e94954821f248c577256cd, type: 2}
   - {fileID: 11400000, guid: 2b8f5ac02da5472898275d74afddbd78, type: 2}
   - {fileID: 11400000, guid: dbdc3909a6db41528fce32e10a5442f6, type: 2}
@@ -62648,10 +62648,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.VerticalLayoutGroup
   m_Padding:
-    m_Left: 140
-    m_Right: 140
-    m_Top: 175
-    m_Bottom: 250
+    m_Left: 28
+    m_Right: 28
+    m_Top: 22
+    m_Bottom: 22
   m_ChildAlignment: 0
   m_Spacing: 10
   m_ChildForceExpandWidth: 1
@@ -62674,15 +62674,15 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
   m_Material: {fileID: 0}
-  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_Color: {r: 0.1, g: 0.08, b: 0.06, a: 0.92}
   m_RaycastTarget: 1
   m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
   m_Maskable: 1
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_Sprite: {fileID: 21300000, guid: 428438a4e96d40ea883cbc1dd31b8601, type: 3}
-  m_Type: 1
+  m_Sprite: {fileID: 0}
+  m_Type: 0
   m_PreserveAspect: 0
   m_FillCenter: 1
   m_FillMethod: 4
@@ -62690,7 +62690,7 @@ MonoBehaviour:
   m_FillClockwise: 1
   m_FillOrigin: 0
   m_UseSpriteMesh: 0
-  m_PixelsPerUnitMultiplier: 1.5
+  m_PixelsPerUnitMultiplier: 1
 --- !u!222 &1660804173
 CanvasRenderer:
   m_ObjectHideFlags: 0
@@ -78346,7 +78346,7 @@ MonoBehaviour:
   m_fontColor32:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontColor: {r: 0.42, g: 0.2, b: 0.1, a: 1}
+  m_fontColor: {r: 1, g: 0.85, b: 0.45, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
   m_fontColorGradient:
