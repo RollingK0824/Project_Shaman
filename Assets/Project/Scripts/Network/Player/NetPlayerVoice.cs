@@ -1,11 +1,11 @@
 using UnityEngine;
 using System;
 using Mirror;
-using Steamworks;
+using Concentus.Structs;
 using UnityEngine.InputSystem;
 using System.Collections.Generic;
 
-// [로컬 클라] Steam 마이크로 녹음한 압축 음성을 서버로 보냄 (말할 때만 데이터가 나옴)
+// [로컬 클라] 설정에서 고른 마이크로 녹음해서 Opus로 압축한 음성을 서버로 보냄 (말할 때만 데이터가 나옴)
 // [서버] 듣는 사람마다 채널을 골라 전달 (근거리 / 방울 무전 / 관전자)
 // [받는 클라] 압축을 풀어서 말한 플레이어 쪽 VoicePlayback으로 재생
 [RequireComponent(typeof(NetworkIdentity ))]
@@ -29,6 +29,12 @@ public class NetPlayerVoice : NetworkBehaviour
     [SerializeField] private AudioClip _radioEndClip;
     [SerializeField, Range(0f, 1f)] private float _radioCueVolume = .6f;
 
+    [Header("Capture")]
+    [Tooltip("이 볼륨(RMS)을 넘으면 말하는 것으로 보고 전송 시작")]
+    [SerializeField, Range(0f, .2f)] private float _voiceThreshold = .02f;
+    [Tooltip("말을 멈춘 뒤에도 이 시간(초) 동안은 계속 보냄 (말끝 잘림 방지)")]
+    [SerializeField, Min(0f)] private float _voiceHangover = .3f;
+
     [Header("Debug")]
     [Tooltip("로컬 클라에서 내 목소리를 바로 들어 보는 테스트용")]
     [SerializeField] private bool _debugLoopback;
@@ -42,9 +48,10 @@ public class NetPlayerVoice : NetworkBehaviour
     private NetPlayerEquipment _equipment;
     private PlayerInventory _inventory;
 
-    private readonly byte[] _recordBuffer = new byte[8 * 1024];
-    private byte[] _decompressBuffer;
-    private uint _sampleRate;
+    private VoiceCapture _capture;
+    // 말하는 플레이어마다 하나 (Opus 디코더는 이전 패킷 상태를 이어서 씀)
+    private OpusDecoder _decoder;
+    private readonly float[] _decodeBuffer = new float[VoiceCapture.SampleRate * 120 / 1000]; // Opus 최대 프레임 120ms
     private bool _recording;
 
     private bool _serverBellInQuickSlot;
@@ -126,12 +133,9 @@ public class NetPlayerVoice : NetworkBehaviour
         _all.Add(this);
         ListChanged?.Invoke();
 
-        if (!SteamManager.Initialized) return;
-
-        _sampleRate = SteamUser.GetVoiceOptimalSampleRate();
-        _decompressBuffer = new byte[_sampleRate * 2]; // 16비트 모노 1초 분량
-        _proximityPlayback.Init((int)_sampleRate);
-        _radioPlayback.Init((int)_sampleRate);
+        _decoder = new OpusDecoder(VoiceCapture.SampleRate, 1);
+        _proximityPlayback.Init(VoiceCapture.SampleRate);
+        _radioPlayback.Init(VoiceCapture.SampleRate);
     }
 
     public override void OnStopClient()
@@ -146,12 +150,6 @@ public class NetPlayerVoice : NetworkBehaviour
     {
         base.OnStartLocalPlayer();
 
-        if (!SteamManager.Initialized)
-        {
-            Debug.LogWarning("[NetPlayerVoice] Steam이 초기화되지 않아 음성 채팅을 끕니다.", this);
-            return;
-        }
-
         // ShamanInput에 Player/VoiceRadio가 있으면 공용 액션(키 재설정 가능), 없으면 B 키 임시 액션
         _radioAction = InputManager.Instance.Actions.asset.FindAction("Player/VoiceRadio", false);
         _ownsRadioAction = _radioAction == null;
@@ -160,19 +158,19 @@ public class NetPlayerVoice : NetworkBehaviour
             _radioAction = new InputAction("VoiceRadio", InputActionType.Button, "<Keyboard>/b");
             _radioAction.Enable();
         }
-        SteamUser.StartVoiceRecording();
-        _recording = true;
+        _capture = new VoiceCapture(_voiceThreshold, _voiceHangover);
+        StartCapture(VoiceSettings.InputDevice);
+        VoiceSettings.InputDeviceChanged += StartCapture;
         _inventory.QuickSlotChanged += HandleQuickSlotChanged;
         SyncBellQuickSlot(); // 시작할 때 이미 등록돼 있는 경우
     }
 
     public override void OnStopLocalPlayer()
     {
-        if (_recording)
-        {
-            SteamUser.StopVoiceRecording();
-            _recording = false;
-        }
+        VoiceSettings.InputDeviceChanged -= StartCapture;
+        _capture?.Stop();
+        _capture = null;
+        _recording = false;
 
         if (_ownsRadioAction) _radioAction?.Dispose();
         _ownsRadioAction = false;
@@ -181,6 +179,13 @@ public class NetPlayerVoice : NetworkBehaviour
         base.OnStopLocalPlayer();
     }
 
+
+    // [로컬 클라] 설정에서 마이크를 바꾸면 바로 다시 시작
+    private void StartCapture(string device)
+    {
+        _recording = _capture.Start(device);
+        if (!_recording) Debug.LogWarning("[NetPlayerVoice] 마이크를 찾지 못해 음성을 보내지 않습니다.", this);
+    }
 
     // [로컬 클라] 녹음된만큼 꺼내서 서버로
     private void Update()
@@ -197,22 +202,17 @@ public class NetPlayerVoice : NetworkBehaviour
             _radioPlayback.PlayCue(IsTalkingOnRadio ? _radioStartClip : _radioEndClip, _radioCueVolume);
         }
 
-        if (SteamUser.GetAvailableVoice(out uint available) != EVoiceResult.k_EVoiceResultOK || available == 0) return;
-        if (SteamUser.GetVoice(true, _recordBuffer, (uint)_recordBuffer.Length, out uint written) != EVoiceResult.k_EVoiceResultOK || written == 0) return;
+        // 음소거 중에도 마이크 버퍼는 비워 둠 (풀었을 때 밀린 음성이 한꺼번에 나가지 않게)
+        _capture.Update(!VoiceSettings.MicMuted);
 
-        // 음소거 중에도 Steam 버퍼는 비워 둠 (풀었을 때 밀린 음성이 한꺼번에 나가지 않게)
-        if (VoiceSettings.MicMuted) return;
+        // 20ms 프레임 하나가 패킷 하나 (프레임이 밀리면 여러 개)
+        while (_capture.TryDequeue(out byte[] packet))
+        {
+            _lastVoiceTime = Time.time;
+            CmdSendVoice(packet, IsTalkingOnRadio);
 
-        // 프레임 크게 밀려 한 번에 너무 많이 쌓였으면 버림 (비신뢰 한도 초과)
-        if (written > MaxPacketBytes) return;
-
-        byte[] packet = new byte[written];
-        Buffer.BlockCopy(_recordBuffer, 0, packet, 0, (int)written);
-
-        _lastVoiceTime = Time.time;
-        CmdSendVoice(packet, IsTalkingOnRadio);
-
-        if (_debugLoopback) PlayVoice(packet, IsTalkingOnRadio ? VoiceChannel.Radio : VoiceChannel.Spectator);
+            if (_debugLoopback) PlayVoice(packet, IsTalkingOnRadio ? VoiceChannel.Radio : VoiceChannel.Spectator);
+        }
     }
 
     // [로컬 클라] 퀵슬롯이 바뀔 때마다 다시 계산
@@ -328,20 +328,28 @@ public class NetPlayerVoice : NetworkBehaviour
 
     private void PlayVoice(byte[] data, VoiceChannel channel)
     {
-        if (_decompressBuffer == null) return;
+        if (_decoder == null) return;
 
-        EVoiceResult result = SteamUser.DecompressVoice(data, (uint)data.Length, _decompressBuffer, (uint)_decompressBuffer.Length, out uint written, _sampleRate);
+        int samples;
+        try
+        {
+            samples = _decoder.Decode(data, 0, data.Length, _decodeBuffer, 0, _decodeBuffer.Length, false);
+        }
+        catch (Exception)
+        {
+            return; // 깨진 패킷
+        }
 
-        if (result != EVoiceResult.k_EVoiceResultOK || written == 0) return;
+        if (samples <= 0) return;
 
         if (channel == VoiceChannel.Radio)
         {
-            _radioPlayback.Push(_decompressBuffer, (int)written);
+            _radioPlayback.Push(_decodeBuffer, samples);
             return;
         }
 
         // 관전자 음성은 몸이 없으니  2D로
         _proximityPlayback.SetSpatial(channel == VoiceChannel.Proximity);
-        _proximityPlayback.Push(_decompressBuffer, (int)written);
+        _proximityPlayback.Push(_decodeBuffer, samples);
     }
 }

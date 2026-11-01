@@ -52,4 +52,32 @@ public static class VoiceSettings
     }
 
     public static void ToggleMicMuted() => SetMicMuted(!MicMuted);
+
+
+    private const string INPUT_DEVICE_KEY = "VoiceInputDevice";
+
+    private static string _inputDevice;
+
+    public static event Action<string> InputDeviceChanged;
+
+    // 녹음할 마이크 이름 (Microphone.devices 중 하나). 빈 문자열이면 시스템 기본 마이크
+    // 출력 장치는 Unity가 항상 OS 기본 장치로 재생해서 고를 수 없음
+    public static string InputDevice
+    {
+        get
+        {
+            if (_inputDevice == null) _inputDevice = PlayerPrefs.GetString(INPUT_DEVICE_KEY, "");
+            return _inputDevice;
+        }
+    }
+
+    public static void SetInputDevice(string device)
+    {
+        device ??= "";
+        if (InputDevice == device) return;
+
+        _inputDevice = device;
+        PlayerPrefs.SetString(INPUT_DEVICE_KEY, device);
+        InputDeviceChanged?.Invoke(device);
+    }
 }
