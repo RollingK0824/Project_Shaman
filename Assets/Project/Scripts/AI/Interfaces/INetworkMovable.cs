@@ -10,6 +10,7 @@ namespace ProjectShaman.AI.Interfaces
         void SetAgentActive(bool active);
         bool IsStopped { get; }
         bool HasReachedDestination { get; }
+        bool IsDestinationUnreachable { get; }
         float CurrentSpeed { get; }
     }
 }

@@ -115,9 +115,11 @@ namespace ProjectShaman.AI.Dialogue
             return (traitMask & TRAIT_CLASS) != 0 ? $"{DialogueLibrary.Noun($"class.{view.SocialClass}", string.Empty)} {core}".Trim() : core;
         }
 
-        // Each retelling loses a detail: one trait at the first hop, all of them after that
+        // Each retelling loses a detail: past the two traits a witness tells at the first hop, all of them after that
         public static int BlurTraits(int traitMask, int hops, System.Random random)
         {
+            const int KEPT_AT_FIRST_HOP = 2;
+
             if (hops >= 2 || traitMask == 0)
             {
                 return 0;
@@ -132,7 +134,7 @@ namespace ProjectShaman.AI.Dialogue
                 }
             }
 
-            return bits.Count <= 1 ? traitMask : traitMask & ~bits[random.Next(bits.Count)];
+            return bits.Count <= KEPT_AT_FIRST_HOP ? traitMask : traitMask & ~bits[random.Next(bits.Count)];
         }
 
         public static string VerbPhrase(string verbId, string objectId)

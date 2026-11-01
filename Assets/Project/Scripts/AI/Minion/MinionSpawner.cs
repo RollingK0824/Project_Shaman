@@ -14,6 +14,10 @@ namespace ProjectShaman.AI.Minion
         [SerializeField] private AIFactory _factory;
         [SerializeField] private DefenseVoteResolver _voteResolver;
         [SerializeField] private GameObject _minionPrefab;
+        [Tooltip("A minion that walks the NavMesh straight to the objective (Temp_MinionWalker); empty spawns only flyers")]
+        [SerializeField] private GameObject _walkerPrefab;
+        [Tooltip("Share of spawns that walk instead of fly")]
+        [SerializeField, Range(0f, 1f)] private float _walkerShare = 0.3f;
         [SerializeField] private MinionWaveConfig _config;
         [SerializeField] private Transform _objective;
         [SerializeField] private Transform[] _spawnPoints;
@@ -230,7 +234,8 @@ namespace ProjectShaman.AI.Minion
 
         private bool SpawnMinion()
         {
-            if (!TryPickSpawnPosition(out Vector3 position))
+            GameObject prefab = _walkerPrefab != null && _random.NextDouble() < _walkerShare ? _walkerPrefab : _minionPrefab;
+            if (!TryPickSpawnPosition(IsFlying(prefab), out Vector3 position))
             {
                 AILog.Warn(AILog.MINION, "No spawn position on NavMesh, retrying");
                 return false;
@@ -240,14 +245,14 @@ namespace ProjectShaman.AI.Minion
             facing.y = 0f;
             Quaternion rotation = facing.sqrMagnitude > 0.0001f ? Quaternion.LookRotation(facing) : Quaternion.identity;
 
-            GameObject instance = Instantiate(_minionPrefab, position, rotation);
+            GameObject instance = Instantiate(prefab, position, rotation);
             _spawnedTotal++;
-            instance.name = $"Minion_{_spawnedTotal:000}";
+            instance.name = $"{(IsFlying(prefab) ? "Minion" : "MinionWalker")}_{_spawnedTotal:000}";
 
             AI_Minion minion = instance.GetComponent<AI_Minion>();
             if (minion == null)
             {
-                AILog.Error(AILog.MINION, $"{_minionPrefab.name} has no AI_Minion");
+                AILog.Error(AILog.MINION, $"{prefab.name} has no AI_Minion");
                 Destroy(instance);
                 return false;
             }
@@ -262,7 +267,7 @@ namespace ProjectShaman.AI.Minion
             }
             else
             {
-                AILog.Warn(AILog.MINION, $"{_minionPrefab.name} has no AI_DeathDespawner, killed minions will not despawn");
+                AILog.Warn(AILog.MINION, $"{prefab.name} has no AI_DeathDespawner, killed minions will not despawn");
             }
 
             minion.OnRemoved += HandleMinionRemoved;
@@ -279,9 +284,9 @@ namespace ProjectShaman.AI.Minion
             _aliveCount = _alive.Count;
         }
 
-        private bool IsFlyingMinion => _minionPrefab != null && _minionPrefab.GetComponent<AI_FlyingMovement>() != null;
+        private static bool IsFlying(GameObject prefab) => prefab != null && prefab.GetComponent<AI_FlyingMovement>() != null;
 
-        private bool TryPickSpawnPosition(out Vector3 position)
+        private bool TryPickSpawnPosition(bool flying, out Vector3 position)
         {
             bool hasFallback = false;
             position = Vector3.zero;
@@ -294,7 +299,7 @@ namespace ProjectShaman.AI.Minion
                 candidate += new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
 
                 // Flyers keep the spawn point's height (set in the scene) instead of being put down on the NavMesh
-                if (IsFlyingMinion)
+                if (flying)
                 {
                     candidate.y += ((float)_random.NextDouble() * 2f - 1f) * _airSpawnHeightJitter;
                 }

@@ -34,6 +34,12 @@ namespace ProjectShaman.Network.AI
         [Server]
         private void HandleWorkAccepted(string actorId, string actionId)
         {
+            // The hit animation is optional (an anvil or a washing stone has an empty Animator): the work counts without it
+            if (_networkAnimator.animator == null || _networkAnimator.animator.runtimeAnimatorController == null)
+            {
+                return;
+            }
+
             _networkAnimator.SetTrigger(_hitTrigger);
             AILog.Log(AILog.NET, actorId, $"Station {_station.StationId} NetworkAnimator trigger '{_hitTrigger}'");
         }

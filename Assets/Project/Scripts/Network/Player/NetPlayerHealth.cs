@@ -12,7 +12,15 @@ public class NetPlayerHealth : NetworkBehaviour
     private void Awake()
     {
         _health = GetComponent<PlayerHealth>();
-        _health.SetAuthorityCheck(() => !NetworkClient.active || NetworkServer.active);
+        _health.SetAuthorityCheck(ServerCanChangeHealth);
+    }
+
+    // [서버] 게임 종료 뒤에는 피해·회복·사망 모두 막음 (AI가 PlayerHealth를 직접 때리는 경로 포함)
+    private static bool ServerCanChangeHealth()
+    {
+        if (NetworkClient.active && !NetworkServer.active) return false;
+        GameManager gm = GameManager.Existing;
+        return gm == null || !gm.IsGameOver;
     }
 
     // 에디터에서 컴포넌트를 추가할 때 HP가 다른 플레이어에게 전송되지 않도록 기본값 지정
