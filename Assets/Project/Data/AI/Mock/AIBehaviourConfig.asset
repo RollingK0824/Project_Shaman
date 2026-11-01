@@ -44,16 +44,19 @@ MonoBehaviour:
   _emptyHandToolChance: 0.25
   _toolCorruptionSearchRadius: 25
   _huntTiers:
-  - MinYin: 1
+  - MinYin: 0
+    Kills: 0
+    ChasePlayer: 0
+  - MinYin: 20
     Kills: 1
     ChasePlayer: 0
-  - MinYin: 26
+  - MinYin: 40
     Kills: 2
     ChasePlayer: 0
-  - MinYin: 51
+  - MinYin: 60
     Kills: 3
     ChasePlayer: 0
-  - MinYin: 76
+  - MinYin: 80
     Kills: 4
     ChasePlayer: 1
   _ghostHuntTimeoutSeconds: 90
@@ -121,7 +124,7 @@ MonoBehaviour:
   _itemStartleStress: 3
   _bellStartleRadius: 5
   _itemReactionYin: 40
-  _itemViolentYin: 70
+  _itemViolentYin: 80
   _visionHalfAngle: 60
   _visionNearRadius: 2
   _visionEyeHeight: 1.6

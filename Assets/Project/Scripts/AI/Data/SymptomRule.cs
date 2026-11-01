@@ -43,20 +43,20 @@ namespace ProjectShaman.AI.Data
             const SymptomContext Both = SymptomContext.Moving | SymptomContext.Resting;
             return new List<SymptomRule>
             {
-                // Behaviour: quiet first (a moment frozen stiff, glancing back over the shoulder), then trembling and staring,
-                // the body twisting only at high yin
-                new SymptomRule(SymptomType.Freeze, 20f, 3f, SymptomContext.Resting, true),
-                new SymptomRule(SymptomType.GlanceBack, 20f, 3f, Both, true),
-                new SymptomRule(SymptomType.Nonsense, 30f, 2f, SymptomContext.Resting, true),
-                new SymptomRule(SymptomType.Tremble, 35f, 3f, SymptomContext.Moving, true),
-                new SymptomRule(SymptomType.StareIntoVoid, 35f, 3f, SymptomContext.Resting, true),
-                new SymptomRule(SymptomType.NeckTwist, 50f, 2f, Both, true),
-                new SymptomRule(SymptomType.WaistBend, 65f, 1.5f, SymptomContext.Resting, false),
+                // Five yin stages of 20 (0 / 20 / 40 / 60 / 80). Behaviour: quiet first (frozen stiff a moment, glancing back),
+                // then trembling, staring and mumbling, the body twisting only from stage 3 on
+                new SymptomRule(SymptomType.Freeze, 0f, 3f, SymptomContext.Resting, true),
+                new SymptomRule(SymptomType.GlanceBack, 0f, 3f, Both, true),
+                new SymptomRule(SymptomType.Tremble, 20f, 3f, SymptomContext.Moving, true),
+                new SymptomRule(SymptomType.StareIntoVoid, 20f, 3f, SymptomContext.Resting, true),
+                new SymptomRule(SymptomType.Nonsense, 20f, 2f, SymptomContext.Resting, true),
+                new SymptomRule(SymptomType.NeckTwist, 40f, 2f, Both, true),
+                new SymptomRule(SymptomType.WaistBend, 60f, 1.5f, SymptomContext.Resting, false),
                 new SymptomRule(SymptomType.Grotesque, 80f, 1f, SymptomContext.Moving, false),
                 // Appearance: a pale face is easy to dismiss, black eyes are not, no shadow is the surest sign
-                new SymptomRule(SymptomType.PaleSkin, 30f, 1f, SymptomContext.None, false, 20f, 60f),
-                new SymptomRule(SymptomType.BlackEyes, 50f, 0.7f, SymptomContext.None, false, 10f, 30f),
-                new SymptomRule(SymptomType.NoShadow, 70f, 0.5f, SymptomContext.None, false, 15f, 40f)
+                new SymptomRule(SymptomType.PaleSkin, 20f, 1f, SymptomContext.None, false, 20f, 60f),
+                new SymptomRule(SymptomType.BlackEyes, 40f, 0.7f, SymptomContext.None, false, 10f, 30f),
+                new SymptomRule(SymptomType.NoShadow, 60f, 0.5f, SymptomContext.None, false, 15f, 40f)
             };
         }
     }

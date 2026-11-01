@@ -122,10 +122,11 @@ namespace ProjectShaman.AI.Data
         [Tooltip("사냥 토큰을 받은 귀신의 음기 단계별 사냥 수와 플레이어 추격 여부. 토큰을 받으면 음기를 모두 쓰고 그 양으로 단계를 정함")]
         [SerializeField] private List<HuntTier> _huntTiers = new List<HuntTier>
         {
-            new HuntTier(1f, 1, false),
-            new HuntTier(26f, 2, false),
-            new HuntTier(51f, 3, false),
-            new HuntTier(76f, 4, true)
+            new HuntTier(0f, 0, false),
+            new HuntTier(20f, 1, false),
+            new HuntTier(40f, 2, false),
+            new HuntTier(60f, 3, false),
+            new HuntTier(80f, 4, true)
         };
         [Tooltip("귀신 사냥 명령 하나의 제한 시간(초)")]
         [SerializeField] private float _ghostHuntTimeoutSeconds = 90f;
@@ -280,7 +281,7 @@ namespace ProjectShaman.AI.Data
         [Tooltip("숙주의 음기가 이 값 이상이면 아이템에 놀랄 때 몸에 귀신 기운이 드러남(떨림 등 약한 증상). 미만이면 일반 주민처럼 놀라기만 함")]
         [SerializeField, Min(0f)] private float _itemReactionYin = 40f;
         [Tooltip("숙주의 음기가 이 값 이상이면 아이템 반응이 격해짐(뒤틀림 등 무서운 증상, Item Violent Symptom Chance 확률)")]
-        [SerializeField, Min(0f)] private float _itemViolentYin = 70f;
+        [SerializeField, Min(0f)] private float _itemViolentYin = 80f;
 
         [Header("Vision")]
         [Tooltip("주민 시야 반각(도). 정면에서 이 각도 안만 봄")]
