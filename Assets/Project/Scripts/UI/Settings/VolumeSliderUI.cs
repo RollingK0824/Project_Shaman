@@ -24,6 +24,10 @@ public class VolumeSliderUI : MonoBehaviour
             return;
         }
 
+        // Slider works in whole percent so arrow keys step by 1% (non-whole sliders step by 10% of the range)
+        _slider.minValue = 0f;
+        _slider.maxValue = 100f;
+        _slider.wholeNumbers = true;
         _slider.onValueChanged.AddListener(HandleChanged);
     }
 
@@ -45,12 +49,13 @@ public class VolumeSliderUI : MonoBehaviour
         }
 
         float v = _voice ? VoiceSettings.Volume : SoundManager.Instance.GetVolume(_category);
-        _slider.SetValueWithoutNotify(v);
+        _slider.SetValueWithoutNotify(v * 100f);
         UpdateLabel(v);
     }
 
-    private void HandleChanged(float v)
+    private void HandleChanged(float percent)
     {
+        float v = percent / 100f;
         if (_voice)
         {
             VoiceSettings.SetVolume(v);
