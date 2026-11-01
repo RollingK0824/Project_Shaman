@@ -153,16 +153,22 @@ public sealed class PlayerStatusHUD : MonoBehaviour
             entry.Group = entry.Root.gameObject.AddComponent<CanvasGroup>();
             entry.Group.blocksRaycasts = false; entry.Group.interactable = false;
             var background = entry.Root.gameObject.AddComponent<Image>();
-            background.color = new Color(.06f, .07f, .08f, .82f); background.raycastTarget = false;
+            var art = PlayerHUDArt.Current;
+            background.sprite = art != null ? art.InkWash : null;
+            background.color = art != null ? new Color(1, 1, 1, .82f) : new Color(.06f, .07f, .08f, .82f);
+            background.raycastTarget = false;
             var icon = Rect(entry.Root, "Item Icon", new Vector2(30, 30)).gameObject.AddComponent<Image>();
-            PlayerItemUIStyle.Place(icon.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(6, 0), new Vector2(30, 30));
+            PlayerItemUIStyle.Place(icon.rectTransform, new Vector2(0, .5f), new Vector2(0, .5f), new Vector2(10, 0), new Vector2(30, 30));
             icon.sprite = item.Icon; icon.preserveAspect = true; icon.raycastTarget = false; icon.enabled = item.Icon != null;
             entry.Label = Label(entry.Root, "Item Count", 18);
-            PlayerItemUIStyle.Stretch(entry.Label.rectTransform, new Vector2(42, 1), new Vector2(-48, -1));
+            if (art != null) entry.Label.font = art.Font;
+            entry.Label.color = PlayerHUDArt.Text;
+            PlayerItemUIStyle.Stretch(entry.Label.rectTransform, new Vector2(46, 1), new Vector2(-52, -1));
             var badge = Label(entry.Root, "Inventory Type", 13);
-            PlayerItemUIStyle.Place(badge.rectTransform, new Vector2(1,.5f), new Vector2(1,.5f), new Vector2(-6,0), new Vector2(38,30));
+            if (art != null) badge.font = art.Font;
+            PlayerItemUIStyle.Place(badge.rectTransform, new Vector2(1,.5f), new Vector2(1,.5f), new Vector2(-10,0), new Vector2(38,30));
             badge.text = item.Category == ItemCategory.Material ? "공용" : "개인";
-            badge.color = PlayerItemUIStyle.Muted;
+            badge.color = PlayerHUDArt.Text;
             _entries.Add(entry);
         }
         entry.Count += amount; entry.Updated = now; entry.Group.alpha = 1;

@@ -18,7 +18,8 @@ public class PlayerStatusHUDTests
     PlayerInventory inventory; PlayerHealth health; PlayerStressController stress;
     PlayerTalismanEffectController effects; PlayerStatusHUD hud; PlayerStressHUD stressHUD;
     T Keep<T>(T o) where T:Object { objects.Add(o);return o; }
-    static T Data<T>(string name) where T:Object => AssetDatabase.LoadAssetAtPath<T>("Assets/Project/Data/Items/"+name);
+    static T Data<T>(string name) where T:Object => AssetDatabase.LoadAssetAtPath<T>(
+        "Assets/Project/Data/Items/" + (name.StartsWith("Talismans/") ? name : "Items/" + name));
     static void Set(object o,string name,object value) => o.GetType().GetField(name,Private).SetValue(o,value);
     static T Get<T>(object o,string name) => (T)o.GetType().GetField(name,Private).GetValue(o);
     static void Call(object o,string name,params object[] args) => o.GetType().GetMethod(name,Private).Invoke(o,args);

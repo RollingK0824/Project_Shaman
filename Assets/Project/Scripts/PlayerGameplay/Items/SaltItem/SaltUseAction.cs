@@ -33,13 +33,24 @@ public class SaltUseAction : ItemUseAction
     public float VisualReach => _reach;
     public float VisualHalfWidth => _contactHalfWidth;
 
+    // Send the body-relative spray origin, not the orbit camera's setback, through
+    // the existing item request. Server validation and authority remain unchanged.
+    public bool TryBuildRequest(in ItemUseContext cameraContext, out ItemUseContext request)
+    {
+        request = cameraContext;
+        if (cameraContext.Owner == null || !PlayerActionGuard.CanAct(cameraContext.Owner) ||
+            !TryGetSpray(cameraContext.Owner.transform, new Ray(cameraContext.AimOrigin, cameraContext.AimDirection),
+                _reach, _solidMask, out var spray, out _)) return false;
+        request = new ItemUseContext(cameraContext.Owner, cameraContext.Data, spray.origin, spray.direction, cameraContext.Consume);
+        return true;
+    }
+
     public override bool Execute(in ItemUseContext context)
     {
         if (!ItemAttackAuthority.CanResolve(context.Owner) || context.Data == null) return false;
 
-        var ray = new Ray(context.AimOrigin, context.AimDirection);
-        float reach = GetReach(ray, context.Owner.transform);
-        if (reach <= 0f) return false;
+        if (!TryGetSpray(context.Owner.transform, new Ray(context.AimOrigin, context.AimDirection),
+            _reach, _solidMask, out var ray, out float reach)) return false;
 
         // Cache the contact before the receiver applies the slow.
         var contacts = new Dictionary<GameObject, (Vector3 point, Vector3 normal)>();
@@ -116,18 +127,44 @@ public class SaltUseAction : ItemUseAction
         return villager != null && villager.isActiveAndEnabled;
     }
 
-    private float GetReach(Ray ray, Transform owner)
+    // Keep the camera's aim line, but measure the short spray from the player's depth.
+    // The horizontal plane avoids moving a first-person origin to the floor when looking down.
+    // Neither local camera objects nor animated held meshes are required on the server.
+    public static bool TryGetSpray(Transform owner, Ray aim, float maxReach, int solidMask,
+        out Ray spray, out float reach)
     {
-        float reach = _reach;
+        spray = aim;
+        reach = 0f;
+        if (owner == null || !Finite(aim.origin) || !Finite(aim.direction) ||
+            aim.direction.sqrMagnitude < .0001f || !float.IsFinite(maxReach) || maxReach <= 0f) return false;
+        aim.direction = aim.direction.normalized;
+        Vector3 flatDirection = Vector3.ProjectOnPlane(aim.direction, Vector3.up);
+        float setback = flatDirection.sqrMagnitude > .01f
+            ? Mathf.Max(0f, Vector3.Dot(owner.position - aim.origin, flatDirection) / flatDirection.sqrMagnitude)
+            : 0f;
+        // Do not advance the origin through a wall between a third-person camera and its player.
+        float clear = ClearReach(aim, owner, setback + maxReach, solidMask);
+        if (clear <= setback) return false;
+        spray = new Ray(aim.GetPoint(setback), aim.direction);
+        reach = Mathf.Min(maxReach, clear - setback);
+        return reach > .001f;
+    }
 
-        int count = Physics.RaycastNonAlloc(ray, _rayHits, _reach, _solidMask, QueryTriggerInteraction.Ignore);
+    private static bool Finite(Vector3 value) => float.IsFinite(value.x) &&
+        float.IsFinite(value.y) && float.IsFinite(value.z);
+
+    private static float ClearReach(Ray ray, Transform owner, float reach, int solidMask)
+    {
+        int count = Physics.RaycastNonAlloc(ray, _rayHits, reach, solidMask, QueryTriggerInteraction.Ignore);
+        // NonAlloc results are unordered. A full buffer may omit the nearest wall.
+        var hits = count == _rayHits.Length
+            ? Physics.RaycastAll(ray, reach, solidMask, QueryTriggerInteraction.Ignore) : _rayHits;
+        if (hits != _rayHits) count = hits.Length;
         for (int i = 0; i < count; i++)
         {
-            if (_rayHits[i].collider.transform.IsChildOf(owner)) continue;
-            reach = Mathf.Min(reach, _rayHits[i].distance + .01f);
+            if (hits[i].collider.transform.IsChildOf(owner)) continue;
+            reach = Mathf.Min(reach, hits[i].distance + .01f);
         }
-
-
         return reach;
     }
 

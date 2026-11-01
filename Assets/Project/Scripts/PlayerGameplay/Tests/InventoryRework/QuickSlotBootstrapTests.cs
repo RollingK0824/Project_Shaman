@@ -56,7 +56,7 @@ public class QuickSlotBootstrapTests
         Assert.GreaterOrEqual(corners[0].x, 0f); Assert.GreaterOrEqual(corners[0].y, 0f);
         Assert.LessOrEqual(corners[2].x, Screen.width); Assert.LessOrEqual(corners[2].y, Screen.height);
         Update(true); Assert.AreSame(quick, Current);
-        var salt = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/SaltItemData.asset");
+        var salt = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/SaltItemData.asset");
         Assert.IsTrue(_inventory.TryAddItem(salt, 2));
         Assert.IsTrue(_inventory.AssignQuickSlot(0, salt));
         var icons = (Image[])typeof(QuickSlotUI).GetField("_slotIcons", Private).GetValue(quick);

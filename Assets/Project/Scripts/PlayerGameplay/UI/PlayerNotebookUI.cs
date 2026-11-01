@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.InputSystem;
 
 // Connects the existing notebook tabs to the existing inventory and crafting views.
 // Data, quickslots, crafting transactions and authority remain with their original owners.
@@ -10,6 +11,8 @@ public class PlayerNotebookUI : MonoBehaviour
 {
     [SerializeField] private NotebookPanel _panel;
     private Image _shortcut;
+    private TMP_Text _shortcutKey;
+    private InputManager _shortcutInput;
     private QuickSlotUI _quickSlots;
     private readonly Vector3[] _quickCorners = new Vector3[4];
     private PlayerLocalUIBootstrap _owner;
@@ -48,9 +51,22 @@ public class PlayerNotebookUI : MonoBehaviour
         {
             _shortcut = new GameObject("NotebookShortcut", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
             _shortcut.transform.SetParent(transform, false);
-            _shortcut.sprite = owner.NotebookHUDIcon;
-            _shortcut.preserveAspect = true;
+            _shortcut.color = Color.clear;
             _shortcut.raycastTarget = false;
+            var frame = PlayerHUDFrame.Attach(_shortcut.rectTransform);
+            frame.BookIcon = true;
+            _shortcutKey = new GameObject("NotebookKey", typeof(RectTransform), typeof(TextMeshProUGUI)).GetComponent<TextMeshProUGUI>();
+            _shortcutKey.transform.SetParent(_shortcut.transform, false);
+            // Match the quickslot number row, including its text size and vertical bounds.
+            PlayerItemUIStyle.Place(_shortcutKey.rectTransform, new Vector2(.5f, 0), new Vector2(.5f, 0), new Vector2(0, 5), new Vector2(56, 28));
+            PlayerItemUIStyle.Label(_shortcutKey, owner.InventoryPanelPrefab != null ? owner.InventoryPanelPrefab.GetComponentInChildren<TMP_Text>(true)?.font : null, 19);
+            if (PlayerHUDArt.Current != null) _shortcutKey.font = PlayerHUDArt.Current.Font;
+            _shortcutKey.color = PlayerHUDArt.Text;
+            _shortcutKey.alignment = TextAlignmentOptions.Center;
+            _shortcutKey.enableAutoSizing = true; _shortcutKey.fontSizeMin = 10; _shortcutKey.fontSizeMax = 19;
+            _shortcutInput = InputManager.Instance;
+            if (_shortcutInput != null) _shortcutInput.BindingsChanged += RefreshShortcutKey;
+            RefreshShortcutKey();
         }
         _input = owner.GetComponent<PlayerInputReader>();
         _notebook = owner.GetComponent<PlayerNotebook>();
@@ -253,14 +269,20 @@ public class PlayerNotebookUI : MonoBehaviour
         Vector2 bottomRight = RectTransformUtility.WorldToScreenPoint(camera, _quickCorners[3]);
         Vector2 topRight = RectTransformUtility.WorldToScreenPoint(camera, _quickCorners[2]);
         float unit = Mathf.Min(Screen.width / 1280f, Screen.height / 720f);
-        float size = 99f * unit;
+        float size = 68f * unit;
         var screen = new Vector2(Mathf.Min(Screen.width - size * .5f - 12f * unit, bottomRight.x + 12f * unit + size * .5f),
             Mathf.Max(size * .5f + 12f * unit, (bottomRight.y + topRight.y) * .5f));
         var parent = (RectTransform)_shortcut.transform.parent;
         var canvas = parent.GetComponentInParent<Canvas>();
         RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screen, canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, out var local);
-        PlayerItemUIStyle.Place(_shortcut.rectTransform, new Vector2(.5f,.5f), new Vector2(.5f,.5f), local,
-            Vector2.one * size / Mathf.Max(.001f, Mathf.Abs(parent.lossyScale.x)));
+        PlayerItemUIStyle.Place(_shortcut.rectTransform, new Vector2(.5f,.5f), new Vector2(.5f,.5f), local, new Vector2(68, 84));
+        PlayerItemUIStyle.SetScale(_shortcut.transform, Vector3.one * unit / Mathf.Max(.001f, Mathf.Abs(parent.lossyScale.x)));
+    }
+
+    private void RefreshShortcutKey()
+    {
+        if (_shortcutKey != null) _shortcutKey.text = _shortcutInput != null
+            ? _shortcutInput.Actions.UI.Notebook.GetBindingDisplayString(0) : "Tab";
     }
 
     private void OpenDrawing(TalismanItemData item, string id)
@@ -415,6 +437,8 @@ public class PlayerNotebookUI : MonoBehaviour
         _pageRoots.Clear(); _hiddenPlaceholders.Clear();
         _slotButtons.Clear(); _selectedItem = null; _slotToolbar = null; _selectionText = null; _drawButton = null;
         _rewardView = null; _rewardButton = null;
+        if (_shortcutInput != null) _shortcutInput.BindingsChanged -= RefreshShortcutKey;
+        _shortcutInput = null; _shortcutKey = null;
         if (_shortcut != null) { _shortcut.gameObject.SetActive(false); Destroy(_shortcut.gameObject); }
         _shortcut = null; _quickSlots = null;
         _owner = null; _input = null; _notebook = null; _health = null; _inventory = null; _crafting = null;

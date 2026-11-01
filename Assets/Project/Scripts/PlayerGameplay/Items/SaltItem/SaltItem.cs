@@ -15,6 +15,8 @@ public class SaltItem : ItemBase
     private void Release(ItemUseContext context)
     {
         var action = Data.UseAction as SaltUseAction;
+        var request = context;
+        if (action != null && !action.TryBuildRequest(context, out request)) return;
         float reach = action != null ? action.VisualReach : 3f;
         float width = action != null ? action.VisualHalfWidth : .2f;
         var view = Owner.GetComponent<PlayerViewModeController>();
@@ -23,6 +25,6 @@ public class SaltItem : ItemBase
         else
             SaltVfxBurst.Spray(Owner, _legacyEmitter != null ? _legacyEmitter.transform.position : transform.position,
                 new Ray(context.AimOrigin, context.AimDirection), reach, width);
-        PlayerEvents.RaiseItemUseRequested(context);
+        PlayerEvents.RaiseItemUseRequested(request);
     }
 }
