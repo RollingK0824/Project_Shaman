@@ -76,6 +76,7 @@ namespace ProjectShaman.AI.Ghost
         private GhostIdleController _idle;
         private GhostStressAura _aura;
         private float _lastPlayerAttackTime = float.NegativeInfinity;
+        private readonly List<IGhostTarget> _brokenPlayerBuffer = new List<IGhostTarget>();
         private bool _isSimulating;
         private float _nextDecisionTime;
         private float _nextTargetCheckTime;
@@ -374,7 +375,9 @@ namespace ProjectShaman.AI.Ghost
                 }
             }
 
-            IGhostTarget target = picked.IsHunt ? _hunt.PickNearest(transform.position) : GhostTargetRegistry.Find(picked.Query, transform.position, CreateContext(picked));
+            IGhostTarget target = picked.IsHunt ? _hunt.PickNearest(transform.position)
+                : picked.RequiresChaseTier && !_canChasePlayer ? FindBrokenPlayer(picked)
+                : GhostTargetRegistry.Find(picked.Query, transform.position, CreateContext(picked));
             if (target == null || !GhostTargetRegistry.TryClaim(target, _ghostId))
             {
                 _lastDecision = $"{picked.ActionId}: target unavailable";
@@ -413,9 +416,10 @@ namespace ProjectShaman.AI.Ghost
                 return false;
             }
 
-            if (action.RequiresChaseTier && !_canChasePlayer)
+            // A player whose stress is full (broken) is attacked by any ghost, not only by the chase-tier hunter
+            if (action.RequiresChaseTier && !_canChasePlayer && FindBrokenPlayer(action) == null)
             {
-                reason = "chase tier only";
+                reason = "chase tier only (no broken player near)";
                 return false;
             }
 
@@ -470,6 +474,40 @@ namespace ProjectShaman.AI.Ghost
 
             reason = string.Empty;
             return true;
+        }
+
+        // The nearest player within detect distance whose stress has reached the limit
+        private IGhostTarget FindBrokenPlayer(GhostNightActionData action)
+        {
+            GhostTargetRegistry.CollectOfKind(GhostTargetKind.Player, _brokenPlayerBuffer);
+            IGhostTarget best = null;
+            float bestSqr = _config.GhostPlayerDetectDistance * _config.GhostPlayerDetectDistance;
+            GhostActionContext context = CreateContext(action);
+
+            foreach (IGhostTarget player in _brokenPlayerBuffer)
+            {
+                if (player == null || (player is Object unityObject && unityObject == null) || !GhostTargetRegistry.IsCandidate(player, action.Query, context))
+                {
+                    continue;
+                }
+
+                PlayerStressController stress = player.gameObject.GetComponentInParent<PlayerStressController>();
+                if (stress == null || stress.CurrentStress < PlayerStressController.StressLimit)
+                {
+                    continue;
+                }
+
+                Vector3 offset = player.gameObject.transform.position - transform.position;
+                offset.y = 0f;
+                if (offset.sqrMagnitude <= bestSqr)
+                {
+                    best = player;
+                    bestSqr = offset.sqrMagnitude;
+                }
+            }
+
+            _brokenPlayerBuffer.Clear();
+            return best;
         }
 
         private bool IsPlayerDetected(GhostNightActionData action, out string reason)
