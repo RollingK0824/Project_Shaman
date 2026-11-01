@@ -43,11 +43,41 @@ public static class TextTemplate
                 builder.Append(value);
                 if (colon >= 0)
                 {
-                    builder.Append(Particle(value, token.Substring(colon + 1)));
+                    // A highlighted value ends in a rich-text tag: the particle follows the word itself
+                    builder.Append(Particle(StripTags(value), token.Substring(colon + 1)));
                 }
             }
 
             i = close + 1;
+        }
+
+        return builder.ToString();
+    }
+
+    // "<color=#..>도끼</color>" → "도끼"
+    public static string StripTags(string text)
+    {
+        if (string.IsNullOrEmpty(text) || text.IndexOf('<') < 0)
+        {
+            return text;
+        }
+
+        StringBuilder builder = new StringBuilder(text.Length);
+        bool inTag = false;
+        foreach (char c in text)
+        {
+            if (c == '<')
+            {
+                inTag = true;
+            }
+            else if (c == '>')
+            {
+                inTag = false;
+            }
+            else if (!inTag)
+            {
+                builder.Append(c);
+            }
         }
 
         return builder.ToString();
