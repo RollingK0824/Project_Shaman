@@ -7,7 +7,6 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public sealed class PlayerYinIncenseSense : MonoBehaviour
 {
-    [SerializeField, Min(.1f)] private float _radius = 15f;
     [SerializeField, Min(0f)] private float _straightUpRadius = 1.5f;
     public event Action SenseRequested;
     private float _nextSample, _validUntil;
@@ -41,22 +40,20 @@ public sealed class PlayerYinIncenseSense : MonoBehaviour
     }
 
     // Caller validates sender + equipped incense; send this result to that client.
-    // The same query is valid during day and night, with no Yin threshold gate.
+    // Points at the nearest ghost out in the village, however far (it comes out of its host at night). The host itself is
+    // not pointed at: the smoke follows the ghost, not the sleeping villager
     public bool TrySampleAuthoritative(out Vector3 direction, out bool near)
     {
         direction = Vector3.zero; near = false;
         if (NetworkClient.active && !NetworkServer.active) return false;
-        float closest = _radius * _radius;
+        float closest = float.MaxValue;
         bool found = false;
-        foreach (var villager in FindObjectsByType<AI_Core>(FindObjectsSortMode.None))
+        foreach (var ghost in FindObjectsByType<ProjectShaman.AI.Ghost.AI_GhostEntity>(FindObjectsSortMode.None))
         {
-            var profile = villager.Profile;
-            if (!villager.isActiveAndEnabled || profile == null || !profile.IsPossessed ||
-                profile.ExorcisedDay >= 0 || villager.GetComponent<AI_Status>() is { IsDead: true } ||
-                profile.Possession == null || !profile.Possession.isActiveAndEnabled) continue;
-            Vector3 delta = villager.transform.position - transform.position;
+            if (!ghost.isActiveAndEnabled) continue;
+            Vector3 delta = ghost.transform.position - transform.position;
             delta.y = 0f;
-            if (delta.sqrMagnitude > closest) continue;
+            if (delta.sqrMagnitude >= closest) continue;
             closest = delta.sqrMagnitude; direction = delta; found = true;
         }
         if (!found)
