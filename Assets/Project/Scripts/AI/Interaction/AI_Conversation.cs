@@ -14,7 +14,6 @@ namespace ProjectShaman.AI.Interaction
         private const float LOOK_HEIGHT = 1.6f;
         private static readonly List<AI_Conversation> _all = new List<AI_Conversation>();
         private static readonly string[] BUSY_BARKS = { "지금 바빠유!", "이따 다시 와주시겠소" };
-        private static readonly string[] HOME_BARKS = { "해가 지는구먼, 들어가 봐야겠소" };
         private static readonly string[] GREETING_BARKS = { "무슨 일이오?", "어서 오시오" };
         private static readonly System.Random _lineRandom = new System.Random();
 
@@ -230,10 +229,11 @@ namespace ProjectShaman.AI.Interaction
         private static bool IsTalkableActivity(VillagerActivity activity)
         {
             return activity == VillagerActivity.Rest || activity == VillagerActivity.Work || activity == VillagerActivity.Moving
-                || activity == VillagerActivity.ToolSearch;
+                || activity == VillagerActivity.ToolSearch || activity == VillagerActivity.ReturningHome;
         }
 
-        // Resting or at work (alone, or in a chat with another villager) and not heading home: a player can stop it and talk
+        // Resting, at work or on the way home (alone, or in a chat with another villager): a player can stop it and talk.
+        // A talk on the way home holds it up; one that falls behind runs the rest of the way (C121)
         public bool CanTalkWithPlayer()
         {
             // Home for the evening and still up: it opens the door and talks (asleep it only mumbles, Net_VillagerTalk)
@@ -272,12 +272,6 @@ namespace ProjectShaman.AI.Interaction
             if (_core != null && _core.IsHomeForNight)
             {
                 Say(ProjectShaman.AI.Dialogue.DialogueLibrary.Line("greet.home", _lineRandom), $"at home, busy for {playerName}");
-                return;
-            }
-
-            if (activity == VillagerActivity.ReturningHome)
-            {
-                Bark(HOME_BARKS, $"refused {playerName} (going home)");
                 return;
             }
 
