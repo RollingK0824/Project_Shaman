@@ -23,6 +23,9 @@ public class NetDefenseAudio : MonoBehaviour
     [SerializeField] private AudioClip _successClip;  // 디펜스 성공 (방울)
     [SerializeField] private AudioClip _failClip;     // 디펜스 실패 (낮은 징)
 
+    [Header("성공음")]
+    [SerializeField, Range(0f, 1f)] private float _successVolume = 0.35f;
+
     [Header("굿 음악")]
     [SerializeField, Range(0f, 1f)] private float _loopVolume = 0.8f;
     [SerializeField, Min(1f)] private float _loopMinDistance = 5f;
@@ -91,7 +94,7 @@ public class NetDefenseAudio : MonoBehaviour
                 break;
 
             case RitualPhase.Succeeded:
-                Play2D(_successClip);
+                Play2D(_successClip, _successVolume);
                 FadeOutLoop();
                 break;
 
@@ -141,10 +144,10 @@ public class NetDefenseAudio : MonoBehaviour
         SoundManager.Instance.PlaySFXAt(_flagHitClip, pos);
     }
 
-    private static void Play2D(AudioClip clip)
+    private static void Play2D(AudioClip clip, float volume = 1f)
     {
         if (clip == null) return;
-        SoundManager.Instance.PlaySFX(clip);
+        SoundManager.Instance.PlaySFX(clip, volume);
     }
 
     private void StartLoop()

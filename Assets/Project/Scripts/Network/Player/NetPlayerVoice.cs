@@ -60,9 +60,6 @@ public class NetPlayerVoice : NetworkBehaviour
     // [로컬 클라] 직전 무전 상태. 바뀌는 순간에만 신호음 요청
     private bool _wasTalkingOnRadio;
 
-    // [서버] 시작 신호를 보낸 무전이 진행중인지 (끝 신호를 짝 맞춰 보내기 위함)
-    private bool _serverRadioActive;
-
     // [모든 클라] 게임 씬의 플레이어 음성 목록. 플레이어별 음소거 UI용 (PlayerRoster는 서버에만 있음)
     private static readonly List<NetPlayerVoice> _all = new List<NetPlayerVoice>();
     public static IReadOnlyList<NetPlayerVoice> All => _all;
@@ -87,7 +84,7 @@ public class NetPlayerVoice : NetworkBehaviour
     }
 
     // [로컬 클라] 이 플레이어 목소리 볼륨 (0~1, 기본 1). 이 PC에서만, 그 판에만 적용 (저장 안 함)
-    // VoiceSettings.Volume에 곱해짐. 무전 신호음에도 적용
+    // VoiceSettings.Volume에 곱해짐
     public float LocalVolume { get; private set; } = 1f;
     public event Action<float> LocalVolumeChanged;
 
@@ -199,8 +196,7 @@ public class NetPlayerVoice : NetworkBehaviour
         if (IsTalkingOnRadio != _wasTalkingOnRadio)
         {
             _wasTalkingOnRadio = IsTalkingOnRadio;
-            CmdSetRadioActive(IsTalkingOnRadio);
-            // 로컬도 들어서 무전이 켜지고 꺼진 걸 알 수 있게
+            // 무전 신호음은 조작한 플레이어에게만 재생
             _radioPlayback.PlayCue(IsTalkingOnRadio ? _radioStartClip : _radioEndClip, _radioCueVolume);
         }
 
@@ -243,32 +239,6 @@ public class NetPlayerVoice : NetworkBehaviour
     // [서버] 실제 보유 여부는 무전 판정 때 Contains로 다시 확인
     [Command]
     private void CmdSetBellInQuickSlot(bool registered) => _serverBellInQuickSlot = registered;
-
-    // [서버] 무전 시작/끝. 시작은 살아 있고 방울을 들고 있을 때만 인정
-    [Command]
-    private void CmdSetRadioActive(bool active)
-    {
-        if (active && (IsDead || !IsHoldingBell)) return;
-        if (active == _serverRadioActive) return;
-
-        _serverRadioActive = active;
-
-        foreach (NetworkConnectionToClient conn in NetworkServer.connections.Values)
-        {
-            if (conn == connectionToClient || conn.identity == null) continue;
-            if (!conn.identity.TryGetComponent(out NetPlayerVoice listener)) continue;
-
-            if (listener.ServerCanHearRadio) TargetPlayRadioCue(conn, active);
-        }
-    }
-
-    // [받는 클라] 말한 플레이어 쪽 VoiceRadio에서 재생
-    [TargetRpc]
-    private void TargetPlayRadioCue(NetworkConnectionToClient target, bool start)
-    {
-        if (IsMutedLocally) return;
-        _radioPlayback.PlayCue(start ? _radioStartClip : _radioEndClip, _radioCueVolume);
-    }
 
     // [서버] 듣는 사람마다 채널을 골라 전달. 클라가 보낸 무전 여부는 서버가 다시 확인
     [Command(channel = Channels.Unreliable)]
