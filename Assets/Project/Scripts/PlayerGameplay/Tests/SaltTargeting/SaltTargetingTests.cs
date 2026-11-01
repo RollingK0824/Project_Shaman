@@ -114,6 +114,99 @@ public class SaltTargetingTests
     }
 
     [Test]
+    public void ThirdPersonCameraSetbackDoesNotSpendTheSprayRange()
+    {
+        var ghost = Ghost(); ghost.transform.position = _origin + Vector3.forward * 2.5f;
+        var receiver = ghost.AddComponent<SaltTestReceiver>(); Hitbox(ghost); Hitbox(ghost);
+        Physics.SyncTransforms();
+        Assert.IsTrue(_action.Execute(new ItemUseContext(_owner, _data,
+            _origin - Vector3.forward * 2.5f, Vector3.forward, amount => _consumed += amount)));
+        Assert.AreEqual(1, receiver.Controls);
+        Assert.AreEqual(1, _consumed);
+        Assert.AreEqual(0, _requests);
+    }
+
+    [Test]
+    public void ThirdPersonRequestKeepsAimLineWithinExistingServerOriginLimit()
+    {
+        var eye = _origin + new Vector3(.5f, 1.6f, -3.4f);
+        Assert.IsTrue(_action.TryBuildRequest(new ItemUseContext(_owner, _data, eye, Vector3.forward), out var request));
+        Assert.Less(Vector3.Distance(request.AimOrigin, _owner.transform.position), 3f);
+        Assert.Less(Vector3.Cross(request.AimOrigin - eye, Vector3.forward).magnitude, .001f);
+        Assert.AreEqual(Vector3.forward, request.AimDirection);
+        Assert.IsTrue(_action.TryBuildRequest(request, out var repeated));
+        Assert.Less(Vector3.Distance(request.AimOrigin, repeated.AimOrigin), .001f, "Server must not advance the origin a second time");
+    }
+
+    [Test]
+    public void ThirdPersonOriginCannotAdvanceThroughAWall()
+    {
+        var ghost = Ghost(); var receiver = ghost.AddComponent<SaltTestReceiver>(); Hitbox(ghost);
+        var wall = Create("Wall between camera and body", -1).AddComponent<BoxCollider>();
+        wall.size = new Vector3(4, 4, .1f);
+        Physics.SyncTransforms();
+        Assert.IsFalse(_action.Execute(new ItemUseContext(_owner, _data,
+            _origin - Vector3.forward * 2.5f, Vector3.forward)));
+        Assert.AreEqual(0, receiver.Controls);
+    }
+
+    [Test]
+    public void FirstPersonLookingDownKeepsItsOriginalAimOrigin()
+    {
+        var eye = _origin + Vector3.up * 1.6f;
+        var direction = new Vector3(0, -1, 1).normalized;
+        Assert.IsTrue(SaltUseAction.TryGetSpray(_owner.transform, new Ray(eye, direction), 3, ~0, out var spray, out float reach));
+        Assert.Less(Vector3.Distance(eye, spray.origin), .0001f);
+        Assert.AreEqual(3f, reach, .001f);
+    }
+
+    [Test]
+    public void FullRayBufferStillFindsWallAfterIgnoringOwnerColliders()
+    {
+        for (int i = 0; i < 24; i++)
+        {
+            var collider = (BoxCollider)Hitbox(_owner);
+            collider.transform.localPosition = Vector3.forward * (.1f + i * .03f);
+            collider.size = new Vector3(.05f, .05f, .01f);
+        }
+        var wall = Create("Occluding wall", 1.2f).AddComponent<BoxCollider>(); wall.size = new Vector3(4, 4, .1f);
+        var ghost = Ghost(); ghost.transform.position = _origin + Vector3.forward * 2;
+        var receiver = ghost.AddComponent<SaltTestReceiver>(); Hitbox(ghost);
+        Assert.IsTrue(Spray()); Assert.AreEqual(0, receiver.Controls);
+    }
+
+    [Test]
+    public void TriggerChildColliderResolvesItsParentReceiver()
+    {
+        var ghost = Ghost(); var receiver = ghost.AddComponent<SaltTestReceiver>();
+        var collider = Hitbox(ghost); collider.isTrigger = true;
+        Assert.IsTrue(Spray()); Assert.AreEqual(1, receiver.Controls);
+    }
+
+    [Test]
+    public void DeadOwnerCannotCreateAnAttack()
+    {
+        _owner.AddComponent<PlayerHealth>().ReceiveDamage(10000);
+        Assert.IsFalse(Spray()); Assert.AreEqual(0, _requests); Assert.AreEqual(0, _consumed);
+    }
+
+    [Test]
+    public void ClientOnlyCannotResolveEvenWithAnEnabledAuthorityDelegate()
+    {
+        // Simulate client connection state without opening a connection or starting a transport.
+        var type = typeof(PlayerController).BaseType.Assembly.GetType("Mirror.NetworkClient");
+        var state = type.GetField("connectState", BindingFlags.Static | BindingFlags.NonPublic);
+        var previous = state.GetValue(null);
+        _owner.AddComponent<ItemAttackAuthority>().SetAuthorityCheck(() => true);
+        try
+        {
+            state.SetValue(null, System.Enum.Parse(state.FieldType, "Connected"));
+            Assert.IsFalse(Spray()); Assert.AreEqual(0, _requests); Assert.AreEqual(0, _consumed);
+        }
+        finally { state.SetValue(null, previous); }
+    }
+
+    [Test]
     public void OrdinaryDamageableAndLegacyNpcAreExcluded()
     {
         var npc = Create("Ordinary NPC", 1);
@@ -229,9 +322,30 @@ public class SaltTargetingTests
 
 #if UNITY_EDITOR
     [Test]
+    public void RealGhostReceiverAcceptsSlowOnlyWhileSimulating()
+    {
+        var ghost = Ghost(); Hitbox(ghost); Hitbox(ghost);
+        var entity = ghost.GetComponent<AI_GhostEntity>();
+        var fields = BindingFlags.Instance | BindingFlags.NonPublic;
+        var config = UnityEditor.AssetDatabase.LoadAssetAtPath<ProjectShaman.AI.Data.AIBehaviourConfig>(
+            "Assets/Project/Data/AI/Mock/AIBehaviourConfig.asset");
+        Assert.IsNotNull(config);
+        typeof(AI_GhostEntity).GetField("_config", fields).SetValue(entity, config);
+        ghost.AddComponent<AI_GhostItemReceiver>();
+        Assert.IsTrue(Spray()); Assert.AreEqual(0, _consumed);
+        foreach (var volume in Object.FindObjectsByType<DamageTrigger>(FindObjectsSortMode.None))
+            if (Vector3.Distance(volume.transform.position, _origin) < 10) Object.DestroyImmediate(volume.gameObject);
+        typeof(AI_GhostEntity).GetField("_isSimulating", fields).SetValue(entity, true);
+        Assert.IsTrue(Spray());
+        Assert.AreEqual(.6f, (float)typeof(AI_GhostEntity).GetField("_slowRate", fields).GetValue(entity));
+        Assert.AreEqual(1, _consumed, "Real receiver accepts once across both child colliders");
+        Assert.AreEqual(0, _requests);
+    }
+
+    [Test]
     public void BeanHoldDoesNotUse_CancelDoesNotThrow_ReleaseUsesOnce()
     {
-        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/BeanMugwortItemData.asset");
         var cameraObject = Create("Aim camera", 0);
         cameraObject.transform.SetParent(_owner.transform, false);
         cameraObject.AddComponent<Camera>();
@@ -331,7 +445,7 @@ public class SaltTargetingTests
     [Test]
     public void BeanFirstPersonAimStartsToRightAndRisesBeforeFalling()
     {
-        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/BeanMugwortItemData.asset");
         var action = (BeanMugwortUseAction)data.UseAction;
         var context = action.WithLocalReleaseOrigin(new ItemUseContext(_owner, data, _origin, Vector3.forward));
         action.GetSpawnPose(context, out var start, out _);
@@ -349,7 +463,7 @@ public class SaltTargetingTests
     [Test]
     public void BeanTrajectoryUsesGravityStopsAtWallAndHasBuildMaterial()
     {
-        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/BeanMugwortItemData.asset");
         var action = (BeanMugwortUseAction)data.UseAction;
         Assert.IsNotNull(action.TrajectoryMaterial);
         Assert.IsTrue(action.TrajectoryMaterial.shader.isSupported);
@@ -372,7 +486,7 @@ public class SaltTargetingTests
 
     private BeanMugwortProjectile ThrowBean()
     {
-        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/BeanMugwortItemData.asset");
         Assert.IsNotNull(data);
         Assert.IsTrue(data.UseAction.Execute(new ItemUseContext(_owner, data, _origin, Vector3.forward,
             amount => _consumed += amount)));
@@ -442,7 +556,7 @@ public class SaltTargetingTests
     {
         _owner.AddComponent<ItemAttackAuthority>().SetAuthorityCheck(() => false);
         Assert.IsFalse(Spray());
-        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/BeanMugwortItemData.asset");
+        var data = UnityEditor.AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/BeanMugwortItemData.asset");
         Assert.IsFalse(data.UseAction.Execute(new ItemUseContext(_owner, data, _origin, Vector3.forward,
             amount => _consumed += amount)));
         Assert.AreEqual(0, _requests);

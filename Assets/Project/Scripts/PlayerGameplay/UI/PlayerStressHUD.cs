@@ -24,6 +24,47 @@ public class PlayerStressHUD : MonoBehaviour
     private void Awake()
     {
         if (_canvas == null) _canvas = GetComponent<Canvas>();
+        StylePanel();
+    }
+
+    private void StylePanel()
+    {
+        if (_valueText == null || _fill == null || _levelText == null) return;
+        var panel = (RectTransform)_valueText.transform.parent;
+        if (panel.TryGetComponent<Image>(out var background)) background.color = Color.clear;
+        PlayerHUDFrame.Attach(panel);
+        var rule = panel.Find("TopRule");
+        if (rule != null) rule.gameObject.SetActive(false);
+        var title = panel.Find("Title")?.GetComponent<TMP_Text>();
+        PlaceLabel(title, new Vector2(18, -8), new Vector2(130, 34), 23);
+        PlaceLabel(_valueText, new Vector2(158, -12), new Vector2(124, 26), 18);
+        _valueText.alignment = TextAlignmentOptions.Right;
+        PlaceLabel(_levelText, new Vector2(18, -46), new Vector2(58, 22), 17);
+        var gauge = (RectTransform)_fill.transform.parent;
+        PlayerItemUIStyle.Place(gauge, new Vector2(0, 1), new Vector2(0, 1), new Vector2(82, -49), new Vector2(200, 14));
+        // Remove the old gold Outline, including the outline that made an empty gauge look filled.
+        foreach (var effect in gauge.GetComponentsInChildren<BaseMeshEffect>(true)) effect.enabled = false;
+        var art = PlayerHUDArt.Current;
+        if (gauge.TryGetComponent<Image>(out var track))
+        {
+            track.sprite = art != null ? art.RedBrush : null;
+            track.color = new Color(1, 1, 1, .22f);
+        }
+        if (art != null) _fill.sprite = art.RedBrush;
+        _lowColor = new Color(.76f, .83f, .81f);
+        _midColor = new Color(.92f, .80f, .70f);
+        _highColor = new Color(.96f, .39f, .34f);
+    }
+
+    private static void PlaceLabel(TMP_Text label, Vector2 position, Vector2 size, float fontSize)
+    {
+        if (label == null) return;
+        PlayerItemUIStyle.Place(label.rectTransform, new Vector2(0, 1), new Vector2(0, 1), position, size);
+        var art = PlayerHUDArt.Current;
+        PlayerItemUIStyle.Label(label, art != null ? art.Font : label.font, fontSize);
+        label.color = PlayerHUDArt.Text;
+        label.alignment = TextAlignmentOptions.Left;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
     }
 
     public PlayerStatusHUD StatusHUD { get; private set; }
@@ -50,13 +91,13 @@ public class PlayerStressHUD : MonoBehaviour
             var top = RectTransformUtility.WorldToScreenPoint(camera, _corners[1]);
             left = bottom.x; centerY = (bottom.y + top.y) * .5f;
         }
-        float scale = Mathf.Min(unit, Mathf.Max(.1f, (left - 40f * unit) / 320f));
-        Vector2 screen = new Vector2(left - 24f * unit - 160f * scale, Mathf.Max(12f * unit + 36f * scale, centerY));
+        float scale = Mathf.Min(unit, Mathf.Max(.1f, (left - 48f * unit) / 300f));
+        Vector2 screen = new Vector2(24f * unit + 150f * scale, Mathf.Max(12f * unit + 42f * scale, centerY));
         var canvas = parent.GetComponentInParent<Canvas>();
         RectTransformUtility.ScreenPointToLocalPointInRectangle(parent, screen,
             canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera, out var local);
         // Write only on change: transform writes dirty the whole canvas even with equal values.
-        Vector2 center = new Vector2(.5f, .5f), size = new Vector2(320, 72);
+        Vector2 center = new Vector2(.5f, .5f), size = new Vector2(300, 84);
         Vector3 localScale = Vector3.one * scale / Mathf.Max(.001f, Mathf.Abs(parent.lossyScale.x));
         if (panel.anchorMin != center) panel.anchorMin = center;
         if (panel.anchorMax != center) panel.anchorMax = center;
@@ -141,7 +182,7 @@ public class PlayerStressHUD : MonoBehaviour
         }
         if (_fill != null)
         {
-            _fill.color = color;
+            _fill.color = Color.white;
             _fill.rectTransform.anchorMax = new Vector2(_stress.NormalizedStress, 1f);
         }
     }

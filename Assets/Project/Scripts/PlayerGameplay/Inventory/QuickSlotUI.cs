@@ -41,7 +41,7 @@ public class QuickSlotUI : MonoBehaviour
     private int _selectedIndex = -1;
     private float _nextBindingCheck;
     private readonly TalismanDrawingSurface[] _drawings = new TalismanDrawingSurface[6];
-    private readonly Image[] _selectionFrames = new Image[6];
+    private readonly PlayerHUDFrame[] _selectionFrames = new PlayerHUDFrame[6];
 
     private void LateUpdate()
     {
@@ -147,11 +147,16 @@ public class QuickSlotUI : MonoBehaviour
     private void ApplyPresentationLayout()
     {
         AlignSlotsToArtwork();
-        // The ornamental art is a child Image. A sprite-less panel behind it leaves gray square corners.
+        var art = PlayerHUDArt.Current;
+        var hudFont = art != null ? art.Font : null;
+        if (hudFont != null)
+            foreach (var label in GetComponentsInChildren<TMP_Text>(true)) label.font = hudFont;
+        // One soft ink wash joins the slots; no individual hard-edged cell backgrounds.
         var backdrop = GetComponent<Image>();
-        if (backdrop != null && backdrop.sprite == null && GetComponent<Mask>() == null)
+        if (backdrop != null && GetComponent<Mask>() == null)
         {
-            backdrop.color = Color.clear;
+            backdrop.sprite = art != null ? art.InkWash : null;
+            backdrop.color = art != null ? new Color(1, 1, 1, .68f) : Color.clear;
             backdrop.raycastTarget = false;
         }
         for (int i = 0; i < _slotIcons.Length && i < _slotBackgrounds.Length; i++)
@@ -163,51 +168,49 @@ public class QuickSlotUI : MonoBehaviour
             var rect = icon.rectTransform;
             rect.anchorMin = rect.anchorMax = new Vector2(.5f, .5f);
             rect.pivot = new Vector2(.5f, .5f);
-            rect.anchoredPosition = Vector2.zero;
-            rect.sizeDelta = Vector2.one * Mathf.Min(slot.rectTransform.rect.width, slot.rectTransform.rect.height) * _iconAreaRatio;
+            rect.anchoredPosition = new Vector2(0, 10);
+            rect.sizeDelta = Vector2.one * 44f;
             icon.raycastTarget = false;
             if (i >= _countTexts.Length || _countTexts[i] == null) continue;
             var count = _countTexts[i];
             var countRect = count.rectTransform;
             countRect.anchorMin = countRect.anchorMax = countRect.pivot = new Vector2(1f, 0f);
-            countRect.anchoredPosition = new Vector2(-7f, 5f);
-            countRect.sizeDelta = new Vector2(46f, 20f);
-            count.fontSize = 19f;
+            countRect.anchoredPosition = new Vector2(-9f, 28f);
+            countRect.sizeDelta = new Vector2(56f, 22f);
+            count.fontSize = 15f;
             count.fontStyle = FontStyles.Bold;
             count.alignment = TextAlignmentOptions.BottomRight;
-            count.color = new Color(.23f, .14f, .07f, 1f);
+            count.color = PlayerHUDArt.Text;
             count.raycastTarget = false;
         }
     }
 
     private void AlignSlotsToArtwork()
     {
-        var art = transform.Find("BarBackground") as RectTransform;
-        if (art == null) return;
-        var image = art.GetComponent<Image>();
-        if (image == null || image.sprite == null) return;
-        // The six painted cells occupy 7.3%..92.7% of the source image, not the
-        // old 90px cells + 10px layout spacing. Include the image's transparent margins.
+        var art = transform.Find("BarBackground");
+        if (art != null) art.gameObject.SetActive(false);
         var layout = GetComponent<HorizontalLayoutGroup>();
         if (layout != null) layout.enabled = false;
-        Rect drawing = art.rect;
-        float aspect = image.sprite.rect.width / image.sprite.rect.height;
-        if (image.preserveAspect)
-        {
-            Vector2 size = drawing.size;
-            if (size.x / size.y > aspect) size.x = size.y * aspect;
-            else size.y = size.x / aspect;
-            drawing = new Rect(drawing.center - size * .5f, size);
-        }
+        ((RectTransform)transform).sizeDelta = new Vector2(560, 84);
         for (int i = 0; i < _slotBackgrounds.Length; i++)
         {
             if (_slotBackgrounds[i] == null) continue;
             var slot = _slotBackgrounds[i].rectTransform;
-            slot.anchorMin = slot.anchorMax = slot.pivot = new Vector2(.5f, .5f);
-            slot.sizeDelta = new Vector2(drawing.width * .123f, drawing.height * .355f);
-            slot.position = art.TransformPoint(new Vector3(
-                drawing.xMin + drawing.width * (.135f + i * .146f),
-                drawing.yMin + drawing.height * .51f, 0f));
+            PlayerItemUIStyle.Place(slot, new Vector2(.5f, .5f), new Vector2(.5f, .5f),
+                new Vector2((i - 2.5f) * 94f, 0), new Vector2(86, 84));
+            _selectionFrames[i] = PlayerHUDFrame.Attach(slot);
+            foreach (var label in slot.GetComponentsInChildren<TMP_Text>(true))
+            {
+                if (!label.name.StartsWith("KeyText")) continue;
+                label.gameObject.SetActive(true);
+                label.enabled = true;
+                label.text = (i + 1).ToString();
+                PlayerItemUIStyle.Place(label.rectTransform, new Vector2(.5f, 0), new Vector2(.5f, 0),
+                    new Vector2(0, 5), new Vector2(28, 28));
+                PlayerItemUIStyle.Label(label, label.font, 19);
+                label.color = PlayerHUDArt.Text;
+                label.alignment = TextAlignmentOptions.Center;
+            }
         }
     }
 
@@ -246,31 +249,9 @@ public class QuickSlotUI : MonoBehaviour
                 continue;
             }
 
-            if (_selectionFrames[i] == null)
-            {
-                var go = new GameObject("SelectedSlotFrame", typeof(RectTransform), typeof(Image));
-                go.transform.SetParent(background.transform, false);
-                var rect = (RectTransform)go.transform;
-                rect.anchorMin = rect.anchorMax = new Vector2(.5f, 0f);
-                rect.anchoredPosition = new Vector2(0f, -7f);
-                rect.sizeDelta = new Vector2(28f, 3f);
-                var frame = go.GetComponent<Image>(); frame.raycastTarget = false;
-                frame.color = _selectionAccent;
-                // Small seal-like marker follows the parchment art without redrawing its border.
-                var marker = new GameObject("SelectionMarker", typeof(RectTransform), typeof(Image));
-                marker.transform.SetParent(rect, false);
-                var markerRect = (RectTransform)marker.transform;
-                markerRect.sizeDelta = new Vector2(8f, 8f);
-                markerRect.localRotation = Quaternion.Euler(0f, 0f, 45f);
-                var markerImage = marker.GetComponent<Image>(); markerImage.raycastTarget = false;
-                markerImage.color = _selectionAccent;
-                _selectionFrames[i] = frame;
-            }
-            _selectionFrames[i].gameObject.SetActive(i == _selectedIndex);
-            background.color =
-                i == _selectedIndex
-                    ? new Color(_selectionAccent.r, _selectionAccent.g, _selectionAccent.b, Mathf.Min(_selectedColor.a, .12f))
-                    : _normalColor;
+            if (_selectionFrames[i] == null) _selectionFrames[i] = PlayerHUDFrame.Attach(background.rectTransform);
+            _selectionFrames[i].SetSelected(i == _selectedIndex);
+            background.color = Color.clear;
         }
     }
 

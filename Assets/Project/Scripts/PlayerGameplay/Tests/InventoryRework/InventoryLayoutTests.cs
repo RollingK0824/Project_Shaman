@@ -11,6 +11,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using Object = UnityEngine.Object;
 
 public class InventoryLayoutTests
@@ -66,6 +67,84 @@ public class InventoryLayoutTests
         var texture = ScreenCapture.CaptureScreenshotAsTexture();
         Directory.CreateDirectory(Output); File.WriteAllBytes(Path.Combine(Output,name+".png"),texture.EncodeToPNG()); Object.Destroy(texture);
     }
+
+    [UnityTest] public IEnumerator HudReadabilitySelectionAndNotebookBindingAtThreeResolutions()
+    {
+        var player = Keep(new GameObject("HUD presentation QA"));
+        var health = player.AddComponent<PlayerHealth>();
+        var stress = player.AddComponent<PlayerStressController>(); stress.enabled = false;
+        var inventory = player.AddComponent<PlayerInventory>();
+        var input = player.AddComponent<PlayerInputReader>();
+        var owner = player.AddComponent<PlayerLocalUIBootstrap>(); owner.enabled = false;
+        Set(owner, "_inventoryPanelPrefab", LoadUI<InventoryPanelUI>("Inventory/InventoryPanelUI.prefab"));
+        Set(owner, "_notebookHUDIcon", AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Project/Visuals/Sprites/Items/NoteBook/NoteBookUI.png"));
+        var notebook = Keep(Object.Instantiate(LoadUI<GameObject>("PlayerNotebookUI.prefab"))).GetComponent<PlayerNotebookUI>(); notebook.Bind(owner);
+        var quick = Keep(Object.Instantiate(Resources.Load<GameObject>("PlayerUI/QuickSlotHUD"))).GetComponentInChildren<QuickSlotUI>(); quick.Bind(inventory, input);
+        var hud = Keep(Object.Instantiate(LoadUI<GameObject>("StressHUD.prefab"))).GetComponent<PlayerStressHUD>(); hud.Bind(stress, health);
+        var camera = Keep(new GameObject("HUD QA camera")).AddComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = new Color(.23f, .30f, .37f);
+        var salt = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/SaltItemData.asset");
+        var lamp = AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/LanternItemData.asset");
+        inventory.TryAddItem(salt, 12); inventory.AssignQuickSlot(0, salt);
+        inventory.TryAddItem(lamp); inventory.AssignQuickSlot(1, lamp);
+        var shortcut = Get<Image>(notebook, "_shortcut");
+        var binding = InputManager.Instance.Actions.UI.Notebook;
+        var previousOverride = binding.bindings[0];
+        try
+        {
+            binding.ApplyBindingOverride(0, "<Keyboard>/n"); Call(notebook, "RefreshShortcutKey");
+            StringAssert.AreEqualIgnoringCase("N", Get<TMP_Text>(notebook, "_shortcutKey").text);
+        }
+        finally
+        {
+            binding.RemoveBindingOverride(0);
+            binding.ApplyBindingOverride(0, previousOverride);
+            Call(notebook, "RefreshShortcutKey");
+        }
+        int selected = 0;
+        foreach (int width in new[] { 1280, 1600, 1920 })
+        {
+            Size(width, width * 9 / 16);
+            stress.SetStress(selected == 0 ? 0 : selected == 1 ? 50 : 85);
+            Call(quick, "OnSlotSelected", selected++);
+            yield return null; yield return null; yield return new WaitForEndOfFrame();
+            Assert.AreEqual(width, Screen.width);
+            Canvas.ForceUpdateCanvases();
+            var stressRect = ScreenRect((RectTransform)Get<TMP_Text>(hud, "_valueText").transform.parent);
+            var quickRect = ScreenRect((RectTransform)quick.transform);
+            var bookRect = ScreenRect(shortcut.rectTransform);
+            Assert.Less(stressRect.xMax + 10, quickRect.xMin);
+            Assert.Greater(bookRect.xMin, quickRect.xMax + 5);
+            foreach (var r in new[] { stressRect, quickRect, bookRect })
+            {
+                Assert.GreaterOrEqual(r.xMin, 0); Assert.GreaterOrEqual(r.yMin, 0);
+                Assert.LessOrEqual(r.xMax, Screen.width); Assert.LessOrEqual(r.yMax, Screen.height);
+            }
+            var frames = quick.GetComponentsInChildren<PlayerHUDFrame>();
+            Assert.AreEqual(6, frames.Length);
+            Assert.AreEqual(1, frames.Count(f => Get<bool>(f, "_selected")));
+            var keys = quick.GetComponentsInChildren<TMP_Text>().Where(t => t.name.StartsWith("KeyText")).ToArray();
+            CollectionAssert.AreEquivalent(new[] { "1", "2", "3", "4", "5", "6" }, keys.Select(t => t.text));
+            foreach (var t in hud.GetComponentsInChildren<TMP_Text>().Concat(quick.GetComponentsInChildren<TMP_Text>()).Concat(shortcut.GetComponentsInChildren<TMP_Text>()))
+            { t.ForceMeshUpdate(); Assert.IsFalse(t.isTextOverflowing, width + ": " + t.name); }
+            var notebookKey = Get<TMP_Text>(notebook, "_shortcutKey");
+            Assert.AreEqual(ScreenRect(keys[0].rectTransform).center.y, ScreenRect(notebookKey.rectTransform).center.y, .5f,
+                width + ": Notebook key must align with the quickslot number row");
+            Assert.AreEqual(keys[0].fontSize, notebookKey.fontSize, .1f,
+                width + ": Default notebook key and quickslot numbers must have the same size");
+            foreach (var icon in Get<Image[]>(quick, "_slotIcons").Where(i => i.enabled && i.gameObject.activeInHierarchy))
+            {
+                var r = ScreenRect(icon.rectTransform); var slot = ScreenRect((RectTransform)icon.transform.parent);
+                Assert.IsTrue(slot.Contains(r.min) && slot.Contains(r.max), "Item icon outside its slot");
+            }
+            yield return Shot("ShamanHUD-" + width);
+            Call(notebook, "Open"); yield return new WaitForEndOfFrame();
+            Assert.IsTrue(notebook.IsOpen); Assert.IsFalse(shortcut.gameObject.activeSelf);
+            notebook.Close(); yield return new WaitForEndOfFrame();
+            Assert.IsFalse(notebook.IsOpen); Assert.IsTrue(shortcut.gameObject.activeSelf);
+            Assert.AreEqual(12, inventory.GetItemCount(salt));
+        }
+    }
     [UnityTest] public IEnumerator ThreeResolutions_HudNotebookAndSaveDescription()
     {
         var fixture=AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Scripts/PlayerGameplay/Tests/InventoryRework/QuickSlotFixture.prefab");
@@ -81,8 +160,8 @@ public class InventoryLayoutTests
         var quick=Keep(Object.Instantiate(fixture)).GetComponentInChildren<QuickSlotUI>();quick.Bind(inv,input);
         var hud=Keep(Object.Instantiate(LoadUI<GameObject>("StressHUD.prefab"))).GetComponent<PlayerStressHUD>();hud.Bind(stress,health);stress.SetStress(50);
         var drawing=Keep(Object.Instantiate(LoadUI<GameObject>("TalismanDrawingPanel.prefab"))).GetComponent<TalismanDrawingPanel>();drawing.gameObject.SetActive(false);
-        var salt=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/SaltItemData.asset");inv.TryAddItem(salt,2);
-        var lamp=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/LanternItemData.asset");inv.TryAddItem(lamp);
+        var salt=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/SaltItemData.asset");inv.TryAddItem(salt,2);
+        var lamp=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/LanternItemData.asset");inv.TryAddItem(lamp);
         var blank=AssetDatabase.LoadAssetAtPath<TalismanItemData>("Assets/Project/Data/Items/Talismans/RegistryTalisman.asset");inv.TryAddItem(blank,2);
         var camera=Keep(new GameObject("UI QA camera")).AddComponent<Camera>();camera.clearFlags=CameraClearFlags.SolidColor;camera.backgroundColor=new Color(.23f,.3f,.37f);
         foreach(int w in new[]{1280,1600,1920})
@@ -127,7 +206,7 @@ public class InventoryLayoutTests
         var player=Keep(new GameObject("Slot input QA"));player.SetActive(false);var inv=player.AddComponent<PlayerInventory>();var items=player.AddComponent<PlayerItemController>();var input=player.GetComponent<PlayerInputReader>();
         var anchor=Keep(new GameObject("Hold"));anchor.transform.SetParent(player.transform,false);Set(items,"_itemHoldPoint",anchor.transform);
         player.SetActive(true);
-        var salt=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/SaltItemData.asset");inv.TryAddItem(salt);inv.AssignQuickSlot(1,salt);
+        var salt=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/SaltItemData.asset");inv.TryAddItem(salt);inv.AssignQuickSlot(1,salt);
         var keyboard=UnityEngine.InputSystem.InputSystem.AddDevice<UnityEngine.InputSystem.Keyboard>();
         try
         {
@@ -146,7 +225,7 @@ public class InventoryLayoutTests
         var inv=player.AddComponent<PlayerInventory>();var items=player.AddComponent<PlayerItemController>();
         var anchor=Keep(new GameObject("Hold"));anchor.transform.SetParent(player.transform,false);Set(items,"_itemHoldPoint",anchor.transform);
         var floor=Keep(GameObject.CreatePrimitive(PrimitiveType.Cube));floor.transform.position=player.transform.position-Vector3.up*.5f;floor.transform.localScale=new Vector3(8,1,8);
-        var lamp=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/LanternItemData.asset");inv.TryAddItem(lamp);inv.AssignQuickSlot(0,lamp);Call(items,"SelectSlot",0);yield return null;
+        var lamp=AssetDatabase.LoadAssetAtPath<ItemData>("Assets/Project/Data/Items/Items/LanternItemData.asset");inv.TryAddItem(lamp);inv.AssignQuickSlot(0,lamp);Call(items,"SelectSlot",0);yield return null;
         var visual=Get<GameObject>(items,"_equippedObject");Assert.IsNotNull(visual);Assert.IsTrue(visual.GetComponentInChildren<Light>().enabled);
         Physics.SyncTransforms();Assert.IsTrue(inv.Drops.RequestDrop(lamp),inv.Drops.LastMessage);
         foreach(var world in Object.FindObjectsByType<WorldItem>(FindObjectsSortMode.None))if(Vector3.Distance(world.transform.position,player.transform.position)<5)Keep(world.gameObject);

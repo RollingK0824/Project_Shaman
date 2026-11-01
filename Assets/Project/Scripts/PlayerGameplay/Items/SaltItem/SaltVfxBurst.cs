@@ -39,11 +39,9 @@ public sealed class SaltVfxBurst : MonoBehaviour
         Vector3 toEmitter = emitter - aim.origin;
         float clear = ClearDistance(owner.transform, new Ray(aim.origin, toEmitter.normalized), toEmitter.magnitude);
         if (clear < toEmitter.magnitude) emitter = aim.origin + toEmitter.normalized * Mathf.Max(0f, clear - .03f);
-        // A third-person camera can be farther behind the hand than the whole spray range.
-        // Project the aim beyond the emitter, then cap actual travel from the hand below.
-        float cameraToHand = Mathf.Max(0f, Vector3.Dot(emitter - aim.origin, aim.direction));
-        float aimReach = ClearDistance(owner.transform, aim, cameraToHand + Mathf.Max(.03f, reach));
-        Vector3 target = aim.GetPoint(aimReach);
+        // Use the same body-relative aim segment as authoritative contact resolution.
+        if (!SaltUseAction.TryGetSpray(owner.transform, aim, reach, ~0, out var spray, out float sprayReach)) return false;
+        Vector3 target = spray.GetPoint(sprayReach);
         Vector3 direction = target - emitter;
         if (direction.sqrMagnitude < .0001f || Vector3.Dot(direction, aim.direction) <= 0f) direction = aim.direction * .04f;
         float travel = ClearDistance(owner.transform, new Ray(emitter, direction.normalized), Mathf.Min(reach, direction.magnitude));
