@@ -7,7 +7,8 @@ using UnityEngine;
 [RequireComponent(typeof(AudioSource))]
 public class VoicePlayback : MonoBehaviour
 {
-    [SerializeField, Min(.02f)] private float _startDelay = .12f;
+    // 스트리밍 클립은 한 번에 4096샘플(약 85ms)씩 꺼내 가서, 이보다 넉넉해야 네트워크 흔들림에 끊기지 않음
+    [SerializeField, Min(.02f)] private float _startDelay = .2f;
     [SerializeField, Min(.2f)] private float _bufferSeconds = 1f;
     // AudioSource.volume은 1이 상한이라 샘플에 직접 곱함. 큰 소리는 tanh로 부드럽게 눌러 찢어짐 방지
     [SerializeField, Range(1f, 8f)] private float _gain = 3f;
@@ -36,6 +37,8 @@ public class VoicePlayback : MonoBehaviour
         _ring = new float[Mathf.CeilToInt(sampleRate * _bufferSeconds)];
         _startSamples = Mathf.CeilToInt(sampleRate * _startDelay);
 
+        // 동시에 실제로 재생되는 소리는 32개(Real Voices)까지. 넘치면 우선순위 낮은 것부터 가상화돼 끊기므로 음성을 최우선으로
+        _source.priority = 0;
         _source.clip = AudioClip.Create($"Voice_{transform.root.name}_{name}", sampleRate, 1, sampleRate, true, OnAudioRead);
         _source.loop = true;
         _source.Play();
