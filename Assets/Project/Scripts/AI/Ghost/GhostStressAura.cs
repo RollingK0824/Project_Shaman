@@ -82,7 +82,7 @@ namespace ProjectShaman.AI.Ghost
 
             foreach (PlayerStressController stress in _inside)
             {
-                stress.SetSourceRate(_owner, rate);
+                stress.SetSourceRate(_owner, rate, true);
                 if (_affected.Add(stress))
                 {
                     AILog.Log(AILog.GHOST, _owner.GhostId, $"{stress.name} entered presence ({radius:F1}m, stress +{rate}/s)");

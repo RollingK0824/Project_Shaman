@@ -18,7 +18,7 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     [SerializeField] private bool _logStressEvents;
     [Header("Night Exposure")]
     [Tooltip("Passive stress per second at night. Safe zones and the personal barrier suppress this exposure.")]
-    [SerializeField, Min(0f)] private float _nightStressPerSecond = .25f;
+    [SerializeField, Min(0f)] private float _nightStressPerSecond = .5f;
 
     public bool UseExternalAuthority { get; set; }
     public float CurrentStress => _currentStress;
@@ -36,6 +36,8 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     public event Action<float, StressCause, GameObject> StressReceived;
     private readonly Dictionary<UnityEngine.Object, float> _sourceRates = new();
     private readonly List<UnityEngine.Object> _expiredSources = new();
+    // Sources a talisman does not soften (a ghost's presence): added after the talisman multiplier
+    private readonly HashSet<UnityEngine.Object> _piercingSources = new();
     private PlayerTalismanEffectController _talismanEffects;
 
     private void Awake()
@@ -50,21 +52,22 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
         if (!PlayerActionGuard.CanAct(gameObject)) return;
         float nightRate = NightStressRate;
         float increase = nightRate;
+        float piercing = 0f;
         float recovery = 0f;
         _expiredSources.Clear();
         foreach (var source in _sourceRates)
         {
             if (source.Key == null) { _expiredSources.Add(source.Key); continue; }
             if (source.Value < 0f) recovery += source.Value;
+            else if (_piercingSources.Contains(source.Key)) piercing += source.Value;
             else increase += source.Value;
         }
-        foreach (var source in _expiredSources) _sourceRates.Remove(source);
+        foreach (var source in _expiredSources) { _sourceRates.Remove(source); _piercingSources.Remove(source); }
         // Safe areas take priority over continuous exposure. One-shot scares
         // still use IStressReceiver and do not damage health.
-        float rate = recovery < 0f ? recovery : increase;
-        rate = ModifyDelta(rate);
+        float rate = recovery < 0f ? ModifyDelta(recovery) : ModifyDelta(increase) + piercing;
         if (rate == 0f) return;
-        var cause = nightRate > 0f && recovery == 0f && Mathf.Approximately(increase, nightRate)
+        var cause = nightRate > 0f && recovery == 0f && piercing == 0f && Mathf.Approximately(increase, nightRate)
             ? StressCause.NightExposure : StressCause.Other;
         if (UseExternalAuthority) PlayerEvents.RaiseStressRequested(this, rate * Time.deltaTime, cause, gameObject);
         else SetStress(_currentStress + rate * Time.deltaTime);
@@ -84,15 +87,20 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
         }
     }
 
-    public void SetSourceRate(UnityEngine.Object source, float stressPerSecond)
+    // piercesTalisman: neither the barrier nor a stress talisman softens it (a ghost's presence)
+    public void SetSourceRate(UnityEngine.Object source, float stressPerSecond, bool piercesTalisman = false)
     {
         if (source == null || !IsFinite(stressPerSecond)) return;
         _sourceRates[source] = stressPerSecond;
+        if (piercesTalisman) _piercingSources.Add(source);
+        else _piercingSources.Remove(source);
     }
 
     public void RemoveSource(UnityEngine.Object source)
     {
-        if (!ReferenceEquals(source, null)) _sourceRates.Remove(source);
+        if (ReferenceEquals(source, null)) return;
+        _sourceRates.Remove(source);
+        _piercingSources.Remove(source);
     }
 
     public void ReceiveStress(float amount, StressCause cause, GameObject source = null)
@@ -157,7 +165,7 @@ public class PlayerStressController : MonoBehaviour, IStressReceiver
     private void ValidateSettings()
     {
         _maxStress = StressLimit;
-        _nightStressPerSecond = IsFinite(_nightStressPerSecond) ? Mathf.Max(0f, _nightStressPerSecond) : .25f;
+        _nightStressPerSecond = IsFinite(_nightStressPerSecond) ? Mathf.Max(0f, _nightStressPerSecond) : .5f;
         _midThreshold = Mathf.Clamp(IsFinite(_midThreshold) ? _midThreshold : 35f, 1f, 98f);
         _highThreshold = Mathf.Clamp(IsFinite(_highThreshold) ? _highThreshold : 70f, _midThreshold + 1f, 99f);
         _currentStress = Mathf.Clamp(IsFinite(_currentStress) ? _currentStress : 0f, 0f, StressLimit);
