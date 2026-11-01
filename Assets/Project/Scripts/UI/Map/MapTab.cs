@@ -33,14 +33,15 @@ public class MapTab : MonoBehaviour
     [SerializeField]
     private TMP_Text _locationText;     // optional, "현재 위치: ..."
 
-    // World X/Z rectangle, and where its corners sit on the picture (0..1, from bottom-left).
-    // Measured from Gameplay.unity's houses against MapV2.png on 2026-10-28
-    [SerializeField] private Vector2 _worldMin = new Vector2(-180f, -60f);
-    [SerializeField] private Vector2 _worldMax = new Vector2(170f, 210f);
-    [SerializeField] private Vector2 _uvMinXMinZ = new Vector2(0.042f, 0.067f);
-    [SerializeField] private Vector2 _uvMaxXMinZ = new Vector2(0.962f, 0.067f);
-    [SerializeField] private Vector2 _uvMinXMaxZ = new Vector2(0.042f, 0.976f);
-    [SerializeField] private Vector2 _uvMaxXMaxZ = new Vector2(0.962f, 0.976f);
+    // World X/Z rectangle, and where its corners sit on the picture (0..1, from bottom-left; may fall outside).
+    // Mapped as a perspective quad, since the picture is a tilted render.
+    // Fitted to Gameplay.unity's houses, rice fields, well, shrine and stream against MapV3.png on 2026-11-01
+    [SerializeField] private Vector2 _worldMin = new Vector2(-130f, -45f);
+    [SerializeField] private Vector2 _worldMax = new Vector2(130f, 175f);
+    [SerializeField] private Vector2 _uvMinXMinZ = new Vector2(-0.068f, -0.066f);
+    [SerializeField] private Vector2 _uvMaxXMinZ = new Vector2(1.144f, -0.171f);
+    [SerializeField] private Vector2 _uvMinXMaxZ = new Vector2(0.089f, 0.941f);
+    [SerializeField] private Vector2 _uvMaxXMaxZ = new Vector2(0.946f, 0.955f);
 
     [SerializeField]
     private Color _deadColor = Color.gray;
@@ -142,8 +143,19 @@ public class MapTab : MonoBehaviour
     {
         float u = Mathf.InverseLerp(_worldMin.x, _worldMax.x, position.x);
         float v = Mathf.InverseLerp(_worldMin.y, _worldMax.y, position.z);
-        Vector2 bottom = Vector2.LerpUnclamped(_uvMinXMinZ, _uvMaxXMinZ, u);
-        Vector2 top = Vector2.LerpUnclamped(_uvMinXMaxZ, _uvMaxXMaxZ, u);
-        return Vector2.LerpUnclamped(bottom, top, v);
+
+        // Unit square to corner quad (Heckbert). A parallelogram quad reduces to plain bilinear
+        Vector2 p0 = _uvMinXMinZ, p1 = _uvMaxXMinZ, p2 = _uvMaxXMaxZ, p3 = _uvMinXMaxZ;
+        Vector2 d1 = p1 - p2, d2 = p3 - p2, d3 = p0 - p1 + p2 - p3;
+        float g = 0f, h = 0f;
+        float den = d1.x * d2.y - d2.x * d1.y;
+        if (Mathf.Abs(den) > 1e-6f)
+        {
+            g = (d3.x * d2.y - d2.x * d3.y) / den;
+            h = (d1.x * d3.y - d3.x * d1.y) / den;
+        }
+
+        Vector2 uv = (p1 * (1f + g) - p0) * u + (p3 * (1f + h) - p0) * v + p0;
+        return uv / (g * u + h * v + 1f);
     }
 }

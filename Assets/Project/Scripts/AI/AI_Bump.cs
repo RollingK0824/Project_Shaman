@@ -48,6 +48,8 @@ namespace ProjectShaman.AI
         private NavMeshAgent _agent;
         private AI_Conversation _conversation;
         private AI_VillagerModel _model;
+        private AI_Core _core;
+        private ObstacleAvoidanceType _awakeAvoidance;
         private readonly System.Random _random = new System.Random();
 
         private Vector3 _shoveVelocity;
@@ -81,16 +83,28 @@ namespace ProjectShaman.AI
             _agent = GetComponent<NavMeshAgent>();
             _conversation = GetComponent<AI_Conversation>();
             _model = GetComponent<AI_VillagerModel>();
+            _core = GetComponent<AI_Core>();
+            _awakeAvoidance = _agent.obstacleAvoidanceType;
         }
 
         private void OnEnable()
         {
             _all.Add(this);
+            if (_core != null)
+            {
+                _core.OnAsleepChanged += HandleAsleepChanged;
+                HandleAsleepChanged(_core.IsAsleep);
+            }
         }
 
         private void OnDisable()
         {
             _all.Remove(this);
+            if (_core != null)
+            {
+                _core.OnAsleepChanged -= HandleAsleepChanged;
+            }
+
             EndTilt();
             EndPause();
         }
@@ -99,7 +113,7 @@ namespace ProjectShaman.AI
         public bool Shove(Vector3 direction, Vector3 bumperPosition, string by, bool grumble)
         {
             direction.y = 0f;
-            if (!IsSimulating || Time.time < _nextBumpTime || direction.sqrMagnitude < 0.0001f || _agent == null || !_agent.isActiveAndEnabled)
+            if (!IsSimulating || IsAsleep || Time.time < _nextBumpTime || direction.sqrMagnitude < 0.0001f || _agent == null || !_agent.isActiveAndEnabled)
             {
                 return false;
             }
@@ -321,7 +335,7 @@ namespace ProjectShaman.AI
 
             foreach (AI_Bump other in _all)
             {
-                if (other == this || !other.IsSimulating)
+                if (other == this || !other.IsSimulating || other.IsAsleep)
                 {
                     continue;
                 }
@@ -368,6 +382,21 @@ namespace ProjectShaman.AI
             _tilted = null;
             _tiltStart = -1f;
         }
+
+        // A sleeper lies still: it no longer steers to avoid others (a ghost or villager walking past would slide it
+        // across the floor), and nobody bumps it. The walkers still steer around it
+        private void HandleAsleepChanged(bool asleep)
+        {
+            _agent.obstacleAvoidanceType = asleep ? ObstacleAvoidanceType.NoObstacleAvoidance : _awakeAvoidance;
+            if (asleep)
+            {
+                EndPause();
+                _shoveUntil = 0f;
+                _returnAt = -1f;
+            }
+        }
+
+        private bool IsAsleep => _core != null && _core.IsAsleep;
 
         private string LogId => _conversation != null ? _conversation.VillagerId : name;
     }
