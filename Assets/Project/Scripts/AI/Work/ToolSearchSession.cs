@@ -9,7 +9,7 @@ using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Work
 {
-    // One routine's search, in rounds with no time limit: first the sheds, then the remembered spots; when none has the
+    // One routine's search, in rounds with no time limit: first the tool's own shed, then the remembered spots; when none has the
     // tool, the villager asks the nearest villager (what it hears goes into its memory) and the next round looks over only
     // what it did not see yet (the new leads). After ToolSearchRounds empty rounds it asks the players (find-tool request)
     public class ToolSearchSession

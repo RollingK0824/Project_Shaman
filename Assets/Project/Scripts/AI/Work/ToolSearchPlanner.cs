@@ -8,9 +8,9 @@ namespace ProjectShaman.AI.Work
 {
     public static class ToolSearchPlanner
     {
-        // 1st the sheds: the tool's own sheds nearest first, then every other shed in the village, each next one the nearest
-        // to the last. 2nd the memory: where the tool was seen or someone said it was (asking around adds to it).
-        // Spots in `excluded` (already looked over this routine) are left out; `storages` receives every shed centre
+        // 1st the tool's own shed (the nearest one when it has several), 2nd the memory: where the tool was seen or someone
+        // said it was (asking around adds to it). Other sheds only come in as a lead: going round every shed took too long.
+        // Spots in `excluded` (already looked over this routine) are left out; `storages` receives the tool's shed centres
         public static void BuildCandidates(
             string toolTypeId,
             IReadOnlyList<ToolSighting> sightings,
@@ -25,41 +25,22 @@ namespace ProjectShaman.AI.Work
             result.Clear();
             storages.Clear();
 
-            List<Vector3> ownSheds = new List<Vector3>();
             ToolRegistry.CollectStoragePositions(toolTypeId, storages);
+            Vector3 nearestShed = origin;
+            float nearestSqr = float.MaxValue;
             foreach (Vector3 storage in storages)
             {
-                AddGuess(ownSheds, result, excluded, storage, mergeDistance);
-            }
-
-            ownSheds.Sort((a, b) => (a - origin).sqrMagnitude.CompareTo((b - origin).sqrMagnitude));
-            result.AddRange(ownSheds);
-
-            List<PlaceArea> sheds = new List<PlaceArea>();
-            PlaceRegistry.CollectByType(PlaceType.Storage, sheds);
-            List<Vector3> otherSheds = new List<Vector3>();
-
-            foreach (PlaceArea shed in sheds)
-            {
-                AddUnique(storages, shed.Center, mergeDistance);
-                AddGuess(otherSheds, result, excluded, shed.Center, mergeDistance);
-            }
-
-            Vector3 from = result.Count > 0 ? result[result.Count - 1] : origin;
-            while (otherSheds.Count > 0)
-            {
-                int nearest = 0;
-                for (int i = 1; i < otherSheds.Count; i++)
+                float sqr = (storage - origin).sqrMagnitude;
+                if (sqr < nearestSqr && (excluded == null || !IsNear(excluded, storage, mergeDistance)))
                 {
-                    if ((otherSheds[i] - from).sqrMagnitude < (otherSheds[nearest] - from).sqrMagnitude)
-                    {
-                        nearest = i;
-                    }
+                    nearestShed = storage;
+                    nearestSqr = sqr;
                 }
+            }
 
-                from = otherSheds[nearest];
-                result.Add(from);
-                otherSheds.RemoveAt(nearest);
+            if (nearestSqr < float.MaxValue)
+            {
+                result.Add(nearestShed);
             }
 
             // The caller passes only sightings not looked over since, so a shed someone named again is gone back to
@@ -85,16 +66,6 @@ namespace ProjectShaman.AI.Work
             }
 
             return false;
-        }
-
-        private static void AddGuess(List<Vector3> guesses, List<Vector3> result, IReadOnlyList<Vector3> excluded, Vector3 position, float mergeDistance)
-        {
-            if ((excluded != null && IsNear(excluded, position, mergeDistance)) || IsNear(result, position, mergeDistance))
-            {
-                return;
-            }
-
-            AddUnique(guesses, position, mergeDistance);
         }
 
         private static void AddUnique(List<Vector3> list, Vector3 position, float mergeDistance)
