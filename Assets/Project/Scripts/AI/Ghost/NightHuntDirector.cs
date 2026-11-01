@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 
@@ -34,6 +35,10 @@ namespace ProjectShaman.AI.Ghost
         private TimeManager _time;
         private NightOutcomeLedger _ledger;
         private const float SIGHTING_EYE_OFFSET = 1f;
+        // The ghost steps out beside its sleeping host, not inside it: spawned on the host it was stuck in the host's body
+        private const float SPAWN_BESIDE_HOST = 1.5f;
+        private const float SPAWN_CLEARANCE = 0.6f;
+        private const int SPAWN_TRIES = 8;
 
         private float _pendingSpawnTime = -1f;
         private bool _isHuntTokenAssigned;
@@ -377,7 +382,7 @@ namespace ProjectShaman.AI.Ghost
             }
 
             Vector3 center = pending.Host.Profile.HomePosition;
-            GameObject instance = Instantiate(_ghostEntityPrefab, center, Quaternion.identity);
+            GameObject instance = Instantiate(_ghostEntityPrefab, PickSpawnPoint(pending.Host.transform.position, center), Quaternion.identity);
             instance.name = $"GhostEntity_{pending.Possession.GhostId}";
 
             AI_GhostEntity entity = instance.GetComponent<AI_GhostEntity>();
@@ -395,6 +400,38 @@ namespace ProjectShaman.AI.Ghost
             _factory.SpawnHandler.Spawn(instance);
             _entities.Add(entity);
             _activeEntityCount = _entities.Count;
+        }
+
+        // A free NavMesh point around the host, clear of villagers and walls; the home point when none is found
+        private static Vector3 PickSpawnPoint(Vector3 host, Vector3 fallback)
+        {
+            for (int i = 0; i < SPAWN_TRIES; i++)
+            {
+                float angle = i * Mathf.PI * 2f / SPAWN_TRIES;
+                Vector3 wanted = host + new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * SPAWN_BESIDE_HOST;
+                if (!NavMesh.SamplePosition(wanted, out NavMeshHit hit, SPAWN_BESIDE_HOST, NavMesh.AllAreas)
+                    || NavMesh.Raycast(host, hit.position, out _, NavMesh.AllAreas) || IsCrowded(hit.position))
+                {
+                    continue;
+                }
+
+                return hit.position;
+            }
+
+            return fallback;
+        }
+
+        private static bool IsCrowded(Vector3 point)
+        {
+            foreach (Collider other in Physics.OverlapSphere(point + Vector3.up, SPAWN_CLEARANCE, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (other.GetComponentInParent<AI_Core>() != null)
+                {
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void HandleDayStart()
