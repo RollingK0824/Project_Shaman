@@ -184,10 +184,12 @@ public sealed class NotebookScheduleView : MonoBehaviour
             _title.text = $"{villager.DisplayName}의 하루";
             _note.text = "빈 칸은 자유 시간·오가는 때 · 일과는 도착하면 시작";
             VillagerRegistry registry = AIManager.Existing != null ? AIManager.Existing.Registry : null;
+            int routinesEnd = 0;
             for (int slot = 0; slot * 2 + 1 < today.hours.Length; slot++)
             {
                 RoutineSlotInfo routine = villager.Schedule.Get(today.day, slot);
                 if (routine.IsEmpty) continue;
+                routinesEnd = Mathf.Max(routinesEnd, today.hours[slot * 2 + 1]);
                 // A work given up today for a missing tool: the villager rests there instead (C120)
                 if (registry != null && registry.IsSlotRested(villager.VillagerId, today.day, slot, out string restPlaceId))
                 {
@@ -208,17 +210,19 @@ public sealed class NotebookScheduleView : MonoBehaviour
             // Then three rows (C131), estimates until they happen: 귀가 from setting off (one row at least, a short walk
             // would round away), 휴식 at home until bed, 취침 from when it falls asleep (nightfall, or as it gets in later).
             // Setting off at or after its bed hour it goes to bed as it gets in: one row
+            // A day's routines running past the leave hour push the walk home after them, so the rows never overlap
             int night = DayClock.DAY_START_HOUR + TABLE_ROWS;
-            if (today.leave > 0 && today.bed > today.leave)
+            int leave = today.leave > 0 ? Mathf.Max(today.leave, routinesEnd) : 0;
+            if (leave > 0 && today.bed > leave)
             {
-                int home = Mathf.Min(Mathf.Max(today.home, today.leave + 1), today.bed);
-                if (ShowBlock(shown, "귀가", "집", _homeWash, today.leave, home)) shown++;
+                int home = Mathf.Min(Mathf.Max(today.home, leave + 1), today.bed);
+                if (ShowBlock(shown, "귀가", "집", _homeWash, leave, home)) shown++;
                 if (ShowBlock(shown, "휴식", "집", _homeWash, home, today.bed)) shown++;
                 if (ShowBlock(shown, "취침", "집", _sleepWash, today.bed, night)) shown++;
             }
-            else if (today.leave > 0)
+            else if (leave > 0)
             {
-                if (ShowBlock(shown, "귀가 · 취침", "집", _sleepWash, today.leave, night)) shown++;
+                if (ShowBlock(shown, "귀가 · 취침", "집", _sleepWash, leave, night)) shown++;
             }
         }
 
