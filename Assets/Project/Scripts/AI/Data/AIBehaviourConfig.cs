@@ -55,7 +55,7 @@ namespace ProjectShaman.AI.Data
         [Tooltip("주민이 지나가다 도구를 보고 기억하는 거리(m). 정면 시야각 안이고 벽에 가리지 않아야 함")]
         [SerializeField] private float _toolSightRadius = 8f;
         [Tooltip("창고 밖에 놓인 도구(귀신이 숨긴 것 등)는 이 거리(m)까지, 정면이 아니어도 보이면 기억함")]
-        [SerializeField] private float _toolOutOfPlaceNoticeRadius = 15f;
+        [SerializeField] private float _toolOutOfPlaceNoticeRadius = 10f;
         [Tooltip("주민이 주변 도구를 훑어보는 간격(초)")]
         [SerializeField] private float _toolSightInterval = 1f;
         [Tooltip("도구를 집을 수 있는 거리(m)")]
@@ -153,9 +153,9 @@ namespace ProjectShaman.AI.Data
         [Tooltip("밤에 밖에 있는 주민이 귀신을 알아보는 거리(m) (정면, 벽에 가리지 않을 때)")]
         [SerializeField, Min(1f)] private float _ghostSightingRadius = 20f;
         [Tooltip("귀신이 도구를 숨길 때 원래 자리에서 떨어뜨리는 최소 거리(m)")]
-        [SerializeField] private float _ghostHideMinDistance = 8f;
+        [SerializeField] private float _ghostHideMinDistance = 20f;
         [Tooltip("귀신이 도구를 숨길 때 원래 자리에서 떨어뜨리는 최대 거리(m)")]
-        [SerializeField] private float _ghostHideMaxDistance = 20f;
+        [SerializeField] private float _ghostHideMaxDistance = 40f;
         [Tooltip("귀신 밤 행동 사이 쉬는 시간 최솟값(초)")]
         [SerializeField] private float _ghostActionCooldownMin = 15f;
         [Tooltip("귀신 밤 행동 사이 쉬는 시간 최댓값(초)")]
@@ -163,7 +163,7 @@ namespace ProjectShaman.AI.Data
         [Tooltip("귀신 행동이 실패하거나 대상이 없을 때 다시 고르기까지 시간(초)")]
         [SerializeField] private float _ghostCommandRetrySeconds = 1f;
         [Tooltip("귀신 행동 명령 하나의 제한 시간(초). 대상까지 걷는 시간은 따로 더함")]
-        [SerializeField] private float _ghostCommandTimeoutSeconds = 30f;
+        [SerializeField] private float _ghostCommandTimeoutSeconds = 50f;
         [Tooltip("귀신 행동 채널링(게이지)의 최소 시간(초)")]
         [SerializeField] private float _ghostMinChannelSeconds = 1.5f;
 
