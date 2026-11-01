@@ -53,6 +53,8 @@ namespace ProjectShaman.AI.Observation
                 case SymptomType.NoShadow: return ObservationVerbs.NO_SHADOW;
                 case SymptomType.PaleSkin: return ObservationVerbs.PALE_SKIN;
                 case SymptomType.BlackEyes: return ObservationVerbs.BLACK_EYES;
+                case SymptomType.Freeze: return ObservationVerbs.FREEZE;
+                case SymptomType.GlanceBack: return ObservationVerbs.GLANCE_BACK;
                 default: return ObservationVerbs.EMPTY_HAND_WORK;
             }
         }
@@ -288,6 +290,8 @@ namespace ProjectShaman.AI.Observation
         public const string NO_SHADOW = "no_shadow";
         public const string PALE_SKIN = "pale_skin";
         public const string BLACK_EYES = "black_eyes";
+        public const string FREEZE = "freeze";
+        public const string GLANCE_BACK = "glance_back";
         public const string EMPTY_HAND_WORK = "empty_hand_work";
         public const string WORK_WRONG_TOOL = "work_wrong_tool";
         public const string WORK_WRONG_ACTION = "work_wrong_action";

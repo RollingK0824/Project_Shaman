@@ -48,6 +48,13 @@ namespace ProjectShaman.AI
         [SerializeField, Min(0.5f)] private float _symptomSeconds = 6f;
 
         private Coroutine _symptomRoutine;
+        private Coroutine _quietSymptomRoutine;
+        private float _glanceWeight;
+        private float _glanceSide = 1f;
+        private const float FREEZE_SECONDS = 2.5f;
+        private const float GLANCE_SECONDS = 2f;
+        // How far the head turns over the shoulder (neck and head together)
+        private const float GLANCE_DEGREES = 75f;
         private AI_Core core;
         private AI_Movement movement;
         private Animator animator;
@@ -401,6 +408,19 @@ namespace ProjectShaman.AI
                 return;
             }
 
+            // The quiet ones are done in code on every peer, no clip
+            if (symptomName == nameof(SymptomType.Freeze))
+            {
+                StartQuietSymptom(FreezeRoutine());
+                return;
+            }
+
+            if (symptomName == nameof(SymptomType.GlanceBack))
+            {
+                StartQuietSymptom(GlanceBackRoutine());
+                return;
+            }
+
             string state = SYMPTOM_STATE_PREFIX + symptomName;
             int layer = FindActionLayer(state);
             if (layer < 0)
@@ -426,6 +446,70 @@ namespace ProjectShaman.AI
             }
 
             _symptomRoutine = StartCoroutine(EndSymptom(layer, _symptomSeconds));
+        }
+
+        private void StartQuietSymptom(System.Collections.IEnumerator routine)
+        {
+            if (_quietSymptomRoutine != null)
+            {
+                return;
+            }
+
+            _quietSymptomRoutine = StartCoroutine(RunQuietSymptom(routine));
+        }
+
+        private System.Collections.IEnumerator RunQuietSymptom(System.Collections.IEnumerator routine)
+        {
+            yield return routine;
+            _quietSymptomRoutine = null;
+        }
+
+        // Freeze: the whole body stops mid-motion for a moment, like a puppet whose strings went still, then goes on
+        private System.Collections.IEnumerator FreezeRoutine()
+        {
+            float speed = animator.speed;
+            animator.speed = 0f;
+            yield return new WaitForSeconds(FREEZE_SECONDS);
+            if (animator != null)
+            {
+                animator.speed = speed;
+            }
+        }
+
+        // GlanceBack: the head turns over the shoulder as if someone were behind, holds, and turns back (LateUpdate poses it)
+        private System.Collections.IEnumerator GlanceBackRoutine()
+        {
+            _glanceSide = Random.value < 0.5f ? -1f : 1f;
+            for (float t = 0f; t < GLANCE_SECONDS; t += Time.deltaTime)
+            {
+                // Up in the first quarter, held, back in the last quarter
+                float k = t / GLANCE_SECONDS;
+                _glanceWeight = Mathf.SmoothStep(0f, 1f, Mathf.Min(k * 4f, (1f - k) * 4f, 1f));
+                yield return null;
+            }
+
+            _glanceWeight = 0f;
+        }
+
+        private void LateUpdate()
+        {
+            if (_glanceWeight <= 0f || animator == null || !animator.isHuman)
+            {
+                return;
+            }
+
+            Transform head = animator.GetBoneTransform(HumanBodyBones.Head);
+            Transform neck = animator.GetBoneTransform(HumanBodyBones.Neck);
+            float yaw = GLANCE_DEGREES * _glanceWeight * _glanceSide;
+            if (neck != null)
+            {
+                neck.rotation = Quaternion.AngleAxis(yaw * 0.4f, transform.up) * neck.rotation;
+            }
+
+            if (head != null)
+            {
+                head.rotation = Quaternion.AngleAxis(yaw * 0.6f, transform.up) * head.rotation;
+            }
         }
 
         // Back to Empty when the clip has played once (the symptom clips do not loop), or after the cap for a looping one

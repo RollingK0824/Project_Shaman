@@ -36,7 +36,10 @@ namespace ProjectShaman.AI.Defines
         // Appearance symptoms (a body change that comes and goes by itself, shown on every peer): see SymptomRule
         NoShadow,
         PaleSkin,
-        BlackEyes
+        BlackEyes,
+        // Quiet behaviour symptoms for low yin, done in code (no clip): easy to take for an ordinary villager
+        Freeze,
+        GlanceBack
     }
 
     // Where a behaviour symptom may show: on the move, or standing/sitting at rest (never while working or talking)

@@ -43,10 +43,13 @@ namespace ProjectShaman.AI.Data
             const SymptomContext Both = SymptomContext.Moving | SymptomContext.Resting;
             return new List<SymptomRule>
             {
-                // Behaviour: quiet first, the body twisting only at high yin
-                new SymptomRule(SymptomType.Tremble, 20f, 3f, SymptomContext.Moving, true),
-                new SymptomRule(SymptomType.StareIntoVoid, 20f, 3f, SymptomContext.Resting, true),
+                // Behaviour: quiet first (a moment frozen stiff, glancing back over the shoulder), then trembling and staring,
+                // the body twisting only at high yin
+                new SymptomRule(SymptomType.Freeze, 20f, 3f, SymptomContext.Resting, true),
+                new SymptomRule(SymptomType.GlanceBack, 20f, 3f, Both, true),
                 new SymptomRule(SymptomType.Nonsense, 30f, 2f, SymptomContext.Resting, true),
+                new SymptomRule(SymptomType.Tremble, 35f, 3f, SymptomContext.Moving, true),
+                new SymptomRule(SymptomType.StareIntoVoid, 35f, 3f, SymptomContext.Resting, true),
                 new SymptomRule(SymptomType.NeckTwist, 50f, 2f, Both, true),
                 new SymptomRule(SymptomType.WaistBend, 65f, 1.5f, SymptomContext.Resting, false),
                 new SymptomRule(SymptomType.Grotesque, 80f, 1f, SymptomContext.Moving, false),
