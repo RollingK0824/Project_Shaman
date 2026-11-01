@@ -262,6 +262,8 @@ namespace ProjectShaman.AI
 
             IsAsleep = asleep;
             AsleepSince = asleep ? Time.time : -1f;
+            // Still walking to the home point (a partial path never arrives), it got up again and walked on in the sleep pose
+            GetComponent<AI_Movement>()?.SetHeldInPlace(asleep);
             AILog.Log(AILog.CORE, LogId, asleep ? "Fell asleep" : "Woke up");
             OnAsleepChanged?.Invoke(asleep);
         }
