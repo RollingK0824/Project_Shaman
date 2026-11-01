@@ -22,6 +22,11 @@ public class DayNightCycleController : MonoBehaviour
     private const string DefaultSkyboxMaterialPath = "Assets/Project/Visuals/Materials/Environment/Skybox/DayNightSkybox.mat";
 #endif
 
+    // Twilight around the day/night boundary, as shares of the whole cycle (480s: 0.04 = about 19s)
+    private const float DUSK_BEFORE_NIGHT = 0.04f;
+    private const float DUSK_INTO_NIGHT = 0.02f;
+    private const float DAWN_BEFORE_DAY = 0.03f;
+
     private static readonly int RotationProp = Shader.PropertyToID("_Rotation");
     private static readonly int PitchProp = Shader.PropertyToID("_Pitch");
     private static readonly int NightRotationProp = Shader.PropertyToID("_NightRotation");
@@ -34,7 +39,7 @@ public class DayNightCycleController : MonoBehaviour
     [SerializeField] private Light directionalLight;
     [SerializeField] private Material skyboxMaterial;
 
-    [Header("Cycle Control (0~0.5 = Day, 0.5~0.6 = Dusk, 0.6~0.9 = Night, 0.9~1.0 = Dawn)")]
+    [Header("Cycle Control (0~0.585 = Day, 0.585~0.645 = Dusk, 0.645~0.97 = Night, 0.97~1.0 = Dawn; day ends at 0.625)")]
     [Range(0f, 1f)]
     [SerializeField] private float cycleProgress = 0.15f;
     [SerializeField] private bool autoSimulatePreview = true;
@@ -243,14 +248,17 @@ public class DayNightCycleController : MonoBehaviour
 
         t = Mathf.Repeat(t, 1f);
 
-        // Timeline layout (matching TimeManager's ~57% Day / ~43% Night ratio):
-        // - Dawn crossfade : [0.90 .. 1.00] (Night fades out 1->0 on Right, Day fades in on Left)
-        // - Pure Day       : [0.00 .. 0.50] (Blend = 0, Sun sweeps Left -> Center -> Right)
-        // - Dusk crossfade : [0.50 .. 0.60] (Day fades out 0->1 on Right, Night fades in on Left)
-        // - Pure Night     : [0.60 .. 0.90] (Blend = 1, Moon sweeps Left -> Center -> Right)
-        const float duskStart = 0.50f;
-        const float duskEnd = 0.60f;
-        const float dawnStart = 0.90f;
+        // Timeline from TimeManager's real day/night split (day = DAY_DURATION / CYCLE_DURATION of the cycle, 0.625):
+        // the light turns around the day/night boundary, not well before it. The old fixed layout (day 0~0.5) darkened
+        // a minute of the day and lit up the last 10% of the night
+        // - Dawn crossfade : [dawnStart .. 1.00] (the last moments of night brighten into the day start)
+        // - Pure Day       : [0.00 .. duskStart]
+        // - Dusk crossfade : [duskStart .. duskEnd] (mostly the end of the day, a little into the night)
+        // - Pure Night     : [duskEnd .. dawnStart]
+        float dayEnd = TimeManager.DAY_DURATION / TimeManager.CYCLE_DURATION;
+        float duskStart = dayEnd - DUSK_BEFORE_NIGHT;
+        float duskEnd = dayEnd + DUSK_INTO_NIGHT;
+        float dawnStart = 1f - DAWN_BEFORE_DAY;
 
         float nightBlend;
         float twilightDip = 1f;
@@ -276,18 +284,20 @@ public class DayNightCycleController : MonoBehaviour
             twilightDip = 1f - Mathf.Sin(u * Mathf.PI) * 0.25f;
         }
 
-        // 1. Continuous Day (Cold Sunset) trajectory across [0.90 -> 1.00 -> 0.00 -> 0.60] (total duration = 0.70)
-        //    During [0.60 .. 0.90], nightBlend is 1.0 (Day skybox is 100% invisible), so it resets unseen!
+        // 1. Continuous Day (Cold Sunset) trajectory across [dawnStart -> 1.00 -> 0.00 -> duskEnd]
+        //    During pure night, nightBlend is 1.0 (Day skybox is 100% invisible), so it resets unseen!
+        float sunSpan = (1f - dawnStart) + duskEnd;
         float sunElapsed = Mathf.Repeat(t - dawnStart, 1f);
-        float sunProgress = Mathf.Clamp01(sunElapsed / 0.70f);
+        float sunProgress = Mathf.Clamp01(sunElapsed / sunSpan);
         float sunAzimuth = Mathf.Lerp(startAzimuthAngle, endAzimuthAngle, sunProgress);
         float sunArc = Mathf.Sin(sunProgress * Mathf.PI);
         float sunPitch = Mathf.Lerp(-skyboxVerticalArcDegrees * 0.5f, skyboxVerticalArcDegrees, sunArc);
 
-        // 2. Continuous Night (Cold Night) trajectory across [0.50 -> 0.60 -> 0.90 -> 1.00] (total duration = 0.50)
-        //    During [0.00 .. 0.50], nightBlend is 0.0 (Night skybox is 100% invisible), so it resets unseen!
+        // 2. Continuous Night (Cold Night) trajectory across [duskStart -> 1.00]
+        //    During pure day, nightBlend is 0.0 (Night skybox is 100% invisible), so it resets unseen!
+        float moonSpan = 1f - duskStart;
         float moonElapsed = Mathf.Repeat(t - duskStart, 1f);
-        float moonProgress = Mathf.Clamp01(moonElapsed / 0.50f);
+        float moonProgress = Mathf.Clamp01(moonElapsed / moonSpan);
         float moonAzimuth = Mathf.Lerp(startAzimuthAngle, endAzimuthAngle, moonProgress);
         float moonArc = Mathf.Sin(moonProgress * Mathf.PI);
         float moonPitch = Mathf.Lerp(-skyboxVerticalArcDegrees * 0.5f, skyboxVerticalArcDegrees, moonArc);
@@ -326,16 +336,16 @@ public class DayNightCycleController : MonoBehaviour
         }
 
         // 4. Directional Light & Shadows:
-        //    Handover occurs at Dusk midpoint (t = 0.55) and Dawn midpoint (t = 0.95),
+        //    Handover occurs at the Dusk and Dawn midpoints,
         //    where directionalLight.intensity smoothly reaches 0 so shadows never snap!
-        const float duskMid = 0.55f;
-        const float dawnMid = 0.95f;
+        float duskMid = (duskStart + duskEnd) * 0.5f;
+        float dawnMid = (dawnStart + 1f) * 0.5f;
         bool isSunLightActive = (t >= dawnMid || t < duskMid);
 
         if (isSunLightActive)
         {
             float lightElapsed = Mathf.Repeat(t - dawnMid, 1f);
-            float lightProgress = Mathf.Clamp01(lightElapsed / 0.60f);
+            float lightProgress = Mathf.Clamp01(lightElapsed / ((1f - dawnMid) + duskMid));
             float lightArc = Mathf.Sin(lightProgress * Mathf.PI);
             float lightElevation = Mathf.Lerp(minLightElevation, maxLightElevation, lightArc);
 
@@ -347,7 +357,7 @@ public class DayNightCycleController : MonoBehaviour
         else
         {
             float lightElapsed = t - duskMid;
-            float lightProgress = Mathf.Clamp01(lightElapsed / 0.40f);
+            float lightProgress = Mathf.Clamp01(lightElapsed / (dawnMid - duskMid));
             float lightArc = Mathf.Sin(lightProgress * Mathf.PI);
             float lightElevation = Mathf.Lerp(minLightElevation, maxLightElevation, lightArc);
 
