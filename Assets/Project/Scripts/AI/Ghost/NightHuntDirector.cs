@@ -112,6 +112,9 @@ namespace ProjectShaman.AI.Ghost
 
         private void HandleNightStart()
         {
+            // Where anomalies may be left: worked out from the houses once, nothing placed in the scene
+            ProjectShaman.AI.World.AnomalySpotPlanner.Build();
+
             List<AIManager.VillagerRuntime> hosts = new List<AIManager.VillagerRuntime>();
 
             foreach (AIManager.VillagerRuntime villager in _manager.Villagers)
