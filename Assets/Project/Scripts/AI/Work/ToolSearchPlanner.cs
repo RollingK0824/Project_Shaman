@@ -47,8 +47,10 @@ namespace ProjectShaman.AI.Work
             foreach (ToolSighting sighting in sightings)
             {
                 float elapsed = now - sighting.SeenTime;
+                // Carried: the carrier is asked instead (ToolSearchSession); only a ghost's or a player's carry leaves a spot
+                bool isCarriedByVillager = !string.IsNullOrEmpty(sighting.HolderId) && !sighting.HolderId.StartsWith("GHOST_") && !sighting.HolderId.StartsWith("Player_");
                 bool isSeenInUseJustNow = !string.IsNullOrEmpty(sighting.HolderId) && elapsed >= 0f && elapsed <= freshHeldWindow;
-                if (!isSeenInUseJustNow)
+                if (!isCarriedByVillager && !isSeenInUseJustNow)
                 {
                     AddUnique(result, sighting.Position, mergeDistance);
                 }

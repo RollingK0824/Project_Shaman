@@ -124,7 +124,20 @@ namespace ProjectShaman.AI.Work
         // The walk stops for it; the behaviour tree re-plans afterwards and the spot set out for stays a candidate
         public void TickAskOnTheWay()
         {
-            if (!IsActive || !_isLookPendingAfterArrival || HasRequiredTool() || _owner.Inquiry.IsActive)
+            if (!IsActive || HasRequiredTool() || _owner.Inquiry.IsActive)
+            {
+                return;
+            }
+
+            // A villager seen carrying it (heard or seen) is asked first: it put the tool away and knows where
+            if (TryGetHolderLead(out string holderId) && _owner.Inquiry.TryStartWith(RequiredToolType, holderId))
+            {
+                _isLookPendingAfterArrival = false;
+                AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' goes to ask {holderId}, who was seen carrying it");
+                return;
+            }
+
+            if (!_isLookPendingAfterArrival)
             {
                 return;
             }
@@ -134,6 +147,26 @@ namespace ProjectShaman.AI.Work
                 _isLookPendingAfterArrival = false;
                 AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' asks a villager met on the way to spot {CandidateIndex + 1}/{_candidates.Count}");
             }
+        }
+
+        // The newest open sighting of a villager (not a ghost or player) carrying the tool, not yet asked today
+        private bool TryGetHolderLead(out string holderId)
+        {
+            holderId = null;
+            float newest = float.MinValue;
+            foreach (ToolSighting sighting in _openSightings)
+            {
+                if (string.IsNullOrEmpty(sighting.HolderId) || sighting.HolderId == Id || sighting.SeenTime <= newest
+                    || !_owner.Inquiry.CanAskHolder(RequiredToolType, sighting.HolderId))
+                {
+                    continue;
+                }
+
+                holderId = sighting.HolderId;
+                newest = sighting.SeenTime;
+            }
+
+            return holderId != null;
         }
 
         public void TickUnreachableSpot()

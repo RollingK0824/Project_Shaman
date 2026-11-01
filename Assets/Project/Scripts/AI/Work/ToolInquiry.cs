@@ -21,6 +21,8 @@ namespace ProjectShaman.AI.Work
         private const string GHOST_HOLDER_PREFIX = "GHOST_";
         private const float HOLD_SECONDS = 8f;
         private const float APPROACH_TIMEOUT = 12f;
+        // Walking estimate to a named villager further off: the approach is given twice this walk
+        private const float HOLDER_WALK_SPEED = 2f;
         private const float ARRIVE_MARGIN = 0.8f;
         private const float LINE_GAP = 1.6f;
         private const float FALLBACK_HEARING = 4f;
@@ -87,6 +89,43 @@ namespace ProjectShaman.AI.Work
                 return false;
             }
 
+            return Begin(toolType, partner, APPROACH_TIMEOUT);
+        }
+
+        // Someone was seen carrying the tool: that villager is gone to and asked, wherever it is now. It put the tool away
+        // itself, so it remembers where (or says it still has it). Asked once a day like anyone else
+        public bool TryStartWith(string toolType, string villagerId)
+        {
+            if (IsActive || _interaction == null || _conversation == null)
+            {
+                return false;
+            }
+
+            RefreshAskedDay();
+            AI_Conversation partner = FindVillager(villagerId);
+            if (partner == null || !CanAsk(partner, toolType))
+            {
+                return false;
+            }
+
+            float walk = FlatDistance(partner.transform.position) / HOLDER_WALK_SPEED;
+            return Begin(toolType, partner, Mathf.Max(APPROACH_TIMEOUT, walk * 2f));
+        }
+
+        public bool CanAskHolder(string toolType, string villagerId)
+        {
+            if (IsActive)
+            {
+                return false;
+            }
+
+            RefreshAskedDay();
+            AI_Conversation partner = FindVillager(villagerId);
+            return partner != null && CanAsk(partner, toolType);
+        }
+
+        private bool Begin(string toolType, AI_Conversation partner, float approachTimeout)
+        {
             if (!_interaction.TryBegin(partner, InteractionResponse.Approach, HOLD_SECONDS))
             {
                 AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' skipped (interaction busy)");
@@ -99,7 +138,7 @@ namespace ProjectShaman.AI.Work
             _toolType = toolType;
             _serial = _interaction.Serial;
             _gotAnswer = false;
-            _approachDeadline = Time.time + APPROACH_TIMEOUT;
+            _approachDeadline = Time.time + approachTimeout;
             _phase = Phase.Approaching;
             AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' → walking to {partner.VillagerId}");
             return true;
@@ -196,6 +235,18 @@ namespace ProjectShaman.AI.Work
 
         private void Answer()
         {
+            // Asked the one who has it now: it is still in use, nothing to find yet
+            AI_ToolHandler partnerTools = _partner.GetComponent<AI_ToolHandler>();
+            if (partnerTools != null && partnerTools.IsHoldingType(_toolType))
+            {
+                string tool = AIDisplayNames.Tool(_toolType);
+                _partner.Say($"{tool}{AIDisplayNames.Josa(tool, "은", "는")} 내가 쓰는 중이오. 다 쓰면 제자리에 두리다", $"inquiry answer to {Id}");
+                _gotAnswer = false;
+                _phase = Phase.Answered;
+                _nextTime = Time.time + LINE_GAP;
+                return;
+            }
+
             AI_Memory partnerMemory = _partner.GetComponent<AI_Memory>();
             _gotAnswer = partnerMemory != null && TryGetLatest(partnerMemory.ToolSightings.Get(_toolType), out ToolSighting sighting)
                 && Share(sighting);
@@ -310,6 +361,25 @@ namespace ProjectShaman.AI.Work
         }
 
         // Nearest simulating villager not yet asked about this tool today
+        private AI_Conversation FindVillager(string villagerId)
+        {
+            foreach (AI_Conversation candidate in AI_Conversation.All)
+            {
+                if (candidate != null && candidate != _conversation && candidate.VillagerId == villagerId)
+                {
+                    return candidate;
+                }
+            }
+
+            return null;
+        }
+
+        private bool CanAsk(AI_Conversation partner, string toolType)
+        {
+            return partner.Core != null && partner.Core.IsSimulating && !partner.Core.IsAsleep
+                && !_askedToday.Contains(AskedKey(toolType, partner.VillagerId));
+        }
+
         private AI_Conversation FindPartner(string toolType, float radius)
         {
             AI_Conversation best = null;
