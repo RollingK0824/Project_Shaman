@@ -3,6 +3,7 @@ using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Defines;
 using ProjectShaman.AI.Ghost;
 using ProjectShaman.AI.Memory;
+using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI
 {
@@ -49,9 +50,16 @@ namespace ProjectShaman.AI
                 return false;
             }
 
+            // A villager at a house with a barrier talisman is off limits, even when its home point sits outside the house box
+            float homeDistance = context.Ledger.Config.SleepParalysisHomeDistance;
+            if (IsAtHome(homeDistance) && IsHomeProtected())
+            {
+                return false;
+            }
+
             if (context.Verb == GhostActionVerb.SleepParalysis)
             {
-                return _paralyzedNight != context.NightDay && IsAsleep() && IsAtHome(context.Ledger.Config.SleepParalysisHomeDistance);
+                return _paralyzedNight != context.NightDay && IsAsleep() && IsAtHome(homeDistance);
             }
 
             return true;
@@ -90,6 +98,11 @@ namespace ProjectShaman.AI
         private bool IsAsleep()
         {
             return _core.IsAsleep;
+        }
+
+        private bool IsHomeProtected()
+        {
+            return PlaceRegistry.TryGet(_core.Profile.PublicInfo.HomePlaceId, out PlaceArea home) && HouseBarrierWard.IsProtecting(home);
         }
 
         private bool IsAtHome(float distance)

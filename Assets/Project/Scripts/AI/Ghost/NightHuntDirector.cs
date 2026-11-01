@@ -353,13 +353,13 @@ namespace ProjectShaman.AI.Ghost
             for (int i = _pendingEntities.Count - 1; i >= 0; i--)
             {
                 PendingEntity pending = _pendingEntities[i];
-                if (!_manager.IsAsleepAtHome(pending.HostRuntime))
+                if (!_manager.IsLyingInBed(pending.HostRuntime))
                 {
                     continue;
                 }
 
                 _pendingEntities.RemoveAt(i);
-                AILog.Log(AILog.GHOST, pending.Possession.GhostId, $"{pending.Host.LogId} asleep at home, the ghost comes out");
+                AILog.Log(AILog.GHOST, pending.Possession.GhostId, $"{pending.Host.LogId} lay down in bed, the ghost comes out");
                 SpawnEntity(pending);
             }
 
