@@ -41,7 +41,7 @@ public class LocalGameplayJudge : MonoBehaviour
     {
         if (NetworkServer.active || NetworkClient.active || item == null || !item.CanInteract(interactor)) return;
         PlayerInventory inventory = interactor.GetComponent<PlayerInventory>();
-        if (inventory == null || !inventory.TryAddItem(item.ItemData)) return;
+        if (inventory == null || !(item.HasDrawing ? item.TryCollectDrawing(interactor) : inventory.TryAddItem(item.ItemData))) return;
 
         item.ApplyCollected();
     }

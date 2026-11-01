@@ -18,6 +18,7 @@ public sealed class PlayerItemDropController : MonoBehaviour
     private long _nextRequest, _lastFinalRequest, _pendingRequest;
     private bool _busy;
     public event Action<long, ItemData> DropRequested;
+    public event Action<long, string> DrawingDropRequested;
     public event Action<long, bool, string> DropResolved;
     public bool IsPending => _pendingRequest != 0;
     public string LastMessage { get; private set; }
@@ -64,16 +65,43 @@ public sealed class PlayerItemDropController : MonoBehaviour
         catch (Exception e) { _pendingRequest = 0; Debug.LogException(e, this); LastMessage = "버리기 요청을 보내지 못했습니다."; }
         return false; // Pending never means a local ownership change.
     }
+
+    public bool RequestDrawingDrop(string id)
+    {
+        var collection = GetComponent<PlayerTalismanCollection>();
+        if (collection == null || collection.Find(id, out var item) == null || item.WorldPrefab == null ||
+            _busy || IsPending || !PlayerActionGuard.CanAct(gameObject)) { LastMessage = "부적을 버릴 수 없습니다."; return false; }
+        long request = ++_nextRequest;
+        if (CanCommit) return TryDropDrawingFinal(request, id, out _);
+        if (DrawingDropRequested == null) { LastMessage = "서버 버리기 연결이 필요합니다."; return false; }
+        _pendingRequest = request; LastMessage = "서버 확인을 기다리고 있습니다.";
+        try { DrawingDropRequested.Invoke(request, id); }
+        catch (Exception e) { _pendingRequest = 0; Debug.LogException(e, this); LastMessage = "버리기 요청을 보내지 못했습니다."; }
+        return false;
+    }
+
+    public bool TryDropDrawingFinal(long requestId, string id, out WorldItem dropped)
+    {
+        var collection = GetComponent<PlayerTalismanCollection>();
+        var drawing = collection != null ? collection.Find(id, out _) : null;
+        if (drawing == null) { dropped = null; LastMessage = "보유한 부적이 없습니다."; return false; }
+        collection.Find(id, out var type);
+        return TryDropFinalInternal(requestId, type, id, out dropped);
+    }
     // Adapter validates sender/ownership/catalogue first. Request IDs are increasing per player session.
     // Server computes the position; never accept a client-authored position or prefab.
     public bool TryDropFinal(long requestId, ItemData item, out WorldItem dropped)
+        => TryDropFinalInternal(requestId, item, null, out dropped);
+
+    private bool TryDropFinalInternal(long requestId, ItemData item, string drawingId, out WorldItem dropped)
     {
         dropped = null;
         if (!CanCommit || requestId <= _lastFinalRequest || requestId <= 0 || _busy) return false;
         if (_pendingRequest == requestId) _pendingRequest = 0;
-        if (!CanDrop(item, out var reason)) { LastMessage = reason; return false; }
+        if (drawingId == null && !CanDrop(item, out var reason)) { LastMessage = reason; return false; }
+        if (drawingId != null && (item == null || item.WorldPrefab == null || !PlayerActionGuard.CanAct(gameObject))) return false;
         _lastFinalRequest = requestId; _nextRequest = Math.Max(_nextRequest, requestId);
-        if (_isCarriedWorldObject != null && _isCarriedWorldObject(item))
+        if (drawingId == null && _isCarriedWorldObject != null && _isCarriedWorldObject(item))
         {
             bool removed = _inventory.TryDropUnit(item, () => true);
             LastMessage = removed ? "아이템 1개를 바닥에 내려놓았습니다." : "버리지 못했습니다. 소지품은 유지됩니다.";
@@ -122,7 +150,7 @@ public sealed class PlayerItemDropController : MonoBehaviour
                 _obstacleMask, QueryTriggerInteraction.Ignore))
                 if (!hit.transform.IsChildOf(transform) && !hit.transform.IsChildOf(instance.transform))
                 { LastMessage = "앞이 막혀 있어 버릴 수 없습니다."; return false; }
-            committed = _inventory.TryDropUnit(item, () =>
+            bool Publish()
             {
                 instance.transform.SetParent(null, true);
                 if (!world.isActiveAndEnabled) return false;
@@ -132,6 +160,12 @@ public sealed class PlayerItemDropController : MonoBehaviour
                     if (!_publishWorld(world)) return false;
                 }
                 return world != null && world.isActiveAndEnabled;
+            }
+            if (drawingId == null) committed = _inventory.TryDropUnit(item, Publish);
+            else committed = GetComponent<PlayerTalismanCollection>().TryDropDrawing(drawingId, data =>
+            {
+                world.SetDrawing(data);
+                return Publish();
             });
             if (!committed) { LastMessage = "버리지 못했습니다. 소지품은 유지됩니다."; return false; }
             // Presentation failure must never turn an already committed drop into a failed transaction.

@@ -105,7 +105,7 @@ public class NetPlayerInventory : NetworkBehaviour
         }
 
         // 인벤토리에 먼저 넣어보고 성공했을때만 월드 아이템 제거
-        if (!_inventory.TryAddItem(itemData))
+        if (!(item.HasDrawing ? item.TryCollectDrawing(gameObject) : _inventory.TryAddItem(itemData)))
         {
             Debug.LogWarning($"[NetPlayerInventory] 획득 거절 : {name} <- {itemData.DisplayName}", this);
             return;

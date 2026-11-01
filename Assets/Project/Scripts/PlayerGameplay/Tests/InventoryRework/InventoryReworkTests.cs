@@ -184,10 +184,47 @@ public class InventoryReworkTests
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/UI/Inventory/EffectTalismanInventory.prefab");
         var view = Keep(Object.Instantiate(prefab)).GetComponent<EffectTalismanInventoryView>(); view.Bind(collection, null); view.Select(first.Id); Call(view, "LateUpdate");
         Assert.IsTrue(Get<Button>(view, "_unassignButton").interactable);
-        Assert.IsNull(Get<Button>(view, "_useButton").transform.parent.Find("Drop"));
-        Assert.AreEqual("문양 부적은 버릴 수 없습니다.", Get<TMP_Text>(view, "_status").text); view.UnassignSelected();
+        Assert.IsNotNull(Get<Button>(view, "_useButton").transform.parent.Find("Drop"));
+        view.UnassignSelected();
         Assert.IsTrue(string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(1))); Assert.AreEqual(second.Id, inventory.GetQuickSlotInstanceId(2)); Assert.AreEqual(2, collection.DrawnEffectCount);
         Call(view, "LateUpdate"); Assert.IsFalse(Get<Button>(view, "_unassignButton").interactable);
+    }
+    [Test] public void DrawingTransferPreservesDataAndFailedDropKeepsOwnership()
+    {
+        var draft = Save("stress_gain");
+        Assert.IsTrue(inventory.AssignTalismanQuickSlot(1, draft.Id));
+        Assert.IsFalse(collection.TryDropDrawing(draft.Id, _ => false));
+        Assert.IsNotNull(collection.Find(draft.Id, out _));
+        Assert.AreEqual(draft.Id, inventory.GetQuickSlotInstanceId(1));
+        TalismanSaveData payload = null;
+        Assert.IsTrue(collection.TryDropDrawing(draft.Id, data => { payload = data; return true; }));
+        Assert.IsNull(collection.Find(draft.Id, out _));
+        Assert.IsTrue(string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(1)));
+        var other = Keep(new GameObject("recipient"));
+        other.AddComponent<PlayerInventory>();
+        var recipient = other.AddComponent<PlayerTalismanCollection>();
+        Assert.IsTrue(recipient.TryReceiveDrawing(blank, payload));
+        var received = recipient.Find(draft.Id, out var item);
+        Assert.AreSame(blank, item); Assert.AreEqual("검증 부적", received.CustomName);
+        Assert.AreEqual("stress_gain", received.EffectId); Assert.IsTrue(received.IsValidDrawing());
+        Assert.IsFalse(recipient.TryReceiveDrawing(blank, payload));
+    }
+    [Test] public void DrawnTalismanCanBeDroppedAndPickedUpOnce()
+    {
+        var draft = Save("stress_gain");
+        Assert.IsTrue(inventory.Drops.TryDropDrawingFinal(1, draft.Id, out var world), inventory.Drops.LastMessage);
+        Keep(world.gameObject);
+        Assert.IsTrue(world.HasDrawing);
+        Assert.IsNull(collection.Find(draft.Id, out _));
+        Keep(new GameObject("Offline pickup judge")).AddComponent<LocalGameplayJudge>();
+        var other = Keep(new GameObject("recipient"));
+        var otherInventory = other.AddComponent<PlayerInventory>();
+        var recipient = other.AddComponent<PlayerTalismanCollection>();
+        world.Interact(other);
+        Assert.IsFalse(world.gameObject.activeSelf);
+        Assert.AreEqual(0, otherInventory.GetItemCount(blank));
+        Assert.AreEqual("stress_gain", recipient.Find(draft.Id, out _).EffectId);
+        Assert.IsFalse(world.TryCollectDrawing(other));
     }
     [Test] public void SaveDropdownAndSubInventoryUseSameLiveDescription()
     {
