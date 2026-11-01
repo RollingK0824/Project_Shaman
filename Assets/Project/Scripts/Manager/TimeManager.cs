@@ -12,7 +12,8 @@ public enum TimeOfDay
 public class TimeManager : SceneSingleton<TimeManager>
 {
     [SerializeField]
-    private int _startTextTimeIndex = 4;
+    // 3 = 묘시: the day starts at 5 o'clock (DayClock.DAY_START_HOUR), the start of 묘시 (5~7)
+    private int _startTextTimeIndex = 3;
     private int _textTimeIndex = -1;
     private bool _hasEvaluated;
     private List<string> _textTime = new List<string> { "자시", "축시", "인시", "묘시", "진시", "사시", "오시", "미시", "신시", "유시", "술시", "해시" };
