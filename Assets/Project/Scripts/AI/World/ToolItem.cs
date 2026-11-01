@@ -39,6 +39,9 @@ namespace ProjectShaman.AI.World
         // On the ground and not claimed by a villager walking over to pick it up
         public bool IsUnclaimed => IsOnGround && string.IsNullOrEmpty(_reservedBy);
         public Vector3 Position => transform.position;
+        // Lying somewhere other than its shed (dropped, hidden by a ghost, left at work): stands out to a passer-by
+        public bool IsOutOfPlace => IsOnGround && !string.IsNullOrEmpty(_homeStoragePlaceId)
+            && PlaceRegistry.TryGet(_homeStoragePlaceId, out PlaceArea storage) && !storage.Contains(Position);
         public GhostTargetKind Kind => GhostTargetKind.Tool;
 
         private void Awake()

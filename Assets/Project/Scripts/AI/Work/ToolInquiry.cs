@@ -16,6 +16,9 @@ namespace ProjectShaman.AI.Work
     public class ToolInquiry
     {
         private const float INQUIRY_RADIUS = 15f;
+        // Carrier ids as ToolItem records them (Net_ToolItem: Player_<netId>, the ghost: its ghost id)
+        private const string PLAYER_HOLDER_PREFIX = "Player_";
+        private const string GHOST_HOLDER_PREFIX = "GHOST_";
         private const float HOLD_SECONDS = 8f;
         private const float APPROACH_TIMEOUT = 12f;
         private const float ARRIVE_MARGIN = 0.8f;
@@ -214,10 +217,13 @@ namespace ProjectShaman.AI.Work
             return true;
         }
 
+        // The newest telling sighting: someone carrying it, or it lying away from its shed. A tool seen sitting in its own
+        // shed tells the asker nothing (it looks there first anyway), so it is only told when nothing else is known
         private bool TryGetLatest(IReadOnlyList<ToolSighting> sightings, out ToolSighting latest)
         {
             latest = default;
             bool found = false;
+            bool foundTelling = false;
 
             foreach (ToolSighting sighting in sightings)
             {
@@ -226,14 +232,23 @@ namespace ProjectShaman.AI.Work
                     continue;
                 }
 
-                if (!found || sighting.SeenTime > latest.SeenTime)
+                bool telling = !string.IsNullOrEmpty(sighting.HolderId) || !IsInOwnShed(sighting);
+                if (!found || (telling && !foundTelling) || (telling == foundTelling && sighting.SeenTime > latest.SeenTime))
                 {
                     latest = sighting;
                     found = true;
+                    foundTelling = telling;
                 }
             }
 
             return found;
+        }
+
+        private static bool IsInOwnShed(ToolSighting sighting)
+        {
+            ToolItem tool = ToolRegistry.FindByInstanceId(sighting.InstanceId);
+            return tool != null && !string.IsNullOrEmpty(tool.HomeStoragePlaceId)
+                && PlaceRegistry.TryGet(tool.HomeStoragePlaceId, out PlaceArea storage) && storage.Contains(sighting.Position);
         }
 
         private string DescribeSighting(ToolSighting sighting)
@@ -242,6 +257,17 @@ namespace ProjectShaman.AI.Work
 
             if (!string.IsNullOrEmpty(sighting.HolderId))
             {
+                // Seen carried off: by a ghost (a villager out late saw something dark take it), a player, or a villager
+                if (sighting.HolderId.StartsWith(GHOST_HOLDER_PREFIX))
+                {
+                    return $"웬 시커먼 것이 {tool}{AIDisplayNames.Josa(tool, "을", "를")} 들고 가더구먼";
+                }
+
+                if (sighting.HolderId.StartsWith(PLAYER_HOLDER_PREFIX))
+                {
+                    return $"무당 양반이 {tool}{AIDisplayNames.Josa(tool, "을", "를")} 들고 가던디";
+                }
+
                 string holder = DisplayNameOf(sighting.HolderId);
                 return $"{holder}{AIDisplayNames.Josa(holder, "이", "가")} {tool}{AIDisplayNames.Josa(tool, "을", "를")} 들고 있더구먼";
             }

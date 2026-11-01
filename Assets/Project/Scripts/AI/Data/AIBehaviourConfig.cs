@@ -48,6 +48,8 @@ namespace ProjectShaman.AI.Data
 
         [Header("Tool")]
         [SerializeField] private float _toolSightRadius = 8f;
+        [Tooltip("A tool lying away from its shed is noticed this far off, without looking straight at it (line of sight only)")]
+        [SerializeField] private float _toolOutOfPlaceNoticeRadius = 15f;
         [SerializeField] private float _toolSightInterval = 1f;
         [SerializeField] private float _toolPickupDistance = 1.5f;
         [SerializeField] private int _toolSightingsPerType = 2;
@@ -280,6 +282,7 @@ namespace ProjectShaman.AI.Data
         public float LateRunSpeedMultiplier => _lateRunSpeedMultiplier;
         public int PathfindingIterationsPerFrame => _pathfindingIterationsPerFrame;
         public float ToolSightRadius => _toolSightRadius;
+        public float ToolOutOfPlaceNoticeRadius => Mathf.Max(0f, _toolOutOfPlaceNoticeRadius);
         public float ToolSightInterval => _toolSightInterval;
         public float ToolPickupDistance => _toolPickupDistance;
         public int ToolSightingsPerType => _toolSightingsPerType;
