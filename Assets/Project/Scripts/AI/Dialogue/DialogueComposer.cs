@@ -16,6 +16,33 @@ namespace ProjectShaman.AI.Dialogue
         public const int TRAIT_AGE = 2;
         public const int TRAIT_CLASS = 4;
 
+        // Hint words shown in colour in the dialogue (TMP rich text), so a new player sees what to note down:
+        // where, who, what (object, tool, work), what they were doing (symptom) and when
+        private const string PLACE_COLOR = "#7FD6C8";
+        private const string PERSON_COLOR = "#F2B36B";
+        private const string THING_COLOR = "#F4D35E";
+        private const string ACT_COLOR = "#E8736B";
+        private const string TIME_COLOR = "#B9A6E8";
+
+        private static string HintColor(string key)
+        {
+            switch (key)
+            {
+                case "area": return PLACE_COLOR;
+                case "actor": case "holder": case "names": case "source": return PERSON_COLOR;
+                case "object": case "tool": case "work": return THING_COLOR;
+                case "verb": return ACT_COLOR;
+                case "when": return TIME_COLOR;
+                default: return null;
+            }
+        }
+
+        public static string Highlight(string key, string value)
+        {
+            string color = HintColor(key);
+            return color == null || string.IsNullOrEmpty(value) ? value : $"<color={color}>{value}</color>";
+        }
+
         public static string DescribeFact(in MemoryEntry fact, int currentDay, System.Random random)
         {
             string prefix = fact.Kind == MemoryKind.TraceWitness ? "trace"
@@ -27,21 +54,23 @@ namespace ProjectShaman.AI.Dialogue
             string template = DialogueLibrary.Line($"{prefix}.{mode}", random);
             MemoryEntry copy = fact;
 
-            return TextTemplate.Fill(template, key =>
+            return TextTemplate.Fill(template, key => Highlight(key, ResolveFact(key, copy, currentDay)));
+        }
+
+        private static string ResolveFact(string key, MemoryEntry copy, int currentDay)
+        {
+            switch (key)
             {
-                switch (key)
-                {
-                    case "when": return When(copy.DayCount, currentDay);
-                    case "area": return AreaName(copy.AreaId, copy.Position);
-                    case "actor": return IsNamed(copy.Kind) ? NameOf(copy.ActorId) : Person(copy.ActorId, copy.TraitMask);
-                    case "verb": return VerbPhrase(copy.VerbId, copy.ObjectId);
-                    case "object": return copy.Kind == MemoryKind.TraceWitness && !string.IsNullOrEmpty(copy.ActorId)
-                        ? $"{NameOf(copy.ActorId)}의 {ObjectName(copy.ObjectId)}"
-                        : ObjectName(copy.ObjectId);
-                    case "source": return NameOf(copy.SourceId);
-                    default: return null;
-                }
-            });
+                case "when": return When(copy.DayCount, currentDay);
+                case "area": return AreaName(copy.AreaId, copy.Position);
+                case "actor": return IsNamed(copy.Kind) ? NameOf(copy.ActorId) : Person(copy.ActorId, copy.TraitMask);
+                case "verb": return VerbPhrase(copy.VerbId, copy.ObjectId);
+                case "object": return copy.Kind == MemoryKind.TraceWitness && !string.IsNullOrEmpty(copy.ActorId)
+                    ? $"{NameOf(copy.ActorId)}의 {ObjectName(copy.ObjectId)}"
+                    : ObjectName(copy.ObjectId);
+                case "source": return NameOf(copy.SourceId);
+                default: return null;
+            }
         }
 
         // Absence and death are told by name: neither is evidence of possession
@@ -73,7 +102,7 @@ namespace ProjectShaman.AI.Dialogue
                 {
                     if (pairs[i] == key)
                     {
-                        return pairs[i + 1];
+                        return Highlight(key, pairs[i + 1]);
                     }
                 }
 

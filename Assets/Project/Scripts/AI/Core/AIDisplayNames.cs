@@ -24,8 +24,20 @@ namespace ProjectShaman.AI.Core
             { nameof(GhostTraceKind.DefiledStorage), "더럽혀진 곳간" },
             { nameof(GhostTraceKind.DefiledGuardian), "훼손된 장승" },
             { nameof(GhostTraceKind.DefiledOffering), "더럽혀진 제물" },
-            { nameof(GhostTraceKind.ShadowSpot), "음습한 그늘" }
+            { nameof(GhostTraceKind.ShadowSpot), "음습한 그늘" },
+            { nameof(GhostTraceKind.Anomaly), "괴이한 흔적" }
         };
+
+        // An anomaly trace by what it shows (AnomalySpot kinds)
+        private static readonly Dictionary<string, string> ANOMALIES = new Dictionary<string, string>
+        {
+            { "Handprint", "피 묻은 손자국" }, { "Blood", "핏자국" }, { "Filth", "오물" }
+        };
+
+        public static string Anomaly(string visualKey)
+        {
+            return !string.IsNullOrEmpty(visualKey) && ANOMALIES.TryGetValue(visualKey, out string name) ? name : Trace(GhostTraceKind.Anomaly);
+        }
 
         private static List<string> _toolTypes;
 

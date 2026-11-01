@@ -23,6 +23,12 @@ namespace ProjectShaman.AI.Work
         // Slack on top of the walk, for turning, opening up and a short hold-up on the way
         private const float SPOT_WALK_MARGIN = 3f;
         private readonly NavMeshPath _path = new NavMeshPath();
+        // Where around a spot to look for a reachable floor point: below it first (down to ground level), then on each side
+        private static readonly Vector3[] SPOT_PROBES =
+        {
+            new Vector3(0f, -1.5f, 0f), new Vector3(0f, -3f, 0f), Vector3.zero,
+            new Vector3(2.5f, -1.5f, 0f), new Vector3(-2.5f, -1.5f, 0f), new Vector3(0f, -1.5f, 2.5f), new Vector3(0f, -1.5f, -2.5f)
+        };
 
         private struct CheckedSpot
         {
@@ -215,13 +221,7 @@ namespace ProjectShaman.AI.Work
 
             while (++CandidateIndex < _candidates.Count)
             {
-                Vector3 spot = _candidates[CandidateIndex];
-                if (NavMesh.SamplePosition(spot, out NavMeshHit hit, SPOT_SNAP_DISTANCE, NavMesh.AllAreas))
-                {
-                    spot = hit.position;
-                }
-
-                if (!TryGetWalkLength(spot, out float walk))
+                if (!TryResolveSpot(_candidates[CandidateIndex], out Vector3 spot, out float walk))
                 {
                     AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' spot {CandidateIndex + 1}/{_candidates.Count} {_candidates[CandidateIndex]} has no path, skipped");
                     _checkedPositions.Add(_candidates[CandidateIndex]);
@@ -236,6 +236,25 @@ namespace ProjectShaman.AI.Work
                 return true;
             }
 
+            return false;
+        }
+
+        // The walkable point near a spot that the villager can actually reach. A place's centre sits above the floor, so the
+        // nearest NavMesh point was often a shed's roof (baked walkable, cut off from the ground): look lower first, then round
+        private bool TryResolveSpot(Vector3 spot, out Vector3 resolved, out float walk)
+        {
+            foreach (Vector3 offset in SPOT_PROBES)
+            {
+                if (NavMesh.SamplePosition(spot + offset, out NavMeshHit hit, SPOT_SNAP_DISTANCE, NavMesh.AllAreas)
+                    && TryGetWalkLength(hit.position, out walk))
+                {
+                    resolved = hit.position;
+                    return true;
+                }
+            }
+
+            resolved = spot;
+            walk = 0f;
             return false;
         }
 

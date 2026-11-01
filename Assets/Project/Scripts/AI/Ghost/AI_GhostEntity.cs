@@ -17,7 +17,7 @@ namespace ProjectShaman.AI.Ghost
         public const string BB_MOVE_POSITION = "MovePosition";
         public const string BB_ARRIVE_DISTANCE = "ArriveDistance";
 
-        private const int HIDE_POSITION_ATTEMPTS = 12;
+        private const int HIDE_POSITION_ATTEMPTS = 20;
         private const float NAVMESH_SAMPLE_DISTANCE = 2f;
         private const float TARGET_CHECK_INTERVAL = 0.25f;
         private const float RANGE_TOLERANCE = 0.5f;
@@ -643,6 +643,12 @@ namespace ProjectShaman.AI.Ghost
                 return villager.PublicInfo.Gender.ToString();
             }
 
+            // An anomaly: which one is left there (handprint, blood, filth)
+            if (target.TryGetComponent(out ProjectShaman.AI.World.AnomalySpot spot))
+            {
+                return spot.PickKind();
+            }
+
             ProjectShaman.AI.World.Animal animal = target.GetComponentInParent<ProjectShaman.AI.World.Animal>();
             return animal != null ? animal.CorpseKey : null;
         }
@@ -1015,6 +1021,7 @@ namespace ProjectShaman.AI.Ghost
             Vector3 tracePosition;
             string victimId = null;
             string corpseKey = null;
+            Transform traceAnchor = null;
 
             if (_session.Shape == GhostActionShape.Carry)
             {
@@ -1038,6 +1045,7 @@ namespace ProjectShaman.AI.Ghost
                 tracePosition = _session.Target.gameObject.transform.position;
                 victimId = _session.Target.gameObject.TryGetComponent(out AI_Core victim) ? victim.LogId : null;
                 corpseKey = CorpseKeyOf(_session.Target.gameObject);
+                traceAnchor = _session.Target.gameObject.TryGetComponent(out ProjectShaman.AI.World.AnomalySpot anomaly) ? anomaly.transform : null;
 
                 if (!GhostVerbExecutor.TryApply(_session.Target, context))
                 {
@@ -1053,7 +1061,9 @@ namespace ProjectShaman.AI.Ghost
 
             if (action.TracePrefab != null)
             {
-                GameObject traceObject = _ledger.SpawnTrace(action.TracePrefab, tracePosition, Quaternion.Euler(0f, transform.eulerAngles.y, 0f));
+                // An anomaly lies along its spot (a handprint flat on the door); the rest face the way the ghost faced
+                Quaternion traceRotation = traceAnchor != null ? traceAnchor.rotation : Quaternion.Euler(0f, transform.eulerAngles.y, 0f);
+                GameObject traceObject = _ledger.SpawnTrace(action.TracePrefab, tracePosition, traceRotation);
                 if (traceObject != null && !string.IsNullOrEmpty(corpseKey) && traceObject.TryGetComponent(out Trace.GhostTrace left))
                 {
                     left.SetVisualKey(corpseKey);
@@ -1154,6 +1164,41 @@ namespace ProjectShaman.AI.Ghost
             }
         }
 
+        // Spots tools were hidden at (every ghost): a new one keeps away from them, so tools do not pile up in one place
+        private static readonly List<Vector3> _hiddenSpots = new List<Vector3>();
+        private const float HIDDEN_SPOT_SPACING = 6f;
+        private const int HIDDEN_SPOTS_REMEMBERED = 30;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        private static void ResetHiddenSpots()
+        {
+            _hiddenSpots.Clear();
+        }
+
+        private static bool IsNearHiddenSpot(Vector3 point)
+        {
+            foreach (Vector3 spot in _hiddenSpots)
+            {
+                Vector3 offset = spot - point;
+                offset.y = 0f;
+                if (offset.sqrMagnitude < HIDDEN_SPOT_SPACING * HIDDEN_SPOT_SPACING)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static void RememberHiddenSpot(Vector3 point)
+        {
+            _hiddenSpots.Add(point);
+            if (_hiddenSpots.Count > HIDDEN_SPOTS_REMEMBERED)
+            {
+                _hiddenSpots.RemoveAt(0);
+            }
+        }
+
         private bool TryPickHidePosition(Vector3 from, out Vector3 position)
         {
             float minDistance = _config.GhostHideMinDistance;
@@ -1175,9 +1220,10 @@ namespace ProjectShaman.AI.Ghost
                 Vector3 offset = hit.position - from;
                 offset.y = 0f;
 
-                if (offset.sqrMagnitude >= sqrMinDistance && offset.sqrMagnitude <= sqrMaxDistance)
+                if (offset.sqrMagnitude >= sqrMinDistance && offset.sqrMagnitude <= sqrMaxDistance && !IsNearHiddenSpot(hit.position))
                 {
                     position = hit.position;
+                    RememberHiddenSpot(position);
                     return true;
                 }
             }

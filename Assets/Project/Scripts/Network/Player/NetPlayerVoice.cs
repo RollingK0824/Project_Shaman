@@ -15,6 +15,10 @@ public class NetPlayerVoice : NetworkBehaviour
 
     // SteamTransport 비신뢰 한도 (1200)보다 여유롭게
     private const int MaxPacketBytes = 1000;
+    // 비신뢰 채널이라 패킷이 빠지면 그만큼 Opus PLC로 메움 (100ms까지, 그 이상은 새로 시작)
+    private const int MaxConcealFrames = 5;
+    // 이 시간(초) 넘게 안 오다가 오면 (말 멈춤, 범위 밖, 음소거) 순번을 새로 맞춤
+    private const float SequenceResetTime = .5f;
 
     [Header("Rule")]
     [SerializeField] private ItemData _bellData;
@@ -53,6 +57,11 @@ public class NetPlayerVoice : NetworkBehaviour
     private OpusDecoder _decoder;
     private readonly float[] _decodeBuffer = new float[VoiceCapture.SampleRate * 120 / 1000]; // Opus 최대 프레임 120ms
     private bool _recording;
+
+    // [로컬 클라] 보낸 패킷 순번. [받는 클라] 다음에 올 순번과 마지막으로 받은 시간
+    private byte _sendSequence;
+    private byte _expectedSequence;
+    private float _lastPacketTime = -1f;
 
     private bool _serverBellInQuickSlot;
     private bool _lastSentBellInQuickSlot;
@@ -207,9 +216,10 @@ public class NetPlayerVoice : NetworkBehaviour
         while (_capture.TryDequeue(out byte[] packet))
         {
             _lastVoiceTime = Time.time;
-            CmdSendVoice(packet, IsTalkingOnRadio);
+            CmdSendVoice(packet, _sendSequence, IsTalkingOnRadio);
 
-            if (_debugLoopback) PlayVoice(packet, IsTalkingOnRadio ? VoiceChannel.Radio : VoiceChannel.Spectator);
+            if (_debugLoopback) PlayVoice(packet, _sendSequence, IsTalkingOnRadio ? VoiceChannel.Radio : VoiceChannel.Spectator);
+            _sendSequence++;
         }
     }
 
@@ -242,7 +252,7 @@ public class NetPlayerVoice : NetworkBehaviour
 
     // [서버] 듣는 사람마다 채널을 골라 전달. 클라가 보낸 무전 여부는 서버가 다시 확인
     [Command(channel = Channels.Unreliable)]
-    private void CmdSendVoice(byte[] data, bool wantsRadio)
+    private void CmdSendVoice(byte[] data, byte sequence, bool wantsRadio)
     {
         if (data == null || data.Length == 0 || data.Length > MaxPacketBytes) return;
 
@@ -256,7 +266,7 @@ public class NetPlayerVoice : NetworkBehaviour
 
             if (listener.ServerTryPickChannel(this, speakerDead, radio, out VoiceChannel chaanel))
             {
-                TargetReceiveVoice(conn, data, chaanel);
+                TargetReceiveVoice(conn, data, sequence, chaanel);
             }
         }
     }
@@ -290,17 +300,38 @@ public class NetPlayerVoice : NetworkBehaviour
  
     // [받는 클라] 말한 플레이어 오브젝트에서 재생됨
     [TargetRpc(channel = Channels.Unreliable)]
-    private void TargetReceiveVoice(NetworkConnectionToClient target, byte[] data, VoiceChannel channel)
+    private void TargetReceiveVoice(NetworkConnectionToClient target, byte[] data, byte sequence, VoiceChannel channel)
     {
         _lastVoiceTime = Time.time;
         if (IsMutedLocally) return; // 압축 해제 전에 걸러서 CPU 절약
 
-        PlayVoice(data, channel);
+        PlayVoice(data, sequence, channel);
     }
 
-    private void PlayVoice(byte[] data, VoiceChannel channel)
+    private void PlayVoice(byte[] data, byte sequence, VoiceChannel channel)
     {
         if (_decoder == null) return;
+
+        // 빠진 패킷 수. 오래 끊겼다 다시 온 거면 0
+        int missing = Time.time - _lastPacketTime < SequenceResetTime ? (byte)(sequence - _expectedSequence) : 0;
+        if (missing >= 128) return; // 순서가 뒤바뀌어 늦게 온 옛 패킷
+
+        _lastPacketTime = Time.time;
+        _expectedSequence = (byte)(sequence + 1);
+
+        VoicePlayback playback = channel == VoiceChannel.Radio ? _radioPlayback : _proximityPlayback;
+        // 관전자 음성은 몸이 없으니  2D로
+        if (channel != VoiceChannel.Radio) _proximityPlayback.SetSpatial(channel == VoiceChannel.Proximity);
+
+        // 빈 자리를 Opus가 앞 소리로 이어 만든 소리로 채움 (그냥 건너뛰면 버퍼가 줄어 결국 끊김)
+        if (missing <= MaxConcealFrames)
+        {
+            for (int i = 0; i < missing; i++)
+            {
+                int concealed = _decoder.Decode(null, 0, 0, _decodeBuffer, 0, VoiceCapture.FrameSamples, false);
+                if (concealed > 0) playback.Push(_decodeBuffer, concealed);
+            }
+        }
 
         int samples;
         try
@@ -314,14 +345,6 @@ public class NetPlayerVoice : NetworkBehaviour
 
         if (samples <= 0) return;
 
-        if (channel == VoiceChannel.Radio)
-        {
-            _radioPlayback.Push(_decodeBuffer, samples);
-            return;
-        }
-
-        // 관전자 음성은 몸이 없으니  2D로
-        _proximityPlayback.SetSpatial(channel == VoiceChannel.Proximity);
-        _proximityPlayback.Push(_decodeBuffer, samples);
+        playback.Push(_decodeBuffer, samples);
     }
 }

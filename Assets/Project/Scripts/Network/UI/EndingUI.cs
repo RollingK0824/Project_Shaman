@@ -3,13 +3,30 @@ using Mirror;
 using TMPro;
 using UnityEngine.UI;
 using System;
+using DG.Tweening;
 
 // 게임 종료 결과 화면 (게임 씬 전용)
 // [서버·클라] GameManager가 게임 종료가 되면 표시. 수치는 NetGM 스냅샷·NetGameStartGate에서 읽음
 // 로비 복귀: 호스트가 로비 버튼을 누르면 모두 이동
+// 등장 연출: 배너가 오른쪽에서 들어와 가운데 머문 뒤 왼쪽으로 빠짐 → 종이가 아래에서 올라오고 배경이 같이 밝아짐
 public class EndingUI : MonoBehaviour
 {
     [SerializeField] private GameObject _panel;
+
+    [Header("등장 연출")]
+    [SerializeField] private RectTransform _banner;   // 가운데(anchoredPosition.x = 0)에 놓인 배너
+    [SerializeField] private TMP_Text _bannerText;
+    [SerializeField] private string _winBannerLabel = "퇴마 성공";
+    [SerializeField] private string _loseBannerLabel = "퇴마 실패";
+    [SerializeField] private RectTransform _paper;    // Panel End. 씬에 놓인 위치가 보이는 위치
+    [SerializeField] private Graphic _background;     // Image BackGround. 씬에 놓인 알파까지 밝아짐
+    [SerializeField] private AudioClip _bannerSound;  // Gong_2
+    [SerializeField] private AudioClip _paperSound;   // BOOK_Turn_Page_01_mono
+    [SerializeField] private float _bannerInDuration = 0.5f;
+    [SerializeField] private float _bannerHoldDuration = 1.2f;
+    [SerializeField] private float _bannerOutDuration = 0.4f;
+    [SerializeField] private float _paperDuration = 0.8f;
+    [SerializeField] private float _backgroundFadeDuration = 1.2f;
 
     [Header("결과")]
     [SerializeField] private TMP_Text _resultMessageText;
@@ -59,6 +76,8 @@ public class EndingUI : MonoBehaviour
     private bool _resultApplied;
 
     private NetGM _netGM;
+    private Vector2 _paperShownPos;
+    private float _backgroundAlpha;
 
     // 결과 화면이 떠 있는지(GameMenuUI가 열리지 않도록)
     public static bool IsShown { get; private set; }
@@ -66,6 +85,9 @@ public class EndingUI : MonoBehaviour
     private void Start()
     {
         _panel.SetActive(false);
+        if (_banner != null) _banner.gameObject.SetActive(false);
+        if (_paper != null) _paperShownPos = _paper.anchoredPosition;
+        if (_background != null) _backgroundAlpha = _background.color.a;
         _netGM = FindFirstObjectByType<NetGM>();
     }
 
@@ -81,12 +103,77 @@ public class EndingUI : MonoBehaviour
             if (ritual != null && ritual.Phase == RitualPhase.Succeeded && ritual.RemainingTime > 0f) return;
 
             IsShown = true;
-            _panel.SetActive(true);
+            PlayIntro(gm.CurrentGameState == GameState.Win);
             Time.timeScale = 0f; // 결과 화면 동안 AI 이동·애니메이션·물리 정지
         }
 
         HoldLocalPlayer();
         Refresh(gm);
+    }
+
+    // timeScale이 0이라 모든 트윈은 SetUpdate(true)로 실제 시간 기준
+    private void PlayIntro(bool win)
+    {
+        // 꺼진 패널은 rect 크기가 갱신되지 않으므로 먼저 켜고 계산. 배경은 투명, 종이는 화면 아래 밖에서 대기
+        _panel.SetActive(true);
+        Canvas.ForceUpdateCanvases();
+        if (_background != null) SetBackgroundAlpha(0f);
+        if (_paper != null)
+        {
+            RectTransform paperParent = (RectTransform)_paper.parent;
+            float offY = (paperParent.rect.height + _paper.rect.height) * 0.5f;
+            _paper.anchoredPosition = _paperShownPos + Vector2.down * offY;
+        }
+
+        Sequence seq = DOTween.Sequence().SetUpdate(true).SetLink(gameObject);
+
+        if (_banner != null)
+        {
+            if (_bannerText != null) _bannerText.text = win ? _winBannerLabel : _loseBannerLabel;
+
+            // 화면 가로 절반 + 배너 가로 절반이면 완전히 밖
+            RectTransform parent = (RectTransform)_banner.parent;
+            float offX = (parent.rect.width + _banner.rect.width) * 0.5f;
+            float y = _banner.anchoredPosition.y;
+            _banner.anchoredPosition = new Vector2(offX, y);
+            _banner.gameObject.SetActive(true);
+
+            seq.AppendCallback(() => PlayUI(_bannerSound));
+            seq.Append(MoveX(_banner, 0f, _bannerInDuration).SetEase(Ease.OutCubic));
+            seq.AppendInterval(_bannerHoldDuration);
+            seq.Append(MoveX(_banner, -offX, _bannerOutDuration).SetEase(Ease.InCubic));
+            seq.AppendCallback(() => _banner.gameObject.SetActive(false));
+        }
+
+        seq.AppendCallback(() => PlayUI(_paperSound));
+        if (_paper != null)
+        {
+            seq.Append(DOTween.To(() => _paper.anchoredPosition, p => _paper.anchoredPosition = p, _paperShownPos, _paperDuration).SetEase(Ease.OutCubic));
+        }
+        if (_background != null)
+        {
+            seq.Join(DOTween.To(() => _background.color.a, SetBackgroundAlpha, _backgroundAlpha, _backgroundFadeDuration).SetEase(Ease.InOutSine));
+        }
+    }
+
+    // 모듈(DOAnchorPosX) 대신 코어 DOTween.To만 사용 (DayPhaseHUD와 같은 방식)
+    private static Tween MoveX(RectTransform rect, float x, float duration)
+    {
+        return DOTween.To(() => rect.anchoredPosition.x,
+            value => rect.anchoredPosition = new Vector2(value, rect.anchoredPosition.y),
+            x, duration);
+    }
+
+    private void SetBackgroundAlpha(float alpha)
+    {
+        Color color = _background.color;
+        color.a = alpha;
+        _background.color = color;
+    }
+
+    private static void PlayUI(AudioClip clip)
+    {
+        if (clip != null && SoundManager.Instance != null) SoundManager.Instance.PlayUI(clip);
     }
 
     // timeScale은 씬이 바뀌어도 남으므로 로비 복귀·나가기 때 되돌림

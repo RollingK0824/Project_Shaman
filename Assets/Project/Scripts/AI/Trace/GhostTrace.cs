@@ -47,7 +47,8 @@ namespace ProjectShaman.AI.Trace
         // Which body a corpse shows (AI_CorpseVisual): the victim's gender, or the animal kind
         public string VisualKey { get; private set; }
         public event Action<string> OnVisualKeyChanged;
-        public string DisplayName => string.IsNullOrEmpty(VictimId) ? AIDisplayNames.Trace(_kind) : $"{VictimName()}의 {AIDisplayNames.Trace(_kind)}";
+        public string DisplayName => _kind == GhostTraceKind.Anomaly ? AIDisplayNames.Anomaly(VisualKey)
+            : string.IsNullOrEmpty(VictimId) ? AIDisplayNames.Trace(_kind) : $"{VictimName()}의 {AIDisplayNames.Trace(_kind)}";
         public Vector3 Position => transform.position;
         public Vector3 LookPoint => _lookPoint != null ? _lookPoint.position : transform.position;
 
