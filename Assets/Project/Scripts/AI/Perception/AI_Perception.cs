@@ -41,17 +41,38 @@ namespace ProjectShaman.AI.Perception
             ScanTools(transform.position, _context.Config.ToolSightRadius);
         }
 
+        // A tool lying where it does not belong is noticed further off and out of the corner of the eye (still not through
+        // a wall): passers-by remember it, so a villager asking around about a lost tool can get a lead
         public void ScanTools(Vector3 center, float radius)
         {
-            ToolRegistry.CollectVisible(center, radius, _visibleBuffer);
+            float notice = _context != null ? Mathf.Max(radius, _context.Config.ToolOutOfPlaceNoticeRadius) : radius;
+            ToolRegistry.CollectVisible(center, notice, _visibleBuffer);
+            float radiusSqr = radius * radius;
 
             foreach (ToolItem tool in _visibleBuffer)
             {
-                if (CanSee(tool.Position + Vector3.up * TOOL_LOOK_HEIGHT))
+                Vector3 point = tool.Position + Vector3.up * TOOL_LOOK_HEIGHT;
+                bool inSight = (tool.Position - center).sqrMagnitude <= radiusSqr && CanSee(point);
+                if (inSight || (tool.IsOutOfPlace && HasLineOfSight(point)))
                 {
                     OnToolSeen?.Invoke(tool);
                 }
             }
+        }
+
+        private bool HasLineOfSight(Vector3 point)
+        {
+            if (_context == null)
+            {
+                return true;
+            }
+
+            AIBehaviourConfig config = _context.Config;
+            Vector3 eye = transform.position + Vector3.up * config.VisionEyeHeight;
+            Vector3 toPoint = point - eye;
+            float distance = toPoint.magnitude;
+            return distance < 0.01f || config.VisionObstacleMask.value == 0
+                || !Physics.Raycast(eye, toPoint / distance, distance, config.VisionObstacleMask, QueryTriggerInteraction.Ignore);
         }
 
         // Range is the caller's scan; here: in front (or close enough to sense) and not behind an obstacle.

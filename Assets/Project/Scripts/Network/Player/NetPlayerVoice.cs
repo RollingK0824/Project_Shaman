@@ -18,7 +18,7 @@ public class NetPlayerVoice : NetworkBehaviour
 
     [Header("Rule")]
     [SerializeField] private ItemData _bellData;
-    [SerializeField, Min(1f)] private float _proximityRange = 25f;
+    [SerializeField, Min(1f)] private float _proximityRange = 40f;
 
     [Header("Playback")]
     [SerializeField] private VoicePlayback _proximityPlayback;
@@ -112,6 +112,8 @@ public class NetPlayerVoice : NetworkBehaviour
 
     // [로컬 클라] HUD에서 "무전 중" 표시할 때 사용
     public bool IsTalkingOnRadio { get; private set; }
+    // 퀵슬롯 UI에서 방울 슬롯을 찾을 때 사용
+    public ItemData BellData => _bellData;
 
     private bool IsDead => _status != null && _status.IsDead;
     private bool IsHoldingBell => _bellData != null && _equipment.EquippedItem == _bellData;

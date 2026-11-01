@@ -32,11 +32,13 @@ public static class VillagerDayBlocks
         if (!registry.TryGetDayHours(villager.VillagerId, out int day, out int[] hours, out int leave, out int home, out int bed)
             || hours == null || day <= 0) return false;
 
+        int routinesEnd = 0;
         for (int slot = 0; slot * 2 + 1 < hours.Length; slot++)
         {
             RoutineSlotInfo routine = villager.Schedule.Get(day, slot);
             if (routine.IsEmpty) continue;
             int start = hours[slot * 2], end = hours[slot * 2 + 1];
+            routinesEnd = Mathf.Max(routinesEnd, end);
 
             // Work given up for a missing tool: rests there instead, or spent the block searching
             if (registry.IsSlotRested(villager.VillagerId, day, slot, out string restPlaceId))
@@ -53,6 +55,8 @@ public static class VillagerDayBlocks
 
         // Walk home (one row at least), rest at home, then asleep until the table ends
         int night = DayClock.DAY_START_HOUR + TABLE_ROWS;
+        // Routines running past the leave hour push the walk home after them, so the blocks never overlap
+        if (leave > 0) leave = Mathf.Max(leave, routinesEnd);
         if (leave > 0 && bed > leave)
         {
             int arrive = Mathf.Min(Mathf.Max(home, leave + 1), bed);

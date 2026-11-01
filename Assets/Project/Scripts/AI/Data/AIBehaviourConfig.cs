@@ -48,10 +48,15 @@ namespace ProjectShaman.AI.Data
 
         [Header("Tool")]
         [SerializeField] private float _toolSightRadius = 8f;
+        [Tooltip("A tool lying away from its shed is noticed this far off, without looking straight at it (line of sight only)")]
+        [SerializeField] private float _toolOutOfPlaceNoticeRadius = 15f;
         [SerializeField] private float _toolSightInterval = 1f;
         [SerializeField] private float _toolPickupDistance = 1.5f;
         [SerializeField] private int _toolSightingsPerType = 2;
-        [SerializeField, Range(0f, 1f)] private float _toolSearchTimeRatio = 0.4f;
+        [Tooltip("Spots a tool search looks over (the shed, remembered spots, leads) before it gives up: find-tool request")]
+        [SerializeField, Min(1)] private int _toolSearchSpots = 3;
+        [Tooltip("A searching villager asks someone it passes within this distance (not yet asked today)")]
+        [SerializeField, Min(0f)] private float _toolAskOnTheWayRadius = 6f;
         [SerializeField] private float _tidyRelaxedMaxDistance = 15f;
         [SerializeField] private float _tidyRushedMaxDistance = 35f;
 
@@ -277,10 +282,12 @@ namespace ProjectShaman.AI.Data
         public float LateRunSpeedMultiplier => _lateRunSpeedMultiplier;
         public int PathfindingIterationsPerFrame => _pathfindingIterationsPerFrame;
         public float ToolSightRadius => _toolSightRadius;
+        public float ToolOutOfPlaceNoticeRadius => Mathf.Max(0f, _toolOutOfPlaceNoticeRadius);
         public float ToolSightInterval => _toolSightInterval;
         public float ToolPickupDistance => _toolPickupDistance;
         public int ToolSightingsPerType => _toolSightingsPerType;
-        public float ToolSearchTimeRatio => _toolSearchTimeRatio;
+        public int ToolSearchSpots => Mathf.Max(1, _toolSearchSpots);
+        public float ToolAskOnTheWayRadius => Mathf.Max(0f, _toolAskOnTheWayRadius);
         public float TidyRelaxedMaxDistance => _tidyRelaxedMaxDistance;
         public float TidyRushedMaxDistance => _tidyRushedMaxDistance;
         public float InitialYin => _initialYin;

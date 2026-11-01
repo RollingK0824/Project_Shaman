@@ -15,6 +15,8 @@ namespace ProjectShaman.AI
         private float baseSpeed;
         private float speedMultiplier = 1f;
         private bool destinationRejected;
+        // Asleep: lies where it is. A move order (the walk home retried on a partial path) is ignored until it wakes
+        private bool isHeldInPlace;
 
         public bool IsStopped => agent != null && agent.isStopped;
         public bool HasReachedDestination
@@ -117,9 +119,18 @@ namespace ProjectShaman.AI
             }
         }
 
+        public void SetHeldInPlace(bool held)
+        {
+            isHeldInPlace = held;
+            if (held)
+            {
+                Stop();
+            }
+        }
+
         public void MoveTo(Vector3 destination)
         {
-            if (agent != null && agent.isActiveAndEnabled)
+            if (agent != null && agent.isActiveAndEnabled && !isHeldInPlace)
             {
                 agent.isStopped = false;
                 destinationRejected = !agent.SetDestination(destination);

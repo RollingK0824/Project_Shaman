@@ -53,6 +53,7 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
     private PlayerStressHUD _hud;
     public PlayerStatusHUD StatusHUD => _hud != null ? _hud.StatusHUD : null;
     private PlayerCrosshair _crosshair;
+    private VoiceStatusHUD _voiceHUD;
     private PlayerInteractor _interactor;
     private QuickSlotUI _quickSlots;
     private GameObject _ownedQuickSlotRoot;
@@ -95,6 +96,15 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
         if (!local && _notebookUI != null) ReleaseNotebook();
         UpdateStressHUD(local);
         UpdateCrosshair(local);
+        UpdateVoiceHUD(local);
+    }
+
+    // Unlike the stress HUD this stays up after death: spectators keep talking.
+    private void UpdateVoiceHUD(bool local)
+    {
+        if (local && _voiceHUD == null && TryGetComponent<NetPlayerVoice>(out var voice))
+            _voiceHUD = VoiceStatusHUD.Create(voice);
+        if (_voiceHUD != null && _voiceHUD.gameObject.activeSelf != local) _voiceHUD.gameObject.SetActive(local);
     }
 
     private void UpdateQuickSlots(bool local)
@@ -175,7 +185,9 @@ public class PlayerLocalUIBootstrap : MonoBehaviour
         ReleaseNotebook();
         if (_hud != null) { _hud.gameObject.SetActive(false); Destroy(_hud.gameObject); }
         if (_crosshair != null) { _crosshair.gameObject.SetActive(false); Destroy(_crosshair.gameObject); }
+        if (_voiceHUD != null) { _voiceHUD.gameObject.SetActive(false); Destroy(_voiceHUD.gameObject); }
         _hud = null;
         _crosshair = null;
+        _voiceHUD = null;
     }
 }

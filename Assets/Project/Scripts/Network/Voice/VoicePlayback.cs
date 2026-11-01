@@ -9,6 +9,8 @@ public class VoicePlayback : MonoBehaviour
 {
     [SerializeField, Min(.02f)] private float _startDelay = .12f;
     [SerializeField, Min(.2f)] private float _bufferSeconds = 1f;
+    // AudioSource.volume은 1이 상한이라 샘플에 직접 곱함. 큰 소리는 tanh로 부드럽게 눌러 찢어짐 방지
+    [SerializeField, Range(1f, 8f)] private float _gain = 3f;
 
     private readonly object _lock = new object();
     private AudioSource _source;
@@ -100,7 +102,7 @@ public class VoicePlayback : MonoBehaviour
                     continue;
                 }
 
-                data[i] = _ring[_readIndex];
+                data[i] = (float)System.Math.Tanh(_ring[_readIndex] * _gain);
                 _readIndex = (_readIndex + 1) % _ring.Length;
                 _count--;
             }

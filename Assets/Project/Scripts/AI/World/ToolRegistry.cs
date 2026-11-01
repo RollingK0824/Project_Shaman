@@ -54,6 +54,19 @@ namespace ProjectShaman.AI.World
             return best;
         }
 
+        public static ToolItem FindByInstanceId(string instanceId)
+        {
+            foreach (ToolItem tool in _tools)
+            {
+                if (tool != null && tool.InstanceId == instanceId)
+                {
+                    return tool;
+                }
+            }
+
+            return null;
+        }
+
         public static void CollectVisible(Vector3 center, float radius, List<ToolItem> result)
         {
             result.Clear();

@@ -49,21 +49,9 @@ namespace ProjectShaman.Network.AI
             ApplyStowedOnClient();
         }
 
-        public override void OnStartServer()
-        {
-            if (TimeManager.Instance != null)
-            {
-                TimeManager.Instance.OnNightStart += HandleNightStart;
-            }
-        }
-
+        // A tool a player carries stays with them through the night: a find-tool request runs until a later day (C120)
         public override void OnStopServer()
         {
-            if (TimeManager.Existing != null)
-            {
-                TimeManager.Existing.OnNightStart -= HandleNightStart;
-            }
-
             DropFromCarrier(transform.position, "tool despawned");
         }
 
@@ -264,28 +252,6 @@ namespace ProjectShaman.Network.AI
             else if (_carrier.TryGetComponent(out PlayerHealth health) && health.IsDead)
             {
                 DropFromCarrier(_carrier.transform.position, "carrier died");
-            }
-        }
-
-        // Requests end at night; a tool still carried goes back to its storage so the owner can find it again tomorrow
-        private void HandleNightStart()
-        {
-            if (_carrier == null)
-            {
-                return;
-            }
-
-            if (!PlaceRegistry.TryGet(_tool.HomeStoragePlaceId, out PlaceArea storage))
-            {
-                DropFromCarrier(_carrier.transform.position, "night started");
-                return;
-            }
-
-            DropFromCarrier(storage.GetRandomPoint(new System.Random((int)netId)), $"night started, returned to {storage.PlaceId}");
-
-            if (TryGetComponent(out NetworkTransformBase networkTransform))
-            {
-                networkTransform.ServerTeleport(transform.position, transform.rotation);
             }
         }
 

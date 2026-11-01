@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 using ProjectShaman.AI.Core;
 using ProjectShaman.AI.Data;
 using ProjectShaman.AI.Memory;
@@ -8,14 +9,20 @@ using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Work
 {
-    // One routine's search: spots are looked over in plan order; once a shed came up empty, each next step goes to
-    // whichever is nearer, the next spot or a villager not yet asked (the inquiry re-plans the search afterwards).
-    // The time budget starts at the first spot reached, so the walk from home does not eat into it (C109)
+    // One routine's search, with no time limit (the work block starts only once the work is reached, C131): the tool's own
+    // shed, then the remembered spots. A villager met on the way is asked in passing, and what it says goes into the memory,
+    // so the next spot may be a new lead. With nothing left to look at it asks someone further off. After ToolSearchSpots
+    // spots came up empty (or nothing is left to look at or ask) it gives up and asks the players (find-tool request)
     public class ToolSearchSession
     {
         private const float SPOT_MERGE_DISTANCE = 2.4f;
         // Roads bend and the walk may be held up: a spot set out for is reached within this many times the straight walk
         private const float SPOT_WALK_ALLOWANCE = 2f;
+        // A place's centre is often inside the shed or the stall (off the NavMesh): the spot is the nearest walkable point
+        private const float SPOT_SNAP_DISTANCE = 4f;
+        // Slack on top of the walk, for turning, opening up and a short hold-up on the way
+        private const float SPOT_WALK_MARGIN = 3f;
+        private readonly NavMeshPath _path = new NavMeshPath();
 
         private struct CheckedSpot
         {
@@ -31,16 +38,12 @@ namespace ProjectShaman.AI.Work
         private readonly List<ToolSighting> _openSightings = new List<ToolSighting>();
 
         private ToolItem _targetTool;
-        private float _budget;
-        private float _deadline = float.MaxValue;
         private bool _hasRaisedFirstStress;
         private int _firstStressRoutineSerial = -1;
         private bool _isLookPendingAfterArrival;
         private Vector3 _currentSpot;
         private float _spotArriveBy;
         private int _routineSerial = -1;
-        private bool _hasCheckedStorage;
-        private bool _isAskSkippedUntilNextSpot;
 
         public string RequiredToolType { get; private set; }
         public int CandidateIndex { get; private set; } = -1;
@@ -75,16 +78,12 @@ namespace ProjectShaman.AI.Work
                 _owner.Drop(Position, "switch tool");
             }
 
-            // A re-plan after an inquiry keeps the clock, the spots already looked over and the first stress of this routine
+            // A re-plan within the routine keeps the spots already looked over and the first stress
             if (_routineSerial != routine.Serial)
             {
                 _routineSerial = routine.Serial;
-                _budget = Mathf.Max(1f, routine.EndTime - routine.StartTime) * Config.ToolSearchTimeRatio;
-                _deadline = float.MaxValue;
                 _checkedSpots.Clear();
                 _checkedPositions.Clear();
-                _hasCheckedStorage = false;
-                _isAskSkippedUntilNextSpot = false;
             }
 
             _hasRaisedFirstStress = _firstStressRoutineSerial == routine.Serial;
@@ -94,10 +93,9 @@ namespace ProjectShaman.AI.Work
 
             _owner.Perception.ScanTools(Position, Config.ToolSightRadius);
 
-            string placeId = routine.Source != null ? routine.PlaceId : null;
             IReadOnlyList<ToolSighting> sightings = _owner.Memory.ToolSightings.Get(RequiredToolType);
             CollectOpenSightings(sightings);
-            ToolSearchPlanner.BuildCandidates(RequiredToolType, _openSightings, placeId, _owner.Context.ToolUsePlaces, Position, SPOT_MERGE_DISTANCE, Now,
+            ToolSearchPlanner.BuildCandidates(RequiredToolType, _openSightings, Position, SPOT_MERGE_DISTANCE, Now,
                 Config.ToolSightInterval * 3f, _checkedPositions, _candidates, _storages);
 
             foreach (ToolSighting sighting in sightings)
@@ -108,12 +106,69 @@ namespace ProjectShaman.AI.Work
                 }
             }
 
-            string clock = _deadline == float.MaxValue ? $"budget={_budget:F1}s from first spot" : $"left={Mathf.Max(0f, _deadline - Now):F1}s";
-            AILog.Log(AILog.TOOL, Id, $"Plan search '{RequiredToolType}' (candidates={_candidates.Count}, checked={_checkedSpots.Count}, {clock})");
+            AILog.Log(AILog.TOOL, Id, $"Plan search '{RequiredToolType}' (candidates={_candidates.Count}, tried {_checkedPositions.Count}/{Config.ToolSearchSpots})");
         }
 
-        // Every frame (AI_ToolHandler): a spot that cannot be reached ends the search the usual way (request, stress,
-        // the routine fails into rest), whether or not the behaviour tree looks at CanContinue while walking
+        // Held in a conversation (a player talking to it) the villager is not walking: the time allowed to reach the spot waits
+        public void HoldClock(float seconds)
+        {
+            if (IsActive && seconds > 0f)
+            {
+                _spotArriveBy += seconds;
+            }
+        }
+
+        // Every frame (AI_ToolHandler): a spot that cannot be reached is skipped (the round goes on with the next one),
+        // whether or not the behaviour tree looks at CanContinue while walking
+        // Every so often on the way to a spot (AI_ToolHandler): a villager close by not asked today is asked in passing.
+        // The walk stops for it; the behaviour tree re-plans afterwards and the spot set out for stays a candidate
+        public void TickAskOnTheWay()
+        {
+            if (!IsActive || HasRequiredTool() || _owner.Inquiry.IsActive)
+            {
+                return;
+            }
+
+            // A villager seen carrying it (heard or seen) is asked first: it put the tool away and knows where
+            if (TryGetHolderLead(out string holderId) && _owner.Inquiry.TryStartWith(RequiredToolType, holderId))
+            {
+                _isLookPendingAfterArrival = false;
+                AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' goes to ask {holderId}, who was seen carrying it");
+                return;
+            }
+
+            if (!_isLookPendingAfterArrival)
+            {
+                return;
+            }
+
+            if (_owner.Inquiry.TryStart(RequiredToolType, Config.ToolAskOnTheWayRadius, true))
+            {
+                _isLookPendingAfterArrival = false;
+                AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' asks a villager met on the way to spot {CandidateIndex + 1}/{_candidates.Count}");
+            }
+        }
+
+        // The newest open sighting of a villager (not a ghost or player) carrying the tool, not yet asked today
+        private bool TryGetHolderLead(out string holderId)
+        {
+            holderId = null;
+            float newest = float.MinValue;
+            foreach (ToolSighting sighting in _openSightings)
+            {
+                if (string.IsNullOrEmpty(sighting.HolderId) || sighting.HolderId == Id || sighting.SeenTime <= newest
+                    || !_owner.Inquiry.CanAskHolder(RequiredToolType, sighting.HolderId))
+                {
+                    continue;
+                }
+
+                holderId = sighting.HolderId;
+                newest = sighting.SeenTime;
+            }
+
+            return holderId != null;
+        }
+
         public void TickUnreachableSpot()
         {
             if (IsActive && _isLookPendingAfterArrival && !HasRequiredTool() && !CanContinue())
@@ -124,84 +179,84 @@ namespace ProjectShaman.AI.Work
 
         public bool CanContinue()
         {
-            if (!IsActive || HasRequiredTool())
+            if (!IsActive || HasRequiredTool() || _owner.Inquiry.IsActive)
             {
                 return false;
             }
 
-            // A spot set out for is looked over on arrival, even when the time ran out on the way, as long as the walk
-            // there takes about what it should. One the villager cannot get to (a blocked way) does not hold the day up:
-            // a block starts only once the work is reached (C131), so nothing else would end this search
+            // A spot set out for is looked over on arrival, as long as the walk there takes about what it should. One the
+            // villager cannot get to (a blocked way) is counted as looked over and the round goes on without it
             if (_isLookPendingAfterArrival)
             {
-                // The clock starts at the first spot reached, so one that cannot be reached would never run it out
-                bool isOverTime = _deadline == float.MaxValue || Now > _deadline;
-                if (isOverTime && Now > _spotArriveBy)
+                if (Now > _spotArriveBy)
                 {
-                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' could not reach spot {CandidateIndex + 1}/{_candidates.Count} {_currentSpot}, giving up");
+                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' could not reach spot {CandidateIndex + 1}/{_candidates.Count} {_currentSpot}, skipped");
                     _isLookPendingAfterArrival = false;
+                    _checkedPositions.Add(_currentSpot);
                     return false;
                 }
 
                 return true;
             }
 
-            if (Now > _deadline && _targetTool == null)
-            {
-                return false;
-            }
-
-            // An empty plan still goes on once, so the failure path below asks around
+            // An empty plan still goes on once, so the failure path below ends the round
             if (CandidateIndex + 1 >= _candidates.Count)
             {
                 return CandidateIndex < 0;
             }
 
-            return !ShouldAskBefore(_candidates[CandidateIndex + 1]);
+            return true;
         }
 
-        // After an empty shed: a villager nearer than the next spot is asked first (RaiseFailure starts the inquiry).
-        // A spot someone told about or that was seen with the tool is gone to straight away
-        private bool ShouldAskBefore(Vector3 nextSpot)
+        // The next spot the villager can walk to; one with no path at all is counted as looked over and skipped
+        public bool TrySelectNextTarget(out Vector3 target)
         {
-            if (!_hasCheckedStorage || _isAskSkippedUntilNextSpot || IsSightingSpot(nextSpot)
-                || !_owner.Inquiry.TryFindPartner(RequiredToolType, out float partnerDistance))
-            {
-                return false;
-            }
+            target = Position;
 
-            return partnerDistance < Vector3.Distance(Position, nextSpot);
-        }
-
-        private bool IsSightingSpot(Vector3 spot)
-        {
-            foreach (ToolSighting sighting in _openSightings)
+            while (++CandidateIndex < _candidates.Count)
             {
-                if (Vector3.Distance(sighting.Position, spot) < SPOT_MERGE_DISTANCE)
+                Vector3 spot = _candidates[CandidateIndex];
+                if (NavMesh.SamplePosition(spot, out NavMeshHit hit, SPOT_SNAP_DISTANCE, NavMesh.AllAreas))
                 {
-                    return true;
+                    spot = hit.position;
                 }
+
+                if (!TryGetWalkLength(spot, out float walk))
+                {
+                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' spot {CandidateIndex + 1}/{_candidates.Count} {_candidates[CandidateIndex]} has no path, skipped");
+                    _checkedPositions.Add(_candidates[CandidateIndex]);
+                    continue;
+                }
+
+                target = spot;
+                _currentSpot = _candidates[CandidateIndex];
+                _isLookPendingAfterArrival = true;
+                _spotArriveBy = Now + walk / Mathf.Max(0.1f, Config.WalkSpeedEstimate) * SPOT_WALK_ALLOWANCE + SPOT_WALK_MARGIN;
+                AILog.Log(AILog.TOOL, Id, $"Search target {CandidateIndex + 1}/{_candidates.Count} {target} (walk {walk:F0}m)");
+                return true;
             }
 
             return false;
         }
 
-        public bool TrySelectNextTarget(out Vector3 target)
+        // Along the NavMesh, not the straight line: the old allowance gave up on spots behind a long way round
+        private bool TryGetWalkLength(Vector3 to, out float length)
         {
-            target = Position;
-            CandidateIndex++;
-
-            if (CandidateIndex >= _candidates.Count)
+            length = 0f;
+            Vector3 from = NavMesh.SamplePosition(Position, out NavMeshHit start, SPOT_SNAP_DISTANCE, NavMesh.AllAreas) ? start.position : Position;
+            if (!NavMesh.CalculatePath(from, to, NavMesh.AllAreas, _path) || _path.status == NavMeshPathStatus.PathInvalid)
             {
                 return false;
             }
 
-            target = _candidates[CandidateIndex];
-            _currentSpot = target;
-            _isLookPendingAfterArrival = true;
-            _spotArriveBy = Now + Vector3.Distance(Position, target) / Mathf.Max(0.1f, Config.WalkSpeedEstimate) * SPOT_WALK_ALLOWANCE;
-            AILog.Log(AILog.TOOL, Id, $"Search target {CandidateIndex + 1}/{_candidates.Count} {target}");
-            return true;
+            Vector3[] corners = _path.corners;
+            for (int i = 1; i < corners.Length; i++)
+            {
+                length += Vector3.Distance(corners[i - 1], corners[i]);
+            }
+
+            // A partial path still counts when it ends close enough to look the spot over
+            return corners.Length > 0 && Vector3.Distance(corners[corners.Length - 1], to) <= SPOT_SNAP_DISTANCE;
         }
 
         public bool TryLookForTool(out Vector3 toolPosition)
@@ -260,32 +315,37 @@ namespace ProjectShaman.AI.Work
             return true;
         }
 
-        // Returns false when the search goes on (an inquiry started, or spots are left); the routine stays and the
-        // search is planned again afterwards. Asking around is part of the search, so it stops once the time is over
+        // Returns false when the search goes on (asking someone, or spots left); the routine stays and the search is planned
+        // again afterwards. true: ToolSearchSpots spots came up empty, or nothing is left to look at or ask; the routine fails
         public bool RaiseFailure()
         {
-            bool isTimeOver = Now > _deadline;
-            bool hasSpotsLeft = CandidateIndex + 1 < _candidates.Count;
-            string progress = $"checked {Mathf.Clamp(CandidateIndex + 1, 0, _candidates.Count)}/{_candidates.Count}";
-
-            if (!isTimeOver)
+            if (_owner.Inquiry.IsActive)
             {
-                if (_owner.Inquiry.TryStart(RequiredToolType))
+                Cancel();
+                return false;
+            }
+
+            int tried = _checkedPositions.Count;
+            bool hasSpotsLeft = CandidateIndex + 1 < _candidates.Count;
+
+            if (tried < Config.ToolSearchSpots)
+            {
+                if (hasSpotsLeft)
                 {
-                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' asks around ({progress}, {(hasSpotsLeft ? "a villager is nearer than the next spot" : "no more spots")})");
                     Cancel();
                     return false;
                 }
 
-                if (hasSpotsLeft)
+                // Nothing left to look at: someone further off may have seen it
+                if (_owner.Inquiry.TryStart(RequiredToolType))
                 {
-                    _isAskSkippedUntilNextSpot = true;
+                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' has no spot left (tried {tried}/{Config.ToolSearchSpots}), asks around");
                     Cancel();
                     return false;
                 }
             }
 
-            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed ({progress}, {(isTimeOver ? "time over" : "no more candidates")})");
+            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (tried {tried}/{Config.ToolSearchSpots} spots, {(tried >= Config.ToolSearchSpots ? "limit reached" : "nothing left to look at or ask")})");
 
             _owner.Memory.RecordToolLost(RequiredToolType);
             // Request first: the stress below may leave Calm and ask for a gut, and a giver holds one request at a time
@@ -300,18 +360,6 @@ namespace ProjectShaman.AI.Work
         {
             _checkedSpots.Add(new CheckedSpot { Position = _currentSpot, Time = Now });
             _checkedPositions.Add(_currentSpot);
-            _isAskSkippedUntilNextSpot = false;
-
-            if (ToolSearchPlanner.IsNear(_storages, _currentSpot, SPOT_MERGE_DISTANCE))
-            {
-                _hasCheckedStorage = true;
-            }
-
-            if (_deadline == float.MaxValue)
-            {
-                _deadline = Now + _budget;
-                AILog.Log(AILog.TOOL, Id, $"Search clock starts at first spot ({_budget:F1}s)");
-            }
         }
 
         // Sightings at a spot already looked over are stale unless seen there again since
