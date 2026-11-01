@@ -187,7 +187,7 @@ namespace ProjectShaman.AI.Data
         [Tooltip("귀신이 플레이어 가까이서 슬금슬금 다가가는 속도(m/s)")]
         [SerializeField] private float _ghostStalkCreepSpeed = 1f;
         [Tooltip("귀신 존재 반경 안의 플레이어가 받는 초당 스트레스 (따라다니든 아니든). 결계·스트레스 부적을 무시하고 그대로 적용")]
-        [SerializeField] private float _ghostStalkStressPerSecond = 1f;
+        [SerializeField] private float _ghostStalkStressPerSecond = 2f;
         [Tooltip("귀신 존재 반경(m): 음기 0일 때. 따라다닐 최대 거리보다 작아지지 않음")]
         [SerializeField] private float _ghostStressRadiusMin = 7f;
         [Tooltip("귀신 존재 반경(m): 음기 최대일 때")]
