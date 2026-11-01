@@ -1,9 +1,11 @@
 using UnityEngine;
 using System.Collections.Generic;
+using System.Collections;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
 using Mirror;
+using ProjectShaman.AI;
 
 
 // 효과 부족 그림 한 장의 전송 형식
@@ -35,6 +37,11 @@ public class NetPlayerTalisman : NetworkBehaviour
     [SerializeField] private TalismanItemData[] _effectTalismans;
 
     private PlayerTalismanEffectController _effects;
+    private PlayerVillagerTracking _tracking;
+    private NetPlayerEquipment _equipment;
+    private long _trackingVersion;
+    private long _receivedTrackingVersion = -1;
+    private Coroutine _pendingTracking;
 
     // [서버] 버프 상태 전송 번호 (클라는 이전 번호 무시)
     private long _effectVersion;
@@ -52,6 +59,8 @@ public class NetPlayerTalisman : NetworkBehaviour
         _drawing = GetComponent<PlayerTalismanDrawingController>();
         _status = GetComponent<NetPlayerStatus>();
         _effects = GetComponent<PlayerTalismanEffectController>();
+        _tracking = _collection.Tracking;
+        _equipment = GetComponent<NetPlayerEquipment>();
     }
 
     public override void OnStartServer()
@@ -62,10 +71,14 @@ public class NetPlayerTalisman : NetworkBehaviour
         _collection.SelectionChanged += ServerSyncDrawings;
         _effects.SetAuthorityCheck(ServerCanAct);
         _effects.EffectsChanged += ServerSyncEffects;
+        _tracking.StateChanged += ServerSyncTracking;
     }
 
     public override void OnStopServer()
     {
+        _tracking.StateChanged -= ServerSyncTracking;
+        _tracking.ResetRoundTracking();
+        _trackingVersion = 0;
         _effects.EffectsChanged -= ServerSyncEffects;
         _effects.SetAuthorityCheck(null);
         _collection.SelectionChanged -= ServerSyncDrawings;
@@ -80,10 +93,16 @@ public class NetPlayerTalisman : NetworkBehaviour
 
         _collection.SaveRequested += HandleSaveRequested;
         _collection.UseRequested += HandleUseRequested;
+        _tracking.AttachRequested += HandleTrackingRequested;
     }
 
     public override void OnStopLocalPlayer()
     {
+        _tracking.AttachRequested -= HandleTrackingRequested;
+        if (_pendingTracking != null) StopCoroutine(_pendingTracking);
+        _pendingTracking = null;
+        _receivedTrackingVersion = -1;
+        _tracking.ResetRoundTracking();
         _collection.UseRequested -= HandleUseRequested;
         _collection.SaveRequested -= HandleSaveRequested;
 
@@ -98,6 +117,11 @@ public class NetPlayerTalisman : NetworkBehaviour
 
         GameManager gm = GameManager.Instance;
         return gm != null && gm.CurrentGameState == GameState.Ongoing;
+    }
+
+    private void Update()
+    {
+        if (isServer && _tracking.Target != null && !ServerCanAct()) _tracking.ResetTracking();
     }
 
     // [로컬 클라] 그림 저장 요청을 압축해서 서버로 전달
@@ -237,6 +261,66 @@ public class NetPlayerTalisman : NetworkBehaviour
 
         bool success = _collection.TryUse(instanceId);
         Debug.Log($"[NetPlayerTalisman] 사용 판정 : {name} -> {instanceId} {(success ? "성공" : "거절")}", this);
+    }
+
+    private void HandleTrackingRequested(string instanceId, AI_Core target, Vector3 origin, Vector3 direction)
+    {
+        if (_equipment == null || target == null || !target.TryGetComponent(out NetworkIdentity identity) || identity.netId == 0) return;
+        // Send equipment first, including when selection and use occur in the same frame.
+        _equipment.SyncEquippedItem(true);
+        CmdUseTracking(instanceId, identity.netId, origin, direction);
+    }
+
+    [Command]
+    private void CmdUseTracking(string instanceId, uint targetId, Vector3 origin, Vector3 direction)
+    {
+        if (!ServerCanAct() || string.IsNullOrEmpty(instanceId) || instanceId.Length > 64 ||
+            !NetworkServer.spawned.TryGetValue(targetId, out NetworkIdentity identity) ||
+            !identity.TryGetComponent(out AI_Core target)) return;
+        bool success = _collection.TryUseTracking(instanceId, target, origin, direction);
+        if (!success) TargetTrackingRejected();
+    }
+
+    [TargetRpc]
+    private void TargetTrackingRejected()
+    {
+        GetComponent<PlayerItemFeedback>()?.Unavailable("추적 부적 사용이 거절되었습니다");
+    }
+
+    [Server]
+    private void ServerSyncTracking()
+    {
+        if (isLocalPlayer) return; // Host uses the authoritative state directly.
+        uint targetId = 0;
+        if (_tracking.Target != null && _tracking.Target.TryGetComponent(out NetworkIdentity identity)) targetId = identity.netId;
+        TargetTrackingState(++_trackingVersion, targetId, targetId == 0 ? 0 : _tracking.ExpiresAt);
+    }
+
+    [TargetRpc]
+    private void TargetTrackingState(long version, uint targetId, double expiresAt)
+    {
+        if (isServer || version <= _receivedTrackingVersion) return;
+        _receivedTrackingVersion = version;
+        if (_pendingTracking != null) StopCoroutine(_pendingTracking);
+        _tracking.ResetTracking();
+        _pendingTracking = StartCoroutine(ApplyTrackingWhenReady(version, targetId, expiresAt));
+    }
+
+    private IEnumerator ApplyTrackingWhenReady(long version, uint targetId, double expiresAt)
+    {
+        while (isLocalPlayer && version == _receivedTrackingVersion)
+        {
+            if (targetId == 0)
+            {
+                _tracking.ApplyConfirmed(version, null, 0);
+                break;
+            }
+            if (NetworkClient.spawned.TryGetValue(targetId, out NetworkIdentity identity) &&
+                identity.TryGetComponent(out AI_Core target) && _tracking.ApplyConfirmed(version, target, expiresAt)) break;
+            if (TimeManager.Existing != null && TimeManager.Existing.IsRunning && TimeManager.Existing.Elapsed >= expiresAt) break;
+            yield return null;
+        }
+        _pendingTracking = null;
     }
 
 

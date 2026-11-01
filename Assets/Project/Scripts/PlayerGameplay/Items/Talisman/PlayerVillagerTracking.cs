@@ -54,15 +54,25 @@ public sealed class PlayerVillagerTracking : MonoBehaviour
     }
     public bool CanAttach(string id, AI_Core target, Vector3 origin, Vector3 direction)
     {
-        var clock = TimeManager.Existing;
         var items = GetComponent<PlayerItemController>();
         var input = GetComponent<PlayerInputReader>();
-        return isActiveAndEnabled && PlayerActionGuard.CanAct(gameObject) && !(Active && Target == target) && clock != null && clock.IsRunning &&
-            double.IsFinite(clock.Elapsed) && clock.Elapsed >= 0 && items != null && items.CanUseItems && items.EquippedTalismanInstanceId == id &&
+        return CanAttachTarget(target, origin, direction) && items != null && items.CanUseItems && items.EquippedTalismanInstanceId == id &&
             GetComponent<PlayerInventory>().GetQuickSlotInstanceId(items.SelectedSlotIndex) == id &&
             (input == null || !input.GameplayInputBlocked) && !(GetComponent<PlayerNotebookUI>() is { IsOpen:true }) &&
             !(GetComponent<PlayerViewModeController>() is { IsBusy:true }) &&
-            (UIManager.Existing == null || !UIManager.Existing.IsMenuOpen) &&
+            (UIManager.Existing == null || !UIManager.Existing.IsMenuOpen);
+    }
+    public bool CanAttachOnServer(string id, AI_Core target, Vector3 origin, Vector3 direction)
+    {
+        var equipment = GetComponent<NetPlayerEquipment>();
+        return NetworkServer.active && equipment != null && equipment.ServerHasEquippedTalisman(id) &&
+            CanAttachTarget(target, origin, direction);
+    }
+    private bool CanAttachTarget(AI_Core target, Vector3 origin, Vector3 direction)
+    {
+        var clock = TimeManager.Existing;
+        return isActiveAndEnabled && PlayerActionGuard.CanAct(gameObject) && !(Active && Target == target) && clock != null && clock.IsRunning &&
+            double.IsFinite(clock.Elapsed) && clock.Elapsed >= 0 &&
             Finite(origin) && Vector3.Distance(origin, transform.position + Vector3.up * 1.5f) <= 3f &&
             target != null && FindTarget(origin, direction) == target &&
             FindTarget(transform.position + Vector3.up * 1.5f, target.transform.position + Vector3.up - (transform.position + Vector3.up * 1.5f)) == target;
@@ -112,7 +122,7 @@ public sealed class PlayerVillagerTracking : MonoBehaviour
     public void ResetRoundTracking() { ResetTracking(); _version = -1; }
     public void ResetTracking()
     {
-        bool had = Target != null; Target = null; ExpiresAt = 0;
+        bool had = !ReferenceEquals(Target, null); Target = null; ExpiresAt = 0;
         if (_hud != null) _hud.SetActive(false);
         if (had) Publish();
     }
@@ -120,7 +130,7 @@ public sealed class PlayerVillagerTracking : MonoBehaviour
     private void OnDestroy() { if (_hud != null) Destroy(_hud); }
     private void LateUpdate()
     {
-        if (Target != null && (!PlayerActionGuard.CanAct(gameObject) || !ValidTarget(Target) || TimeManager.Existing != _clock ||
+        if (!ReferenceEquals(Target, null) && (!PlayerActionGuard.CanAct(gameObject) || !ValidTarget(Target) || TimeManager.Existing != _clock ||
             _clock == null || !_clock.IsRunning || _clock.Elapsed < _lastTime || Remaining <= 0)) ResetTracking();
         if (_clock != null) _lastTime = _clock.Elapsed;
         bool show = Active && PlayerLocalPresentation.IsLocal(gameObject) && ViewCamera() != null &&

@@ -166,9 +166,11 @@ public class EndingUI : MonoBehaviour
 
     private string FormatPlayerTime()
     {
+        // The network scene object can be inactive when this UI starts.
+        if (_netGM == null) _netGM = FindFirstObjectByType<NetGM>();
         double start = NetGameStartGate.Instance != null ? NetGameStartGate.Instance.StartTime : 0;
         double end = _netGM != null ? _netGM.GameOverTime : 0;
-        if (start <= 0 || end <= start) return "-";
+        if (start <= 0 || end <= 0 || end < start) return "-";
 
         int total = (int)(end - start);
         return $"{total / 60}분 {total % 60:00}초";
@@ -176,6 +178,7 @@ public class EndingUI : MonoBehaviour
 
     public void OnClickLobby()
     {
+        if (_netGM == null) _netGM = FindFirstObjectByType<NetGM>();
         if (NetworkServer.active && _netGM != null) _netGM.ServerReturnToLobby();
     }
     public void OnClickMainMenu()

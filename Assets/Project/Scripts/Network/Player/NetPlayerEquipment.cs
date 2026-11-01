@@ -23,9 +23,13 @@ public class NetPlayerEquipment : NetworkBehaviour
 
     // [로컬 클라] 마지막 서버에 보낸 장착 아이템. 바뀔때만 보냄
     private ItemData _lastSentItem;
+    private string _lastSentTalismanId;
+    private string _serverEquippedTalismanId;
 
     public int EquippedItemId => _equippedItemId;
     public ItemData EquippedItem => _dataBase != null ? _dataBase.GetItem(_equippedItemId) : null;
+    public bool ServerHasEquippedTalisman(string instanceId) =>
+        NetworkServer.active && !string.IsNullOrEmpty(instanceId) && _serverEquippedTalismanId == instanceId;
 
 
     public event Action<ItemData> EquippedItemChanged;
@@ -62,17 +66,24 @@ public class NetPlayerEquipment : NetworkBehaviour
         GetComponent<PlayerHealth>().Died -= HandleDied;
         base.OnStopServer();
     }
-    private void HandleDied(GameObject source) => _equippedItemId = -1;
+    private void HandleDied(GameObject source) { _equippedItemId = -1; _serverEquippedTalismanId = null; }
 
     // [로컬] 장착 변화 감지. 플레이어 코드에 이벤트 생기면 이벤트 구독으로 교체
     private void Update()
     {
         if (!isLocalPlayer) return;
+        SyncEquippedItem();
+    }
 
+    public void SyncEquippedItem(bool force = false)
+    {
+        if (!isLocalPlayer) return;
         ItemData current = _itemController.EquippedItemData;
-        if (ReferenceEquals(current, _lastSentItem)) return;
+        string instanceId = _itemController.EquippedTalismanInstanceId;
+        if (!force && ReferenceEquals(current, _lastSentItem) && instanceId == _lastSentTalismanId) return;
 
         _lastSentItem = current;
+        _lastSentTalismanId = instanceId;
 
         int id = current != null ? _dataBase.GetId(current) : -1;
         if (current != null && id < 0)
@@ -80,13 +91,14 @@ public class NetPlayerEquipment : NetworkBehaviour
             Debug.LogWarning($"[NetPlayerEquipment] NetItemDataBase에 없는 아이템이라 다른 플레이어에게 보이지 않습니다: {current.DisplayName}", this);
         }
 
-        CmdSetEquippedItem(id);
+        CmdSetEquippedItem(id, instanceId);
     }
 
     // [서버] 장착 확정 코드 / 해제는 항상 허용, 장착은 살아있고, 실제로 가진 아이템만
     [Command]
-    private void CmdSetEquippedItem(int itemId)
+    private void CmdSetEquippedItem(int itemId, string instanceId)
     {
+        _serverEquippedTalismanId = null;
         if (itemId < 0)
         {
             _equippedItemId = -1;
@@ -97,7 +109,14 @@ public class NetPlayerEquipment : NetworkBehaviour
 
         ItemData item = _dataBase.GetItem(itemId);
         if (item == null) return;
-        if (!_inventory.Contains(item)) return;
+        if (!string.IsNullOrEmpty(instanceId))
+        {
+            if (instanceId.Length > 64) return;
+            var collection = GetComponent<PlayerTalismanCollection>();
+            if (collection == null || collection.Find(instanceId, out var template) == null || template != item) return;
+            _serverEquippedTalismanId = instanceId;
+        }
+        else if (!_inventory.Contains(item)) return;
 
         _equippedItemId = itemId;
     }
