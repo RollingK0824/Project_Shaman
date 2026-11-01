@@ -53,14 +53,18 @@ public class VotingPanel : UIPanel
         BuildCells();
     }
 
-    private void Start()
+    private void Update()
     {
         // 씬 시작 시 이미 켜져 있던 패널(월드 스페이스)은 OnEnable 때 레지스트리가 아직 없을 수 있다
-        // Start는 씬의 모든 Awake 이후에 실행되므로 여기서 한 번 더 시도한다
+        // AIManager/AIFactory는 씬 네트워크 오브젝트라 Mirror가 스폰할 때까지 꺼져 있어서 레지스트리도 그때 생긴다
+        // 호스트는 씬 로드 직후 스폰되지만, 클라이언트는 서버 스폰 메시지를 받을 때까지 늦어지므로 생길 때까지 매 프레임 다시 시도한다
         if (_subscribedReg == null)
         {
             SubscribeRegistry();
-            BuildCells();
+            if (_subscribedReg != null)
+            {
+                BuildCells();
+            }
         }
     }
 
