@@ -19389,6 +19389,7 @@ Transform:
   - {fileID: 925008716}
   - {fileID: 1750576585}
   - {fileID: 75682429}
+  - {fileID: 98765002}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &460429804
@@ -84013,6 +84014,55 @@ Transform:
   m_CorrespondingSourceObject: {fileID: 3531517563583853847, guid: 7c94dfee669555047b99881d45db397f, type: 3}
   m_PrefabInstance: {fileID: 8385679009679362076}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &98765001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 98765002}
+  - component: {fileID: 98765003}
+  m_Layer: 0
+  m_Name: DayNightBGM
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &98765002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98765001}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 457282940}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &98765003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 98765001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 228f17c7d3754350a6b0d0351674d89c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::DayNightBGM
+  _bgmGroup: {fileID: -6983517904764976099, guid: 2ac82c5cdbacc9644ad9bb47dbdd89f7, type: 2}
+  _dayClip: {fileID: 8300000, guid: a2fa3283c6bfa254db7a9a890e2636b6, type: 3}
+  _nightClip: {fileID: 8300000, guid: d5116c9ff3d5ceb4cada9e52cc3b88f5, type: 3}
+  _volume: 0.6
+  _crossfadeTime: 4
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0
