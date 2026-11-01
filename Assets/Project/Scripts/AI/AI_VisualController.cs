@@ -17,7 +17,8 @@ namespace ProjectShaman.AI
         private const string BASE_LAYER = "Base Layer";
         private const string GESTURE_LAYER = "Gesture";
         // Full-body actions first, then the upper-body ones that keep the legs standing (hammering)
-        private static readonly string[] ACTION_LAYERS = { "Action", "UpperAction" };
+        private const string UPPER_ACTION_LAYER = "UpperAction";
+        private static readonly string[] ACTION_LAYERS = { "Action", UPPER_ACTION_LAYER };
         private const string EMPTY_STATE = "Empty";
         private const string STOP_SUFFIX = " Stop";
         private const string LOCOMOTION_STATE = "Locomotion";
@@ -228,15 +229,20 @@ namespace ProjectShaman.AI
                 direction = _yawRate > 0f ? 1 : -1;
             }
 
-            if (direction == _turnDirection)
+            // Checked every frame against where the layer really is or is heading, not only when the direction changes:
+            // a fade back to Locomotion asked while the fade into a turn was still running could be dropped, and the
+            // villager then ran its errands in the turning-on-the-spot pose
+            _turnDirection = direction;
+            int layer = animator.GetLayerIndex(BASE_LAYER);
+            string state = direction > 0 ? TURN_RIGHT_STATE : direction < 0 ? TURN_LEFT_STATE : LOCOMOTION_STATE;
+            if (layer < 0 || !HasState(layer, state))
             {
                 return;
             }
 
-            _turnDirection = direction;
-            int layer = animator.GetLayerIndex(BASE_LAYER);
-            string state = direction > 0 ? TURN_RIGHT_STATE : direction < 0 ? TURN_LEFT_STATE : LOCOMOTION_STATE;
-            if (layer >= 0 && HasState(layer, state))
+            int hash = PathHash(layer, state);
+            AnimatorStateInfo heading = animator.IsInTransition(layer) ? animator.GetNextAnimatorStateInfo(layer) : animator.GetCurrentAnimatorStateInfo(layer);
+            if (heading.fullPathHash != hash)
             {
                 CrossFade(layer, state);
             }
@@ -275,6 +281,12 @@ namespace ProjectShaman.AI
             string covering = null;
             foreach (string layerName in ACTION_LAYERS)
             {
+                // The upper-body layer is masked to the arms and head: a symptom there leaves the legs walking
+                if (layerName == UPPER_ACTION_LAYER)
+                {
+                    continue;
+                }
+
                 int layer = animator.GetLayerIndex(layerName);
                 if (layer >= 0 && animator.GetCurrentAnimatorStateInfo(layer).fullPathHash != PathHash(layer, EMPTY_STATE))
                 {
@@ -288,7 +300,7 @@ namespace ProjectShaman.AI
             }
 
             return $"Speed={speed:F2}, base={(baseWalking ? LOCOMOTION_STATE : "not locomotion")}, covered by={covering ?? "none"}, action='{CurrentAction}', " +
-                $"local={UpdateAnimatorLocally}, agent={(movement != null ? movement.CurrentSpeed : 0f):F2}";
+                $"local={UpdateAnimatorLocally}, agent={(movement != null ? movement.DescribeAgent() : "none")}";
         }
 
         private int FindActionLayer(string state)

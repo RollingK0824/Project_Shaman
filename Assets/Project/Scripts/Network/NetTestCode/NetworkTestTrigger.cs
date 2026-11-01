@@ -13,7 +13,6 @@ public struct TestSelfStressMessage : NetworkMessage
 public class NetworkTestTrigger : MonoBehaviour
 {
     private NetGM _gameNetwork;
-    private NetItemSpawner _itemSpawner;
 
     private GameManager _gameManager;
     //private GUIStyle _resultStyle;
@@ -37,7 +36,6 @@ public class NetworkTestTrigger : MonoBehaviour
     void Start()
     {
         _gameManager = GameManager.Instance;
-        _itemSpawner = FindFirstObjectByType<NetItemSpawner>();
 
         if (NetworkServer.active)
         {
@@ -99,20 +97,26 @@ public class NetworkTestTrigger : MonoBehaviour
         NetworkClient.Send(new TestSelfStressMessage { delta = delta });
     }
 
-    // [호스트] 9 : 랜덤 아이템 하나 스폰
+    // [호스트] 9 : 씬의 모든 스포너에서 랜덤 아이템 하나씩 스폰
     private void ServerSpawnItem()
     {
-        if (!NetworkServer.active || _itemSpawner == null) return;
+        if (!NetworkServer.active) return;
 
-        _itemSpawner.GetComponent<ItemSpawner>().RequestSpawn();
+        foreach (NetItemSpawner spawner in NetItemSpawner.ActiveSpawners)
+        {
+            spawner.GetComponent<ItemSpawner>().RequestSpawn();
+        }
     }
 
-    // [호스트] 0: 스포너 아이템 전체 회수
+    // [호스트] 0: 모든 스포너 아이템 전체 회수
     private void ServerDespawnAllItems()
     {
-        if (!NetworkServer.active || _itemSpawner == null) return;
+        if (!NetworkServer.active) return;
 
-        _itemSpawner.ServerDespawnAll();
+        foreach (NetItemSpawner spawner in NetItemSpawner.ActiveSpawners)
+        {
+            spawner.ServerDespawnAll();
+        }
     }
 
     private static readonly float[] TIME_SPEEDS = { 1f, 2f, 3f, 4f, 5f, 10f };

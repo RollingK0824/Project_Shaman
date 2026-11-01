@@ -17,10 +17,15 @@ namespace ProjectShaman.AI.World
         private const float NAVMESH_SAMPLE_DISTANCE = 3f;
         private const int RANDOM_POINT_ATTEMPTS = 12;
         private const float STATION_CLEARANCE = 1.5f;
+        private const float VILLAGER_SPACING = 1.5f;
         private const float LOOK_HEIGHT = 1.2f;
         private const float NEAR_AREA_DISTANCE = 12f;
 
         private static InteractionProfile _visitProfile;
+
+        // The spot each villager last took for a routine: two villagers in one field never get the same ground
+        // (a weeder sent 0.6m from where a sower already stood pushed into it for the whole block and never began)
+        private static readonly Dictionary<string, (PlaceArea place, Vector3 point)> _claims = new Dictionary<string, (PlaceArea, Vector3)>();
 
         [SerializeField] private string _placeId;
         [SerializeField] private string _displayName;
@@ -166,6 +171,50 @@ namespace ProjectShaman.AI.World
             }
 
             return Center;
+        }
+
+        // A random point at least VILLAGER_SPACING from the spots other villagers took here (the roomiest one when the place is full)
+        public Vector3 ClaimPoint(System.Random random, string villagerId)
+        {
+            Vector3 best = Center;
+            float bestGap = -1f;
+            for (int i = 0; i < RANDOM_POINT_ATTEMPTS; i++)
+            {
+                Vector3 candidate = Center + GetRandomOffset(random);
+                if (!NavMesh.SamplePosition(candidate, out NavMeshHit hit, NAVMESH_SAMPLE_DISTANCE, NavMesh.AllAreas) || !IsClearOfStations(hit.position))
+                {
+                    continue;
+                }
+
+                float gap = GapToOthers(hit.position, villagerId);
+                if (gap > bestGap)
+                {
+                    best = hit.position;
+                    bestGap = gap;
+                }
+
+                if (gap >= VILLAGER_SPACING)
+                {
+                    break;
+                }
+            }
+
+            _claims[villagerId] = (this, best);
+            return best;
+        }
+
+        private float GapToOthers(Vector3 position, string villagerId)
+        {
+            float min = float.MaxValue;
+            foreach (KeyValuePair<string, (PlaceArea place, Vector3 point)> claim in _claims)
+            {
+                if (claim.Value.place == this && claim.Key != villagerId)
+                {
+                    min = Mathf.Min(min, Vector3.Distance(position, claim.Value.point));
+                }
+            }
+
+            return min;
         }
 
         // A neighbour looks in on a house on the way home (a Home place is only ever approached on purpose, never scanned)

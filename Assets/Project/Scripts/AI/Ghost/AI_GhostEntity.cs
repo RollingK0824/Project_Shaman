@@ -24,10 +24,16 @@ namespace ProjectShaman.AI.Ghost
         private const float FOLLOW_UPDATE_DISTANCE = 0.5f;
         private const float IDLE_ARRIVE_DISTANCE = 0.8f;
         private const int REPEL_PLACE_TRIES = 3;
+        // A child of that name in a ghost model prefab (made by ProjectShaman/AI/Setup Ghost Carry Sockets, under the right hand)
+        public const string CARRY_SOCKET_NAME = "CarrySocket";
         // Salt never throws a ghost into a house
         private static readonly PlaceType[] REPEL_PLACE_TYPES = { PlaceType.Work, PlaceType.Rest, PlaceType.Storage, PlaceType.Accumulation, PlaceType.Area };
 
+        [Tooltip("Fallback when the model has no CarrySocket of its own: in front of the body at hand height")]
         [SerializeField] private Transform _carrySocket;
+
+        private AI_ModelVisual _modelVisual;
+        private Transform _modelSocket;
 
         [Header("Runtime (server only)")]
         [SerializeField] private string _ghostId;
@@ -64,6 +70,7 @@ namespace ProjectShaman.AI.Ghost
         private readonly List<GhostNightActionData> _candidates = new List<GhostNightActionData>();
         private readonly List<string> _unavailableReasons = new List<string>();
         private GhostActionSession _session;
+        private float _sessionTravelSeconds;
         private GhostHuntPlan _hunt;
         private GhostNightActionData _huntAction;
         private GhostIdleController _idle;
@@ -95,12 +102,54 @@ namespace ProjectShaman.AI.Ghost
         public float Radius => _radius;
         public bool IsHunter => _isHunter;
         public GhostActionSession Session => _session;
-        public Transform CarrySocket => _carrySocket != null ? _carrySocket : transform;
+        // The socket in the current model's hand (each ghost model prefab has its own CarrySocket under the right hand),
+        // else the entity's socket in front of the body, else the root
+        public Transform CarrySocket => _modelSocket != null ? _modelSocket : _carrySocket != null ? _carrySocket : transform;
 
         private void Awake()
         {
             _movement = GetComponent<AI_Movement>();
             _behaviorAgent = GetComponent<BehaviorGraphAgent>();
+            _modelVisual = GetComponent<AI_ModelVisual>();
+            if (_modelVisual != null)
+            {
+                _modelVisual.OnModelChanged += BindModelSocket;
+                BindModelSocket(_modelVisual.CurrentModel);
+            }
+        }
+
+        private void BindModelSocket(GameObject model)
+        {
+            _modelSocket = model != null ? FindChild(model.transform, CARRY_SOCKET_NAME) : null;
+            if (model != null && _modelSocket == null)
+            {
+                AILog.Warn(AILog.GHOST, $"{name}: model {model.name} has no {CARRY_SOCKET_NAME}, carrying in front of the body");
+            }
+
+            // Already carrying (the model came late): the tool moves to the new hand
+            if (_session != null && _session.Carried is ToolItem tool)
+            {
+                tool.RebindSocket(CarrySocket);
+            }
+        }
+
+        private static Transform FindChild(Transform parent, string childName)
+        {
+            foreach (Transform child in parent)
+            {
+                if (child.name == childName)
+                {
+                    return child;
+                }
+
+                Transform found = FindChild(child, childName);
+                if (found != null)
+                {
+                    return found;
+                }
+            }
+
+            return null;
         }
 
         public void Initialize(AI_Possession possession, NightOutcomeLedger ledger, IReadOnlyList<GhostNightActionData> actions, string hostVillagerId, Vector3 center, float radius, int huntKills, bool huntIgnoresRadius, bool canChasePlayer, AIBehaviourConfig config, int seed)
@@ -160,6 +209,11 @@ namespace ProjectShaman.AI.Ghost
         private void OnDestroy()
         {
             _idle?.Stop("destroyed");
+
+            if (_modelVisual != null)
+            {
+                _modelVisual.OnModelChanged -= BindModelSocket;
+            }
 
             if (!string.IsNullOrEmpty(_ghostId))
             {
@@ -337,10 +391,11 @@ namespace ProjectShaman.AI.Ghost
             }
 
             _session = new GhostActionSession(++_commandSerial, picked, target, Time.time);
+            _sessionTravelSeconds = TravelSecondsTo(target.gameObject.transform.position);
             _nextTargetCheckTime = Time.time + TARGET_CHECK_INTERVAL;
             ApplyCommandToBlackboard();
             _lastDecision = _session.ToString();
-            AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} (use {UsesOf(picked)}/{FormatMax(picked)})");
+            AILog.Log(AILog.GHOST, _ghostId, $"Command {_session} (use {UsesOf(picked)}/{FormatMax(picked)}, walk {_sessionTravelSeconds:F0}s)");
         }
 
         private bool IsAvailable(GhostNightActionData action, out string reason)
@@ -491,7 +546,9 @@ namespace ProjectShaman.AI.Ghost
 
         private void WatchSession()
         {
-            float timeout = _session.Action.IsHunt ? _config.GhostHuntTimeoutSeconds : _config.GhostCommandTimeoutSeconds;
+            // The timeout is for a ghost that got stuck, so the walk there is added: a far target (livestock in a pen
+            // across the village) took longer than the whole timeout to reach and always failed
+            float timeout = (_session.Action.IsHunt ? _config.GhostHuntTimeoutSeconds : _config.GhostCommandTimeoutSeconds) + _sessionTravelSeconds;
             if (Time.time - _session.StartTime > timeout)
             {
                 FailCommand("timeout");
@@ -756,6 +813,17 @@ namespace ProjectShaman.AI.Ghost
             float channel = Mathf.Max(_config.GhostMinChannelSeconds, action.Duration);
             float needed = walkDistance / speed + channel + _config.GhostHideMaxDistance / speed;
             return needed <= _config.GhostCommandTimeoutSeconds - elapsed;
+        }
+
+        // NavMesh walk time to a point at the default speed; 0 when there is no full path (the timeout then stays as it was)
+        private float TravelSecondsTo(Vector3 point)
+        {
+            if (_movement == null || _movement.DefaultSpeed <= 0f || !TryGetPathLength(point, out float length))
+            {
+                return 0f;
+            }
+
+            return length / _movement.DefaultSpeed;
         }
 
         private bool TryGetPathLength(Vector3 point, out float length)
