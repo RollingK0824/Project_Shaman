@@ -92,7 +92,7 @@ public class InventoryReworkTests
     [UnityTest] public IEnumerator SpeedRefreshExpiresAndDisableResetRestoreOriginal()
     {
         var definition = Keep(Object.Instantiate(blank.FindEffect("move_speed")));
-        Assert.AreEqual(1.25f, definition.Magnitude); Assert.AreEqual(15, definition.Duration);
+        Assert.AreEqual(1.25f, definition.Magnitude); Assert.AreEqual(120, definition.Duration);
         Set(definition, "_duration", .3f);
         Assert.IsTrue(effects.TryApply(definition)); yield return new WaitForSeconds(.2f);
         Assert.IsTrue(effects.TryApply(definition)); yield return new WaitForSeconds(.15f);
@@ -184,10 +184,72 @@ public class InventoryReworkTests
         var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Project/Prefabs/UI/Inventory/EffectTalismanInventory.prefab");
         var view = Keep(Object.Instantiate(prefab)).GetComponent<EffectTalismanInventoryView>(); view.Bind(collection, null); view.Select(first.Id); Call(view, "LateUpdate");
         Assert.IsTrue(Get<Button>(view, "_unassignButton").interactable);
-        Assert.IsNull(Get<Button>(view, "_useButton").transform.parent.Find("Drop"));
-        Assert.AreEqual("문양 부적은 버릴 수 없습니다.", Get<TMP_Text>(view, "_status").text); view.UnassignSelected();
+        Assert.IsNotNull(Get<Button>(view, "_useButton").transform.parent.Find("Drop"));
+        view.UnassignSelected();
         Assert.IsTrue(string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(1))); Assert.AreEqual(second.Id, inventory.GetQuickSlotInstanceId(2)); Assert.AreEqual(2, collection.DrawnEffectCount);
         Call(view, "LateUpdate"); Assert.IsFalse(Get<Button>(view, "_unassignButton").interactable);
+    }
+    [Test] public void DrawingTransferPreservesDataAndFailedDropKeepsOwnership()
+    {
+        var draft = Save("stress_gain");
+        Assert.IsTrue(inventory.AssignTalismanQuickSlot(1, draft.Id));
+        Assert.IsFalse(collection.TryDropDrawing(draft.Id, _ => false));
+        Assert.IsNotNull(collection.Find(draft.Id, out _));
+        Assert.AreEqual(draft.Id, inventory.GetQuickSlotInstanceId(1));
+        TalismanSaveData payload = null;
+        Assert.IsTrue(collection.TryDropDrawing(draft.Id, data => { payload = data; return true; }));
+        Assert.IsNull(collection.Find(draft.Id, out _));
+        Assert.IsTrue(string.IsNullOrEmpty(inventory.GetQuickSlotInstanceId(1)));
+        var other = Keep(new GameObject("recipient"));
+        other.AddComponent<PlayerInventory>();
+        var recipient = other.AddComponent<PlayerTalismanCollection>();
+        Assert.IsTrue(recipient.TryReceiveDrawing(blank, payload));
+        var received = recipient.Find(draft.Id, out var item);
+        Assert.AreSame(blank, item); Assert.AreEqual("검증 부적", received.CustomName);
+        Assert.AreEqual("stress_gain", received.EffectId); Assert.IsTrue(received.IsValidDrawing());
+        Assert.IsFalse(recipient.TryReceiveDrawing(blank, payload));
+    }
+    [Test] public void DefenseCountdownShowsTextBeforeFlagHealth()
+    {
+        var stateObject = Keep(new GameObject("Defense state"));
+        var state = stateObject.AddComponent(typeof(PlayerInventory).Assembly.GetType("NetDefenseState"));
+        var hudObject = Keep(new GameObject("Defense HUD")); hudObject.SetActive(false);
+        var hud = hudObject.AddComponent(typeof(PlayerInventory).Assembly.GetType("DefenseHUD"));
+        var banner = Keep(new GameObject("Banner"));
+        var status = Keep(new GameObject("Status"));
+        var text = Keep(new GameObject("Banner text")).AddComponent<TextMeshProUGUI>();
+        var timer = Keep(new GameObject("Timer")).AddComponent<TextMeshProUGUI>();
+        var hp = Keep(new GameObject("HP")).AddComponent<Image>();
+        Set(hud, "_bannerRoot", banner); Set(hud, "_bannerText", text);
+        Set(hud, "_statusRoot", status); Set(hud, "_timerText", timer); Set(hud, "_hpFill", hp);
+        hudObject.SetActive(true);
+        Set(state, "_phase", RitualPhase.Countdown);
+        Call(hud, "HandlePhaseChanged", RitualPhase.WaitingFlag, RitualPhase.Countdown);
+        StringAssert.Contains("굿이 시작", text.text); Assert.IsFalse(status.activeSelf);
+        Set(hud, "_bannerHideTime", -1f); Call(hud, "Update");
+        StringAssert.Contains("잡귀 출몰", text.text); Assert.IsFalse(status.activeSelf);
+        hudObject.SetActive(false); hudObject.SetActive(true); Call(hud, "Update");
+        StringAssert.Contains("잡귀 출몰", text.text); Assert.IsFalse(status.activeSelf);
+        Set(state, "_phase", RitualPhase.Active);
+        Call(hud, "HandlePhaseChanged", RitualPhase.Countdown, RitualPhase.Active);
+        Assert.IsFalse(banner.activeSelf); Assert.IsTrue(status.activeSelf);
+    }
+    [Test] public void DrawnTalismanCanBeDroppedAndPickedUpOnce()
+    {
+        var draft = Save("stress_gain");
+        Assert.IsTrue(inventory.Drops.TryDropDrawingFinal(1, draft.Id, out var world), inventory.Drops.LastMessage);
+        Keep(world.gameObject);
+        Assert.IsTrue(world.HasDrawing);
+        Assert.IsNull(collection.Find(draft.Id, out _));
+        Keep(new GameObject("Offline pickup judge")).AddComponent<LocalGameplayJudge>();
+        var other = Keep(new GameObject("recipient"));
+        var otherInventory = other.AddComponent<PlayerInventory>();
+        var recipient = other.AddComponent<PlayerTalismanCollection>();
+        world.Interact(other);
+        Assert.IsFalse(world.gameObject.activeSelf);
+        Assert.AreEqual(0, otherInventory.GetItemCount(blank));
+        Assert.AreEqual("stress_gain", recipient.Find(draft.Id, out _).EffectId);
+        Assert.IsFalse(world.TryCollectDrawing(other));
     }
     [Test] public void SaveDropdownAndSubInventoryUseSameLiveDescription()
     {
@@ -226,6 +288,26 @@ public class InventoryReworkTests
             Assert.AreEqual(baseline, player.transform.position.z - start, .0002f);
         }
         Assert.AreEqual(walk, Get<float>(controller, "_walkSpeed")); Assert.AreEqual(sprint, Get<float>(controller, "_sprintSpeed"));
+    }
+    [UnityTest] public IEnumerator SaltSlowAndSpeedTalismanCancelEachOther()
+    {
+        var player = inventory.gameObject;
+        var input = player.AddComponent<PlayerInputReader>();
+        var controller = (Behaviour)player.AddComponent(typeof(PlayerInventory).Assembly.GetType("PlayerController")); controller.enabled = false;
+        Set(controller, "_gravity", 0f);
+        var capsule = player.GetComponent<CharacterController>(); capsule.center = Vector3.up; capsule.height = 2;
+        var attacker = Keep(new GameObject("Salt attacker"));
+        yield return null;
+        Set(input, "<MoveInput>k__BackingField", Vector2.up);
+        float start = player.transform.position.z; Call(controller, "HandleMovement");
+        float baseline = player.transform.position.z - start;
+        Assert.Greater(baseline, 0f);
+        Assert.IsTrue(health.TryApplySaltSlow(3f, attacker));
+        start = player.transform.position.z; Call(controller, "HandleMovement");
+        Assert.AreEqual(baseline * .75f, player.transform.position.z - start, .0002f);
+        Assert.IsTrue(effects.TryApply(blank.FindEffect("move_speed")));
+        start = player.transform.position.z; Call(controller, "HandleMovement");
+        Assert.AreEqual(baseline, player.transform.position.z - start, .0002f);
     }
     [Test] public void BarrierStillConsumesOneAndProtectsUntilDeath()
     {

@@ -11,7 +11,7 @@ public class LanternInventoryTests
     readonly List<GameObject> _objects=new();
     PlayerInventory inv; PlayerCraftingController craft; SharedMaterialInventory shared;
     ItemData lamp,oil,paper,salt;TalismanItemData blank;CraftingRecipeData recipe;
-    T Load<T>(string path) where T:UnityEngine.Object => AssetDatabase.LoadAssetAtPath<T>(D+path);
+    T Load<T>(string path) where T:UnityEngine.Object => AssetDatabase.LoadAssetAtPath<T>(D+path) ?? AssetDatabase.LoadAssetAtPath<T>(D+"Items/"+path);
     GameObject Make(string name){var o=new GameObject(name);_objects.Add(o);return o;}
     [SetUp] public void SetUp()
     {
@@ -87,6 +87,23 @@ public class LanternInventoryTests
         Fill();int requests=0;craft.SetAuthorityCheck(()=>false);craft.CraftRequested+=r=>{Assert.AreSame(recipe,r);requests++;};
         var before=Counts();long version=shared.Version;Assert.IsTrue(craft.RequestCraft(recipe));Assert.AreEqual(1,requests);CollectionAssert.AreEqual(before,Counts());Assert.AreEqual(version,shared.Version);
         craft.SetAuthorityCheck(()=>true);Assert.IsTrue(craft.TryCraft(recipe));CollectionAssert.AreEqual(new[]{0,0,0,0,1},Counts());
+    }
+    [TestCase(true)] [TestCase(false)]
+    public void NetworkCraftResultClearsPendingEvenWhenPanelIsClosed(bool success)
+    {
+        Fill();
+        craft.SetAuthorityCheck(() => false);
+        craft.CraftRequested += _ => { };
+        var panelObject = Make("Craft panel");
+        var panel = panelObject.AddComponent<CraftingPanelUI>();
+        panel.Bind(craft);
+        panel.SetRecipes(new[] { recipe });
+        panel.CraftSelected();
+        Assert.IsTrue(panel.HasPendingRequest);
+        panelObject.SetActive(false);
+        craft.NotifyCraftResult(recipe, success);
+        Assert.IsFalse(panel.HasPendingRequest);
+        CollectionAssert.AreEqual(new[] { 2, 1, 1, 1, 0 }, Counts());
     }
     [Test] public void DeniedSharedAuthorityPreservesPersonalCost()
     {Fill();shared.SetAuthorityCheck(()=>false);var before=Counts();Assert.IsFalse(craft.TryCraft(recipe));CollectionAssert.AreEqual(before,Counts());}

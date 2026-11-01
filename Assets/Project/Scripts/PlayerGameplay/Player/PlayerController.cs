@@ -32,6 +32,7 @@ public class PlayerController : NetworkBehaviour
     private PlayerInputReader _inputReader;
     private PlayerCrouch _crouch;
     private PlayerTalismanEffectController _talismanEffects;
+    private PlayerHealth _health;
 
     private float _verticalVelocity;
     private bool _jumpQueued;
@@ -76,6 +77,7 @@ public class PlayerController : NetworkBehaviour
 
         _crouch = GetComponent<PlayerCrouch>();
         _talismanEffects = GetComponent<PlayerTalismanEffectController>();
+        _health = GetComponent<PlayerHealth>();
         _characterController =
             GetComponent<CharacterController>();
 
@@ -164,7 +166,9 @@ public class PlayerController : NetworkBehaviour
             ? _sprintSpeed
             : _walkSpeed;
         if (_crouch != null) moveSpeed *= _crouch.SpeedMultiplier;
-        if (_talismanEffects != null) moveSpeed *= _talismanEffects.MovementMultiplier;
+        float modifier = _talismanEffects != null ? _talismanEffects.MovementMultiplier : 1f;
+        if (_health != null && _health.IsSaltSlowed) modifier -= .25f;
+        moveSpeed *= Mathf.Max(0f, modifier);
 
         Vector3 velocity =
             moveDirection * moveSpeed;

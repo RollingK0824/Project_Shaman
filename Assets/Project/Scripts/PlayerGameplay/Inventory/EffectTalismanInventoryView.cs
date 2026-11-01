@@ -18,13 +18,16 @@ public class EffectTalismanInventoryView : MonoBehaviour
     private string _selectedId;
     private Action _back;
     private Button _unassignButton;
-    public const string DropUnavailableReason = "문양 부적은 버릴 수 없습니다.";
+    private Button _dropButton;
+    private PlayerItemDropController _drops;
     private void Awake()
     {
         _backButton.onClick.AddListener(() => _back?.Invoke());
         _useButton.onClick.AddListener(UseSelected);
         _unassignButton = CreateAction("Unassign", "등록 해제", new Vector2(-210, -390));
         _unassignButton.onClick.AddListener(UnassignSelected);
+        _dropButton = CreateAction("Drop", "버리기", new Vector2(-30, -390));
+        _dropButton.onClick.AddListener(DropSelected);
         for (int i = 0; i < _slotButtons.Length; i++)
         {
             int slot = i;
@@ -44,11 +47,14 @@ public class EffectTalismanInventoryView : MonoBehaviour
     public void Bind(PlayerTalismanCollection collection, Action back)
     {
         if (_collection != null) _collection.SelectionChanged -= Refresh;
+        if (_drops != null) _drops.DropResolved -= HandleDropResolved;
         _collection = collection; _back = back; _selectedId = null;
+        _drops = collection != null ? collection.GetComponent<PlayerInventory>().Drops : null;
+        if (_drops != null) _drops.DropResolved += HandleDropResolved;
         if (_collection != null) _collection.SelectionChanged += Refresh;
         if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = string.Empty; Refresh();
     }
-    private void OnDestroy() { if (_collection != null) _collection.SelectionChanged -= Refresh; }
+    private void OnDestroy() { if (_collection != null) _collection.SelectionChanged -= Refresh; if (_drops != null) _drops.DropResolved -= HandleDropResolved; }
     private void LateUpdate()
     {
         bool assigned = false;
@@ -58,6 +64,8 @@ public class EffectTalismanInventoryView : MonoBehaviour
             for (int i = 0; i < inventory.QuickSlotCount; i++) assigned |= inventory.GetQuickSlotInstanceId(i) == _selectedId;
         }
         _unassignButton.interactable = assigned;
+        _dropButton.interactable = _drops != null && !_drops.IsPending && _collection != null &&
+            _collection.Find(_selectedId, out _) != null && PlayerActionGuard.CanAct(_collection.gameObject);
     }
     public void UnassignSelected()
     {
@@ -87,8 +95,15 @@ public class EffectTalismanInventoryView : MonoBehaviour
     {
         var drawing = _collection.Find(id, out var item);
         if (drawing == null) return;
-        _selectedId = id; if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = DropUnavailableReason; ShowDetails();
+        _selectedId = id; if (_slotPicker != null) _slotPicker.SetActive(false); _status.text = string.Empty; ShowDetails();
     }
+    public void DropSelected()
+    {
+        if (_drops == null || _collection == null || _collection.Find(_selectedId, out _) == null) return;
+        _drops.RequestDrawingDrop(_selectedId);
+        _status.text = _drops.LastMessage;
+    }
+    private void HandleDropResolved(long requestId, bool success, string message) { if (_status != null) _status.text = message; }
     private void ShowDetails()
     {
         var drawing = _collection != null ? _collection.Find(_selectedId, out _) : null;
