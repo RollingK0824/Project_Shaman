@@ -51,7 +51,8 @@ namespace ProjectShaman.AI.Data
         [SerializeField] private float _toolSightInterval = 1f;
         [SerializeField] private float _toolPickupDistance = 1.5f;
         [SerializeField] private int _toolSightingsPerType = 2;
-        [SerializeField, Range(0f, 1f)] private float _toolSearchTimeRatio = 0.4f;
+        [Tooltip("Rounds of looking over the storage and remembered spots, then asking around; all empty: find-tool request")]
+        [SerializeField, Min(1)] private int _toolSearchRounds = 3;
         [SerializeField] private float _tidyRelaxedMaxDistance = 15f;
         [SerializeField] private float _tidyRushedMaxDistance = 35f;
 
@@ -280,7 +281,7 @@ namespace ProjectShaman.AI.Data
         public float ToolSightInterval => _toolSightInterval;
         public float ToolPickupDistance => _toolPickupDistance;
         public int ToolSightingsPerType => _toolSightingsPerType;
-        public float ToolSearchTimeRatio => _toolSearchTimeRatio;
+        public int ToolSearchRounds => Mathf.Max(1, _toolSearchRounds);
         public float TidyRelaxedMaxDistance => _tidyRelaxedMaxDistance;
         public float TidyRushedMaxDistance => _tidyRushedMaxDistance;
         public float InitialYin => _initialYin;
