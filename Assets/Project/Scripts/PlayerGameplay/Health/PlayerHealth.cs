@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
+using Mirror;
 using UnityEngine;
 
-public class PlayerHealth : MonoBehaviour, IDamageable
+public class PlayerHealth : MonoBehaviour, IDamageable, IItemControlReceiver
 {
     [Header("Health - Prototype Value")]
     [SerializeField] private float _maxHealth = 100f;
@@ -21,6 +22,25 @@ public class PlayerHealth : MonoBehaviour, IDamageable
             : _currentHealth / _maxHealth;
 
     public bool IsDead { get; private set; }
+    private float _saltSlowUntil;
+    public bool IsSaltSlowed => !IsDead && ((NetworkClient.active || NetworkServer.active)
+        ? GetComponent<NetPlayerStatus>() is NetPlayerStatus status && status.IsSaltSlowed
+        : _saltSlowUntil > Time.time);
+
+    public bool TryApplySaltSlow(float duration, GameObject source)
+    {
+        if (!isActiveAndEnabled || IsDead || !ItemAttackAuthority.CanResolve(source) ||
+            source == gameObject || !float.IsFinite(duration) || duration <= 0f || IsSaltSlowed) return false;
+        if (NetworkClient.active || NetworkServer.active)
+        {
+            var status = GetComponent<NetPlayerStatus>();
+            return NetworkServer.active && status != null && status.ServerApplySaltSlow(duration);
+        }
+        _saltSlowUntil = Time.time + duration;
+        return true;
+    }
+    public bool TryApplyItemControl(ItemControlEffect effect, GameObject source) =>
+        effect.Kind == ItemControlKind.Slow && effect.IsValid && TryApplySaltSlow(effect.Duration, source);
     public bool CanAffectWorld => !IsDead;
     public bool CanRecordObservations => !IsDead;
     public bool IsNotebookReadOnly => IsDead;
@@ -241,6 +261,7 @@ public class PlayerHealth : MonoBehaviour, IDamageable
         }
 
         IsDead = true;
+        _saltSlowUntil = 0f;
         bool healthChanged = !Mathf.Approximately(_currentHealth, 0f);
         _currentHealth = 0f;
         if (healthChanged) HealthChanged?.Invoke(0f, _maxHealth);

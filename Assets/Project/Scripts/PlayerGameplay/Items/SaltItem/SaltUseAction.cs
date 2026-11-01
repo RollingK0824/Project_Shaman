@@ -12,6 +12,7 @@ public class SaltUseAction : ItemUseAction
     [Header("Contact Attack - Prototype Values")]
     [SerializeField, Range(.1f, 1f)] private float _slowMultiplier = .6f;
     [SerializeField, Min(.01f)] private float _slowDuration = 3f;
+    [SerializeField, Min(.01f)] private float _playerSlowDuration = 3f;
     [SerializeField, Min(.01f)] private float _contactHalfWidth = .2f;
     [SerializeField, Min(.04f)] private float _contactDuration = .15f;
     [SerializeField] private LayerMask _targetMask = ~0;
@@ -100,6 +101,19 @@ public class SaltUseAction : ItemUseAction
         Vector3 halfExtents = new Vector3(_contactHalfWidth, _contactHalfWidth, reach * .5f);
         Quaternion rotation = Quaternion.LookRotation(ray.direction);
         if (DamageTrigger.CreateBox(attack, center, halfExtents, rotation, _contactDuration) == null) return false;
+
+        // Player slow is independent of the ghost's multiplier and never damages HP.
+        var playerAttack = new ItemAttackSession(context.Owner, 0f,
+            new ItemControlEffect { Kind = ItemControlKind.Slow, Duration = _playerSlowDuration, SpeedMultiplier = .75f },
+            ItemReactionFallback.None, _targetMask, _contactDuration,
+            other => other.GetComponentInParent<PlayerHealth>() != null);
+        playerAttack.HitApplied += _ =>
+        {
+            if (succeeded) return;
+            succeeded = true;
+            if (consumeOnSuccess) consume?.Invoke(1);
+        };
+        DamageTrigger.CreateBox(playerAttack, center, halfExtents, rotation, _contactDuration);
 
         // Villagers are not hurt by salt: a damage-free contact on the same volume lets them react (ISaltReactable).
         // It neither counts as a hit nor consumes salt.

@@ -21,6 +21,7 @@ public class DefenseHUD : MonoBehaviour
 
     private NetDefenseState _state;
     private float _bannerHideTime;
+    private bool _showingCountdown;
 
     // 단계상 진행 패널을 보여야 하는데, 신제 표시는 배너가 없을 때만
     private bool _wantStatus;
@@ -28,6 +29,7 @@ public class DefenseHUD : MonoBehaviour
 
     private void OnEnable()
     {
+        _showingCountdown = false;
         _bannerRoot.SetActive(false);
         _statusRoot.SetActive(false);
         if (_flagWaitRoot != null) _flagWaitRoot.SetActive(false);
@@ -63,11 +65,17 @@ public class DefenseHUD : MonoBehaviour
             return;
         }
 
-        if (_bannerRoot.activeSelf && Time.time >= _bannerHideTime)
+        if (_bannerRoot.activeSelf && !_showingCountdown && Time.time >= _bannerHideTime)
         {
-            _bannerRoot.SetActive(false);
+            if (_state.Phase == RitualPhase.Countdown)
+                _showingCountdown = true;
+            else
+                _bannerRoot.SetActive(false);
             RefreshStatusVisible();
         }
+
+        if (_showingCountdown)
+            _bannerText.text = $"잡귀 출몰 {Mathf.CeilToInt(_state.RemainingTime)}초 전";
 
         if(_statusRoot.activeSelf)
         {
@@ -86,6 +94,11 @@ public class DefenseHUD : MonoBehaviour
 
     private void HandlePhaseChanged(RitualPhase oldPhase, RitualPhase newPhase)
     {
+        if (oldPhase == RitualPhase.Countdown && newPhase != RitualPhase.Countdown)
+        {
+            _showingCountdown = false;
+            _bannerRoot.SetActive(false);
+        }
         ShowStatus(newPhase);
 
         string message = GetBannerMessage(newPhase);
@@ -98,9 +111,16 @@ public class DefenseHUD : MonoBehaviour
     private void ShowStatus(RitualPhase phase)
     {
         // 진행 패널(타이머 + HP)은 깃발을 켠 뒤에만
-        _wantStatus = phase == RitualPhase.Countdown || phase == RitualPhase.Active;
+        _wantStatus = phase == RitualPhase.Active;
 
         _wantFlagWait = phase == RitualPhase.WaitingFlag;
+
+        // Late subscribers have no transition banner to lead into the countdown.
+        if (phase == RitualPhase.Countdown && !_bannerRoot.activeSelf)
+        {
+            _showingCountdown = true;
+            _bannerRoot.SetActive(true);
+        }
 
         RefreshStatusVisible();
     }
@@ -125,6 +145,7 @@ public class DefenseHUD : MonoBehaviour
 
     private void ShowBanner(string message)
     {
+        _showingCountdown = false;
         _bannerText.text = message;
         _bannerRoot.SetActive(true);
         _bannerHideTime = Time.time + _bannerDuration;

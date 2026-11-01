@@ -13,6 +13,7 @@ public class NetPlayerStatus : NetworkBehaviour
     // [서버 -> 모든 클라] 플레이어 색 번호 (PlayerColors). -1 = 알 수 없음
     [SyncVar] private int _colorId = -1;
     [SyncVar(hook = nameof(OnIsDeadChanged))] private bool _isDead;
+    [SyncVar] private double _saltSlowUntil;
 
     // [서버 -> 모든 클라] 스트레스 단계. 떨림,숨소리등 같은 다른 사람에게 보이는 증상용
     [SyncVar(hook = nameof(OnStressLevelChanged))] private PlayerStressController.StressLevel _stressLevel;
@@ -27,6 +28,14 @@ public class NetPlayerStatus : NetworkBehaviour
 
 
     public bool IsDead => _isDead;
+    public bool IsSaltSlowed => !_isDead && _saltSlowUntil > 0 && NetworkTime.time < _saltSlowUntil;
+    [Server]
+    public bool ServerApplySaltSlow(float duration)
+    {
+        if (_isDead || _health == null || _health.IsDead || IsSaltSlowed || !float.IsFinite(duration) || duration <= 0f) return false;
+        _saltSlowUntil = NetworkTime.time + duration;
+        return true;
+    }
     public PlayerStressController.StressLevel StressLevel => _stressLevel;
 
     // Public death state is observed by health, UI and local spectating.
@@ -91,6 +100,7 @@ public class NetPlayerStatus : NetworkBehaviour
         }
 
         _isDead = true;
+        _saltSlowUntil = 0;
         PlayerRoster.NotifyChanged();
     }
 
