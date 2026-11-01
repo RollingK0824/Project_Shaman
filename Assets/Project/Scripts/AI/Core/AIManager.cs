@@ -995,6 +995,12 @@ namespace ProjectShaman.AI.Core
             return villager.Core.IsAsleep || villager.Movement == null || villager.Movement.CurrentSpeed < SETTLED_SPEED;
         }
 
+        // Asleep and done lying down (the Sleep_LieDown clip has played out): a host's ghost comes out only then
+        public bool IsLyingInBed(VillagerRuntime villager)
+        {
+            return IsAsleepAtHome(villager) && villager.Core.IsAsleep && Time.time - villager.Core.AsleepSince >= _behaviourConfig.SleepLieDownSeconds;
+        }
+
         // "Home" is the same radius sleep paralysis uses to count a villager as in the house
         private void LogHomeArrival(VillagerRuntime villager, float now)
         {
