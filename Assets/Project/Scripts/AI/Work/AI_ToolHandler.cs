@@ -162,6 +162,11 @@ namespace ProjectShaman.AI.Work
             if (Context != null)
             {
                 _inquiry.Tick();
+                if (_interaction != null && _interaction.IsInteracting && !_inquiry.IsActive)
+                {
+                    _search.HoldClock(Time.deltaTime);
+                }
+
                 _search.TickUnreachableSpot();
                 TickPutAway();
             }

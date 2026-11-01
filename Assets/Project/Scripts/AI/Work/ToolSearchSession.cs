@@ -114,6 +114,23 @@ namespace ProjectShaman.AI.Work
 
         // Every frame (AI_ToolHandler): a spot that cannot be reached ends the search the usual way (request, stress,
         // the routine fails into rest), whether or not the behaviour tree looks at CanContinue while walking
+        // Held in a conversation (a player talking to it) the villager is not searching: the clock and the walk allowance
+        // wait. Before, a long talk ran the whole budget out and the search failed into a find-tool request
+        public void HoldClock(float seconds)
+        {
+            if (!IsActive || seconds <= 0f)
+            {
+                return;
+            }
+
+            if (_deadline != float.MaxValue)
+            {
+                _deadline += seconds;
+            }
+
+            _spotArriveBy += seconds;
+        }
+
         public void TickUnreachableSpot()
         {
             if (IsActive && _isLookPendingAfterArrival && !HasRequiredTool() && !CanContinue())
