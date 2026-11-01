@@ -325,6 +325,22 @@ namespace ProjectShaman.AI.Core
             AIEvents.RaiseExorcised(villagerId);
         }
 
+        // Resting in place of a work whose tool it has not got (C120): which tool
+        public bool TryGetWaitingTool(string villagerId, out string toolType)
+        {
+            toolType = null;
+            foreach (VillagerRuntime villager in _villagers)
+            {
+                if (villager.Id == villagerId)
+                {
+                    toolType = villager.WaitingToolType;
+                    break;
+                }
+            }
+
+            return !string.IsNullOrEmpty(toolType);
+        }
+
         public bool TryGetHomePosition(string villagerId, out Vector3 home)
         {
             foreach (VillagerProfile profile in _profiles)
