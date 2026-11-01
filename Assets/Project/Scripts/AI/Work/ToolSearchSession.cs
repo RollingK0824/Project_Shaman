@@ -9,9 +9,10 @@ using ProjectShaman.AI.World;
 
 namespace ProjectShaman.AI.Work
 {
-    // One routine's search, in rounds with no time limit: first the tool's own shed, then the remembered spots; when none has the
-    // tool, the villager asks the nearest villager (what it hears goes into its memory) and the next round looks over only
-    // what it did not see yet (the new leads). After ToolSearchRounds empty rounds it asks the players (find-tool request)
+    // One routine's search, with no time limit (the work block starts only once the work is reached, C131): the tool's own
+    // shed, then the remembered spots. A villager met on the way is asked in passing, and what it says goes into the memory,
+    // so the next spot may be a new lead. With nothing left to look at it asks someone further off. After ToolSearchSpots
+    // spots came up empty (or nothing is left to look at or ask) it gives up and asks the players (find-tool request)
     public class ToolSearchSession
     {
         private const float SPOT_MERGE_DISTANCE = 2.4f;
@@ -37,7 +38,6 @@ namespace ProjectShaman.AI.Work
         private readonly List<ToolSighting> _openSightings = new List<ToolSighting>();
 
         private ToolItem _targetTool;
-        private int _round;
         private bool _hasRaisedFirstStress;
         private int _firstStressRoutineSerial = -1;
         private bool _isLookPendingAfterArrival;
@@ -78,11 +78,10 @@ namespace ProjectShaman.AI.Work
                 _owner.Drop(Position, "switch tool");
             }
 
-            // A re-plan within the routine keeps the round, the spots already looked over and the first stress
+            // A re-plan within the routine keeps the spots already looked over and the first stress
             if (_routineSerial != routine.Serial)
             {
                 _routineSerial = routine.Serial;
-                _round = 1;
                 _checkedSpots.Clear();
                 _checkedPositions.Clear();
             }
@@ -107,7 +106,7 @@ namespace ProjectShaman.AI.Work
                 }
             }
 
-            AILog.Log(AILog.TOOL, Id, $"Plan search '{RequiredToolType}' round {_round}/{Config.ToolSearchRounds} (candidates={_candidates.Count}, checked={_checkedSpots.Count})");
+            AILog.Log(AILog.TOOL, Id, $"Plan search '{RequiredToolType}' (candidates={_candidates.Count}, tried {_checkedPositions.Count}/{Config.ToolSearchSpots})");
         }
 
         // Held in a conversation (a player talking to it) the villager is not walking: the time allowed to reach the spot waits
@@ -121,6 +120,22 @@ namespace ProjectShaman.AI.Work
 
         // Every frame (AI_ToolHandler): a spot that cannot be reached is skipped (the round goes on with the next one),
         // whether or not the behaviour tree looks at CanContinue while walking
+        // Every so often on the way to a spot (AI_ToolHandler): a villager close by not asked today is asked in passing.
+        // The walk stops for it; the behaviour tree re-plans afterwards and the spot set out for stays a candidate
+        public void TickAskOnTheWay()
+        {
+            if (!IsActive || !_isLookPendingAfterArrival || HasRequiredTool() || _owner.Inquiry.IsActive)
+            {
+                return;
+            }
+
+            if (_owner.Inquiry.TryStart(RequiredToolType, Config.ToolAskOnTheWayRadius, true))
+            {
+                _isLookPendingAfterArrival = false;
+                AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' asks a villager met on the way to spot {CandidateIndex + 1}/{_candidates.Count}");
+            }
+        }
+
         public void TickUnreachableSpot()
         {
             if (IsActive && _isLookPendingAfterArrival && !HasRequiredTool() && !CanContinue())
@@ -131,7 +146,7 @@ namespace ProjectShaman.AI.Work
 
         public bool CanContinue()
         {
-            if (!IsActive || HasRequiredTool())
+            if (!IsActive || HasRequiredTool() || _owner.Inquiry.IsActive)
             {
                 return false;
             }
@@ -267,30 +282,37 @@ namespace ProjectShaman.AI.Work
             return true;
         }
 
-        // Returns false when the search goes on (spots left in this round, or the next round after asking around); the
-        // routine stays and the search is planned again afterwards. true: the last round came up empty, the routine fails
+        // Returns false when the search goes on (asking someone, or spots left); the routine stays and the search is planned
+        // again afterwards. true: ToolSearchSpots spots came up empty, or nothing is left to look at or ask; the routine fails
         public bool RaiseFailure()
         {
+            if (_owner.Inquiry.IsActive)
+            {
+                Cancel();
+                return false;
+            }
+
+            int tried = _checkedPositions.Count;
             bool hasSpotsLeft = CandidateIndex + 1 < _candidates.Count;
-            string progress = $"checked {Mathf.Clamp(CandidateIndex + 1, 0, _candidates.Count)}/{_candidates.Count}";
 
-            if (hasSpotsLeft)
+            if (tried < Config.ToolSearchSpots)
             {
-                Cancel();
-                return false;
+                if (hasSpotsLeft)
+                {
+                    Cancel();
+                    return false;
+                }
+
+                // Nothing left to look at: someone further off may have seen it
+                if (_owner.Inquiry.TryStart(RequiredToolType))
+                {
+                    AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' has no spot left (tried {tried}/{Config.ToolSearchSpots}), asks around");
+                    Cancel();
+                    return false;
+                }
             }
 
-            if (_round < Config.ToolSearchRounds)
-            {
-                // Next round: only the leads heard now (a shed named again counts as new). No lead: the next villager is asked
-                _round++;
-                bool asking = _owner.Inquiry.TryStart(RequiredToolType);
-                AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' round {_round - 1} empty ({progress}), {(asking ? "asks around" : "nobody nearby to ask")}, round {_round} next");
-                Cancel();
-                return false;
-            }
-
-            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed after {_round} rounds ({progress})");
+            AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (tried {tried}/{Config.ToolSearchSpots} spots, {(tried >= Config.ToolSearchSpots ? "limit reached" : "nothing left to look at or ask")})");
 
             _owner.Memory.RecordToolLost(RequiredToolType);
             // Request first: the stress below may leave Calm and ask for a gut, and a giver holds one request at a time

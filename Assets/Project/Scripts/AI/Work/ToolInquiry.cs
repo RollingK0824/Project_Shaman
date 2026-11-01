@@ -61,16 +61,26 @@ namespace ProjectShaman.AI.Work
         // False means nobody is left to ask (or the interaction is busy)
         public bool TryStart(string toolType)
         {
+            return TryStart(toolType, INQUIRY_RADIUS, false);
+        }
+
+        // A villager met on the way (within `radius`) is asked in passing; quiet: nobody near is the usual case, not news
+        public bool TryStart(string toolType, float radius, bool quiet)
+        {
             if (IsActive || _interaction == null || _conversation == null)
             {
                 return false;
             }
 
             RefreshAskedDay();
-            AI_Conversation partner = FindPartner(toolType);
+            AI_Conversation partner = FindPartner(toolType, radius);
             if (partner == null)
             {
-                AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' skipped (nobody within {INQUIRY_RADIUS:F0}m not yet asked today)");
+                if (!quiet)
+                {
+                    AILog.Log(AILog.TOOL, Id, $"Inquiry for '{toolType}' skipped (nobody within {radius:F0}m not yet asked today)");
+                }
+
                 return false;
             }
 
@@ -102,7 +112,7 @@ namespace ProjectShaman.AI.Work
             }
 
             RefreshAskedDay();
-            AI_Conversation partner = FindPartner(toolType);
+            AI_Conversation partner = FindPartner(toolType, INQUIRY_RADIUS);
             if (partner == null)
             {
                 return false;
@@ -274,10 +284,10 @@ namespace ProjectShaman.AI.Work
         }
 
         // Nearest simulating villager not yet asked about this tool today
-        private AI_Conversation FindPartner(string toolType)
+        private AI_Conversation FindPartner(string toolType, float radius)
         {
             AI_Conversation best = null;
-            float bestSqr = INQUIRY_RADIUS * INQUIRY_RADIUS;
+            float bestSqr = radius * radius;
             Vector3 from = _owner.transform.position;
 
             foreach (AI_Conversation candidate in AI_Conversation.All)

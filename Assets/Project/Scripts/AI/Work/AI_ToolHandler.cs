@@ -32,6 +32,9 @@ namespace ProjectShaman.AI.Work
         private const float STORAGE_TOOL_SPACING = 0.8f;
 
         private System.Random _storageRandom;
+        // How often a searching villager looks round for someone to ask on the way
+        private const float ASK_ON_THE_WAY_INTERVAL = 0.5f;
+        private float _nextAskOnTheWayTime;
 
         private ToolItem _heldTool;
         private ToolSearchSession _search;
@@ -165,6 +168,12 @@ namespace ProjectShaman.AI.Work
                 if (_interaction != null && _interaction.IsInteracting && !_inquiry.IsActive)
                 {
                     _search.HoldClock(Time.deltaTime);
+                }
+
+                if (Time.time >= _nextAskOnTheWayTime)
+                {
+                    _nextAskOnTheWayTime = Time.time + ASK_ON_THE_WAY_INTERVAL;
+                    _search.TickAskOnTheWay();
                 }
 
                 _search.TickUnreachableSpot();
