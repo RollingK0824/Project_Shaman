@@ -28,8 +28,10 @@ public class VoicePlayerRowUI : MonoBehaviour
     {
         if (_volumeSlider != null)
         {
+            // Whole percent so arrow keys step by 1%
             _volumeSlider.minValue = 0f;
-            _volumeSlider.maxValue = 1f;
+            _volumeSlider.maxValue = 100f;
+            _volumeSlider.wholeNumbers = true;
             _volumeSlider.onValueChanged.AddListener(HandleSliderChanged);
         }
 
@@ -85,13 +87,14 @@ public class VoicePlayerRowUI : MonoBehaviour
         _player.SetMutedLocally(muted);
     }
 
-    private void HandleSliderChanged(float v)
+    private void HandleSliderChanged(float percent)
     {
         if (_player == null)
         {
             return;
         }
 
+        float v = percent / 100f;
         _player.SetLocalVolume(v);
         UpdateVolumeLabel(v);
     }
@@ -100,7 +103,7 @@ public class VoicePlayerRowUI : MonoBehaviour
     {
         if (_volumeSlider != null)
         {
-            _volumeSlider.SetValueWithoutNotify(v);
+            _volumeSlider.SetValueWithoutNotify(v * 100f);
         }
         UpdateVolumeLabel(v);
     }

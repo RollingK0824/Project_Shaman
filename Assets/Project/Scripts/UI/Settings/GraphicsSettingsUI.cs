@@ -48,9 +48,10 @@ public class GraphicsSettingsUI : MonoBehaviour
 
         if (_brightnessSlider != null)
         {
-            _brightnessSlider.minValue = GraphicOptions.MIN_BRIGHTNESS;
-            _brightnessSlider.maxValue = GraphicOptions.MAX_BRIGHTNESS;
-            _brightnessSlider.wholeNumbers = false;
+            // Whole percent so arrow keys step by 1% (non-whole sliders step by 10% of the range)
+            _brightnessSlider.minValue = GraphicOptions.MIN_BRIGHTNESS * 100f;
+            _brightnessSlider.maxValue = GraphicOptions.MAX_BRIGHTNESS * 100f;
+            _brightnessSlider.wholeNumbers = true;
             _brightnessSlider.onValueChanged.AddListener(HandleBrightnessChanged);
         }
 
@@ -82,7 +83,7 @@ public class GraphicsSettingsUI : MonoBehaviour
 
         if (_brightnessSlider != null)
         {
-            _brightnessSlider.SetValueWithoutNotify(GraphicOptions.Brightness);
+            _brightnessSlider.SetValueWithoutNotify(GraphicOptions.Brightness * 100f);
         }
         UpdateBrightnessLabel(GraphicOptions.Brightness);
 
@@ -109,8 +110,9 @@ public class GraphicsSettingsUI : MonoBehaviour
     }
 
 
-    private void HandleBrightnessChanged(float v)
+    private void HandleBrightnessChanged(float percent)
     {
+        float v = percent / 100f;
         GraphicOptions.SetBrightness(v);
         UpdateBrightnessLabel(v);
     }
