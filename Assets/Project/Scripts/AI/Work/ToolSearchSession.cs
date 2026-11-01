@@ -364,6 +364,15 @@ namespace ProjectShaman.AI.Work
                 }
             }
 
+            // Not lost, only in someone else's hands today (seen or told): no request, it rests and looks again later
+            if (TryGetUserToday(out string userId))
+            {
+                AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' stops: {userId} is using it, will look again later (no request)");
+                Cancel();
+                _owner.Core.FailCurrentRoutine($"tool '{RequiredToolType}' in use by {userId}");
+                return true;
+            }
+
             AILog.Log(AILog.TOOL, Id, $"Search '{RequiredToolType}' failed (tried {tried}/{Config.ToolSearchSpots} spots, {(tried >= Config.ToolSearchSpots ? "limit reached" : "nothing left to look at or ask")})");
 
             _owner.Memory.RecordToolLost(RequiredToolType);
@@ -373,6 +382,24 @@ namespace ProjectShaman.AI.Work
             Cancel();
             _owner.Core.FailCurrentRoutine($"tool '{RequiredToolType}' not found");
             return true;
+        }
+
+        // A villager (not a ghost or a player) this one saw or heard of carrying the tool today
+        private bool TryGetUserToday(out string userId)
+        {
+            userId = null;
+            int today = _owner.Core.CurrentRoutine.DayCount;
+            foreach (ToolSighting sighting in _owner.Memory.ToolSightings.Get(RequiredToolType))
+            {
+                if (sighting.DayCount == today && !string.IsNullOrEmpty(sighting.HolderId) && sighting.HolderId != Id
+                    && !sighting.HolderId.StartsWith("GHOST_") && !sighting.HolderId.StartsWith("Player_"))
+                {
+                    userId = sighting.HolderId;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         private void MarkSpotChecked()
