@@ -34,6 +34,8 @@ public class EndingUI : MonoBehaviour
     [Header("조사단")]
     [SerializeField] private PlayerResultSlot[] _playerResultSlots;
     [SerializeField] private Sprite[] _characterPortraits; // characterId 순서 (PL_1 ~ PL_4)
+    [SerializeField] private Color _aliveColor = new Color(0.028f, 0.434f, 0f);
+    [SerializeField] private Color _deadColor = Color.red;
 
     [Serializable]
     private class GhostResultSlot
@@ -161,6 +163,7 @@ public class EndingUI : MonoBehaviour
             slot.portrait.sprite = id >= 0 && id < _characterPortraits.Length ? _characterPortraits[id] : null;
             slot.nameText.text = players[i].name;
             slot.stateText.text = players[i].dead ? "사망" : "생존";
+            slot.stateText.color = players[i].dead ? _deadColor : _aliveColor;
         }
     }
 
