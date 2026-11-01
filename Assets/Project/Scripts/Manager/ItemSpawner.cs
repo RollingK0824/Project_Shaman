@@ -1,28 +1,20 @@
 using System;
-using System.Collections.Generic;
 using UnityEngine;
-
-[Serializable]
-public struct SpawnerItemData
-{
-    public GameObject itemPrefab;      
-}
 
 [RequireComponent(typeof(Collider))]
 public class ItemSpawner : MonoBehaviour
 {
-    [Header("Item Pool Configuration")]
-    [SerializeField] private List<SpawnerItemData> itemPool = new List<SpawnerItemData>();
+    [Header("Config")]
+    [SerializeField] private ItemSpawnerConfig config;
     [Header("Spawn Area Settings")]
     [SerializeField] private Collider areaCollider;
-    [SerializeField] private LayerMask groundLayer;
-    [SerializeField] private float raycastHeightOffset = 5f;
-    [SerializeField] private float maxRaycastDistance = 15f;
 
     // 네트워크 어댑터가 구독합니다. 아이템과 위치는 요청을 받은 서버에서 결정합니다.
     public event Action SpawnRequested;
 
-    public int ItemCount => itemPool == null ? 0 : itemPool.Count;
+    public ItemSpawnerConfig Config => config;
+    public bool HasSpawnableItems => config != null && config.HasSpawnableItems;
+
     private void Awake()
     {
         if (areaCollider == null)
@@ -33,53 +25,42 @@ public class ItemSpawner : MonoBehaviour
 
     public void RequestSpawn()
     {
-        if (itemPool == null || itemPool.Count == 0)
+        if (!HasSpawnableItems)
         {
-            Debug.LogWarning($"[RandomItemSpawner] No items in pool on {gameObject.name}");
+            Debug.LogWarning($"[ItemSpawner] Config가 없거나 스폰 가능한 아이템이 없습니다: {gameObject.name}", this);
             return;
         }
         SpawnRequested?.Invoke();
     }
 
-    public GameObject GetItemPrefab(int itemIndex)
+    public GameObject GetRandomItemPrefab()
     {
-        return itemIndex >= 0 && itemIndex < ItemCount ? itemPool[itemIndex].itemPrefab : null;
+        return config != null ? config.GetRandomItemPrefab() : null;
     }
 
-    public void ReturnItem(int itemIndex, GameObject instance)
+    public void ReturnItem(GameObject prefab, GameObject instance)
     {
-        ObjectPoolManager.Instance.Release(GetItemPrefab(itemIndex), instance);
+        ObjectPoolManager.Instance.Release(prefab, instance);
     }
 
-    public GameObject PlaceItem(int itemIndex, Vector3 position)
+    public GameObject PlaceItem(GameObject prefab, Vector3 position)
     {
-        if (itemIndex < 0 || itemIndex >= itemPool.Count) return null;
-        SpawnerItemData itemToSpawn = itemPool[itemIndex];
-        if (itemToSpawn.itemPrefab == null) return null;
-        GameObject spawnedObj = ObjectPoolManager.Instance.Get(
-            itemToSpawn.itemPrefab,
-            position,
-            Quaternion.identity
-        );
-        return spawnedObj;
+        if (prefab == null) return null;
+        return ObjectPoolManager.Instance.Get(prefab, position, Quaternion.identity);
     }
 
-    public int GetRandomItemIndex()
-    {
-        return UnityEngine.Random.Range(0, itemPool.Count);
-    }
     public Vector3 GetRandomPositionInBounds()
     {
         Bounds bounds = areaCollider.bounds;
         float randomX = UnityEngine.Random.Range(bounds.min.x, bounds.max.x);
         float randomZ = UnityEngine.Random.Range(bounds.min.z, bounds.max.z);
-        float startY = bounds.max.y + raycastHeightOffset;
+        float startY = bounds.max.y + config.RaycastHeightOffset;
         Vector3 rayStart = new Vector3(randomX, startY, randomZ);
-        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, maxRaycastDistance, groundLayer, QueryTriggerInteraction.Ignore))
+        if (Physics.Raycast(rayStart, Vector3.down, out RaycastHit hit, config.MaxRaycastDistance, config.GroundLayer, QueryTriggerInteraction.Ignore))
         {
-            return hit.point;
+            return hit.point + config.SpawnOffset;
         }
-        return new Vector3(randomX, bounds.center.y, randomZ);
+        return new Vector3(randomX, bounds.center.y, randomZ) + config.SpawnOffset;
     }
 
     private void OnDrawGizmosSelected()
