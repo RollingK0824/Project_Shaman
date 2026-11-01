@@ -92,6 +92,18 @@ namespace ProjectShaman.AI.Ghost
         public event System.Action<AI_GhostEntity> OnChannelEnded;
         public event System.Action<AI_GhostEntity, float> OnRevealed;
         public event System.Action<AI_GhostEntity> OnAttackSwing;
+
+        // Came out at full yin (NightHuntDirector): every peer hears the warning scream as it appears
+        public bool IsAwakened { get; private set; }
+
+        public void SetAwakened(bool awakened)
+        {
+            IsAwakened = awakened;
+            if (awakened)
+            {
+                AILog.Log(AILog.GHOST, _ghostId, "Comes out awakened (full yin)");
+            }
+        }
         // (ghost, from, to) when salt flings it elsewhere
         public event System.Action<AI_GhostEntity, Vector3, Vector3> OnTeleported;
 

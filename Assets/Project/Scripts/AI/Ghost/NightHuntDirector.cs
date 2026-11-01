@@ -27,6 +27,8 @@ namespace ProjectShaman.AI.Ghost
             public int HuntKills;
             public bool HuntIgnoresRadius;
             public bool ChasePlayer;
+            // Yin when the night began, before a hunt token spends it: full yin = the ghost comes out awakened (warning scream)
+            public float YinAtNightStart;
         }
 
         private readonly List<AI_GhostEntity> _entities = new List<AI_GhostEntity>();
@@ -148,7 +150,7 @@ namespace ProjectShaman.AI.Ghost
 
                 float radius = Mathf.Lerp(_behaviourConfig.HuntRadiusMin, _behaviourConfig.HuntRadiusMax, CorruptionPlanner.GetYinFactor(possession.Yin, _behaviourConfig));
                 AILog.Log(AILog.GHOST, possession.GhostId, $"Night Day{_time.DayCount} (yin {possession.Yin:F0}, radius {radius:F1}m)");
-                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, HostRuntime = host, Radius = radius });
+                _pendingEntities.Add(new PendingEntity { Possession = possession, Host = host.Core, HostRuntime = host, Radius = radius, YinAtNightStart = possession.Yin });
             }
 
             _pendingSpawnTime = Time.time + _behaviourConfig.GhostSpawnDelaySeconds;
@@ -398,6 +400,7 @@ namespace ProjectShaman.AI.Ghost
 
             int seed = unchecked(pending.Possession.Seed * 397 + _time.DayCount);
             entity.Initialize(pending.Possession, _ledger, _nightActions, pending.Host.LogId, center, pending.Radius, pending.HuntKills, pending.HuntIgnoresRadius, pending.ChasePlayer, _behaviourConfig, seed);
+            entity.SetAwakened(pending.YinAtNightStart >= _behaviourConfig.MaxYin);
             // Model list order = GhostType order
             instance.GetComponent<AI_ModelVisual>()?.Apply((int)pending.Possession.GhostType);
             _factory.SpawnHandler.Spawn(instance);

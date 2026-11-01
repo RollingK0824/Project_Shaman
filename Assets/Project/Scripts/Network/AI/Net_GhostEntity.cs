@@ -49,6 +49,14 @@ namespace ProjectShaman.Network.AI
         // Bell: until this NetworkTime the ghost is revealed (glow, gauge at any distance)
         [SyncVar] private double _revealedUntil;
 
+        // Full yin when it came out (warning scream); a late joiner gets it with the spawn
+        [SyncVar] private bool _isAwakened;
+
+        public bool IsAwakened => _isAwakened;
+
+        // Every peer, when the ghost swings at a player (sound, animation)
+        public event Action ClientAttackSwung;
+
         // (from, to) on every client when salt flings the ghost elsewhere
         public event Action<Vector3, Vector3> ClientTeleported;
 
@@ -85,6 +93,7 @@ namespace ProjectShaman.Network.AI
             _entity.OnRevealed += HandleServerRevealed;
             _entity.OnTeleported += HandleServerTeleported;
             _entity.OnAttackSwing += HandleServerAttackSwing;
+            _isAwakened = _entity.IsAwakened;
             _entity.SetSimulationActive(true);
             AILog.Log(AILog.NET, _entity.GhostId, "Ghost entity OnStartServer → Agent/BT enabled");
         }
@@ -201,6 +210,8 @@ namespace ProjectShaman.Network.AI
             {
                 _animator.SetTrigger(ATTACK_TRIGGER);
             }
+
+            ClientAttackSwung?.Invoke();
         }
 
         private static bool HasParameter(Animator animator, int hash)
