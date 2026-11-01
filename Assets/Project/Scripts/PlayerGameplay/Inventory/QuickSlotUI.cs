@@ -43,9 +43,14 @@ public class QuickSlotUI : MonoBehaviour
     private readonly TalismanDrawingSurface[] _drawings = new TalismanDrawingSurface[6];
     private readonly PlayerHUDFrame[] _selectionFrames = new PlayerHUDFrame[6];
 
+    // Bell walkie-talkie mic badge, top-right of whichever slot holds the bell.
+    private NetPlayerVoice _voice;
+    private readonly Image[] _bellBadges = new Image[6];
+
     private void LateUpdate()
     {
         ResolveLocalPlayer();
+        RefreshBellBadges();
         var rect = transform as RectTransform;
         if (rect == null || rect.rect.width <= 0f) return;
         float unit = PlayerItemUIStyle.ViewportUnit(rect);
@@ -84,6 +89,7 @@ public class QuickSlotUI : MonoBehaviour
         OnDisable();
         _inventory = inventory;
         _inputReader = inputReader;
+        _voice = inventory != null ? inventory.GetComponent<NetPlayerVoice>() : null;
         _selectedIndex = -1;
         if (isActiveAndEnabled) OnEnable();
         RefreshAllSlots();
@@ -211,6 +217,37 @@ public class QuickSlotUI : MonoBehaviour
                 label.color = PlayerHUDArt.Text;
                 label.alignment = TextAlignmentOptions.Center;
             }
+        }
+    }
+
+    // Muted: red slashed mic. Transmitting: green. Otherwise a dim mic so the bell reads as a radio.
+    private void RefreshBellBadges()
+    {
+        ItemData bell = _voice != null && _inventory != null ? _voice.BellData : null;
+        bool muted = VoiceSettings.MicMuted;
+        Color color = muted ? VoiceStatusHUD.MutedColor
+            : _voice != null && _voice.IsTalkingOnRadio ? VoiceStatusHUD.SpeakingColor : VoiceStatusHUD.LiveColor;
+        for (int i = 0; i < _slotBackgrounds.Length; i++)
+        {
+            bool show = bell != null && _slotBackgrounds[i] != null && _inventory.GetQuickSlotItem(i) == bell;
+            var badge = _bellBadges[i];
+            if (!show)
+            {
+                if (badge != null && badge.gameObject.activeSelf) badge.gameObject.SetActive(false);
+                continue;
+            }
+            if (badge == null)
+            {
+                badge = _bellBadges[i] = new GameObject("BellMicBadge", typeof(RectTransform), typeof(Image)).GetComponent<Image>();
+                badge.rectTransform.SetParent(_slotBackgrounds[i].rectTransform, false);
+                PlayerItemUIStyle.Place(badge.rectTransform, Vector2.one, Vector2.one, new Vector2(-6, -6), new Vector2(24, 24));
+                badge.preserveAspect = true;
+                badge.raycastTarget = false;
+            }
+            if (!badge.gameObject.activeSelf) badge.gameObject.SetActive(true);
+            var sprite = MicIconSprite.Get(muted);
+            if (badge.sprite != sprite) badge.sprite = sprite;
+            if (badge.color != color) badge.color = color;
         }
     }
 
