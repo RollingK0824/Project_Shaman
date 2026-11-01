@@ -74,7 +74,11 @@ public class CraftingPanelUI : MonoBehaviour
         if (_recipeSelector != null) _recipeSelector.onValueChanged.RemoveListener(SelectRecipe);
         Unsubscribe();
         // A response can arrive after the user closes the notebook or switches tabs.
-        if (_pendingRecipe != null && _crafting != null) _crafting.Crafted += HandleCrafted;
+        if (_pendingRecipe != null && _crafting != null)
+        {
+            _crafting.Crafted += HandleCrafted;
+            _crafting.CraftRequestFailed += HandleCraftRequestFailed;
+        }
     }
     private void OnDestroy() => Unsubscribe();
     private void Subscribe()
@@ -82,6 +86,7 @@ public class CraftingPanelUI : MonoBehaviour
         Unsubscribe();
         if (!isActiveAndEnabled || _crafting == null) return;
         _crafting.Crafted += HandleCrafted;
+        _crafting.CraftRequestFailed += HandleCraftRequestFailed;
         _subscribedInventory = _crafting.Inventory;
         if (_subscribedInventory != null) _subscribedInventory.InventoryChanged += Refresh;
         _subscribedHealth = _crafting.GetComponent<PlayerHealth>();
@@ -89,7 +94,11 @@ public class CraftingPanelUI : MonoBehaviour
     }
     private void Unsubscribe()
     {
-        if (_crafting != null) _crafting.Crafted -= HandleCrafted;
+        if (_crafting != null)
+        {
+            _crafting.Crafted -= HandleCrafted;
+            _crafting.CraftRequestFailed -= HandleCraftRequestFailed;
+        }
         if (_subscribedInventory != null) _subscribedInventory.InventoryChanged -= Refresh;
         _subscribedInventory = null;
         if (_subscribedHealth != null) _subscribedHealth.Died -= HandleDied;
@@ -128,6 +137,7 @@ public class CraftingPanelUI : MonoBehaviour
     }
 
     // The existing network adapter can report a rejected request without faking a craft success.
+    private void HandleCraftRequestFailed() => NotifyCraftRequestFailed(null);
     public void NotifyCraftRequestFailed(string message)
     {
         _pendingRecipe = null;

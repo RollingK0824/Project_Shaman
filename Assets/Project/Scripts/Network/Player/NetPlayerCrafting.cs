@@ -65,6 +65,7 @@ public class NetPlayerCrafting : NetworkBehaviour
         if (index < 0)
         {
             Debug.LogWarning($"[NetPlayerCrafting] 레시피 목록에 없는 레시피: {recipe?.DisplayName}", this);
+            _crafting.NotifyCraftResult(null, false);
             return;
         }
 
@@ -75,12 +76,19 @@ public class NetPlayerCrafting : NetworkBehaviour
     [Command]
     private void CmdRequestCraft(int recipeIndex)
     {
-        if (_bootstrap == null || recipeIndex < 0 || recipeIndex >= _bootstrap.CraftingRecipes.Count) return;
+        CraftingRecipeData recipe = _bootstrap != null && recipeIndex >= 0 && recipeIndex < _bootstrap.CraftingRecipes.Count
+            ? _bootstrap.CraftingRecipes[recipeIndex] : null;
+        bool success = recipe != null && _crafting.TryCraft(recipe);
+        TargetCraftResult(recipeIndex, success);
+        Debug.Log($"[NetPlayerCrafting] 제작 판정 : {name} -> {recipe?.DisplayName} {(success ? "성공" : "거절")}", this);
+    }
 
-        CraftingRecipeData recipe = _bootstrap.CraftingRecipes[recipeIndex];
-        bool success = _crafting.TryCraft(recipe);
-
-        Debug.Log($"[NetPlayerCrafting] 제작 판정 : {name} -> {recipe.DisplayName} {(success ? "성공" : "거절")}", this);
+    [TargetRpc]
+    private void TargetCraftResult(int recipeIndex, bool success)
+    {
+        var recipe = _bootstrap != null && recipeIndex >= 0 && recipeIndex < _bootstrap.CraftingRecipes.Count
+            ? _bootstrap.CraftingRecipes[recipeIndex] : null;
+        _crafting.NotifyCraftResult(recipe, success);
     }
 
     private int IndexOfRecipe(CraftingRecipeData recipe)

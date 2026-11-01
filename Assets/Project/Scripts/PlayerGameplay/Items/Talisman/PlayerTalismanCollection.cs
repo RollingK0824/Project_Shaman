@@ -72,6 +72,39 @@ public class PlayerTalismanCollection : MonoBehaviour
     }
     public bool SaveFinal(TalismanItemData item, TalismanSaveData payload) => payload != null &&
         Save(item, payload.ReadDrawing(), payload.CustomName, payload.EffectId);
+
+    public bool TryDropDrawing(string id, Func<TalismanSaveData, bool> publish)
+    {
+        if (_busy || !CanExecute || publish == null) return false;
+        var drawing = Find(id, out var item);
+        if (drawing == null || item == null || !item.IsEffectTalisman) return false;
+        _busy = true;
+        try
+        {
+            if (!publish(TalismanSaveData.From(drawing, drawing.CustomName, drawing.EffectId))) return false;
+            _instances[item].Remove(drawing);
+            _savedIds.Remove(id);
+            if (_selected.TryGetValue(item, out var selected) && selected == id) _selected.Remove(item);
+            try { SelectionChanged?.Invoke(); } catch (Exception e) { Debug.LogException(e, this); }
+            return true;
+        }
+        finally { _busy = false; }
+    }
+
+    public bool TryReceiveDrawing(TalismanItemData item, TalismanSaveData payload)
+    {
+        if (_busy || !CanExecute || item == null || !item.IsEffectTalisman || payload == null ||
+            _savedIds.Contains(payload.InstanceId) || Find(payload.InstanceId, out _) != null) return false;
+        var drawing = payload.ReadDrawing();
+        if (drawing == null || item.FindEffect(payload.EffectId) == null) return false;
+        drawing.Commit(drawing, payload.CustomName);
+        drawing.SetEffect(payload.EffectId);
+        _instances.TryGetValue(item, out var list);
+        if (list == null) { list = new List<TalismanDrawingData>(); _instances.Add(item, list); }
+        list.Add(drawing); _savedIds.Add(drawing.Id);
+        try { SelectionChanged?.Invoke(); } catch (Exception e) { Debug.LogException(e, this); }
+        return true;
+    }
     public bool TryUse(string id)
     {
         if (_busy || !CanExecute || (_inventory.GetComponent<PlayerItemController>() is var items && items != null && !items.CanUseItems)) return false;

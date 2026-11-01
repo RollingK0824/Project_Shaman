@@ -7,8 +7,20 @@ public class WorldItem : MonoBehaviour, IInteractable
     [SerializeField] private ItemData _itemData;
 
     private bool _isCollected;
+    private TalismanSaveData _drawing;
 
     public ItemData ItemData => _itemData;
+    public bool HasDrawing => _drawing != null;
+    public void SetDrawing(TalismanSaveData drawing) => _drawing = drawing;
+    public bool TryCollectDrawing(GameObject interactor)
+    {
+        if (_isCollected || _drawing == null || !(_itemData is TalismanItemData item)) return false;
+        var collection = interactor.GetComponent<PlayerTalismanCollection>();
+        _isCollected = true;
+        if (collection == null || !collection.TryReceiveDrawing(item, _drawing)) { _isCollected = false; return false; }
+        _drawing = null;
+        return true;
+    }
 
     private void OnEnable()
     {

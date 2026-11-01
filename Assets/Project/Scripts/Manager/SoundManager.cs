@@ -134,13 +134,18 @@ public class SoundManager : GlobalSingleton<SoundManager>
 
     public void PlaySFX(AudioClip clip)
     {
+        PlaySFX(clip, 1f);
+    }
+
+    public void PlaySFX(AudioClip clip, float volume)
+    {
         if (clip == null)
         {
             Debug.LogWarning("[SoundManager] Cannot play SFX. Clip is null.");
             return;
         }
 
-        _sfx2DSource.PlayOneShot(clip);
+        _sfx2DSource.PlayOneShot(clip, Mathf.Clamp01(volume));
     }
 
     public void PlayUI(AudioClip clip)

@@ -101,7 +101,7 @@ public class SaltTargetingTests
     }
 
     [Test]
-    public void OtherPlayerIsNotDamagedOrCountedAsHit()
+    public void OtherPlayerIsSlowedWithoutDamageAndRepeatedHitsDoNotRefresh()
     {
         var player = Create("Other player", 1);
         var health = player.AddComponent<PlayerHealth>();
@@ -110,7 +110,22 @@ public class SaltTargetingTests
         Assert.IsTrue(Spray());
         Assert.AreEqual(0, _requests);
         Assert.AreEqual(before, health.CurrentHealth);
-        Assert.AreEqual(0, _consumed);
+        Assert.IsTrue(health.IsSaltSlowed);
+        Assert.AreEqual(1, _consumed);
+        Assert.IsFalse(health.TryApplySaltSlow(3f, _owner));
+    }
+
+    [UnityTest]
+    public IEnumerator SaltSlowExpiresWithoutExtendingOnRepeatedHit()
+    {
+        var player = Create("Other player", 1);
+        var health = player.AddComponent<PlayerHealth>();
+        Assert.IsTrue(health.TryApplySaltSlow(.3f, _owner));
+        yield return new WaitForSeconds(.2f);
+        Assert.IsFalse(health.TryApplySaltSlow(3f, _owner));
+        yield return new WaitForSeconds(.15f);
+        Assert.IsFalse(health.IsSaltSlowed);
+        Assert.IsTrue(health.TryApplySaltSlow(.3f, _owner));
     }
 
     [Test]

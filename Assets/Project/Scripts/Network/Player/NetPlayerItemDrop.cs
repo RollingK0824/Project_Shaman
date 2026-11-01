@@ -29,11 +29,13 @@ public class NetPlayerItemDrop : NetworkBehaviour
     {
         base.OnStartLocalPlayer();
         _drops.DropRequested += HandleDropRequested;
+        _drops.DrawingDropRequested += HandleDrawingDropRequested;
     }
 
     public override void OnStopLocalPlayer()
     {
         _drops.DropRequested -= HandleDropRequested;
+        _drops.DrawingDropRequested -= HandleDrawingDropRequested;
         base.OnStopLocalPlayer();
     }
 
@@ -48,6 +50,22 @@ public class NetPlayerItemDrop : NetworkBehaviour
         }
 
         CmdRequestDrop(requestId, itemId);
+    }
+
+    private void HandleDrawingDropRequested(long requestId, string id) => CmdRequestDrawingDrop(requestId, id);
+
+    [Command]
+    private void CmdRequestDrawingDrop(long requestId, string id)
+    {
+        var collection = GetComponent<PlayerTalismanCollection>();
+        GameManager gm = GameManager.Instance;
+        bool valid = requestId > _lastRequestId && !string.IsNullOrEmpty(id) && id.Length <= 64 &&
+            (_status == null || !_status.IsDead) && gm != null && gm.CurrentGameState == GameState.Ongoing &&
+            collection != null && collection.Find(id, out _) != null;
+        if (!valid) { TargetDropResult(requestId, false, "부적을 버릴 수 없습니다."); return; }
+        _lastRequestId = requestId;
+        bool success = _drops.TryDropDrawingFinal(requestId, id, out _);
+        TargetDropResult(requestId, success, _drops.LastMessage);
     }
 
     // [서버] Command는 자기 플레이어 오브젝트에서만 받으므로 요청자 소유권은 Mirror가 보장

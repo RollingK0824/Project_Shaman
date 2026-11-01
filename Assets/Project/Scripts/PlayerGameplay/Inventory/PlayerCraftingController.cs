@@ -10,6 +10,7 @@ public class PlayerCraftingController : MonoBehaviour
     public PlayerInventory Inventory => _inventory;
     public event Action<CraftingRecipeData> Crafted;
     public event Action<CraftingRecipeData> CraftRequested;
+    public event Action CraftRequestFailed;
     private Func<bool> _authorityCheck;
 
     private void Awake()
@@ -57,5 +58,11 @@ public class PlayerCraftingController : MonoBehaviour
         if (CanExecuteLocally) return TryCraft(recipe);
         CraftRequested?.Invoke(recipe);
         return true;
+    }
+
+    public void NotifyCraftResult(CraftingRecipeData recipe, bool success)
+    {
+        if (success && recipe != null) Crafted?.Invoke(recipe);
+        else CraftRequestFailed?.Invoke();
     }
 }
