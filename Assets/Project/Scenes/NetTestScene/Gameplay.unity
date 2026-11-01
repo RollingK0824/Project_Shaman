@@ -129,6 +129,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1356812}
   - component: {fileID: 1356813}
+  - component: {fileID: 1356815}
+  - component: {fileID: 1356816}
   m_Layer: 0
   m_Name: FloorItemSpawner (1)
   m_TagString: Untagged
@@ -166,12 +168,38 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1356815
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1356811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ItemSpawner
+  config: {fileID: 11400000, guid: e4bb79833d323db498dc4b144c6c3e37, type: 2}
+  areaCollider: {fileID: 1356813}
+--- !u!114 &1356816
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1356811}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!114 &2272421
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3921,6 +3949,8 @@ GameObject:
   m_Component:
   - component: {fileID: 106505303}
   - component: {fileID: 106505304}
+  - component: {fileID: 106505306}
+  - component: {fileID: 106505307}
   m_Layer: 0
   m_Name: FloorItemSpawner (3)
   m_TagString: Untagged
@@ -3958,12 +3988,38 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &106505306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 106505302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ItemSpawner
+  config: {fileID: 11400000, guid: e4bb79833d323db498dc4b144c6c3e37, type: 2}
+  areaCollider: {fileID: 106505304}
+--- !u!114 &106505307
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 106505302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &107082794
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -5790,6 +5846,7 @@ GameObject:
   - component: {fileID: 129935608}
   - component: {fileID: 129935610}
   - component: {fileID: 129935609}
+  - component: {fileID: 129935611}
   m_Layer: 0
   m_Name: MarketItemSpawner (4)
   m_TagString: Untagged
@@ -5824,7 +5881,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
+  config: {fileID: 11400000, guid: e43e151849071034d8e17b295c416635, type: 2}
   areaCollider: {fileID: 129935610}
 --- !u!65 &129935610
 BoxCollider:
@@ -5841,12 +5898,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &129935611
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 129935607}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!114 &132403381
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9606,6 +9675,8 @@ GameObject:
   m_Component:
   - component: {fileID: 228779831}
   - component: {fileID: 228779832}
+  - component: {fileID: 228779834}
+  - component: {fileID: 228779835}
   m_Layer: 0
   m_Name: FloorItemSpawner (4)
   m_TagString: Untagged
@@ -9643,12 +9714,38 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &228779834
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 228779830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ItemSpawner
+  config: {fileID: 11400000, guid: e4bb79833d323db498dc4b144c6c3e37, type: 2}
+  areaCollider: {fileID: 228779832}
+--- !u!114 &228779835
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 228779830}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &230363028
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -18752,6 +18849,8 @@ GameObject:
   m_Component:
   - component: {fileID: 445999209}
   - component: {fileID: 445999210}
+  - component: {fileID: 445999212}
+  - component: {fileID: 445999213}
   m_Layer: 0
   m_Name: FloorItemSpawner
   m_TagString: Untagged
@@ -18789,12 +18888,38 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &445999212
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 445999208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ItemSpawner
+  config: {fileID: 11400000, guid: e4bb79833d323db498dc4b144c6c3e37, type: 2}
+  areaCollider: {fileID: 445999210}
+--- !u!114 &445999213
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 445999208}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &448903038
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -19108,7 +19233,6 @@ Transform:
   - {fileID: 1907450644}
   - {fileID: 12291939}
   - {fileID: 347610717}
-  - {fileID: 1942600101}
   - {fileID: 925008716}
   - {fileID: 1750576585}
   - {fileID: 75682429}
@@ -27740,6 +27864,7 @@ GameObject:
   - component: {fileID: 630365857}
   - component: {fileID: 630365859}
   - component: {fileID: 630365858}
+  - component: {fileID: 630365860}
   m_Layer: 0
   m_Name: MarketItemSpawner (1)
   m_TagString: Untagged
@@ -27774,7 +27899,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
+  config: {fileID: 11400000, guid: e43e151849071034d8e17b295c416635, type: 2}
   areaCollider: {fileID: 630365859}
 --- !u!65 &630365859
 BoxCollider:
@@ -27791,12 +27916,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &630365860
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 630365856}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &632386921
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -39811,6 +39948,7 @@ GameObject:
   - component: {fileID: 1008184276}
   - component: {fileID: 1008184278}
   - component: {fileID: 1008184277}
+  - component: {fileID: 1008184279}
   m_Layer: 0
   m_Name: MarketItemSpawner (2)
   m_TagString: Untagged
@@ -39845,7 +39983,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
+  config: {fileID: 11400000, guid: e43e151849071034d8e17b295c416635, type: 2}
   areaCollider: {fileID: 1008184278}
 --- !u!65 &1008184278
 BoxCollider:
@@ -39862,12 +40000,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1008184279
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1008184275}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &1012643156
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -49563,6 +49713,7 @@ GameObject:
   - component: {fileID: 1228332317}
   - component: {fileID: 1228332319}
   - component: {fileID: 1228332318}
+  - component: {fileID: 1228332320}
   m_Layer: 0
   m_Name: MarketItemSpawner
   m_TagString: Untagged
@@ -49597,7 +49748,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
+  config: {fileID: 11400000, guid: e43e151849071034d8e17b295c416635, type: 2}
   areaCollider: {fileID: 1228332319}
 --- !u!65 &1228332319
 BoxCollider:
@@ -49614,12 +49765,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1228332320
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1228332316}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!114 &1229095614
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -55033,6 +55196,7 @@ GameObject:
   - component: {fileID: 1364852000}
   - component: {fileID: 1364852002}
   - component: {fileID: 1364852001}
+  - component: {fileID: 1364852003}
   m_Layer: 0
   m_Name: MarketItemSpawner (3)
   m_TagString: Untagged
@@ -55067,7 +55231,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
+  config: {fileID: 11400000, guid: e43e151849071034d8e17b295c416635, type: 2}
   areaCollider: {fileID: 1364852002}
 --- !u!65 &1364852002
 BoxCollider:
@@ -55084,12 +55248,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1364852003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1364851999}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!114 &1365771194
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -58710,6 +58886,7 @@ GameObject:
   - component: {fileID: 1469674486}
   - component: {fileID: 1469674488}
   - component: {fileID: 1469674487}
+  - component: {fileID: 1469674489}
   m_Layer: 0
   m_Name: MarketItemSpawner (5)
   m_TagString: Untagged
@@ -58744,7 +58921,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
+  config: {fileID: 11400000, guid: e43e151849071034d8e17b295c416635, type: 2}
   areaCollider: {fileID: 1469674488}
 --- !u!65 &1469674488
 BoxCollider:
@@ -58761,12 +58938,24 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1469674489
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1469674485}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &1470248143
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -67316,6 +67505,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1771620577}
   - component: {fileID: 1771620578}
+  - component: {fileID: 1771620580}
+  - component: {fileID: 1771620581}
   m_Layer: 0
   m_Name: FloorItemSpawner (2)
   m_TagString: Untagged
@@ -67353,12 +67544,38 @@ BoxCollider:
     serializedVersion: 2
     m_Bits: 0
   m_LayerOverridePriority: 0
-  m_IsTrigger: 0
+  m_IsTrigger: 1
   m_ProvidesContacts: 0
   m_Enabled: 1
   serializedVersion: 3
   m_Size: {x: 1, y: 1, z: 1}
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &1771620580
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1771620576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::ItemSpawner
+  config: {fileID: 11400000, guid: e4bb79833d323db498dc4b144c6c3e37, type: 2}
+  areaCollider: {fileID: 1771620578}
+--- !u!114 &1771620581
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1771620576}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1 &1775263459
 GameObject:
   m_ObjectHideFlags: 0
@@ -73788,87 +74005,6 @@ Transform:
   - {fileID: 513694837}
   m_Father: {fileID: 999489054}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!1 &1942600100
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1942600101}
-  - component: {fileID: 1942600102}
-  - component: {fileID: 1942600103}
-  - component: {fileID: 1942600104}
-  m_Layer: 0
-  m_Name: NetworkItemSpawner
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1942600101
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1942600100}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 1, z: 6}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 457282940}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1942600102
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1942600100}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 1
-  m_ProvidesContacts: 0
-  m_Enabled: 1
-  serializedVersion: 3
-  m_Size: {x: 8, y: 2, z: 6}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &1942600103
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1942600100}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: a935bd96e175ffe44a9416880874bc40, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::ItemSpawner
-  config: {fileID: 0}
-  areaCollider: {fileID: 1942600102}
---- !u!114 &1942600104
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1942600100}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: e1ab0963fc6c4ed0b0378d297761df88, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Project.Runtime::NetItemSpawner
 --- !u!1001 &1942874918
 PrefabInstance:
   m_ObjectHideFlags: 0
