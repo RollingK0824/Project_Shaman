@@ -93,7 +93,7 @@ public static class VillagerClipBaker
     {
         GameObject model = Object.Instantiate(AssetDatabase.LoadAssetAtPath<GameObject>(VILLAGER_MODELS[0]));
         model.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 16\n");
+        StringBuilder report = new StringBuilder("[VillagerClipBaker] rev 18\n");
         _curves.Clear();
         List<AnimationClip> baked = new List<AnimationClip>();
         try
@@ -204,6 +204,7 @@ public static class VillagerClipBaker
 
         float worstHand = 0f, worstFoot = 0f, lowestFoot = float.MaxValue;
         string worstInfo = string.Empty;
+        int crossedFrames = 0, behindHeadFrames = 0;
         Quaternion previousRoot = Quaternion.identity;
         for (int f = 0; f <= frames; f++)
         {
@@ -237,6 +238,20 @@ public static class VillagerClipBaker
             worstFoot = Mathf.Max(worstFoot, Vector3.Distance(Bone(HumanBodyBones.RightFoot).position, rightFoot),
                 Vector3.Distance(Bone(HumanBodyBones.LeftFoot).position, leftFoot));
             lowestFoot = Mathf.Min(lowestFoot, LowestPoint());
+
+            // Hands that read wrong at a glance: wrists crossed, or a raised hand gone behind the head
+            Vector3 rightHand = Bone(HumanBodyBones.RightHand).position;
+            Vector3 leftHand = Bone(HumanBodyBones.LeftHand).position;
+            Vector3 head = Bone(HumanBodyBones.Head).position;
+            if (spec.Right.Weight > 0f && spec.Left.Weight > 0f && rightHand.x < leftHand.x - 0.02f)
+            {
+                crossedFrames++;
+            }
+
+            if ((rightHand.y > head.y && rightHand.z < head.z) || (leftHand.y > head.y && leftHand.z < head.z))
+            {
+                behindHeadFrames++;
+            }
 
             Quaternion root = pose.bodyRotation;
             if (Quaternion.Dot(root, previousRoot) < 0f)
@@ -294,7 +309,8 @@ public static class VillagerClipBaker
         AnimationUtility.SetAnimationEvents(clip, def.Impacts.Select(t => new AnimationEvent { time = t, functionName = IMPACT_EVENT }).ToArray());
         EditorUtility.SetDirty(clip);
 
-        report.AppendLine($"{def.Name}: {def.Length:F1}s, hand error max {worstHand * 100f:F1}cm, foot error max {worstFoot * 100f:F1}cm, lowest point {lowestFoot * 100f:F1}cm  [{worstInfo}]");
+        report.AppendLine($"{def.Name}: {def.Length:F1}s, hand error max {worstHand * 100f:F1}cm, foot error max {worstFoot * 100f:F1}cm, lowest point {lowestFoot * 100f:F1}cm  [{worstInfo}]" +
+            (crossedFrames + behindHeadFrames > 0 ? $"  WARNING wrists crossed {crossedFrames}f, hand behind head {behindHeadFrames}f" : string.Empty));
         return clip;
     }
 
@@ -890,6 +906,11 @@ public static class VillagerClipBaker
     }
 
     private const float LIE_DOWN_SECONDS = 2.6f;
+    // Chop: lifted by CHOP_TOP, gathering at the top until CHOP_GATHER, the stroke lands at CHOP_IMPACT
+    private const float CHOP_LENGTH = 1.6f;
+    private const float CHOP_TOP = 0.55f;
+    private const float CHOP_GATHER = 0.85f;
+    private const float CHOP_IMPACT = 1.03f;
 
     // Feet and knees turn as the body goes from standing to lying: knees forward while crouching, up once seated
     private static Pose LieDown(float t)
@@ -1105,30 +1126,50 @@ public static class VillagerClipBaker
             },
         };
 
-        // 장작 패기·나무 베기·숯감 마련 (Axe): both hands on the haft, raised over the head, brought down onto the block with the
-        // knees and the back bending into the blow, a small rebound, lifted again. One blow per loop: the impact splits the log
+        // 장작 패기·나무 베기·숯감 마련 (Axe): lifted slowly with both hands stacked on the haft in front of the forehead,
+        // held a moment at the top with the back arched to gather, then brought down in one fast, accelerating stroke onto the
+        // block with the knees and the back bending into it; a small rebound, rested, lifted again. The impact splits the log
         yield return new ClipDef
         {
             Name = "Work_Chop",
-            Length = 1.4f,
-            Impacts = new[] { 0.72f },
+            Length = CHOP_LENGTH,
+            Impacts = new[] { CHOP_IMPACT },
             Sample = t =>
             {
-                const float L = 1.4f;
-                Vector3 right = Keys(t, L, (0f, V(0.06f, 0.30f, 0.02f)), (0.45f, V(0.05f, 0.34f, -0.02f)), (0.72f, V(0.05f, -0.26f, 0.38f)),
-                    (0.84f, V(0.05f, -0.22f, 0.37f)), (1.12f, V(0.05f, 0.02f, 0.28f)));
-                Vector3 left = right + Keys(t, L, (0f, V(-0.05f, -0.07f, -0.02f)), (0.72f, V(-0.07f, -0.05f, -0.06f)), (1.12f, V(-0.06f, -0.06f, -0.04f)));
-                Vector3 pole = Keys(t, L, (0f, V(1f, 0.2f, 0.5f)), (0.45f, V(1f, 0.3f, 0.3f)), (0.72f, V(0.6f, -1f, 0f)), (1.12f, V(0.8f, -0.6f, 0.3f)));
-                float bend = Keys(t, L, (0f, -8f), (0.45f, -12f), (0.72f, 28f), (0.84f, 26f), (1.12f, 8f));
-                float dip = Keys(t, L, (0f, 0f), (0.45f, 0f), (0.72f, -0.09f), (0.84f, -0.08f), (1.12f, -0.03f));
+                Vector3 rest = V(0.05f, -0.22f, 0.32f);
+                Vector3 top = V(0.05f, 0.38f, 0.24f);
+                Vector3 gather = V(0.04f, 0.42f, 0.20f);
+                Vector3 impact = V(0.05f, -0.26f, 0.38f);
+                Vector3 right;
+                float bend, dip;
+                if (t >= CHOP_GATHER && t < CHOP_IMPACT)
+                {
+                    // The stroke: slow out of the top, fastest at the block
+                    float u = (t - CHOP_GATHER) / (CHOP_IMPACT - CHOP_GATHER);
+                    float s = u * u * u;
+                    right = Vector3.Lerp(gather, impact, s) + V(0f, 0f, 0.12f) * Mathf.Sin(s * Mathf.PI);
+                    bend = Mathf.Lerp(-10f, 30f, s);
+                    dip = Mathf.Lerp(0.01f, -0.1f, s);
+                }
+                else
+                {
+                    right = Ramp(t, (0f, rest), (CHOP_TOP, top), (CHOP_GATHER, gather), (CHOP_IMPACT, impact), (CHOP_IMPACT + 0.09f, impact + V(0f, 0.04f, -0.01f)),
+                        (CHOP_IMPACT + 0.3f, impact + V(0f, 0.02f, -0.02f)), (CHOP_LENGTH, rest));
+                    bend = Ramp(t, (0f, 12f), (CHOP_TOP, -5f), (CHOP_GATHER, -10f), (CHOP_IMPACT, 30f), (CHOP_IMPACT + 0.3f, 26f), (CHOP_LENGTH, 12f));
+                    dip = Ramp(t, (0f, -0.03f), (CHOP_TOP, 0f), (CHOP_GATHER, 0.01f), (CHOP_IMPACT, -0.1f), (CHOP_IMPACT + 0.3f, -0.08f), (CHOP_LENGTH, -0.03f));
+                }
+
+                // The left hand stays just below the right on the haft, a little to its left, so the wrists never cross
+                Vector3 left = right + V(-0.08f, -0.05f, -0.04f);
+                Vector3 pole = Vector3.Lerp(V(1f, 0f, 0.6f), V(0.7f, -1f, 0.1f), Mathf.InverseLerp(0.3f, -0.2f, right.y));
                 return new Pose
                 {
                     HipsOffset = V(0f, dip, -0.02f),
                     HipsEuler = V(bend * 0.25f, 0f, 0f),
                     SpineEuler = V(bend * 0.75f, -6f, 0f),
-                    HeadEuler = V(Mathf.Max(0f, bend) * 0.4f + 6f, 4f, 0f),
+                    HeadEuler = V(Mathf.Max(0f, bend) * 0.4f + 4f, 4f, 0f),
                     Right = Reach(Space.Chest, right, 1f, pole),
-                    Left = Reach(Space.Chest, left, 1f, V(pole.x * 0.8f, pole.y, pole.z)),
+                    Left = Reach(Space.Chest, left, 1f, pole),
                 };
             },
         };
@@ -1193,7 +1234,7 @@ public static class VillagerClipBaker
                 const float L = 1.6f;
                 Vector3 open = V(0.10f, -0.20f, 0.30f);
                 Vector3 clap = V(-0.15f, -0.20f, 0.32f);
-                Vector3 up = V(0.08f, 0.32f, 0.10f);
+                Vector3 up = V(0.08f, 0.30f, 0.20f);
                 Vector3 hand = Keys(t, L, (0f, open), (0.2f, clap), (0.4f, open), (0.6f, clap), (0.8f, open), (1.1f, up), (1.35f, up));
                 float bounce = Mathf.Abs(Mathf.Sin(t / L * Mathf.PI * 4f));
                 return new Pose
