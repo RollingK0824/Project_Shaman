@@ -43,6 +43,11 @@ namespace ProjectShaman.AI.Work
         private WorkStation _station;
         private float _nextHitTime;
         private bool _hitsFromClip;
+        // The station is being set up again after this hit (a new log): the swing ends, then the worker stands and waits
+        private bool _isWaitingForStation;
+        private float _lowerToolAt = -1f;
+        // The rest of the swing after the blow lands, before the worker straightens up to wait
+        private const float FOLLOW_THROUGH_SECONDS = 0.4f;
 
         public bool IsWorking => _isWorking;
 
@@ -149,6 +154,8 @@ namespace ProjectShaman.AI.Work
             _currentStationId = _station != null ? _station.StationId : string.Empty;
             _hitCount = 0;
             _hitsFromClip = false;
+            _isWaitingForStation = false;
+            _lowerToolAt = -1f;
             _nextHitTime = Time.time + _hitIntervalSeconds;
 
             _core.SetState(AIState.Working);
@@ -175,6 +182,12 @@ namespace ProjectShaman.AI.Work
 
             FaceStation(deltaTime);
 
+            if (_isWaitingForStation)
+            {
+                TickWaitForStation();
+                return;
+            }
+
             if (!_useAnimationEvent && !_hitsFromClip && Time.time >= _nextHitTime)
             {
                 _nextHitTime = Time.time + _hitIntervalSeconds;
@@ -199,7 +212,7 @@ namespace ProjectShaman.AI.Work
         // clips without one keep the timer
         public void HandleImpactEvent()
         {
-            if (_isWorking)
+            if (_isWorking && !_isWaitingForStation)
             {
                 _hitsFromClip = true;
                 DeliverHit();
@@ -218,6 +231,29 @@ namespace ProjectShaman.AI.Work
             }
 
             _station.ReceiveWork(_core.LogId, _currentActionId);
+
+            if (!_station.IsReady)
+            {
+                _isWaitingForStation = true;
+                _lowerToolAt = Time.time + FOLLOW_THROUGH_SECONDS;
+            }
+        }
+
+        private void TickWaitForStation()
+        {
+            if (_lowerToolAt >= 0f && Time.time >= _lowerToolAt)
+            {
+                _lowerToolAt = -1f;
+                _visual.StopAction();
+            }
+
+            if (_station == null || _station.IsReady)
+            {
+                _isWaitingForStation = false;
+                _lowerToolAt = -1f;
+                _nextHitTime = Time.time + _hitIntervalSeconds;
+                _visual.PlayAction(WorkAnimationTable.Get(_currentActionId));
+            }
         }
 
         // Lines of the work itself, said alone (a chat between villagers at work uses smalltalk.work): not while in a chat or a talk

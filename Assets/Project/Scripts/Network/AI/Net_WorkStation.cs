@@ -13,6 +13,8 @@ namespace ProjectShaman.Network.AI
         private WorkStation _station;
         private NetworkAnimator _networkAnimator;
 
+        [SyncVar(hook = nameof(OnResetVisualShownChanged))] private bool _resetVisualShown = true;
+
         private void Awake()
         {
             _station = GetComponent<WorkStation>();
@@ -23,12 +25,31 @@ namespace ProjectShaman.Network.AI
         {
             base.OnStartServer();
             _station.OnWorkAccepted += HandleWorkAccepted;
+            _station.OnResetVisualChanged += HandleResetVisualChanged;
         }
 
         public override void OnStopServer()
         {
             _station.OnWorkAccepted -= HandleWorkAccepted;
+            _station.OnResetVisualChanged -= HandleResetVisualChanged;
             base.OnStopServer();
+        }
+
+        public override void OnStartClient()
+        {
+            base.OnStartClient();
+            _station.ApplyResetVisual(_resetVisualShown);
+        }
+
+        [Server]
+        private void HandleResetVisualChanged(bool shown)
+        {
+            _resetVisualShown = shown;
+        }
+
+        private void OnResetVisualShownChanged(bool oldValue, bool newValue)
+        {
+            _station.ApplyResetVisual(newValue);
         }
 
         [Server]
