@@ -23,8 +23,10 @@ public class GameplaySettingsUI : MonoBehaviour
         // Ranges come from GameSettings, so the Inspector values don't matter
         if (_sensitivitySlider != null)
         {
-            _sensitivitySlider.minValue = GameSettings.MIN_SENSITIVITY;
-            _sensitivitySlider.maxValue = GameSettings.MAX_SENSITIVITY;
+            // In tenths (matches the 0.0x label) so arrow keys step by 0.1x
+            _sensitivitySlider.minValue = Mathf.Round(GameSettings.MIN_SENSITIVITY * 10f);
+            _sensitivitySlider.maxValue = Mathf.Round(GameSettings.MAX_SENSITIVITY * 10f);
+            _sensitivitySlider.wholeNumbers = true;
             _sensitivitySlider.onValueChanged.AddListener(HandleSensitivityChanged);
         }
 
@@ -47,7 +49,7 @@ public class GameplaySettingsUI : MonoBehaviour
     {
         if (_sensitivitySlider != null)
         {
-            _sensitivitySlider.SetValueWithoutNotify(GameSettings.MouseSensitivity);
+            _sensitivitySlider.SetValueWithoutNotify(GameSettings.MouseSensitivity * 10f);
         }
         UpdateSensitivityLabel(GameSettings.MouseSensitivity);
 
@@ -63,8 +65,9 @@ public class GameplaySettingsUI : MonoBehaviour
         }
     }
 
-    private void HandleSensitivityChanged(float v)
+    private void HandleSensitivityChanged(float tenths)
     {
+        float v = tenths / 10f;
         GameSettings.SetMouseSensitivity(v);
         UpdateSensitivityLabel(v);
     }
