@@ -1251,6 +1251,9 @@ namespace ProjectShaman.AI.Core
             RoutineEntry best = null;
             float bestSqr = float.MaxValue;
             int candidates = 0;
+            // Free time with no gathering place it may use (a child: no tavern, no well): the nearest spread-out place instead
+            RoutineEntry nearestGroup = null;
+            float nearestGroupSqr = float.MaxValue;
 
             foreach (RoutineEntry routine in _factory.DataProvider.Routines)
             {
@@ -1261,8 +1264,20 @@ namespace ProjectShaman.AI.Core
 
                 // Free time is for gathering (rumours), so the spread-out places of a group (tree shade) are left out
                 bool isGroup = PlaceRegistry.IsGroup(routine.PlaceId);
-                if ((anyPlace && isGroup) || !PlaceRegistry.TryPick(routine.PlaceId, from, out PlaceArea place))
+                if (!PlaceRegistry.TryPick(routine.PlaceId, from, out PlaceArea place))
                 {
+                    continue;
+                }
+
+                if (anyPlace && isGroup)
+                {
+                    float groupSqr = (place.Center - from).sqrMagnitude;
+                    if (groupSqr < nearestGroupSqr)
+                    {
+                        nearestGroup = routine;
+                        nearestGroupSqr = groupSqr;
+                    }
+
                     continue;
                 }
 
@@ -1284,6 +1299,11 @@ namespace ProjectShaman.AI.Core
                     best = routine;
                     bestSqr = sqr;
                 }
+            }
+
+            if (best == null)
+            {
+                best = nearestGroup;
             }
 
             if (best == null)
