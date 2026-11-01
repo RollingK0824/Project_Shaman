@@ -22,7 +22,7 @@ public class QuestEntryUI : MonoBehaviour
 
     private void Awake()
     {
-        _pinButton.onClick.AddListener(() => PinManager.Instance.ToggleQuest(_questId));
+        if (_pinButton != null) _pinButton.onClick.AddListener(() => PinManager.Instance.ToggleQuest(_questId));
     }
 
     public void Set(IQuestView q)
@@ -47,7 +47,7 @@ public class QuestEntryUI : MonoBehaviour
 
         // Only active quests can be pinned; QuestsTab rebuilds on PinsChanged, so the icon stays current
         _questId = q.InstanceId;
-        _pinButton.gameObject.SetActive(q.State == QuestState.Active);
-        _pinIcon.color = PinManager.Instance.IsQuestPinned(q.InstanceId) ? _pinnedColor : _unpinnedColor;
+        if (_pinButton != null) _pinButton.gameObject.SetActive(q.State == QuestState.Active);
+        if (_pinIcon != null) _pinIcon.color = PinManager.Instance.IsQuestPinned(q.InstanceId) ? _pinnedColor : _unpinnedColor;
     }
 }
