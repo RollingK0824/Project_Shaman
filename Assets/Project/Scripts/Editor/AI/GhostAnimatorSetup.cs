@@ -12,8 +12,8 @@ public static class GhostAnimatorSetup
     private const string IDLE_CLIP = CLIP_ROOT + "Idles/HumanM@Idle01.fbx";
     private const string WALK_CLIP = CLIP_ROOT + "Movement/Walk/HumanM@Walk01_Forward.fbx";
     private const string RUN_CLIP = CLIP_ROOT + "Movement/Run/HumanM@Run01_Forward.fbx";
-    // No humanoid attack clip in the project yet: put its path here (or drop a clip on the Attack state) when there is one
-    private const string ATTACK_CLIP = "";
+    // A one-hand overhead swing reads as a strike
+    private const string ATTACK_CLIP = CLIP_ROOT + "Work/Mining/HumanM@MiningOneHand01_L - Wall.fbx";
 
     private static readonly string[] MODEL_PREFABS =
     {
