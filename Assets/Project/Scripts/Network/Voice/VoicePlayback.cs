@@ -49,7 +49,7 @@ public class VoicePlayback : MonoBehaviour
         ApplyVolume(VoiceSettings.Volume);
     }
 
-    // Init 전 (Steam 미초기화 등)에는 _source가 없음. 값만 저장해 두고 Init에서 적용
+    // Init 전에는 _source가 없음. 값만 저장해 두고 Init에서 적용
     private void ApplyVolume(float volume)
     {
         if (_source != null) _source.volume = volume * _playerVolume;
@@ -61,14 +61,14 @@ public class VoicePlayback : MonoBehaviour
         if (_source != null && clip != null) _source.PlayOneShot(clip, volumeScale);
     }
 
-    // [메인 스레드] Steam DecompressVoice 결과 (16비트 모노 PCM, 리틀 엔디언)
-    public void Push(byte[] pcm16, int byteCount)
+    // [메인 스레드] Opus 디코딩 결과 (모노, -1~1)
+    public void Push(float[] samples, int count)
     {
         if (!IsInitialized) return;
 
         lock (_lock)
         {
-            for (int i = 0; i + 1 < byteCount; i += 2)
+            for (int i = 0; i < count; i++)
             {
                 // 가득 차면 가장 오래된 샘플을 버림 (지연이 계속 쌓이는 것 방지){
                 if (_count == _ring.Length)
@@ -77,8 +77,7 @@ public class VoicePlayback : MonoBehaviour
                     _count--;
                 }
 
-                short sample = (short)(pcm16[i] | (pcm16[i + 1] << 8));
-                _ring[_writeIndex] = sample / 32768f;
+                _ring[_writeIndex] = samples[i];
                 _writeIndex = (_writeIndex + 1) % _ring.Length;
                 _count++;
             }
