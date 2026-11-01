@@ -45,9 +45,10 @@ namespace ProjectShaman.AI.Minion
 
     public static class MinionWavePlanner
     {
-        public static MinionWaveSettings Resolve(MinionWaveConfig config, float yin)
+        // spawnRateMultiplier: waves come this many times as often (sealed ghosts, MinionSpawner)
+        public static MinionWaveSettings Resolve(MinionWaveConfig config, float yin, float spawnRateMultiplier = 1f)
         {
-            float interval = config.WaveIntervalSeconds;
+            float interval = config.WaveIntervalSeconds / Mathf.Max(1f, spawnRateMultiplier);
             int count = config.MinionsPerWave;
 
             if (config.UseYinScaling && config.TryGetYinTier(yin, out MinionWaveTier tier))
