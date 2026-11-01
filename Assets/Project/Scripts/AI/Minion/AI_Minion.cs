@@ -19,6 +19,9 @@ namespace ProjectShaman.AI.Minion
         [SerializeField] private MinionData _data;
         // x2 per ghost sealed so far (MinionSpawner)
         private float _speedMultiplier = 1f;
+        // Salt slow: speed × multiplier until this time
+        private float _slowUntil = float.NegativeInfinity;
+        private float _slowMultiplier = 1f;
 
         [Header("Pierce attack")]
         [Tooltip("Flat distance to the player from which the minion lunges in (the hit is judged against AttackRange)")]
@@ -440,7 +443,19 @@ namespace ProjectShaman.AI.Minion
                     EnterMoveToObjective();
                     break;
 
-                // Bean-mugwort: a small flyer is too hard to hit for a slow to be worth it, so it does nothing here
+                // Salt: slowed for a while (every move, the lunge included)
+                case ItemControlKind.Slow:
+                    item = PlayerItemKind.Salt;
+                    if (!_itemGate.IsReady(item))
+                    {
+                        return false;
+                    }
+
+                    _slowUntil = Mathf.Max(_slowUntil, until);
+                    _slowMultiplier = Mathf.Clamp(effect.SpeedMultiplier, 0.01f, 1f);
+                    _nextRepathTime = 0f;
+                    break;
+
                 default:
                     return false;
             }
@@ -474,7 +489,7 @@ namespace ProjectShaman.AI.Minion
         private void MoveDirect(Vector3 destination, float speed)
         {
             _lastDestination = destination;
-            _movement.SetSpeed(speed);
+            _movement.SetSpeed(Time.time < _slowUntil ? speed * _slowMultiplier : speed);
             _movement.MoveTo(destination);
         }
 
